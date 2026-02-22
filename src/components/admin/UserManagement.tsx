@@ -188,6 +188,11 @@ export function UserManagement() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('customers')
+  
+  // Review modal states
+  const [isMechanicReviewsOpen, setIsMechanicReviewsOpen] = useState(false)
+  const [isDeliveryReviewsOpen, setIsDeliveryReviewsOpen] = useState(false)
+  const [selectedUserForReviews, setSelectedUserForReviews] = useState<any>(null)
 
   const filteredUsers = useMemo(() => {
     return mockUsers.filter(user => {
@@ -474,7 +479,7 @@ export function UserManagement() {
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead>Performance</TableHead>
+                    <TableHead>Reviews</TableHead>
                     <TableHead>Joined</TableHead>
                     <TableHead>Last Active</TableHead>
                     <TableHead className="w-12"></TableHead>
@@ -524,23 +529,27 @@ export function UserManagement() {
                               <div className="text-xs text-[#6B7280]">{formatCurrency(user.totalSpent!)}</div>
                             </>
                           )}
-                          {user.role === 'mechanic' && (
-                            <>
-                              <div className="text-sm font-medium">{user.totalJobs} jobs</div>
-                              <div className="text-xs text-[#6B7280]">{formatCurrency(user.earnings!)}</div>
-                            </>
+                          {(user.role === 'mechanic' || user.role === 'delivery') && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="flex items-center gap-1 p-1 h-auto hover:bg-blue-50"
+                              onClick={() => {
+                                setSelectedUserForReviews(user)
+                                if (user.role === 'mechanic') {
+                                  setIsMechanicReviewsOpen(true)
+                                } else if (user.role === 'delivery') {
+                                  setIsDeliveryReviewsOpen(true)
+                                }
+                              }}
+                            >
+                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                              <span className="text-sm font-medium">{user.rating || 4.5}</span>
+                              <span className="text-xs text-gray-500">({(user.role === 'mechanic' ? user.totalJobs : user.totalDeliveries) || 0})</span>
+                            </Button>
                           )}
-                          {user.role === 'delivery' && (
-                            <>
-                              <div className="text-sm font-medium">{user.totalDeliveries} deliveries</div>
-                              <div className="text-xs text-[#6B7280]">{formatCurrency(user.earnings!)}</div>
-                            </>
-                          )}
-                          {user.rating && (
-                            <div className="flex items-center text-xs">
-                              <Star className="h-3 w-3 text-yellow-500 mr-1" />
-                              {user.rating}
-                            </div>
+                          {user.role === 'admin' && (
+                            <div className="text-sm text-[#6B7280]">Admin User</div>
                           )}
                         </div>
                       </TableCell>
@@ -761,6 +770,384 @@ export function UserManagement() {
             </Button>
             <Button className="bg-[#1B3B6F] hover:bg-[#0F2545]">
               Edit Profile
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mechanic Reviews Modal */}
+      <Dialog open={isMechanicReviewsOpen} onOpenChange={setIsMechanicReviewsOpen}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
+          <DialogHeader className="pb-4 border-b flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold">Mechanic Reviews - {selectedUserForReviews?.name}</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Customer reviews and ratings for mechanic services
+            </DialogDescription>
+          </DialogHeader>
+
+          <div 
+            className="flex-1 overflow-y-auto pr-2 min-h-0" 
+            style={{
+              scrollbarWidth: 'normal',
+              scrollbarColor: '#1B3B6F #F1F5F9'
+            }}
+          >
+            <style>{`
+              .flex-1.overflow-y-auto::-webkit-scrollbar {
+                width: 12px;
+              }
+              .flex-1.overflow-y-auto::-webkit-scrollbar-track {
+                background: #F1F5F9;
+                border-radius: 6px;
+              }
+              .flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
+                background: linear-gradient(180deg, #1B3B6F 0%, #0F2545 100%);
+                border-radius: 6px;
+                border: 2px solid #F1F5F9;
+              }
+              .flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+                background: linear-gradient(180deg, #0F2545 0%, #1B3B6F 100%);
+              }
+              .flex-1.overflow-y-auto::-webkit-scrollbar-corner {
+                background: #F1F5F9;
+              }
+            `}</style>
+            
+            {selectedUserForReviews && (
+              <div className="space-y-6 py-2">
+                {/* Mechanic Info */}
+                <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                  <Avatar className="h-16 w-16 border-2 border-blue-200">
+                    <AvatarImage src={selectedUserForReviews.avatar} />
+                    <AvatarFallback className="bg-blue-100 text-blue-700 text-lg font-semibold">
+                      {selectedUserForReviews.name.split(' ').map((n: string) => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-bold text-xl text-gray-900">{selectedUserForReviews.name}</p>
+                    <div className="flex items-center space-x-6 mt-2">
+                      <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full">ID: {selectedUserForReviews.id}</span>
+                      <div className="flex items-center bg-white px-3 py-1 rounded-full">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
+                        <span className="font-semibold text-gray-900">{selectedUserForReviews.rating}</span>
+                        <span className="text-gray-500 ml-1">({selectedUserForReviews.totalJobs} jobs)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Review Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-3xl font-bold text-green-600 mb-1">89%</div>
+                      <div className="text-sm font-medium text-gray-600">5-Star Reviews</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-3xl font-bold text-blue-600 mb-1">156</div>
+                      <div className="text-sm font-medium text-gray-600">Total Reviews</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-3xl font-bold text-purple-600 mb-1">4.8</div>
+                      <div className="text-sm font-medium text-gray-600">Avg Rating</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-3xl font-bold text-orange-600 mb-1">98%</div>
+                      <div className="text-sm font-medium text-gray-600">Positive Feedback</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Reviews List */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg text-gray-900">Recent Reviews</h3>
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                      Latest 4 reviews
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      {
+                        id: 1,
+                        customer: "John Doe",
+                        rating: 5,
+                        comment: "Excellent work! Fixed my car engine issue perfectly. Very professional and knowledgeable mechanic.",
+                        service: "Engine Repair",
+                        date: "2024-02-20",
+                        avatar: "/avatars/john.png"
+                      },
+                      {
+                        id: 2,
+                        customer: "Sarah Smith", 
+                        rating: 4,
+                        comment: "Good service but took longer than expected. Quality work though, car is running smooth now.",
+                        service: "Brake Service",
+                        date: "2024-02-19",
+                        avatar: "/avatars/sarah.png"
+                      },
+                      {
+                        id: 3,
+                        customer: "Mike Johnson",
+                        rating: 5,
+                        comment: "Outstanding service! Very honest about pricing and completed the work efficiently.",
+                        service: "Oil Change & Filter",
+                        date: "2024-02-18",
+                        avatar: "/avatars/mike.png"
+                      },
+                      {
+                        id: 4,
+                        customer: "Emma Wilson",
+                        rating: 5,
+                        comment: "Highly recommended! Explained everything clearly and fixed the AC perfectly.",
+                        service: "AC Repair",
+                        date: "2024-02-17",
+                        avatar: "/avatars/emma.png"
+                      }
+                    ].map((review) => (
+                      <div key={review.id} className="border border-gray-200 rounded-xl p-5 bg-gradient-to-r from-white to-gray-50 hover:shadow-md transition-all duration-200">
+                        <div className="flex items-start space-x-4">
+                          <Avatar className="h-12 w-12 border-2 border-gray-200">
+                            <AvatarImage src={review.avatar} />
+                            <AvatarFallback className="bg-gray-100 text-gray-700 font-medium">
+                              {review.customer.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <p className="font-semibold text-gray-900">{review.customer}</p>
+                                <p className="text-sm text-blue-600 font-medium">{review.service}</p>
+                              </div>
+                              <div className="text-right">
+                                <div className="flex items-center mb-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`h-4 w-4 ${
+                                        star <= review.rating
+                                          ? 'fill-yellow-400 text-yellow-400'
+                                          : 'text-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <p className="text-xs text-gray-500">{new Date(review.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 leading-relaxed bg-white p-3 rounded-lg border border-gray-100">{review.comment}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-4 border-t bg-gray-50 flex-shrink-0">
+            <Button variant="outline" onClick={() => setIsMechanicReviewsOpen(false)} className="border-gray-300">
+              Close
+            </Button>
+            <Button variant="outline" className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100">
+              <Download className="h-4 w-4 mr-2" />
+              Export Reviews
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delivery Reviews Modal */}
+      <Dialog open={isDeliveryReviewsOpen} onOpenChange={setIsDeliveryReviewsOpen}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
+          <DialogHeader className="pb-4 border-b flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold">Delivery Reviews - {selectedUserForReviews?.name}</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Customer reviews and ratings for delivery services
+            </DialogDescription>
+          </DialogHeader>
+
+          <div 
+            className="flex-1 overflow-y-auto pr-2 min-h-0" 
+            style={{
+              scrollbarWidth: 'normal',
+              scrollbarColor: '#059669 #F0FDF4'
+            }}
+          >
+            <style>{`
+              .flex-1.overflow-y-auto::-webkit-scrollbar {
+                width: 12px;
+              }
+              .flex-1.overflow-y-auto::-webkit-scrollbar-track {
+                background: #F0FDF4;
+                border-radius: 6px;
+              }
+              .flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
+                background: linear-gradient(180deg, #059669 0%, #047857 100%);
+                border-radius: 6px;
+                border: 2px solid #F0FDF4;
+              }
+              .flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+                background: linear-gradient(180deg, #047857 0%, #059669 100%);
+              }
+              .flex-1.overflow-y-auto::-webkit-scrollbar-corner {
+                background: #F0FDF4;
+              }
+            `}</style>
+            
+            {selectedUserForReviews && (
+              <div className="space-y-6 py-2">
+                {/* Delivery Partner Info */}
+                <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                  <Avatar className="h-16 w-16 border-2 border-green-200">
+                    <AvatarImage src={selectedUserForReviews.avatar} />
+                    <AvatarFallback className="bg-green-100 text-green-700 text-lg font-semibold">
+                      {selectedUserForReviews.name.split(' ').map((n: string) => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-bold text-xl text-gray-900">{selectedUserForReviews.name}</p>
+                    <div className="flex items-center space-x-6 mt-2">
+                      <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full">ID: {selectedUserForReviews.id}</span>
+                      <div className="flex items-center bg-white px-3 py-1 rounded-full">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
+                        <span className="font-semibold text-gray-900">{selectedUserForReviews.rating}</span>
+                        <span className="text-gray-500 ml-1">({selectedUserForReviews.totalDeliveries} deliveries)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Review Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-3xl font-bold text-green-600 mb-1">92%</div>
+                      <div className="text-sm font-medium text-gray-600">5-Star Reviews</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-3xl font-bold text-blue-600 mb-1">234</div>
+                      <div className="text-sm font-medium text-gray-600">Total Reviews</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-3xl font-bold text-purple-600 mb-1">4.7</div>
+                      <div className="text-sm font-medium text-gray-600">Avg Rating</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-3xl font-bold text-orange-600 mb-1">96%</div>
+                      <div className="text-sm font-medium text-gray-600">On-time Delivery</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Reviews List */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg text-gray-900">Recent Reviews</h3>
+                    <Badge variant="secondary" className="bg-green-50 text-green-700">
+                      Latest 4 reviews
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      {
+                        id: 1,
+                        customer: "Priya Sharma",
+                        rating: 5,
+                        comment: "Super fast delivery! Package arrived safely and on time. Very courteous delivery person.",
+                        orderId: "ORD-001",
+                        date: "2024-02-20",
+                        avatar: "/avatars/priya.png"
+                      },
+                      {
+                        id: 2,
+                        customer: "Amit Patel",
+                        rating: 4,
+                        comment: "Good delivery service. Product was well packaged. Delivery was a bit delayed but informed in advance.",
+                        orderId: "ORD-002", 
+                        date: "2024-02-19",
+                        avatar: "/avatars/amit.png"
+                      },
+                      {
+                        id: 3,
+                        customer: "Sneha Reddy",
+                        rating: 5,
+                        comment: "Excellent service! Called before delivery and handled the package with care. Highly recommended.",
+                        orderId: "ORD-003",
+                        date: "2024-02-18",
+                        avatar: "/avatars/sneha.png"
+                      },
+                      {
+                        id: 4,
+                        customer: "Rajesh Kumar",
+                        rating: 5,
+                        comment: "Professional delivery partner. Very punctual and friendly. Will prefer this service again.",
+                        orderId: "ORD-004",
+                        date: "2024-02-17",
+                        avatar: "/avatars/rajesh2.png"
+                      }
+                    ].map((review) => (
+                      <div key={review.id} className="border border-gray-200 rounded-xl p-5 bg-gradient-to-r from-white to-gray-50 hover:shadow-md transition-all duration-200">
+                        <div className="flex items-start space-x-4">
+                          <Avatar className="h-12 w-12 border-2 border-gray-200">
+                            <AvatarImage src={review.avatar} />
+                            <AvatarFallback className="bg-gray-100 text-gray-700 font-medium">
+                              {review.customer.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <p className="font-semibold text-gray-900">{review.customer}</p>
+                                <p className="text-sm text-green-600 font-medium">Order: {review.orderId}</p>
+                              </div>
+                              <div className="text-right">
+                                <div className="flex items-center mb-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`h-4 w-4 ${
+                                        star <= review.rating
+                                          ? 'fill-yellow-400 text-yellow-400'
+                                          : 'text-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <p className="text-xs text-gray-500">{new Date(review.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 leading-relaxed bg-white p-3 rounded-lg border border-gray-100">{review.comment}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-4 border-t bg-gray-50 flex-shrink-0">
+            <Button variant="outline" onClick={() => setIsDeliveryReviewsOpen(false)} className="border-gray-300">
+              Close
+            </Button>
+            <Button variant="outline" className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100">
+              <Download className="h-4 w-4 mr-2" />
+              Export Reviews
             </Button>
           </DialogFooter>
         </DialogContent>

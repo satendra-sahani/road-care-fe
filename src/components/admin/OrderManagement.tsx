@@ -25,7 +25,12 @@ import {
   IndianRupee,
   CreditCard,
   Users,
-  ShoppingBag
+  ShoppingBag,
+  User,
+  BadgeCheck,
+  TrendingUp,
+  FileText,
+  Star
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -67,8 +72,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Order, OrderFilters, Customer } from '@/types'
+import { cn } from '@/lib/utils'
 import { 
   mockOrders, 
   mockCustomers,
@@ -84,11 +89,13 @@ export function OrderManagement() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
-  const [activeTab, setActiveTab] = useState('orders')
   
   // Dialog states
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false)
+  const [isAssignDeliveryOpen, setIsAssignDeliveryOpen] = useState(false)
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
+  const [showUserDetails, setShowUserDetails] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [statusUpdateData, setStatusUpdateData] = useState({
     status: '',
@@ -96,6 +103,12 @@ export function OrderManagement() {
     courierPartner: '',
     estimatedDelivery: '',
     notes: ''
+  })
+  const [deliveryAssignment, setDeliveryAssignment] = useState({
+    partnerId: '',
+    priority: 'normal',
+    estimatedDelivery: '',
+    specialInstructions: ''
   })
 
   // Status configuration
@@ -117,6 +130,20 @@ export function OrderManagement() {
     refunded: { label: 'Refunded', className: 'bg-blue-100 text-blue-800' },
     'partially-refunded': { label: 'Partially Refunded', className: 'bg-orange-100 text-orange-800' }
   }
+
+  const paymentMethodConfig = {
+    upi: { label: 'UPI', className: 'bg-green-100 text-green-800', icon: CreditCard },
+    card: { label: 'Card', className: 'bg-blue-100 text-blue-800', icon: CreditCard },
+    cod: { label: 'Cash on Delivery', className: 'bg-orange-100 text-orange-800', icon: IndianRupee },
+    netbanking: { label: 'Net Banking', className: 'bg-purple-100 text-purple-800', icon: CreditCard },
+    wallet: { label: 'Wallet', className: 'bg-yellow-100 text-yellow-800', icon: CreditCard }
+  }
+
+  // Mock delivery partners with distances for the modal
+  const deliveryPartnersWithDistance = mockDeliveryPartners.map((partner, index) => ({
+    ...partner,
+    distance: [2.1, 3.5, 1.8][index] || (2 + Math.random() * 3) // Random distances between 2-5 km
+  }))
 
   // Utility functions
   const formatCurrency = (amount: number) => {
@@ -221,24 +248,58 @@ export function OrderManagement() {
     setIsUpdateStatusOpen(true)
   }
 
+  const openDeliveryAssignmentDialog = (order: Order) => {
+    setSelectedOrder(order)
+    setDeliveryAssignment({
+      partnerId: '',
+      priority: 'normal',
+      estimatedDelivery: '',
+      specialInstructions: ''
+    })
+    setIsAssignDeliveryOpen(true)
+  }
+
+  const handleAssignDelivery = () => {
+    if (selectedOrder && deliveryAssignment.partnerId) {
+      // Here you would typically make an API call to assign the order to delivery partner
+      console.log('Assigning order to delivery partner:', {
+        orderId: selectedOrder.id,
+        ...deliveryAssignment
+      })
+      
+      // Update the order status to 'shipped' when assigned to delivery
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === selectedOrder.id 
+            ? { ...order, status: 'shipped' as any }
+            : order
+        )
+      )
+      
+      setIsAssignDeliveryOpen(false)
+      // Show success message
+      alert('Order successfully assigned to delivery partner!')
+    }
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1D29]">Order Management</h1>
-          <p className="text-[#6B7280] mt-1">Manage customer orders, track deliveries, and handle returns</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1A1D29]">Order Management</h1>
+          <p className="text-[#6B7280] mt-1 text-sm sm:text-base">Manage customer orders, track deliveries, and handle returns</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+          <Button variant="outline" className="text-sm">
             <Download className="h-4 w-4 mr-2" />
             Export Orders
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="text-sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Sync Orders
           </Button>
-          <Button className="bg-[#1B3B6F] hover:bg-[#0F2545]">
+          <Button className="bg-[#1B3B6F] hover:bg-[#0F2545] text-sm">
             <Plus className="h-4 w-4 mr-2" />
             Create Order
           </Button>
@@ -332,19 +393,9 @@ export function OrderManagement() {
         </Card>
       </div>
 
-      {/* Order Management Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="customers">Customers</TabsTrigger>
-          <TabsTrigger value="delivery">Delivery</TabsTrigger>
-        </TabsList>
-
-        {/* Orders Tab */}
-        <TabsContent value="orders" className="space-y-6">
-          {/* Filters and Search */}
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-6">
+      {/* Filters and Search */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
                 <div className="flex-1 max-w-md">
                   <div className="relative">
@@ -454,11 +505,11 @@ export function OrderManagement() {
 
           {/* Orders Table */}
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-0">
-              <Table>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">
+                    <TableHead className="w-[50px] sticky left-0 bg-white z-10">
                       <Checkbox
                         checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
                         onCheckedChange={(checked) => {
@@ -470,14 +521,15 @@ export function OrderManagement() {
                         }}
                       />
                     </TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Products</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="min-w-[120px]">Order</TableHead>
+                    <TableHead className="min-w-[200px]">Customer</TableHead>
+                    <TableHead className="min-w-[150px]">Products</TableHead>
+                    <TableHead className="min-w-[100px]">Amount</TableHead>
+                    <TableHead className="min-w-[100px]">Status</TableHead>
+                    <TableHead className="min-w-[100px]">Payment</TableHead>
+                    <TableHead className="min-w-[100px]">Feedback</TableHead>
+                    <TableHead className="min-w-[120px]">Date</TableHead>
+                    <TableHead className="text-right min-w-[80px] sticky right-0 bg-white z-10">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -512,7 +564,15 @@ export function OrderManagement() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium text-[#1A1D29]">{order.customer.name}</p>
+                            <button
+                              onClick={() => {
+                                setSelectedOrder(order)
+                                setShowUserDetails(true)
+                              }}
+                              className="font-medium text-[#1B3B6F] hover:text-[#1B3B6F]/80 hover:underline cursor-pointer transition-colors text-left"
+                            >
+                              {order.customer.name}
+                            </button>
                             <p className="text-sm text-[#6B7280]">{order.customer.email}</p>
                           </div>
                         </div>
@@ -543,6 +603,24 @@ export function OrderManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        {(order.status === 'delivered' || order.status === 'completed') ? (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="flex items-center gap-1 hover:bg-blue-50 text-blue-600"
+                            onClick={() => {
+                              setSelectedOrder(order)
+                              setIsFeedbackDialogOpen(true)
+                            }}
+                          >
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-sm font-medium">View Feedback</span>
+                          </Button>
+                        ) : (
+                          <span className="text-sm text-gray-400">No feedback yet</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <p className="text-sm">{formatDate(order.orderDate)}</p>
                       </TableCell>
                       <TableCell className="text-right">
@@ -565,6 +643,13 @@ export function OrderManagement() {
                             <DropdownMenuItem onClick={() => openStatusUpdateDialog(order)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Update Status
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => openDeliveryAssignmentDialog(order)}
+                              disabled={order.status === 'delivered' || order.status === 'cancelled'}
+                            >
+                              <Truck className="h-4 w-4 mr-2" />
+                              Assign Delivery Boy
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem>
@@ -591,126 +676,105 @@ export function OrderManagement() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-[#6B7280]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+              <p className="text-sm text-[#6B7280] text-center sm:text-left">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredOrders.length)} of {filteredOrders.length} orders
               </p>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center space-x-1 sm:space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
+                  className="px-2 sm:px-3"
                 >
-                  Previous
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">Prev</span>
                 </Button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(page)}
-                    className={currentPage === page ? "bg-[#1B3B6F]" : ""}
-                  >
-                    {page}
-                  </Button>
-                ))}
+                
+                {/* Show limited page numbers on mobile */}
+                <div className="flex items-center space-x-1">
+                  {totalPages <= 5 ? (
+                    // Show all pages if 5 or fewer
+                    Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={cn(
+                          "w-8 h-8 p-0",
+                          currentPage === page ? "bg-[#1B3B6F]" : ""
+                        )}
+                      >
+                        {page}
+                      </Button>
+                    ))
+                  ) : (
+                    // Show abbreviated pagination for many pages
+                    <>
+                      {currentPage > 2 && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(1)}
+                            className="w-8 h-8 p-0"
+                          >
+                            1
+                          </Button>
+                          {currentPage > 3 && <span className="text-[#6B7280]">...</span>}
+                        </>
+                      )}
+                      
+                      {[currentPage - 1, currentPage, currentPage + 1]
+                        .filter(page => page >= 1 && page <= totalPages)
+                        .map((page) => (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className={cn(
+                              "w-8 h-8 p-0",
+                              currentPage === page ? "bg-[#1B3B6F]" : ""
+                            )}
+                          >
+                            {page}
+                          </Button>
+                        ))
+                      }
+                      
+                      {currentPage < totalPages - 1 && (
+                        <>
+                          {currentPage < totalPages - 2 && <span className="text-[#6B7280]">...</span>}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {totalPages}
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+                
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
+                  className="px-2 sm:px-3"
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
+                  <span className="sm:hidden">Next</span>
                 </Button>
               </div>
             </div>
           )}
-        </TabsContent>
-
-        {/* Customers Tab */}
-        <TabsContent value="customers" className="space-y-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>Customer Overview</CardTitle>
-              <CardDescription>Track customer activity and order history</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mockCustomers.map((customer) => (
-                  <Card key={customer.id} className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={customer.avatar} alt={customer.name} />
-                        <AvatarFallback>
-                          {customer.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-[#1A1D29]">{customer.name}</h3>
-                        <p className="text-sm text-[#6B7280]">{customer.email}</p>
-                        <div className="flex items-center justify-between mt-2">
-                          <div>
-                            <p className="text-sm font-medium">{customer.totalOrders} orders</p>
-                            <p className="text-sm text-[#6B7280]">{formatCurrency(customer.totalSpent)} spent</p>
-                          </div>
-                          <Badge className={
-                            customer.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }>
-                            {customer.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Delivery Tab */}
-        <TabsContent value="delivery" className="space-y-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>Delivery Partners</CardTitle>
-              <CardDescription>Manage delivery partners and track performance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mockDeliveryPartners.map((partner) => (
-                  <Card key={partner.id} className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-[#1A1D29]">{partner.name}</h3>
-                        <p className="text-sm text-[#6B7280]">{partner.contactPerson}</p>
-                        <p className="text-sm text-[#6B7280]">{partner.phone}</p>
-                        <div className="mt-2">
-                          <p className="text-sm font-medium">{partner.totalDeliveries} deliveries</p>
-                          <p className="text-sm text-[#6B7280]">{partner.onTimeDeliveryRate}% on-time</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge className={
-                          partner.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }>
-                          {partner.status}
-                        </Badge>
-                        <p className="text-sm mt-2">
-                          â˜… {partner.rating}/5
-                        </p>
-                        <p className="text-sm text-[#6B7280]">
-                          Local: {formatCurrency(partner.rateCard.localDelivery)}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
 
       {/* Order Details Dialog */}
       <OrderViewDialog
@@ -831,6 +895,460 @@ export function OrderManagement() {
             </Button>
             <Button onClick={handleUpdateOrderStatus} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
               Update Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Delivery Dialog */}
+      <Dialog open={isAssignDeliveryOpen} onOpenChange={setIsAssignDeliveryOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Delivery Partner</DialogTitle>
+            <DialogDescription>
+              Assign order {selectedOrder?.orderNumber} to a delivery partner
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="deliveryPartner">Select Delivery Partner</Label>
+              <Select 
+                value={deliveryAssignment.partnerId} 
+                onValueChange={(value) => setDeliveryAssignment({ ...deliveryAssignment, partnerId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a delivery partner" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mockDeliveryPartners.filter(partner => partner.status === 'active').map((partner) => (
+                    <SelectItem key={partner.id} value={partner.id}>
+                      {partner.name} - {partner.contactPerson}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select 
+                value={deliveryAssignment.priority} 
+                onValueChange={(value) => setDeliveryAssignment({ ...deliveryAssignment, priority: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                  <SelectItem value="same-day">Same Day</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="estimatedDelivery">Estimated Delivery Date</Label>
+              <Input
+                id="estimatedDelivery"
+                type="date"
+                value={deliveryAssignment.estimatedDelivery}
+                onChange={(e) => setDeliveryAssignment({ ...deliveryAssignment, estimatedDelivery: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="specialInstructions">Special Instructions</Label>
+              <Textarea
+                id="specialInstructions"
+                value={deliveryAssignment.specialInstructions}
+                onChange={(e) => setDeliveryAssignment({ ...deliveryAssignment, specialInstructions: e.target.value })}
+                placeholder="Any special delivery instructions..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAssignDeliveryOpen(false)
+                setSelectedOrder(null)
+                setDeliveryAssignment({
+                  partnerId: '',
+                  priority: 'normal',
+                  estimatedDelivery: '',
+                  specialInstructions: ''
+                })
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAssignDelivery} 
+              className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+              disabled={!deliveryAssignment.partnerId}
+            >
+              Assign Delivery
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Details Modal */}
+      <Dialog open={showUserDetails} onOpenChange={setShowUserDetails}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Customer & Order Details
+            </DialogTitle>
+            <DialogDescription>
+              Customer information and available delivery partners
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Side - User & Order Details */}
+              <div className="space-y-6">
+                {/* Customer Info Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <User className="w-5 h-5" />
+                      Customer Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Name</Label>
+                        <p className="font-semibold">{selectedOrder.customer.name}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+                        <p className="font-semibold">{selectedOrder.customer.email}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Phone</Label>
+                        <p className="font-semibold">{selectedOrder.customer.phone || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Customer ID</Label>
+                        <p className="font-mono text-sm">{selectedOrder.customer.id}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Address</Label>
+                      <p className="text-sm">
+                        {selectedOrder.shippingAddress.street}, {selectedOrder.shippingAddress.city}, 
+                        {selectedOrder.shippingAddress.state} - {selectedOrder.shippingAddress.zipCode}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Order Details Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="w-5 h-5" />
+                      Order Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Order Number</Label>
+                        <p className="font-mono font-semibold text-[#1B3B6F]">{selectedOrder.orderNumber}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Order Date</Label>
+                        <p className="font-semibold">{formatDate(selectedOrder.orderDate)}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Total Amount</Label>
+                        <p className="font-bold text-emerald-700">{formatCurrency(selectedOrder.totalAmount)}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Payment Method</Label>
+                        <p className="font-semibold capitalize">{selectedOrder.paymentMethod}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Order Status</Label>
+                        <Badge className={statusConfig[selectedOrder.status as keyof typeof statusConfig]?.className}>
+                          {statusConfig[selectedOrder.status as keyof typeof statusConfig]?.label}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Payment Status</Label>
+                        <Badge className={paymentStatusConfig[selectedOrder.paymentStatus as keyof typeof paymentStatusConfig]?.className}>
+                          {paymentStatusConfig[selectedOrder.paymentStatus as keyof typeof paymentStatusConfig]?.label}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    {/* Order Items */}
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Items Ordered</Label>
+                      <div className="mt-2 space-y-2">
+                        {selectedOrder.products.map((product, index) => (
+                          <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                            <div>
+                              <p className="font-medium text-sm">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">Qty: {product.quantity}</p>
+                              <p className="text-sm text-emerald-600">{formatCurrency(product.price * product.quantity)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right Side - Delivery Partners */}
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Truck className="w-5 h-5" />
+                      Available Delivery Partners
+                    </CardTitle>
+                    <CardDescription>
+                      Nearby delivery partners with distance information
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {deliveryPartnersWithDistance.map((partner) => (
+                        <div key={partner.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-semibold text-sm">{partner.name}</h4>
+                              <p className="text-xs text-muted-foreground">{partner.contactPerson}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="flex items-center gap-1 text-sm font-medium text-[#1B3B6F]">
+                                <MapPin className="w-3 h-3" />
+                                {partner.distance.toFixed(1)} km
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-emerald-600">
+                                <BadgeCheck className="w-3 h-3" />
+                                {partner.onTimeDeliveryRate}% On-time
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex justify-between items-center text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              {partner.phone}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              {partner.rating} ⭐
+                            </div>
+                          </div>
+                          
+                          <div className="mt-2 pt-2 border-t">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-muted-foreground">Local: </span>
+                                <span className="font-medium">₹{partner.rateCard.localDelivery}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Inter-city: </span>
+                                <span className="font-medium">₹{partner.rateCard.intercityDelivery}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <Button 
+                            size="sm" 
+                            className="w-full mt-3 bg-[#1B3B6F] hover:bg-[#1B3B6F]/90"
+                            onClick={() => {
+                              // Handle assign delivery partner
+                              setDeliveryAssignment({
+                                ...deliveryAssignment,
+                                partnerId: partner.id
+                              })
+                              setShowUserDetails(false)
+                              setIsAssignDeliveryOpen(true)
+                            }}
+                          >
+                            <Truck className="w-3 h-3 mr-1" />
+                            Assign Order
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Feedback Dialog */}
+      <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Order Feedback</DialogTitle>
+            <DialogDescription>
+              Customer feedback for order {selectedOrder?.orderNumber}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="space-y-6">
+              {/* Customer Info */}
+              <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={selectedOrder.customer.avatar} />
+                  <AvatarFallback>
+                    {selectedOrder.customer.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{selectedOrder.customer.name}</p>
+                  <p className="text-sm text-gray-600">{selectedOrder.customer.email}</p>
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="font-medium text-gray-700">Order Number</Label>
+                  <p>{selectedOrder.orderNumber}</p>
+                </div>
+                <div>
+                  <Label className="font-medium text-gray-700">Order Date</Label>
+                  <p>{formatDate(selectedOrder.orderDate)}</p>
+                </div>
+              </div>
+
+              {/* Overall Rating */}
+              <div className="space-y-3">
+                <Label className="font-medium text-gray-700">Overall Rating</Label>
+                <div className="flex items-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`h-5 w-5 ${
+                        star <= (selectedOrder.feedbackRating || 4)
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                  <span className="font-medium text-lg ml-2">{selectedOrder.feedbackRating || 4.0}</span>
+                </div>
+              </div>
+
+              {/* Feedback Categories */}
+              <div className="space-y-4">
+                <Label className="font-medium text-gray-700">Category Ratings</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Product Quality</span>
+                    <div className="flex items-center space-x-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-3 w-3 ${
+                            star <= (selectedOrder.productQualityRating || 4)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                      <span className="text-sm ml-1">{selectedOrder.productQualityRating || 4.0}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Delivery Speed</span>
+                    <div className="flex items-center space-x-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-3 w-3 ${
+                            star <= (selectedOrder.deliverySpeedRating || 5)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                      <span className="text-sm ml-1">{selectedOrder.deliverySpeedRating || 5.0}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Customer Service</span>
+                    <div className="flex items-center space-x-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-3 w-3 ${
+                            star <= (selectedOrder.customerServiceRating || 4)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                      <span className="text-sm ml-1">{selectedOrder.customerServiceRating || 4.0}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Packaging</span>
+                    <div className="flex items-center space-x-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-3 w-3 ${
+                            star <= (selectedOrder.packagingRating || 3)
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                      <span className="text-sm ml-1">{selectedOrder.packagingRating || 3.0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Written Feedback */}
+              <div className="space-y-3">
+                <Label className="font-medium text-gray-700">Customer Comments</Label>
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm leading-relaxed">
+                    {selectedOrder.feedbackComments || 
+                    "The product quality was excellent and delivery was faster than expected. Very satisfied with the purchase. The packaging could be improved to prevent damage during shipping, but overall a great experience with Road Care. Will definitely order again!"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Feedback Date */}
+              <div className="text-xs text-gray-500">
+                <Label className="font-medium">Feedback submitted on:</Label>
+                <p>{formatDate(selectedOrder.feedbackDate || selectedOrder.orderDate)}</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsFeedbackDialogOpen(false)}>
+              Close
+            </Button>
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export Feedback
             </Button>
           </DialogFooter>
         </DialogContent>
