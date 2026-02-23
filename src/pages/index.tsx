@@ -7,39 +7,65 @@ import {
   Search, MapPin, ShoppingCart, User, Menu, X, Star, ChevronRight, ChevronLeft,
   Wrench, AlertTriangle, Truck, Phone, Shield, Clock, Zap, Heart,
   Home, Grid3X3, Receipt, Car, Bike, Settings, Battery, Fuel, Key,
-  Headphones, Package, ArrowRight, Play, CircleDot, Plus,
+  Headphones, Package, ArrowRight, Play, CircleDot, Plus, Disc, Cog,
+  Circle, Construction, Droplet, BatteryCharging,
+  Radio, Flower, FolderOpen, Grid, Filter, Sparkles, 
 } from "lucide-react";
+
+// Import mock data
+import { 
+  dummyParts, 
+  categories, 
+  brands, 
+  banners, 
+  mainCategories 
+} from "@/data/userMockData";
 const heroBanner ="https://ik.imagekit.io/aiwats/road-care/dummy-images/hero-banner.jpg"
 const promoBanner = "https://ik.imagekit.io/aiwats/road-care/dummy-images/promo-banner.jpg"
 const emergencyBanner = "https://ik.imagekit.io/aiwats/road-care/dummy-images/emergency-banner.jpg";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 
-const banners = [
+const herobanners = [
   { id: 1, image: heroBanner, title: "Expert Vehicle Service", subtitle: "Professional mechanics at your doorstep", cta: "Book Now" },
   { id: 2, image: promoBanner, title: "Spare Parts Sale", subtitle: "Up to 50% off on all vehicle parts", cta: "Shop Now" },
   { id: 3, image: emergencyBanner, title: "24/7 Emergency Help", subtitle: "Roadside assistance when you need it most", cta: "Get Help" },
 ];
 
-const categories = [
-  { icon: Settings, label: "Engine Parts", count: "250+" },
-  { icon: CircleDot, label: "Brakes", count: "180+" },
-  { icon: Zap, label: "Electrical", count: "120+" },
-  { icon: CircleDot, label: "Tires", count: "300+" },
-  { icon: Battery, label: "Batteries", count: "90+" },
-  { icon: Fuel, label: "Oils & Fluids", count: "150+" },
-  { icon: Car, label: "Car Accessories", count: "400+" },
-  { icon: Bike, label: "Bike Accessories", count: "350+" },
-];
+// Icon mapping for categories
+const categoryIcons = {
+  "cog": Cog,
+  "disc": Disc,
+  "flash": Zap,
+  "ellipse-outline": CircleDot,
+  "bicycle": Bike,
+  "water": Droplet,
+  "battery-charging": BatteryCharging,
+  "car-sport": Car,
+  "car-outline": Car,
+  "radio": Radio,
+  "car-wash": Sparkles,
+  "car-seat": Settings,
+  "grid": Grid,
+  "folder-outline": FolderOpen,
+  "flower-outline": Flower,
+  "car": Car,
+  "construct": Construction,
+};
 
-const products = [
-  { id: 1, name: "Ceramic Brake Pads Set", brand: "Brembo", price: 2499, mrp: 3999, rating: 4.5, reviews: 128, discount: 38, inStock: true, partNo: "BP-2024-C" },
-  { id: 2, name: "Synthetic Engine Oil 5W-30", brand: "Castrol", price: 899, mrp: 1299, rating: 4.7, reviews: 256, discount: 31, inStock: true, partNo: "EO-5W30-1L" },
-  { id: 3, name: "LED Headlight Bulb H4", brand: "Philips", price: 1599, mrp: 2499, rating: 4.3, reviews: 89, discount: 36, inStock: true, partNo: "HL-H4-LED" },
-  { id: 4, name: "Alloy Wheel 17 inch", brand: "MRF", price: 4999, mrp: 7999, rating: 4.6, reviews: 67, discount: 38, inStock: false, partNo: "AW-17-SPT" },
-  { id: 5, name: "Air Filter Performance", brand: "K&N", price: 1299, mrp: 1999, rating: 4.8, reviews: 312, discount: 35, inStock: true, partNo: "AF-KN-001" },
-  { id: 6, name: "Spark Plug Iridium", brand: "NGK", price: 449, mrp: 699, rating: 4.4, reviews: 198, discount: 36, inStock: true, partNo: "SP-IRD-04" },
-];
+const productCategories = categories.filter(cat => cat.parentCategory).map(cat => ({
+  ...cat,
+  icon: categoryIcons[cat.icon as keyof typeof categoryIcons] || Settings,
+  count: dummyParts.filter(part => part.category === cat.id || 
+    (cat.id.includes("engine") && part.category === "1") ||
+    (cat.id.includes("brake") && part.category === "2") ||
+    (cat.id.includes("electrical") && part.category === "3") ||
+    (cat.id.includes("tyres") && part.category === "4") ||
+    (cat.id.includes("body") && part.category === "5") ||
+    (cat.id.includes("oils") && part.category === "7") ||
+    (cat.id.includes("batteries") && part.category === "8")
+  ).length + "+"
+}));
 
 const services = [
   { icon: Wrench, title: "Book Mechanic", desc: "Home & roadside service", color: "primary" as const },
@@ -48,7 +74,7 @@ const services = [
   { icon: Shield, title: "Annual Maintenance", desc: "Complete vehicle care", color: "success" as const },
 ];
 
-const brands = ["TVS", "Yamaha", "Bajaj", "Hero", "Honda", "Royal Enfield", "KTM", "3M", "Castrol", "Brembo"];
+const brandList = brands.map(brand => brand.name);
 
 const emergencyServices = [
   { icon: Car, title: "Vehicle Breakdown", time: "15-30 mins", urgency: "High" },
@@ -59,6 +85,30 @@ const emergencyServices = [
   { icon: Key, title: "Keys Locked", time: "15-25 mins", urgency: "Medium" },
 ];
 
+// Products organized by categories (all 10 categories)
+const productsByCategory = {
+  all: dummyParts,
+  brake: dummyParts.filter(p => p.category === "2"),
+  oil: dummyParts.filter(p => p.category === "7"),
+  tyres: dummyParts.filter(p => p.category === "4"),
+  battery: dummyParts.filter(p => p.category === "8"),
+  electrical: dummyParts.filter(p => p.category === "3"),
+  airfilter: dummyParts.filter(p => ["27","28","29","30","31"].includes(String(p.id))),
+  ignition: dummyParts.filter(p => ["32","33","34","35","36","37"].includes(String(p.id))),
+  suspension: dummyParts.filter(p => p.category === "5"),
+  cooling: dummyParts.filter(p => ["42","43","44","45","46","47"].includes(String(p.id))),
+  transmission: dummyParts.filter(p => ["48","49","50","51","52"].includes(String(p.id))),
+};
+
+// Featured products (top-rated and in stock)
+const featuredProducts = dummyParts.filter(p => p.inStock && p.rating >= 4.5).slice(0, 6);
+
+// Best deals products (highest discount)
+const bestDeals = dummyParts
+  .filter(p => p.inStock)
+  .sort((a, b) => ((b.mrp - b.price) / b.mrp) - ((a.mrp - a.price) / a.mrp))
+  .slice(0, 8);
+
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
 const Index = () => {
@@ -67,11 +117,13 @@ const Index = () => {
   const [mobileNav, setMobileNav] = useState("home");
   const [cartCount] = useState(3);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [visibleProducts, setVisibleProducts] = useState(12);
 
   // Auto-rotate banners
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % banners.length);
+      setCurrentBanner((prev) => (prev + 1) % herobanners.length);
     }, 5000);
     return () => clearInterval(timer);
   }, []);
@@ -83,6 +135,19 @@ const Index = () => {
         className={`h-3 w-3 ${i < Math.floor(rating) ? "fill-warning text-warning" : "text-muted-foreground"}`}
       />
     ));
+  };
+
+  const calculateDiscount = (price: number, mrp: number) => {
+    return Math.round(((mrp - price) / mrp) * 100);
+  };
+
+  const getCurrentProducts = () => {
+    const products = selectedCategory === "all" ? dummyParts : productsByCategory[selectedCategory as keyof typeof productsByCategory] || [];
+    return products.slice(0, visibleProducts);
+  };
+
+  const loadMoreProducts = () => {
+    setVisibleProducts(prev => prev + 12);
   };
 
   return (
@@ -173,7 +238,7 @@ const Index = () => {
       {/* ─── HERO BANNER CAROUSEL ─── */}
       <section className="relative overflow-hidden">
         <div className="relative h-[280px] sm:h-[400px] lg:h-[500px]">
-          {banners.map((banner, idx) => (
+          {herobanners.map((banner, idx) => (
             <div
               key={banner.id}
               className={`absolute inset-0 transition-opacity duration-700 ${idx === currentBanner ? "opacity-100" : "opacity-0 pointer-events-none"}`}
@@ -203,13 +268,13 @@ const Index = () => {
 
           {/* Nav arrows */}
           <button
-            onClick={() => setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length)}
+            onClick={() => setCurrentBanner((prev) => (prev - 1 + herobanners.length) % herobanners.length)}
             className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition-colors shadow-card hidden sm:flex"
           >
             <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
           <button
-            onClick={() => setCurrentBanner((prev) => (prev + 1) % banners.length)}
+            onClick={() => setCurrentBanner((prev) => (prev + 1) % herobanners.length)}
             className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition-colors shadow-card hidden sm:flex"
           >
             <ChevronRight className="h-5 w-5 text-foreground" />
@@ -217,7 +282,7 @@ const Index = () => {
 
           {/* Dots */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {banners.map((_, idx) => (
+            {herobanners.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentBanner(idx)}
@@ -256,8 +321,30 @@ const Index = () => {
         </div>
       </section>
 
+      {/* ─── MAIN CATEGORIES ─── */}
+      <section className="container mx-auto px-4 py-8 sm:py-12">
+        <div className="text-center mb-8">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Shop by Vehicle Type</h2>
+          <p className="text-muted-foreground mt-1">Choose your vehicle category</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
+          {mainCategories.map((category) => (
+            <button
+              key={category.id}
+              className="bg-card rounded-xl p-6 text-center hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 border border-border group"
+            >
+              <div className="h-16 w-16 rounded-2xl bg-surface mx-auto mb-4 flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                <Car className="h-8 w-8 text-primary group-hover:text-accent transition-colors" />
+              </div>
+              <h3 className="font-display font-bold text-foreground text-lg mb-2">{category.name}</h3>
+              <p className="text-muted-foreground text-sm">{category.description}</p>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* ─── CATEGORIES ─── */}
-      <section id="categories" className="container mx-auto px-4 py-10 sm:py-16">
+      <section id="categories" className="container mx-auto px-4 py-8 sm:py-12">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Shop by Category</h2>
@@ -267,17 +354,25 @@ const Index = () => {
             View All <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
-          {categories.map((cat, idx) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {productCategories.map((cat, idx) => (
             <button
-              key={idx}
+              key={cat.id}
+              onClick={() => {
+                const catMap: Record<string, string> = {
+                  "engine-2w": "airfilter", "brake-2w": "brake", "electrical-2w": "electrical",
+                  "tyres-2w": "tyres", "body-2w": "suspension", "oils-2w": "oil", "batteries-2w": "battery",
+                };
+                setSelectedCategory(catMap[cat.id] || "all");
+                document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
+              }}
               className="bg-card rounded-xl p-4 sm:p-6 text-center hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 border border-border group"
               style={{ animationDelay: `${idx * 0.05}s` }}
             >
               <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-surface mx-auto mb-3 flex items-center justify-center group-hover:bg-accent/10 transition-colors">
                 <cat.icon className="h-7 w-7 sm:h-8 sm:w-8 text-primary group-hover:text-accent transition-colors" />
               </div>
-              <h3 className="font-display font-semibold text-foreground text-sm sm:text-base">{cat.label}</h3>
+              <h3 className="font-display font-semibold text-foreground text-sm sm:text-base">{cat.name}</h3>
               <p className="text-muted-foreground text-xs mt-1">{cat.count} products</p>
             </button>
           ))}
@@ -285,31 +380,37 @@ const Index = () => {
       </section>
 
       {/* ─── FEATURED PRODUCTS ─── */}
-      <section id="products" className="bg-surface py-10 sm:py-16">
+      <section className="bg-surface py-8 sm:py-12">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Featured Products</h2>
-              <p className="text-muted-foreground mt-1">Top-rated parts & accessories</p>
-            </div>
-            <Button variant="outline" className="hidden sm:flex border-accent text-accent hover:bg-accent hover:text-accent-foreground">
-              View All <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
+          <div className="text-center mb-8">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Featured Products</h2>
+            <p className="text-muted-foreground mt-1">Top-rated parts & accessories</p>
           </div>
 
-          {/* Scrollable on mobile, grid on desktop */}
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 md:grid md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 md:overflow-visible md:pb-0">
-            {products.map((product) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {featuredProducts.map((product) => (
               <div
                 key={product.id}
-                className="min-w-[260px] md:min-w-0 bg-background rounded-xl border border-border overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 flex flex-col"
+                className="bg-background rounded-xl border border-border overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 flex flex-col"
               >
                 {/* Product Image Area */}
-                <div className="relative h-48 bg-surface-dark flex items-center justify-center">
-                  <Package className="h-16 w-16 text-muted-foreground/30" />
+                <div className="relative h-48 bg-surface-dark">
+                  <img 
+                    src={product.images[0]} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling!.style.display = 'flex';
+                    }}
+                  />
+                  <div className="hidden w-full h-full items-center justify-center">
+                    <Package className="h-16 w-16 text-muted-foreground/30" />
+                  </div>
                   {/* Discount Badge */}
                   <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground border-none font-bold text-xs">
-                    -{product.discount}%
+                    -{calculateDiscount(product.price, product.mrp)}%
                   </Badge>
                   <button className="absolute top-3 right-3 h-8 w-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition-colors">
                     <Heart className="h-4 w-4 text-muted-foreground hover:text-accent transition-colors" />
@@ -324,7 +425,7 @@ const Index = () => {
                 <div className="p-4 flex flex-col flex-1">
                   <p className="text-xs font-semibold text-accent uppercase tracking-wide">{product.brand}</p>
                   <h3 className="font-display font-semibold text-foreground text-sm mt-1 line-clamp-2">{product.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Part: {product.partNo}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Part: {product.partNumber}</p>
 
                   <div className="flex items-center gap-1 mt-2">
                     {renderStars(product.rating)}
@@ -356,14 +457,211 @@ const Index = () => {
         </div>
       </section>
 
+      {/* ─── BEST DEALS ─── */}
+      <section className="container mx-auto px-4 py-8 sm:py-12">
+        <div className="text-center mb-8">
+          <Badge className="bg-accent/10 text-accent border-accent/20 mb-3">🔥 Best Deals</Badge>
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Limited Time Offers</h2>
+          <p className="text-muted-foreground mt-1">Grab these deals before they're gone</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {bestDeals.map((product) => (
+            <div
+              key={product.id}
+              className="bg-card rounded-xl border border-border overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 flex flex-col"
+            >
+              <div className="relative h-40 bg-surface-dark">
+                <img 
+                  src={product.images[0]} 
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.nextElementSibling!.style.display = 'flex';
+                  }}
+                />
+                <div className="hidden w-full h-full items-center justify-center">
+                  <Package className="h-12 w-12 text-muted-foreground/30" />
+                </div>
+                <Badge className="absolute top-2 left-2 bg-accent text-accent-foreground border-none font-bold text-xs">
+                  -{calculateDiscount(product.price, product.mrp)}% OFF
+                </Badge>
+              </div>
+
+              <div className="p-3 flex flex-col flex-1">
+                <p className="text-xs font-semibold text-accent uppercase">{product.brand}</p>
+                <h3 className="font-display font-semibold text-foreground text-sm mt-1 line-clamp-2">{product.name}</h3>
+                
+                <div className="flex items-center gap-1 mt-2">
+                  {renderStars(product.rating)}
+                  <span className="text-xs text-muted-foreground">({product.reviews})</span>
+                </div>
+
+                <div className="flex items-baseline gap-2 mt-2">
+                  <span className="font-display font-bold text-foreground">₹{product.price.toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground line-through">₹{product.mrp.toLocaleString()}</span>
+                </div>
+
+                <Button className="w-full mt-3 gradient-accent text-accent-foreground text-xs h-8">
+                  Add to Cart
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── ALL PRODUCTS ─── */}
+      <section id="products" className="bg-surface py-8 sm:py-12">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">All Products</h2>
+              <p className="text-muted-foreground mt-1">Complete range of auto parts & accessories</p>
+            </div>
+            
+            {/* Category Filter - Scrollable */}
+            <div className="hidden sm:flex gap-2 overflow-x-auto pb-1 max-w-2xl">
+              {[
+                { key: "all", label: "All" },
+                { key: "brake", label: "Brake" },
+                { key: "oil", label: "Engine Oil" },
+                { key: "tyres", label: "Tyres" },
+                { key: "battery", label: "Battery" },
+                { key: "electrical", label: "Electrical" },
+                { key: "airfilter", label: "Air Filters" },
+                { key: "ignition", label: "Ignition" },
+                { key: "suspension", label: "Suspension" },
+                { key: "cooling", label: "Cooling" },
+                { key: "transmission", label: "Transmission" },
+              ].map((cat) => (
+                <Button
+                  key={cat.key}
+                  variant={selectedCategory === cat.key ? "default" : "outline"}
+                  onClick={() => setSelectedCategory(cat.key)}
+                  className="text-sm whitespace-nowrap shrink-0"
+                >
+                  {cat.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile Category Filter */}
+          <div className="sm:hidden mb-6">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full p-2 border border-border rounded-lg bg-background text-foreground"
+            >
+              <option value="all">All Products ({dummyParts.length})</option>
+              <option value="brake">Brake System</option>
+              <option value="oil">Engine Oil</option>
+              <option value="tyres">Tyres</option>
+              <option value="battery">Battery</option>
+              <option value="electrical">Electrical</option>
+              <option value="airfilter">Air Filters</option>
+              <option value="ignition">Ignition System</option>
+              <option value="suspension">Suspension</option>
+              <option value="cooling">Cooling System</option>
+              <option value="transmission">Transmission</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            {getCurrentProducts().map((product) => (
+              <div
+                key={product.id}
+                className="bg-background rounded-xl border border-border overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 flex flex-col"
+              >
+                <div className="relative h-48 bg-surface-dark">
+                  <img 
+                    src={product.images[0]} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling!.style.display = 'flex';
+                    }}
+                  />
+                  <div className="hidden w-full h-full items-center justify-center">
+                    <Package className="h-16 w-16 text-muted-foreground/30" />
+                  </div>
+                  <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground border-none font-bold text-xs">
+                    -{calculateDiscount(product.price, product.mrp)}%
+                  </Badge>
+                  <button className="absolute top-3 right-3 h-8 w-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition-colors">
+                    <Heart className="h-4 w-4 text-muted-foreground hover:text-accent transition-colors" />
+                  </button>
+                  {!product.inStock && (
+                    <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                      <span className="bg-destructive text-destructive-foreground px-3 py-1 rounded-md text-sm font-semibold">Out of Stock</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 flex flex-col flex-1">
+                  <p className="text-xs font-semibold text-accent uppercase tracking-wide">{product.brand}</p>
+                  <h3 className="font-display font-semibold text-foreground text-sm mt-1 line-clamp-2">{product.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Part: {product.partNumber}</p>
+
+                  <div className="flex items-center gap-1 mt-2">
+                    {renderStars(product.rating)}
+                    <span className="text-xs text-muted-foreground ml-1">({product.reviews})</span>
+                  </div>
+
+                  <div className="flex items-baseline gap-2 mt-3">
+                    <span className="font-display font-bold text-lg text-foreground">₹{product.price.toLocaleString()}</span>
+                    <span className="text-sm text-muted-foreground line-through">₹{product.mrp.toLocaleString()}</span>
+                  </div>
+
+                  <div className="mt-auto pt-3">
+                    <Button
+                      className={`w-full font-semibold text-sm h-10 ${
+                        product.inStock
+                          ? "gradient-accent text-accent-foreground shadow-accent hover:opacity-90"
+                          : "bg-muted text-muted-foreground cursor-not-allowed"
+                      }`}
+                      disabled={!product.inStock}
+                    >
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      {product.inStock ? "Add to Cart" : "Out of Stock"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Load More Button */}
+          {getCurrentProducts().length < (selectedCategory === "all" ? dummyParts.length : (productsByCategory[selectedCategory as keyof typeof productsByCategory] || []).length) && (
+            <div className="text-center mt-8">
+              <Button 
+                onClick={loadMoreProducts}
+                variant="outline" 
+                className="px-8 py-2 border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+              >
+                Load More Products
+              </Button>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* ─── BRANDS MARQUEE ─── */}
       <section className="border-y border-border py-8 overflow-hidden">
         <div className="container mx-auto px-4">
           <h3 className="font-display text-center text-lg font-semibold text-muted-foreground mb-6">Trusted by Top Brands</h3>
-          <div className="flex items-center justify-center gap-6 sm:gap-10 flex-wrap">
-            {brands.map((brand) => (
-              <div key={brand} className="px-4 py-2 rounded-lg bg-surface text-foreground font-display font-bold text-sm sm:text-base hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer">
-                {brand}
+          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-4 sm:gap-6">
+            {brandList.slice(0, 8).map((brand) => (
+              <div key={brand} className="text-center">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg bg-surface mx-auto mb-2 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer">
+                  <span className="font-display font-bold text-xs sm:text-sm">{brand.charAt(0)}</span>
+                </div>
+                <p className="text-xs font-medium text-foreground">{brand}</p>
               </div>
             ))}
           </div>

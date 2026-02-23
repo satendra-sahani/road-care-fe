@@ -30,24 +30,101 @@ export interface Product {
   updatedAt: string
 }
 
+// Part interface for the mock data
+export interface Part {
+  id: number
+  name: string
+  partNumber: string
+  brand: string
+  price: number
+  mrp: number
+  rating: number
+  stock: string
+  images: string[]
+  category: string
+  description: string
+  specifications: string[]
+  compatibility: string[]
+  inStock: boolean
+  reviews: number
+}
+
+// Main Category interface for vehicle types
+export interface MainCategory {
+  id: string
+  name: string
+  icon: string
+  description: string
+}
+
 export interface Category {
   id: string
   name: string
-  count: number
-  revenue: number
+  count?: number
+  revenue?: number
   description?: string
   parentCategory?: string
   image?: string
+  icon?: string
 }
 
 export interface Brand {
   id: string
   name: string
-  count: number
-  revenue: number
-  description?: string
+  category?: string
+  description: string
   logo?: string
   country?: string
+  count?: number
+  revenue?: number
+}
+
+// Service Request Types
+export interface ServiceRequest {
+  id: string
+  serviceType: 'home' | 'roadside'
+  vehicleType: string
+  problem: string
+  location: string
+  landmark?: string
+  date: string
+  timeSlot: string
+  status: 'pending' | 'assigned' | 'on_way' | 'completed' | 'cancelled'
+  mechanic?: {
+    id: string
+    name: string
+    mobile: string
+    rating: number
+    specialization: string[]
+  }
+  estimatedCharge?: number
+  actualCharge?: number
+  createdAt: string
+}
+
+// Notification Types
+export interface Notification {
+  id: string
+  title: string
+  message: string
+  type: 'order' | 'service' | 'system' | 'promotion'
+  createdAt: string
+  read: boolean
+}
+
+// Address Types for Orders
+export interface Address {
+  id: string
+  type?: 'home' | 'office' | 'other'
+  name: string
+  mobile: string
+  addressLine1: string
+  addressLine2?: string
+  landmark?: string
+  city: string
+  state: string
+  pincode: string
+  isDefault?: boolean
 }
 
 export interface Supplier {
@@ -120,19 +197,19 @@ export interface Address {
 
 export interface Order {
   id: string
-  orderNumber: string
-  customer: Customer
-  products: OrderProduct[]
-  subtotal: number
-  tax: number
-  shippingCharges: number
-  discount: number
-  totalAmount: number
+  orderNumber?: string
+  customer?: Customer
+  products?: OrderProduct[]
+  subtotal?: number
+  tax?: number
+  shippingCharges?: number
+  discount?: number
+  totalAmount?: number
   status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'returned'
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially-refunded'
-  paymentMethod: 'COD' | 'UPI' | 'Credit Card' | 'Debit Card' | 'Net Banking' | 'Wallet'
-  orderDate: string
-  shippingAddress: Address
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially-refunded'
+  paymentMethod?: 'COD' | 'UPI' | 'Credit Card' | 'Debit Card' | 'Net Banking' | 'Wallet'
+  orderDate?: string
+  shippingAddress?: Address
   billingAddress?: Address
   trackingNumber?: string
   courierPartner?: string
@@ -143,6 +220,19 @@ export interface Order {
   returnReason?: string
   createdAt: string
   updatedAt: string
+  // Additional fields for mock data compatibility
+  items?: Array<{
+    part: Part
+    quantity: number
+  }>
+  total?: number
+  address?: Address
+  deliveryPerson?: {
+    id: string
+    name: string
+    mobile: string
+    rating: number
+  }
 }
 
 export interface OrderTimeline {
