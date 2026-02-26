@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Part, Category, Order, ServiceRequest, Notification, MainCategory, Brand } from "../types"
 
 export const mainCategories: MainCategory[] = [

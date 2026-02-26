@@ -155,6 +155,58 @@
     display: none;
   }
 
+  /* Custom ultra-narrow scrollbar with theme colors */
+  .scrollbar-ultra-narrow {
+    scrollbar-width: thin;
+    scrollbar-color: #FF6B35 transparent;
+  }
+  
+  .scrollbar-ultra-narrow::-webkit-scrollbar {
+    width: 4px; /* Ultra narrow - even thinner than default thin */
+  }
+  
+  .scrollbar-ultra-narrow::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 2px;
+  }
+  
+  .scrollbar-ultra-narrow::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #FF6B35, #E55A2B);
+    border-radius: 2px;
+    transition: all 0.2s ease;
+  }
+  
+  .scrollbar-ultra-narrow::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #E55A2B, #D44A1F);
+    width: 6px; /* Slightly wider on hover for better interaction */
+  }
+  
+  /* Alternative modern dark theme scrollbar */
+  .scrollbar-theme-modern {
+    scrollbar-width: thin;
+    scrollbar-color: #2E5090 rgba(46, 80, 144, 0.1);
+  }
+  
+  .scrollbar-theme-modern::-webkit-scrollbar {
+    width: 3px;
+  }
+  
+  .scrollbar-theme-modern::-webkit-scrollbar-track {
+    background: rgba(46, 80, 144, 0.1);
+    border-radius: 1.5px;
+  }
+  
+  .scrollbar-theme-modern::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2E5090, #1B3B6F);
+    border-radius: 1.5px;
+    transition: all 0.2s ease;
+  }
+  
+  .scrollbar-theme-modern::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #FF6B35, #E55A2B);
+    width: 5px;
+  }
+
   .line-clamp-2 {
     overflow: hidden;
     display: -webkit-box;

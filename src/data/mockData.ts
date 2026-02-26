@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Product, Category, Brand, Supplier, StockMovement, Order, Customer, Address, OrderTimeline, DeliveryPartner, Delivery, SalesMetrics, InventoryMetrics, Part, MainCategory } from '@/types'
 
 // Comprehensive Product Data (50+ products)

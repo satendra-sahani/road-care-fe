@@ -1,7 +1,25 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { RootState } from '@/store'
+import {
+  fetchMechanicsRequest,
+  addMechanicRequest,
+  updateMechanicRequest,
+  deleteMechanicRequest,
+  Mechanic,
+} from '@/store/slices/mechanicSlice'
+import {
+  fetchServiceRequestsRequest,
+  createServiceRequestRequest,
+  updateServiceRequestRequest,
+  assignMechanicRequest,
+  updateStatusRequest,
+  deleteServiceRequestRequest,
+  ServiceRequest,
+} from '@/store/slices/serviceRequestSlice'
 import {
   Search,
   Filter,
@@ -29,12 +47,9 @@ import {
   Save,
   X,
   UserPlus,
-  Settings,
-  IndianRupee,
-  Calculator,
-  FileText,
-  TrendingUp,
-  BadgeCheck
+  Copy,
+  Check,
+  Navigation,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -252,89 +267,10 @@ const mockServiceRequests = [
   }
 ]
 
-interface Mechanic {
-  id: string
-  name: string
-  phone: string
-  aadhaarNo: string
-  address: string
-  city: string
-  state: string
-  pincode: string
-  rating: number
-  specializations: string[]
-  location: string
-  availability: 'available' | 'busy' | 'offline'
-  completedJobs: number
-  avgJobTime: string
-  experience: string
-  joiningDate: string
-  emergencyContact?: string
-  notes?: string
-}
+// Mechanic type is imported from mechanicSlice
 
-const initialMechanics: Mechanic[] = [
-  {
-    id: 'MEC-001',
-    name: 'Rajesh Kumar',
-    phone: '+91 98765 43210',
-    aadhaarNo: '1234 5678 9012',
-    address: 'Hata Main Market, Near Shiv Mandir',
-    city: 'Hata, Kushinagar',
-    state: 'Uttar Pradesh',
-    pincode: '274203',
-    rating: 4.8,
-    specializations: ['Engine Repair', 'Brake System', 'Electrical'],
-    location: 'Hata, Kushinagar',
-    availability: 'available',
-    completedJobs: 234,
-    avgJobTime: '2.5 hours',
-    experience: '8 years',
-    joiningDate: '2025-12-15',
-    emergencyContact: '+91 87654 32109',
-    notes: 'Senior mechanic, expert in engine work'
-  },
-  {
-    id: 'MEC-002',
-    name: 'Suresh Yadav',
-    phone: '+91 87654 32109',
-    aadhaarNo: '9876 5432 1098',
-    address: 'Hetimpur Chauraha, Deoria Road',
-    city: 'Hetimpur, Deoria',
-    state: 'Uttar Pradesh',
-    pincode: '274001',
-    rating: 4.6,
-    specializations: ['AC Service', 'Engine Service', 'Battery'],
-    location: 'Hetimpur, Deoria',
-    availability: 'busy',
-    completedJobs: 189,
-    avgJobTime: '3.1 hours',
-    experience: '5 years',
-    joiningDate: '2026-01-10'
-  },
-  {
-    id: 'MEC-003',
-    name: 'Vikash Tiwari',
-    phone: '+91 76543 21098',
-    aadhaarNo: '5678 1234 9876',
-    address: 'Bermehiya Bazar, Main Road',
-    city: 'Bermehiya, Deoria',
-    state: 'Uttar Pradesh',
-    pincode: '274001',
-    rating: 4.9,
-    specializations: ['Battery', 'Electrical', 'Tyre Service'],
-    location: 'Bermehiya, Deoria',
-    availability: 'available',
-    completedJobs: 156,
-    avgJobTime: '2.2 hours',
-    experience: '6 years',
-    joiningDate: '2026-01-20',
-    emergencyContact: '+91 65432 10987',
-    notes: 'Best for electrical and battery work'
-  }
-]
 
-const emptyMechanic: Omit<Mechanic, 'id' | 'rating' | 'completedJobs' | 'avgJobTime'> = {
+const emptyMechanic: Omit<Mechanic, '_id' | 'createdAt' | 'updatedAt' | 'rating' | 'completedServices'> = {
   name: '',
   phone: '',
   aadhaarNo: '',
@@ -357,65 +293,70 @@ const allSpecializations = [
   'Oil Change', 'Body Work', 'Painting', 'General Service'
 ]
 
-const statusConfig = {
-  pending: { 
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200', 
-    icon: Clock, 
-    label: 'Pending' 
-  },
-  assigned: { 
-    color: 'bg-blue-100 text-blue-800 border-blue-200', 
-    icon: User, 
-    label: 'Assigned' 
-  },
-  'in-progress': { 
-    color: 'bg-purple-100 text-purple-800 border-purple-200', 
-    icon: Wrench, 
-    label: 'In Progress' 
-  },
-  completed: { 
-    color: 'bg-green-100 text-green-800 border-green-200', 
-    icon: CheckCircle, 
-    label: 'Completed' 
-  },
-  cancelled: { 
-    color: 'bg-red-100 text-red-800 border-red-200', 
-    icon: XCircle, 
-    label: 'Cancelled' 
-  }
-}
+const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
+  pending:     { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock,       label: 'Pending' },
+  assigned:    { color: 'bg-blue-100 text-blue-800 border-blue-200',       icon: User,        label: 'Assigned' },
+  accepted:    { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: CheckCircle, label: 'Accepted' },
+  on_way:      { color: 'bg-cyan-100 text-cyan-800 border-cyan-200',       icon: Car,         label: 'On Way' },
+  in_progress: { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Wrench,      label: 'In Progress' },
+  'in-progress':{ color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Wrench,     label: 'In Progress' },
+  completed:   { color: 'bg-green-100 text-green-800 border-green-200',    icon: CheckCircle, label: 'Completed' },
+  cancelled:   { color: 'bg-red-100 text-red-800 border-red-200',          icon: XCircle,     label: 'Cancelled' },
+};
 
-const priorityConfig = {
-  low: { color: 'bg-gray-100 text-gray-800', label: 'Low' },
-  medium: { color: 'bg-yellow-100 text-yellow-800', label: 'Medium' },
-  high: { color: 'bg-red-100 text-red-800', label: 'High' },
-  urgent: { color: 'bg-red-100 text-red-900', label: 'Urgent' }
+// Full status progression order (matches Android app flow)
+const STATUS_FLOW: ServiceRequest['status'][] = [
+  'pending', 'assigned', 'accepted', 'on_way', 'in_progress', 'completed'
+];
+
+// Empty mechanic template
+// emptyMechanicState is the same as emptyMechanic — use emptyMechanic directly
+
+const priorityConfig: Record<string, { color: string; label: string }> = {
+  low:      { color: 'bg-gray-100 text-gray-800',   label: 'Low' },
+  medium:   { color: 'bg-yellow-100 text-yellow-800', label: 'Medium' },
+  normal:   { color: 'bg-yellow-100 text-yellow-800', label: 'Normal' },
+  high:     { color: 'bg-orange-100 text-orange-800', label: 'High' },
+  urgent:   { color: 'bg-red-100 text-red-900',     label: 'Urgent' },
+  critical: { color: 'bg-red-200 text-red-900',     label: 'Critical' },
 }
 
 export function ServiceManagement() {
+  const dispatch = useDispatch()
+  
+  // Redux state
+  const { 
+    mechanics, 
+    loading: mechanicsLoading, 
+    error: mechanicsError 
+  } = useSelector((state: RootState) => state.mechanic)
+  
+  const { 
+    requests: serviceRequests, 
+    loading: requestsLoading, 
+    error: requestsError 
+  } = useSelector((state: RootState) => state.serviceRequest)
+  
+  // Local UI state
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [serviceTypeFilter, setServiceTypeFilter] = useState('all')
   const [selectedRequests, setSelectedRequests] = useState<string[]>([])
-  const [selectedRequest, setSelectedRequest] = useState<any>(null)
+  const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null)
   const [activeTab, setActiveTab] = useState('requests')
-  
-  // Customer details modal state
-  const [showCustomerDetails, setShowCustomerDetails] = useState(false)
-  const [selectedCustomerRequest, setSelectedCustomerRequest] = useState<any>(null)
-  
-  // Pricing configuration state
-  const [pricingConfig, setPricingConfig] = useState({
-    basePrice: 200,
-    pricePerKm: 15,
-    commissionRate: 20,
-    maxDistance: 50,
-    emergencyCharges: 100
-  })
 
-  // Mechanic state
-  const [mechanics, setMechanics] = useState<Mechanic[]>(initialMechanics)
+  // Assign mechanic dialog
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+  const [assigningRequest, setAssigningRequest] = useState<ServiceRequest | null>(null)
+  const [assignMechanicId, setAssignMechanicId] = useState('')
+
+  // Cancel request dialog
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelingRequest, setCancelingRequest] = useState<ServiceRequest | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+
+  // Mechanic UI state
   const [addMechanicOpen, setAddMechanicOpen] = useState(false)
   const [viewMechanicOpen, setViewMechanicOpen] = useState(false)
   const [selectedMechanic, setSelectedMechanic] = useState<Mechanic | null>(null)
@@ -424,26 +365,35 @@ export function ServiceManagement() {
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>([])
   const [editingMechanic, setEditingMechanic] = useState(false)
 
+  // Copy-to-clipboard helper
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(null), 1800)
+    })
+  }
+
+  // Fetch data on component mount
+  useEffect(() => {
+    dispatch(fetchMechanicsRequest())
+    dispatch(fetchServiceRequestsRequest())
+  }, [dispatch])
+
+  // Helper function to get request ID
+  const getRequestId = (request: any) => request._id || request.id
+
   const filteredMechanics = useMemo(() => {
-    if (!mechanicSearch.trim()) return mechanics
+    const list = mechanics ?? []
+    if (!mechanicSearch.trim()) return list
     const q = mechanicSearch.toLowerCase()
-    return mechanics.filter(m =>
+    return list.filter(m =>
       m.name.toLowerCase().includes(q) ||
       m.phone.includes(q) ||
-      m.location.toLowerCase().includes(q) ||
+      (m.location || '').toLowerCase().includes(q) ||
       m.aadhaarNo.includes(q)
     )
   }, [mechanics, mechanicSearch])
-
-  // Calculate mechanics with distances for modal
-  const mechanicsWithDistance = useMemo(() => {
-    return mechanics.map((mechanic, index) => ({
-      ...mechanic,
-      distance: [1.2, 2.8, 4.1, 3.5, 2.1][index] || (1 + Math.random() * 4), // Random distances 1-5 km
-      commission: Math.round(pricingConfig.basePrice * (pricingConfig.commissionRate / 100)),
-      estimatedPrice: pricingConfig.basePrice + (Math.round([1.2, 2.8, 4.1, 3.5, 2.1][index] || (1 + Math.random() * 4)) * pricingConfig.pricePerKm)
-    }))
-  }, [mechanics, pricingConfig])
 
   const toggleSpec = (spec: string) => {
     setSelectedSpecs(prev =>
@@ -454,38 +404,23 @@ export function ServiceManagement() {
   const handleSaveMechanic = () => {
     if (!newMechanic.name.trim() || !newMechanic.phone.trim() || !newMechanic.aadhaarNo.trim()) return
 
+    const mechanicData = {
+      ...newMechanic,
+      specializations: selectedSpecs,
+      location: newMechanic.city || newMechanic.address,
+    }
+
     if (editingMechanic && selectedMechanic) {
       // Update existing
-      setMechanics(prev => prev.map(m => m.id === selectedMechanic.id ? {
-        ...m,
-        ...newMechanic,
-        specializations: selectedSpecs,
-        location: newMechanic.city || newMechanic.address,
-      } : m))
+      dispatch(updateMechanicRequest({ 
+        id: selectedMechanic._id, 
+        data: mechanicData 
+      }))
     } else {
       // Add new
-      const mechanic: Mechanic = {
-        id: 'MEC-' + String(mechanics.length + 1).padStart(3, '0'),
-        name: newMechanic.name,
-        phone: newMechanic.phone,
-        aadhaarNo: newMechanic.aadhaarNo,
-        address: newMechanic.address,
-        city: newMechanic.city,
-        state: newMechanic.state,
-        pincode: newMechanic.pincode,
-        rating: 0,
-        specializations: selectedSpecs,
-        location: newMechanic.city || newMechanic.address,
-        availability: 'available',
-        completedJobs: 0,
-        avgJobTime: '-',
-        experience: newMechanic.experience,
-        joiningDate: newMechanic.joiningDate,
-        emergencyContact: newMechanic.emergencyContact,
-        notes: newMechanic.notes,
-      }
-      setMechanics(prev => [mechanic, ...prev])
+      dispatch(addMechanicRequest(mechanicData))
     }
+    
     setAddMechanicOpen(false)
     setEditingMechanic(false)
     setNewMechanic(emptyMechanic)
@@ -516,15 +451,14 @@ export function ServiceManagement() {
   }
 
   const handleDeleteMechanic = (id: string) => {
-    setMechanics(prev => prev.filter(m => m.id !== id))
+    dispatch(deleteMechanicRequest(id))
   }
 
   const filteredRequests = useMemo(() => {
-    return mockServiceRequests.filter(request => {
+    return (serviceRequests ?? []).filter(request => {
       const matchesSearch = 
-        request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        request._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         request.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        request.vehicle.registrationNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         request.serviceType.toLowerCase().includes(searchQuery.toLowerCase())
       
       const matchesStatus = statusFilter === 'all' || request.status === statusFilter
@@ -534,17 +468,18 @@ export function ServiceManagement() {
       
       return matchesSearch && matchesStatus && matchesPriority && matchesServiceType
     })
-  }, [searchQuery, statusFilter, priorityFilter, serviceTypeFilter])
+  }, [serviceRequests, searchQuery, statusFilter, priorityFilter, serviceTypeFilter])
 
   const getServiceStats = () => {
-    const totalRequests = mockServiceRequests.length
-    const pendingRequests = mockServiceRequests.filter(r => r.status === 'pending').length
-    const inProgressRequests = mockServiceRequests.filter(r => r.status === 'in-progress').length
-    const completedRequests = mockServiceRequests.filter(r => r.status === 'completed').length
-    const avgRating = mockServiceRequests
-      .filter(r => r.customerRating)
-      .reduce((sum, r) => sum + r.customerRating!, 0) / 
-      mockServiceRequests.filter(r => r.customerRating).length
+    const list = serviceRequests ?? []
+    const totalRequests = list.length
+    const pendingRequests = list.filter(r => r.status === 'pending').length
+    const inProgressRequests = list.filter(r => r.status === 'in_progress' || r.status === 'in-progress').length
+    const completedRequests = list.filter(r => r.status === 'completed').length
+    const ratedList = list.filter(r => r.feedback?.rating)
+    const avgRating = ratedList.length
+      ? ratedList.reduce((sum, r) => sum + (r.feedback?.rating || 0), 0) / ratedList.length
+      : 0
     
     return { totalRequests, pendingRequests, inProgressRequests, completedRequests, avgRating }
   }
@@ -603,7 +538,7 @@ export function ServiceManagement() {
     if (selectedRequests.length === filteredRequests.length) {
       setSelectedRequests([])
     } else {
-      setSelectedRequests(filteredRequests.map(request => request.id))
+      setSelectedRequests(filteredRequests.map(request => getRequestId(request)))
     }
   }
 
@@ -613,7 +548,63 @@ export function ServiceManagement() {
   }
 
   const handleAssignMechanic = (requestId: string, mechanicId: string) => {
-    console.log(`Assign mechanic ${mechanicId} to request ${requestId}`)
+    dispatch(assignMechanicRequest({ requestId, mechanicId }))
+  }
+
+  const handleUpdateStatus = (requestId: string, status: ServiceRequest['status']) => {
+    dispatch(updateStatusRequest({ id: requestId, status }))
+  }
+
+  const handleOpenAssignDialog = (request: ServiceRequest) => {
+    setAssigningRequest(request)
+    setAssignMechanicId(request.mechanic?._id || '')
+    setAssignDialogOpen(true)
+  }
+
+  const handleConfirmAssign = () => {
+    if (assigningRequest && assignMechanicId) {
+      dispatch(assignMechanicRequest({ requestId: assigningRequest._id, mechanicId: assignMechanicId }))
+      setAssignDialogOpen(false)
+      setAssigningRequest(null)
+      setAssignMechanicId('')
+    }
+  }
+
+  const handleOpenCancelDialog = (request: ServiceRequest) => {
+    setCancelingRequest(request)
+    setCancelReason('')
+    setCancelDialogOpen(true)
+  }
+
+  const handleConfirmCancel = () => {
+    if (cancelingRequest) {
+      dispatch(updateStatusRequest({ id: cancelingRequest._id, status: 'cancelled' }))
+      setCancelDialogOpen(false)
+      setCancelingRequest(null)
+      setCancelReason('')
+      if (selectedRequest?._id === cancelingRequest._id) setSelectedRequest(null)
+    }
+  }
+
+  const getNextStatus = (status: ServiceRequest['status']): ServiceRequest['status'] | null => {
+    // Normalize in-progress → in_progress for flow lookup
+    const normalized = status === 'in-progress' ? 'in_progress' : status
+    const idx = STATUS_FLOW.indexOf(normalized as ServiceRequest['status'])
+    if (idx === -1 || idx >= STATUS_FLOW.length - 1) return null
+    return STATUS_FLOW[idx + 1]
+  }
+
+  const getNextStatusLabel = (status: ServiceRequest['status']): string => {
+    const next = getNextStatus(status)
+    if (!next) return ''
+    const labels: Record<string, string> = {
+      assigned:    'Mark Assigned',
+      accepted:    'Mark Accepted',
+      on_way:      'Mark On Way',
+      in_progress: 'Mark In Progress',
+      completed:   'Mark Completed',
+    }
+    return labels[next] ?? `Mark ${next}`
   }
 
   return (
@@ -734,7 +725,9 @@ export function ServiceManagement() {
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="assigned">Assigned</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="accepted">Accepted</SelectItem>
+                      <SelectItem value="on_way">On Way</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
@@ -819,116 +812,71 @@ export function ServiceManagement() {
                     </TableHead>
                     <TableHead>Request ID</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Vehicle</TableHead>
                     <TableHead>Service Type</TableHead>
+                    <TableHead>Location</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                    <TableHead>Cost</TableHead>
-                    <TableHead>Reviews</TableHead>
+                    <TableHead>Mechanic</TableHead>
+                    <TableHead>Est. Cost</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.map((request) => (
-                    <TableRow key={request.id} className="hover:bg-gray-50">
+                    <TableRow key={request._id}>
                       <TableCell>
                         <Checkbox
-                          checked={selectedRequests.includes(request.id)}
-                          onCheckedChange={() => handleSelectRequest(request.id)}
+                          checked={selectedRequests.includes(request._id)}
+                          onCheckedChange={() => handleSelectRequest(request._id)}
                         />
                       </TableCell>
-                      <TableCell className="font-medium text-[#1B3B6F]">
-                        {request.id}
+                      <TableCell className="font-mono text-xs text-[#6B7280]">
+                        {request._id.slice(-8).toUpperCase()}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={request.customer.avatar} />
                             <AvatarFallback>
-                              {request.customer.name.split(' ').map(n => n[0]).join('')}
+                              {request.customer.name.split(' ').map((n: string) => n[0]).join('')}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <button
-                              onClick={() => {
-                                setSelectedCustomerRequest(request)
-                                setShowCustomerDetails(true)
-                              }}
-                              className="font-medium text-[#1B3B6F] hover:text-[#1B3B6F]/80 hover:underline cursor-pointer transition-colors text-left"
-                            >
-                              {request.customer.name}
-                            </button>
+                            <div className="font-medium text-[#1A1D29]">{request.customer.name}</div>
                             <div className="text-sm text-[#6B7280]">{request.customer.phone}</div>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Car className="h-4 w-4 text-[#6B7280]" />
-                          <div>
-                            <div className="font-medium text-[#1A1D29]">
-                              {request.vehicle.brand} {request.vehicle.model}
-                            </div>
-                            <div className="text-sm text-[#6B7280]">{request.vehicle.registrationNumber}</div>
-                          </div>
+                        <div className="font-medium text-[#1A1D29]">{request.serviceType}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1 text-sm text-[#6B7280]">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span>{request.location?.city || request.location?.address || '—'}</span>
                         </div>
                       </TableCell>
+                      <TableCell>{getPriorityBadge(request.priority)}</TableCell>
+                      <TableCell>{getStatusBadge(request.status)}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{request.serviceType}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {getPriorityBadge(request.priority)}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(request.status)}
-                      </TableCell>
-                      <TableCell>
-                        {request.assignedMechanic ? (
+                        {request.mechanic ? (
                           <div className="flex items-center space-x-2">
                             <Avatar className="h-6 w-6">
-                              <AvatarImage src={request.assignedMechanic.avatar} />
                               <AvatarFallback className="text-xs">
-                                {request.assignedMechanic.name.split(' ').map(n => n[0]).join('')}
+                                {request.mechanic.name.split(' ').map((n: string) => n[0]).join('')}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <div className="font-medium text-sm">{request.assignedMechanic.name}</div>
-                              <div className="flex items-center text-xs text-[#6B7280]">
-                                <Star className="h-3 w-3 mr-1 text-yellow-500" />
-                                {request.assignedMechanic.rating}
-                              </div>
-                            </div>
+                            <span className="text-sm font-medium">{request.mechanic.name}</span>
                           </div>
                         ) : (
                           <span className="text-sm text-[#6B7280]">Not assigned</span>
                         )}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {formatCurrency(request.estimatedCost)}
-                      </TableCell>
-                      <TableCell>
-                        {request.status === 'completed' ? (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="flex items-center gap-1 p-1 h-auto hover:bg-blue-50"
-                            onClick={() => {
-                              console.log('Show reviews for service request:', request.id)
-                              // Handle service review click
-                            }}
-                          >
-                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm font-medium">{request.serviceRating || 4.3}</span>
-                            <span className="text-xs text-gray-500">({request.reviewCount || 1})</span>
-                          </Button>
-                        ) : (
-                          <span className="text-sm text-gray-400">N/A</span>
-                        )}
+                        {formatCurrency(request.estimatedCost || 0)}
                       </TableCell>
                       <TableCell className="text-sm text-[#6B7280]">
-                        {formatDate(request.requestDate)}
+                        {formatDate(request.createdAt)}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -944,28 +892,35 @@ export function ServiceManagement() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Request
-                            </DropdownMenuItem>
+                            {getNextStatus(request.status) && (
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(request._id, getNextStatus(request.status)!)}>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                {getNextStatusLabel(request.status)}
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenAssignDialog(request)}>
                               <User className="h-4 w-4 mr-2" />
-                              Assign Mechanic
+                              {request.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic'}
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Phone className="h-4 w-4 mr-2" />
-                              Call Customer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              Send Update
-                            </DropdownMenuItem>
+                            {request.customer.phone && (
+                              <DropdownMenuItem asChild>
+                                <a href={`tel:${request.customer.phone}`}>
+                                  <Phone className="h-4 w-4 mr-2" />
+                                  Call Customer
+                                </a>
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Cancel Request
-                            </DropdownMenuItem>
+                            {request.status !== 'cancelled' && request.status !== 'completed' && (
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => handleOpenCancelDialog(request)}
+                              >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Cancel Request
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -1002,16 +957,11 @@ export function ServiceManagement() {
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge variant="outline" className="text-sm py-1.5 px-3">
-                    Total: {mechanics.length} mechanics
+                    {filteredMechanics.length} mechanic{filteredMechanics.length !== 1 ? 's' : ''}
                   </Badge>
                   <Button
                     className="bg-[#1B3B6F] hover:bg-[#0F2545]"
-                    onClick={() => {
-                      setNewMechanic(emptyMechanic)
-                      setSelectedSpecs([])
-                      setEditingMechanic(false)
-                      setAddMechanicOpen(true)
-                    }}
+                    onClick={() => { setEditingMechanic(false); setNewMechanic(emptyMechanic); setSelectedSpecs([]); setAddMechanicOpen(true); }}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Mechanic
@@ -1024,7 +974,7 @@ export function ServiceManagement() {
           {/* Mechanics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredMechanics.map((mechanic) => (
-              <Card key={mechanic.id} className="border border-gray-200 hover:shadow-md transition-shadow">
+              <Card key={mechanic._id} className="border border-gray-200 hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
                   {/* Top: Avatar + Name + Status */}
                   <div className="flex items-center space-x-3 mb-4">
@@ -1036,7 +986,7 @@ export function ServiceManagement() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-[#1A1D29] truncate">{mechanic.name}</h3>
                       <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-                        {mechanic.rating > 0 && (
+                        {(mechanic.rating ?? 0) > 0 && (
                           <span className="flex items-center">
                             <Star className="h-3 w-3 mr-0.5 text-yellow-500" />
                             {mechanic.rating}
@@ -1075,8 +1025,8 @@ export function ServiceManagement() {
 
                   {/* Stats row */}
                   <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-xs text-[#6B7280]">
-                    <span><strong className="text-[#1A1D29]">{mechanic.completedJobs}</strong> jobs</span>
-                    <span>Avg: <strong className="text-[#1A1D29]">{mechanic.avgJobTime}</strong></span>
+                    <span><strong className="text-[#1A1D29]">{mechanic.completedServices ?? 0}</strong> jobs</span>
+                    <span>Joined: <strong className="text-[#1A1D29]">{new Date(mechanic.joiningDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</strong></span>
                   </div>
 
                   {/* Specializations */}
@@ -1115,7 +1065,7 @@ export function ServiceManagement() {
                       size="sm"
                       variant="outline"
                       className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
-                      onClick={() => handleDeleteMechanic(mechanic.id)}
+                      onClick={() => handleDeleteMechanic(mechanic._id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -1150,20 +1100,20 @@ export function ServiceManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {mockServiceRequests.filter(r => r.status === 'pending' && !r.assignedMechanic).map((request) => (
-                    <div key={request.id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  {(serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic).map((request) => (
+                    <div key={request._id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-[#1A1D29]">{request.id}</h4>
+                          <h4 className="font-medium text-[#1A1D29]">{request._id}</h4>
                           <p className="text-sm text-[#6B7280]">
                             {request.serviceType} - {request.customer.name}
                           </p>
-                          <p className="text-xs text-[#9CA3AF]">{request.location}</p>
+                          <p className="text-xs text-[#9CA3AF]">{request.location.address}</p>
                         </div>
                         <div className="text-right">
                           {getPriorityBadge(request.priority)}
                           <p className="text-xs text-[#6B7280] mt-1">
-                            {formatDate(request.requestDate)}
+                            {formatDate(request.createdAt)}
                           </p>
                         </div>
                       </div>
@@ -1190,9 +1140,9 @@ export function ServiceManagement() {
                         <SelectValue placeholder="Select Request" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockServiceRequests.filter(r => !r.assignedMechanic).map((request) => (
-                          <SelectItem key={request.id} value={request.id}>
-                            {request.id} - {request.serviceType}
+                        {(serviceRequests ?? []).filter(r => !r.mechanic).map((request) => (
+                          <SelectItem key={request._id} value={request._id}>
+                            {request._id.slice(-8)} - {request.serviceType}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1203,9 +1153,9 @@ export function ServiceManagement() {
                         <SelectValue placeholder="Select Mechanic" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mechanics.filter(m => m.availability === 'available').map((mechanic) => (
-                          <SelectItem key={mechanic.id} value={mechanic.id}>
-                            {mechanic.name} ({mechanic.rating}★)
+                        {(mechanics ?? []).filter(m => m.availability === 'available').map((mechanic) => (
+                          <SelectItem key={mechanic._id} value={mechanic._id}>
+                            {mechanic.name} ({mechanic.rating || 'N/A'}★)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1239,6 +1189,105 @@ export function ServiceManagement() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* ==================== ASSIGN MECHANIC DIALOG ==================== */}
+      <Dialog open={assignDialogOpen} onOpenChange={(open) => {
+        setAssignDialogOpen(open)
+        if (!open) { setAssigningRequest(null); setAssignMechanicId('') }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#1B3B6F]">
+              <User className="h-5 w-5" />
+              {assigningRequest?.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic'}
+            </DialogTitle>
+            <DialogDescription>
+              Request: {assigningRequest?._id?.slice(-8).toUpperCase()} — {assigningRequest?.serviceType}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Select Mechanic</Label>
+              <Select value={assignMechanicId} onValueChange={setAssignMechanicId}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Choose an available mechanic..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(mechanics ?? []).filter(m => m.availability === 'available').map(m => (
+                    <SelectItem key={m._id} value={m._id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{m.name}</span>
+                        <span className="text-xs text-gray-500">· {m.city}</span>
+                        {(m.rating ?? 0) > 0 && (
+                          <span className="text-xs text-yellow-600 flex items-center gap-0.5">
+                            <Star className="h-3 w-3" />{m.rating}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(mechanics ?? []).filter(m => m.availability === 'available').length === 0 && (
+                <p className="text-sm text-amber-600 mt-2">No mechanics currently available.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+              onClick={handleConfirmAssign}
+              disabled={!assignMechanicId}
+            >
+              Confirm Assignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ==================== CANCEL REQUEST DIALOG ==================== */}
+      <Dialog open={cancelDialogOpen} onOpenChange={(open) => {
+        setCancelDialogOpen(open)
+        if (!open) { setCancelingRequest(null); setCancelReason('') }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <XCircle className="h-5 w-5" />
+              Cancel Service Request
+            </DialogTitle>
+            <DialogDescription>
+              Request: {cancelingRequest?._id?.slice(-8).toUpperCase()} — {cancelingRequest?.serviceType}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm text-[#6B7280]">
+              This will cancel the request and notify the customer. This action cannot be undone.
+            </p>
+            <div>
+              <Label className="text-sm font-medium">Reason for cancellation</Label>
+              <Textarea
+                className="mt-2"
+                placeholder="e.g. No mechanic available in the area..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Keep Request</Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancel}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ==================== ADD / EDIT MECHANIC DIALOG ==================== */}
       <Dialog open={addMechanicOpen} onOpenChange={(open) => {
@@ -1451,7 +1500,7 @@ export function ServiceManagement() {
                   </Avatar>
                   <div>
                     <span className="text-[#1B3B6F]">{selectedMechanic.name}</span>
-                    <p className="text-sm font-normal text-[#6B7280]">{selectedMechanic.id}</p>
+                    <p className="text-sm font-normal text-[#6B7280]">{selectedMechanic._id?.slice(-8).toUpperCase()}</p>
                   </div>
                 </DialogTitle>
               </DialogHeader>
@@ -1468,7 +1517,7 @@ export function ServiceManagement() {
                   }>
                     {selectedMechanic.availability}
                   </Badge>
-                  {selectedMechanic.rating > 0 && (
+                  {(selectedMechanic.rating ?? 0) > 0 && (
                     <span className="flex items-center text-sm text-[#6B7280]">
                       <Star className="h-4 w-4 mr-1 text-yellow-500" />
                       {selectedMechanic.rating} rating
@@ -1514,21 +1563,103 @@ export function ServiceManagement() {
                   </p>
                 </div>
 
+                {/* GPS Coordinates */}
+                {selectedMechanic.currentLocation && (
+                  <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                    <h4 className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Navigation className="h-3 w-3" /> Live GPS Location
+                      {selectedMechanic.currentLocation.lastUpdated && (
+                        <span className="ml-auto font-normal normal-case text-[#6B7280] text-[11px]">
+                          Updated {new Date(selectedMechanic.currentLocation.lastUpdated).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      {/* Latitude */}
+                      <div className="bg-white rounded-lg p-2.5 border border-emerald-100">
+                        <p className="text-[10px] text-[#6B7280] uppercase font-bold tracking-wider mb-1">Latitude</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <code className="text-sm font-mono text-[#1A1D29] font-semibold">
+                            {selectedMechanic.currentLocation.latitude.toFixed(6)}°
+                          </code>
+                          <button
+                            onClick={() => handleCopy(String(selectedMechanic.currentLocation!.latitude.toFixed(6)), 'mech-lat')}
+                            className="text-[#6B7280] hover:text-[#1B3B6F] transition-colors p-0.5"
+                            title="Copy latitude"
+                          >
+                            {copiedKey === 'mech-lat'
+                              ? <Check className="h-3.5 w-3.5 text-green-600" />
+                              : <Copy className="h-3.5 w-3.5" />
+                            }
+                          </button>
+                        </div>
+                      </div>
+                      {/* Longitude */}
+                      <div className="bg-white rounded-lg p-2.5 border border-emerald-100">
+                        <p className="text-[10px] text-[#6B7280] uppercase font-bold tracking-wider mb-1">Longitude</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <code className="text-sm font-mono text-[#1A1D29] font-semibold">
+                            {selectedMechanic.currentLocation.longitude.toFixed(6)}°
+                          </code>
+                          <button
+                            onClick={() => handleCopy(String(selectedMechanic.currentLocation!.longitude.toFixed(6)), 'mech-lng')}
+                            className="text-[#6B7280] hover:text-[#1B3B6F] transition-colors p-0.5"
+                            title="Copy longitude"
+                          >
+                            {copiedKey === 'mech-lng'
+                              ? <Check className="h-3.5 w-3.5 text-green-600" />
+                              : <Copy className="h-3.5 w-3.5" />
+                            }
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Combined copy + Maps link */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex-1"
+                        onClick={() => handleCopy(
+                          `${selectedMechanic.currentLocation!.latitude.toFixed(6)}, ${selectedMechanic.currentLocation!.longitude.toFixed(6)}`,
+                          'mech-coords-both'
+                        )}
+                      >
+                        {copiedKey === 'mech-coords-both'
+                          ? <><Check className="h-3.5 w-3.5 mr-1.5 text-green-600" /><span className="text-green-600">Copied!</span></>
+                          : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Coordinates</>
+                        }
+                      </Button>
+                      <a
+                        href={`https://www.google.com/maps?q=${selectedMechanic.currentLocation.latitude},${selectedMechanic.currentLocation.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1"
+                      >
+                        <Button size="sm" variant="outline" className="h-7 w-full border-emerald-200 text-emerald-700 hover:bg-emerald-100">
+                          <MapPin className="h-3.5 w-3.5 mr-1.5" />
+                          Open in Maps
+                        </Button>
+                      </a>
+                    </div>
+                  </div>
+                )}
+
                 {/* Work Stats */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
-                    <p className="text-xl font-bold text-[#1B3B6F]">{selectedMechanic.completedJobs}</p>
+                    <p className="text-xl font-bold text-[#1B3B6F]">{selectedMechanic.completedServices ?? 0}</p>
                     <p className="text-[10px] text-[#6B7280] font-medium mt-0.5">Jobs Done</p>
                   </div>
                   <div className="bg-green-50 rounded-xl p-3 text-center border border-green-100">
                     <p className="text-xl font-bold text-green-700">
-                      {selectedMechanic.rating > 0 ? selectedMechanic.rating : '-'}
+                      {(selectedMechanic.rating ?? 0) > 0 ? selectedMechanic.rating : '-'}
                     </p>
                     <p className="text-[10px] text-[#6B7280] font-medium mt-0.5">Rating</p>
                   </div>
                   <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-100">
-                    <p className="text-xl font-bold text-orange-700">{selectedMechanic.avgJobTime}</p>
-                    <p className="text-[10px] text-[#6B7280] font-medium mt-0.5">Avg Time</p>
+                    <p className="text-xl font-bold text-orange-700">{selectedMechanic.experience || '—'}</p>
+                    <p className="text-[10px] text-[#6B7280] font-medium mt-0.5">Experience</p>
                   </div>
                 </div>
 
@@ -1578,391 +1709,411 @@ export function ServiceManagement() {
 
       {/* Service Request Details Modal */}
       <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Service Request Details - {selectedRequest?.id}</DialogTitle>
-            <DialogDescription>
-              Complete information about this service request
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedRequest && (
-            <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-[#1A1D29] mb-3">Customer Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="text-[#6B7280]">Name:</span> {selectedRequest.customer.name}</p>
-                    <p><span className="text-[#6B7280]">Email:</span> {selectedRequest.customer.email}</p>
-                    <p><span className="text-[#6B7280]">Phone:</span> {selectedRequest.customer.phone}</p>
-                    <p><span className="text-[#6B7280]">Location:</span> {selectedRequest.location}</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-[#1A1D29] mb-3">Vehicle Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="text-[#6B7280]">Vehicle:</span> {selectedRequest.vehicle.brand} {selectedRequest.vehicle.model}</p>
-                    <p><span className="text-[#6B7280]">Year:</span> {selectedRequest.vehicle.year}</p>
-                    <p><span className="text-[#6B7280]">Registration:</span> {selectedRequest.vehicle.registrationNumber}</p>
-                  </div>
-                </div>
-              </div>
+        <DialogContent className="max-w-3xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
+          {/* Gradient Header */}
+          <div className="bg-gradient-to-r from-[#1B3B6F] to-[#2D5FA8] px-6 pt-5 pb-5 flex-shrink-0 pr-14">
+            <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+              <span className="text-white/60 text-[11px] font-mono bg-white/10 px-2 py-0.5 rounded">
+                #{selectedRequest?._id?.slice(-8).toUpperCase()}
+              </span>
+              {selectedRequest && getStatusBadge(selectedRequest.status)}
+              {selectedRequest && getPriorityBadge(selectedRequest.priority)}
+            </div>
+            <h2 className="text-lg font-bold text-white leading-tight">
+              {selectedRequest?.serviceType || 'Service Request'}
+            </h2>
+            <p className="text-white/65 text-sm mt-1">
+              {selectedRequest?.customer.name}
+              {selectedRequest?.location?.city ? ` · ${selectedRequest.location.city}` : ''}
+              {selectedRequest?.scheduledDate
+                ? ` · Scheduled ${new Date(selectedRequest.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+                : ''}
+            </p>
+          </div>
 
-              {/* Service Details */}
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-[#1A1D29] mb-3">Service Details</h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="text-[#6B7280]">Service Type:</span> {selectedRequest.serviceType}</p>
-                    <p><span className="text-[#6B7280]">Priority:</span> {getPriorityBadge(selectedRequest.priority)}</p>
-                    <p><span className="text-[#6B7280]">Status:</span> {getStatusBadge(selectedRequest.status)}</p>
-                    <p><span className="text-[#6B7280]">Request Date:</span> {formatDate(selectedRequest.requestDate)}</p>
-                    {selectedRequest.scheduledDate && (
-                      <p><span className="text-[#6B7280]">Scheduled:</span> {formatDate(selectedRequest.scheduledDate)}</p>
+          {/* Scrollable Content */}
+          {selectedRequest && (
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-5">
+
+                {/* Customer + Cost row */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Customer */}
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <h4 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <User className="h-3 w-3" /> Customer
+                    </h4>
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <Avatar className="h-9 w-9">
+                        <AvatarFallback className="bg-[#1B3B6F] text-white text-xs font-bold">
+                          {selectedRequest.customer.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold text-sm text-[#1A1D29]">{selectedRequest.customer.name}</p>
+                        <p className="text-xs text-[#6B7280] truncate max-w-[140px]">{selectedRequest.customer.email || '—'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-xs text-[#6B7280]">
+                        <Phone className="h-3 w-3 flex-shrink-0" />
+                        <span>{selectedRequest.customer.phone || '—'}</span>
+                      </div>
+                      <div className="flex items-start gap-1.5 text-xs text-[#6B7280]">
+                        <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                        <span>
+                          {[selectedRequest.location?.address, selectedRequest.location?.city, selectedRequest.location?.state]
+                            .filter(Boolean).join(', ') || '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cost & Schedule */}
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <h4 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <DollarSign className="h-3 w-3" /> Cost &amp; Schedule
+                    </h4>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#6B7280]">Estimated</span>
+                        <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(selectedRequest.estimatedCost || 0)}</span>
+                      </div>
+                      {(selectedRequest.actualCost ?? 0) > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-[#6B7280]">Actual</span>
+                          <span className="text-sm font-bold text-green-700">{formatCurrency(selectedRequest.actualCost!)}</span>
+                        </div>
+                      )}
+                      <div className="border-t border-gray-200 pt-2 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[#6B7280]">Created</span>
+                          <span className="text-[#1A1D29]">{new Date(selectedRequest.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        </div>
+                        {selectedRequest.scheduledDate && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[#6B7280]">Scheduled</span>
+                            <span className="text-[#1A1D29]">{new Date(selectedRequest.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                {selectedRequest.description && (
+                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                    <h4 className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <MessageSquare className="h-3 w-3" /> Description
+                    </h4>
+                    <p className="text-sm text-[#1A1D29] leading-relaxed">{selectedRequest.description}</p>
+                    {selectedRequest.notes && (
+                      <p className="text-xs text-[#6B7280] mt-2 italic border-t border-blue-200 pt-2">{selectedRequest.notes}</p>
                     )}
                   </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-[#1A1D29] mb-3">Cost Breakdown</h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="text-[#6B7280]">Labor Cost:</span> {formatCurrency(selectedRequest.laborCost)}</p>
-                    <p><span className="text-[#6B7280]">Parts Cost:</span> {formatCurrency(selectedRequest.partsRequired.reduce((sum, part) => sum + part.cost, 0))}</p>
-                    <p className="font-medium"><span className="text-[#6B7280]">Total Cost:</span> {formatCurrency(selectedRequest.totalCost)}</p>
-                  </div>
-                </div>
-              </div>
+                )}
 
-              {/* Description & Issues */}
-              <div>
-                <h4 className="font-medium text-[#1A1D29] mb-2">Description</h4>
-                <p className="text-sm text-[#6B7280]">{selectedRequest.description}</p>
-                
-                <h4 className="font-medium text-[#1A1D29] mt-4 mb-2">Reported Issues</h4>
-                <ul className="text-sm text-[#6B7280] space-y-1">
-                  {selectedRequest.issues.map((issue: string, index: number) => (
-                    <li key={index}>• {issue}</li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Parts Required */}
-              <div>
-                <h4 className="font-medium text-[#1A1D29] mb-2">Parts Required</h4>
-                <div className="space-y-2">
-                  {selectedRequest.partsRequired.map((part: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <div>
-                        <span className="font-medium">{part.name}</span>
-                        <span className="text-[#6B7280] ml-2">Qty: {part.quantity}</span>
-                      </div>
-                      <span className="font-medium">{formatCurrency(part.cost)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Assigned Mechanic */}
-              {selectedRequest.assignedMechanic && (
-                <div>
-                  <h4 className="font-medium text-[#1A1D29] mb-2">Assigned Mechanic</h4>
-                  <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedRequest.assignedMechanic.avatar} />
-                      <AvatarFallback>
-                        {selectedRequest.assignedMechanic.name.split(' ').map((n: string) => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{selectedRequest.assignedMechanic.name}</p>
-                      <div className="flex items-center text-sm text-[#6B7280]">
-                        <Star className="h-3 w-3 mr-1 text-yellow-500" />
-                        {selectedRequest.assignedMechanic.rating} rating
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Customer Feedback (if completed) */}
-              {selectedRequest.status === 'completed' && selectedRequest.customerRating && (
-                <div>
-                  <h4 className="font-medium text-[#1A1D29] mb-2">Customer Feedback</h4>
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <div className="flex items-center mb-2">
-                      <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                      <span className="font-medium">{selectedRequest.customerRating}/5</span>
-                    </div>
-                    <p className="text-sm text-[#6B7280]">{selectedRequest.customerReview}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedRequest(null)}>
-              Close
-            </Button>
-            <Button className="bg-[#1B3B6F] hover:bg-[#0F2545]">
-              Update Request
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Customer Details Modal with Mechanics */}
-      <Dialog open={showCustomerDetails} onOpenChange={setShowCustomerDetails}>
-        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Customer & Service Request Details
-            </DialogTitle>
-            <DialogDescription>
-              Customer information with nearby mechanics and pricing configuration
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedCustomerRequest && (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              {/* Left Side - Customer & Service Details */}
-              <div className="xl:col-span-1 space-y-6">
-                {/* Customer Info Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <User className="w-5 h-5" />
-                      Customer Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Name</Label>
-                        <p className="font-semibold">{selectedCustomerRequest.customer.name}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Email</Label>
-                        <p className="font-semibold">{selectedCustomerRequest.customer.email}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Phone</Label>
-                        <p className="font-semibold">{selectedCustomerRequest.customer.phone}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Service Request Details */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Wrench className="w-5 h-5" />
-                      Service Request
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Request ID</Label>
-                        <p className="font-mono font-semibold text-[#1B3B6F]">{selectedCustomerRequest.id}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Service Type</Label>
-                        <p className="font-semibold">{selectedCustomerRequest.serviceType}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Vehicle</Label>
-                        <p className="font-semibold">
-                          {selectedCustomerRequest.vehicle.brand} {selectedCustomerRequest.vehicle.model} ({selectedCustomerRequest.vehicle.year})
-                        </p>
-                        <p className="text-sm text-muted-foreground">{selectedCustomerRequest.vehicle.registrationNumber}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Location</Label>
-                        <p className="text-sm">{selectedCustomerRequest.location}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Priority</Label>
-                        <Badge variant={selectedCustomerRequest.priority === 'high' ? 'destructive' : 'secondary'}>
-                          {selectedCustomerRequest.priority}
-                        </Badge>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-muted-foreground">Issue Description</Label>
-                        <p className="text-sm">{selectedCustomerRequest.description}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Pricing Configuration */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Settings className="w-5 h-5" />
-                      Pricing Configuration
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs font-medium">Base Price</Label>
-                        <Input
-                          type="number"
-                          value={pricingConfig.basePrice}
-                          onChange={(e) => setPricingConfig({...pricingConfig, basePrice: Number(e.target.value)})}
-                          className="h-8"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium">Price/KM</Label>
-                        <Input
-                          type="number"
-                          value={pricingConfig.pricePerKm}
-                          onChange={(e) => setPricingConfig({...pricingConfig, pricePerKm: Number(e.target.value)})}
-                          className="h-8"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium">Commission %</Label>
-                        <Input
-                          type="number"
-                          value={pricingConfig.commissionRate}
-                          onChange={(e) => setPricingConfig({...pricingConfig, commissionRate: Number(e.target.value)})}
-                          className="h-8"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium">Emergency Charges</Label>
-                        <Input
-                          type="number"
-                          value={pricingConfig.emergencyCharges}
-                          onChange={(e) => setPricingConfig({...pricingConfig, emergencyCharges: Number(e.target.value)})}
-                          className="h-8"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right Side - Mechanics List */}
-              <div className="xl:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Wrench className="w-5 h-5" />
-                      Available Mechanics
-                    </CardTitle>
-                    <CardDescription>
-                      Nearby mechanics with distance, commission, and pricing information
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {mechanicsWithDistance.map((mechanic) => (
-                        <div key={mechanic.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-10 w-10">
-                                <AvatarFallback>
-                                  {mechanic.name.split(' ').map(n => n[0]).join('')}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <h4 className="font-semibold text-sm">{mechanic.name}</h4>
-                                <p className="text-xs text-muted-foreground">{mechanic.phone}</p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <MapPin className="w-3 h-3" />
-                                  {mechanic.location}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="flex items-center gap-1 text-sm font-medium text-[#1B3B6F]">
-                                <MapPin className="w-3 h-3" />
-                                {mechanic.distance.toFixed(1)} km
-                              </div>
-                              <div className="flex items-center gap-1 text-xs text-emerald-600">
-                                <BadgeCheck className="w-3 h-3" />
-                                {mechanic.rating} ⭐
-                              </div>
-                              <Badge 
-                                variant={mechanic.availability === 'available' ? 'default' : 'secondary'}
-                                className="text-xs mt-1"
-                              >
-                                {mechanic.availability}
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          {/* Specializations */}
-                          <div className="mb-3">
-                            <div className="flex flex-wrap gap-1">
-                              {mechanic.specializations.slice(0, 3).map((spec, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {spec}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Pricing & Commission Details */}
-                          <div className="grid grid-cols-3 gap-3 text-xs bg-gray-50 p-2 rounded">
-                            <div className="text-center">
-                              <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                                <Calculator className="w-3 h-3" />
-                                <span>Estimated Price</span>
-                              </div>
-                              <div className="font-semibold text-green-600">₹{mechanic.estimatedPrice}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                                <IndianRupee className="w-3 h-3" />
-                                <span>Commission</span>
-                              </div>
-                              <div className="font-semibold text-blue-600">₹{mechanic.commission}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                                <TrendingUp className="w-3 h-3" />
-                                <span>Experience</span>
-                              </div>
-                              <div className="font-semibold">{mechanic.experience}</div>
-                            </div>
-                          </div>
-
-                          {/* Stats */}
-                          <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
-                            <span>Jobs: {mechanic.completedJobs}</span>
-                            <span>Avg Time: {mechanic.avgJobTime}</span>
-                          </div>
-                          
-                          <Button 
-                            size="sm" 
-                            className="w-full mt-3 bg-[#1B3B6F] hover:bg-[#1B3B6F]/90"
-                            disabled={mechanic.availability !== 'available'}
-                            onClick={() => {
-                              // Handle assign mechanic with commission
-                              console.log('Assigning mechanic:', mechanic.name, 'Commission:', mechanic.commission)
-                              setShowCustomerDetails(false)
-                            }}
-                          >
-                            <Wrench className="w-3 h-3 mr-1" />
-                            Assign Mechanic (₹{mechanic.commission} commission)
-                          </Button>
+                {/* Assigned Mechanic */}
+                {selectedRequest.mechanic && (
+                  <div>
+                    <h4 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Wrench className="h-3 w-3" /> Assigned Mechanic
+                    </h4>
+                    <div className="bg-blue-50 rounded-xl border border-blue-100 overflow-hidden">
+                      {/* Name + Call */}
+                      <div className="flex items-center gap-3 p-4">
+                        <Avatar className="h-11 w-11 border-2 border-blue-200">
+                          <AvatarFallback className="bg-[#1B3B6F] text-white font-bold text-sm">
+                            {selectedRequest.mechanic.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[#1A1D29]">{selectedRequest.mechanic.name}</p>
+                          <p className="text-xs text-[#6B7280] flex items-center gap-1 mt-0.5">
+                            <Phone className="h-3 w-3" />
+                            {selectedRequest.mechanic.phone || '—'}
+                          </p>
                         </div>
-                      ))}
+                        {selectedRequest.mechanic.phone && (
+                          <a href={`tel:${selectedRequest.mechanic.phone}`}>
+                            <Button size="sm" variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-100">
+                              <Phone className="h-3.5 w-3.5 mr-1.5" />
+                              Call
+                            </Button>
+                          </a>
+                        )}
+                      </div>
+                      {/* GPS Coordinates */}
+                      {selectedRequest.mechanic.currentLocation && (
+                        <div className="border-t border-blue-100 px-4 py-3 bg-blue-100/40">
+                          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <Navigation className="h-3 w-3" /> Live Location
+                            {selectedRequest.mechanic.currentLocation.lastUpdated && (
+                              <span className="ml-auto font-normal normal-case text-[#6B7280]">
+                                Updated {new Date(selectedRequest.mechanic.currentLocation.lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <code className="text-sm font-mono text-[#1A1D29] bg-white px-2.5 py-1 rounded-lg border border-blue-200">
+                              {selectedRequest.mechanic.currentLocation.latitude.toFixed(6)}, {selectedRequest.mechanic.currentLocation.longitude.toFixed(6)}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 border-blue-200 text-blue-700 hover:bg-blue-100"
+                              onClick={() => handleCopy(
+                                `${selectedRequest.mechanic!.currentLocation!.latitude.toFixed(6)}, ${selectedRequest.mechanic!.currentLocation!.longitude.toFixed(6)}`,
+                                'req-mech-coords'
+                              )}
+                            >
+                              {copiedKey === 'req-mech-coords'
+                                ? <><Check className="h-3 w-3 mr-1 text-green-600" /><span className="text-green-600 text-xs">Copied!</span></>
+                                : <><Copy className="h-3 w-3 mr-1" /><span className="text-xs">Copy</span></>
+                              }
+                            </Button>
+                            <a
+                              href={`https://www.google.com/maps?q=${selectedRequest.mechanic.currentLocation.latitude},${selectedRequest.mechanic.currentLocation.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button size="sm" variant="outline" className="h-7 px-2 border-blue-200 text-blue-700 hover:bg-blue-100">
+                                <MapPin className="h-3 w-3 mr-1" />
+                                <span className="text-xs">Maps</span>
+                              </Button>
+                            </a>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                )}
+
+                {/* Status History Timeline */}
+                <div>
+                  <h4 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" /> Status History
+                  </h4>
+                  {selectedRequest.timeline && selectedRequest.timeline.length > 0 ? (
+                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                      {selectedRequest.timeline.map((entry, idx) => {
+                        const cfg = statusConfig[entry.status] ?? { color: 'bg-gray-100 text-gray-800', icon: Clock, label: entry.status }
+                        const Icon = cfg.icon
+                        const isLast = idx === selectedRequest.timeline!.length - 1
+                        return (
+                          <div key={idx} className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div className={`h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.color}`}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </div>
+                              {!isLast && <div className="w-0.5 flex-1 bg-gray-300 my-1" />}
+                            </div>
+                            <div className="pb-4 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-[#1A1D29]">{cfg.label}</p>
+                                {isLast && (
+                                  <Badge className={`text-[10px] py-0 px-1.5 h-4 ${cfg.color}`}>Current</Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-[#6B7280]">
+                                {entry.timestamp ? formatDate(entry.timestamp) : '—'}
+                              </p>
+                              {entry.note && (
+                                <p className="text-xs text-[#6B7280] mt-1 italic">{entry.note}</p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      {(() => {
+                        const cfg = statusConfig[selectedRequest.status] ?? { color: 'bg-gray-100 text-gray-800', icon: Clock, label: selectedRequest.status }
+                        const Icon = cfg.icon
+                        return (
+                          <>
+                            <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.color}`}>
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-[#1A1D29]">{cfg.label}</p>
+                                <Badge className={`text-[10px] py-0 px-1.5 h-4 ${cfg.color}`}>Current</Badge>
+                              </div>
+                              <p className="text-xs text-[#6B7280]">{formatDate(selectedRequest.createdAt)}</p>
+                            </div>
+                          </>
+                        )
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Customer Feedback — always visible */}
+                <div>
+                  <h4 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Star className="h-3 w-3" /> Customer Feedback
+                  </h4>
+                  {selectedRequest.feedback?.rating ? (
+                    <div className="bg-amber-50 rounded-xl border border-amber-100 overflow-hidden">
+                      {/* Overall rating */}
+                      <div className="p-4 border-b border-amber-100">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-5 w-5 ${i < (selectedRequest.feedback?.rating || 0) ? 'text-amber-500' : 'text-gray-300'}`}
+                                fill={i < (selectedRequest.feedback?.rating || 0) ? 'currentColor' : 'none'}
+                              />
+                            ))}
+                            <span className="ml-2 text-base font-bold text-[#1A1D29]">
+                              {selectedRequest.feedback.rating} / 5
+                            </span>
+                          </div>
+                          {selectedRequest.feedback.wouldRecommend !== undefined && (
+                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${selectedRequest.feedback.wouldRecommend ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {selectedRequest.feedback.wouldRecommend ? '👍 Would recommend' : '👎 Would not recommend'}
+                            </span>
+                          )}
+                        </div>
+                        {/* Review text */}
+                        {selectedRequest.feedback.comment ? (
+                          <p className="text-sm text-[#1A1D29] italic mt-3 leading-relaxed">
+                            "{selectedRequest.feedback.comment}"
+                          </p>
+                        ) : (
+                          <p className="text-xs text-[#9CA3AF] italic mt-2">No written review provided.</p>
+                        )}
+                      </div>
+
+                      {/* Detailed ratings breakdown */}
+                      {selectedRequest.feedback.ratings && (
+                        <div className="p-4 border-b border-amber-100">
+                          <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-3">Detailed Ratings</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries({
+                              workQuality:     'Work Quality',
+                              punctuality:     'Punctuality',
+                              communication:   'Communication',
+                              professionalism: 'Professionalism',
+                              valueForMoney:   'Value for Money',
+                            }).map(([key, label]) => {
+                              const val = (selectedRequest.feedback!.ratings as any)?.[key]
+                              if (!val) return null
+                              return (
+                                <div key={key} className="flex items-center justify-between gap-2">
+                                  <span className="text-xs text-[#6B7280] truncate">{label}</span>
+                                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                      <Star key={i} className={`h-3 w-3 ${i < val ? 'text-amber-500' : 'text-gray-300'}`} fill={i < val ? 'currentColor' : 'none'} />
+                                    ))}
+                                    <span className="text-[10px] text-[#6B7280] ml-1">{val}</span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Liked / Needs improvement */}
+                      {((selectedRequest.feedback.liked?.length ?? 0) > 0 || (selectedRequest.feedback.needsImprovement?.length ?? 0) > 0) && (
+                        <div className="p-4 border-b border-amber-100 space-y-3">
+                          {(selectedRequest.feedback.liked?.length ?? 0) > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-green-700 uppercase tracking-wider mb-1.5">Liked</p>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedRequest.feedback.liked!.map((item, i) => (
+                                  <span key={i} className="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{item}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {(selectedRequest.feedback.needsImprovement?.length ?? 0) > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-1.5">Needs Improvement</p>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedRequest.feedback.needsImprovement!.map((item, i) => (
+                                  <span key={i} className="text-[11px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">{item}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Review date */}
+                      {selectedRequest.feedback.createdAt && (
+                        <div className="px-4 py-2.5">
+                          <p className="text-[11px] text-[#9CA3AF]">
+                            Reviewed on {new Date(selectedRequest.feedback.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-5 bg-gray-50 rounded-xl border border-gray-100 flex flex-col items-center text-center">
+                      <div className="flex gap-1 mb-2">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star key={i} className="h-5 w-5 text-gray-300" fill="none" />
+                        ))}
+                      </div>
+                      <p className="text-sm font-medium text-[#6B7280]">No feedback yet</p>
+                      <p className="text-xs text-[#9CA3AF] mt-0.5">Customer hasn't rated this service request</p>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
           )}
+
+          {/* Sticky Footer */}
+          <div className="flex-shrink-0 border-t bg-gray-50 px-6 py-4">
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setSelectedRequest(null)}>
+                Close
+              </Button>
+              {selectedRequest && selectedRequest.status !== 'cancelled' && selectedRequest.status !== 'completed' && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => { handleOpenCancelDialog(selectedRequest); setSelectedRequest(null) }}
+                  >
+                    <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-[#1B3B6F] text-[#1B3B6F] hover:bg-[#1B3B6F]/10"
+                    onClick={() => { handleOpenAssignDialog(selectedRequest); setSelectedRequest(null) }}
+                  >
+                    <User className="h-3.5 w-3.5 mr-1.5" />
+                    {selectedRequest.mechanic ? 'Reassign' : 'Assign Mechanic'}
+                  </Button>
+                  {getNextStatus(selectedRequest.status) && (
+                    <Button
+                      size="sm"
+                      className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+                      onClick={() => {
+                        handleUpdateStatus(selectedRequest._id, getNextStatus(selectedRequest.status)!)
+                        setSelectedRequest(null)
+                      }}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                      {getNextStatusLabel(selectedRequest.status)}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -402,7 +402,7 @@ const Index = () => {
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
-                      target.nextElementSibling!.style.display = 'flex';
+                      (target.nextElementSibling as HTMLElement)!.style.display = 'flex';
                     }}
                   />
                   <div className="hidden w-full h-full items-center justify-center">
@@ -479,7 +479,7 @@ const Index = () => {
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
-                    target.nextElementSibling!.style.display = 'flex';
+                    (target.nextElementSibling as HTMLElement)!.style.display = 'flex';
                   }}
                 />
                 <div className="hidden w-full h-full items-center justify-center">
@@ -584,7 +584,7 @@ const Index = () => {
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
-                      target.nextElementSibling!.style.display = 'flex';
+                      (target.nextElementSibling as HTMLElement)!.style.display = 'flex';
                     }}
                   />
                   <div className="hidden w-full h-full items-center justify-center">

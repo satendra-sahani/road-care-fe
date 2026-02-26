@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/router'
 import { useState, useEffect } from 'react'
 import {
   BarChart3,
@@ -20,10 +21,14 @@ import {
   Bell,
   Shield,
   Menu,
-  X
+  X,
+  LogOut,
+  Tag
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { logoutRequest } from '@/store/slices/authSlice'
 
 interface SidebarItem {
   id: string
@@ -48,7 +53,9 @@ const sidebarItems: SidebarItem[] = [
   { id: 'service-requests', title: 'Service Requests', icon: ClipboardList, href: '/admin/services/requests', badge: '34', separator: true },
 
   // Inventory & Stock
-  { id: 'inventory', title: 'Inventory & Products', icon: Package, href: '/admin/inventory/products', separator: true },
+  { id: 'inventory', title: 'Products', icon: Package, href: '/admin/inventory/products', separator: true },
+  { id: 'categories', title: 'Categories', icon: Tag, href: '/admin/inventory/categories' },
+  { id: 'brands', title: 'Brands', icon: Shield, href: '/admin/inventory/brands' },
   { id: 'purchase-ledger', title: 'Purchase Ledger', icon: ClipboardList, href: '/admin/inventory/purchases' },
   { id: 'sales-ledger', title: 'Sales Ledger', icon: CreditCard, href: '/admin/inventory/sales', badge: 'New' },
 
@@ -75,8 +82,16 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarProps) {
   const pathname = usePathname() || currentPath || ''
+  const router = useRouter()
+  const dispatch = useAppDispatch()
+  const { user } = useAppSelector((state) => state.auth)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+
+  const handleLogout = () => {
+    dispatch(logoutRequest())
+    router.push('/admin/login')
+  }
 
   // Check if mobile/tablet
   useEffect(() => {
@@ -173,7 +188,7 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 scrollbar-ultra-narrow">
           {sidebarItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -215,15 +230,32 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-[#2E5090]">
+      <div className="p-3 border-t border-[#2E5090] space-y-2">
           {(!collapsed || isMobile) ? (
-            <div className="text-center">
-              <p className="text-[10px] text-gray-500">Road Care Admin v2.0</p>
-            </div>
+            <>
+              {user && (
+                <div className="px-3 py-2">
+                  <p className="text-sm font-medium text-white truncate">{user.fullName}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+                </div>
+              )}
+              <Button
+                variant="ghost"
+                onClick={handleLogout}
+                className="w-full justify-start h-9 px-3 text-sm text-red-300 hover:bg-red-500/20 hover:text-red-200"
+              >
+                <LogOut className="h-4 w-4 mr-3" />
+                Logout
+              </Button>
+            </>
           ) : (
-            <div className="w-8 h-8 bg-[#2E5090] rounded-lg flex items-center justify-center mx-auto">
-              <Settings className="h-4 w-4 text-gray-400" />
-            </div>
+            <Button
+              variant="ghost"
+              onClick={handleLogout}
+              className="w-full justify-center h-9 px-2 text-red-300 hover:bg-red-500/20 hover:text-red-200"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           )}
         </div>
       </aside>
