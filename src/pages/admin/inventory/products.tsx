@@ -721,7 +721,7 @@ export default function AdminInventoryProductsPage() {
 
           {/* ─── Add Product Dialog ──────────────────────────── */}
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
               <DialogHeader>
                 <DialogTitle>Add New Product</DialogTitle>
                 <DialogDescription>Create a new product in your inventory</DialogDescription>
@@ -739,7 +739,7 @@ export default function AdminInventoryProductsPage() {
 
           {/* ─── Edit Product Dialog ─────────────────────────── */}
           <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
               <DialogHeader>
                 <DialogTitle>Edit Product</DialogTitle>
                 <DialogDescription>Update product details</DialogDescription>
@@ -757,7 +757,7 @@ export default function AdminInventoryProductsPage() {
 
           {/* ─── View Product Dialog ─────────────────────────── */}
           <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
               <DialogHeader>
                 <DialogTitle>Product Details</DialogTitle>
               </DialogHeader>

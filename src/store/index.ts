@@ -6,6 +6,7 @@ import brandReducer from './slices/brandSlice';
 import productReducer from './slices/productSlice';
 import serviceRequestReducer from './slices/serviceRequestSlice';
 import mechanicReducer from './slices/mechanicSlice';
+import userReducer from './slices/userSlice';
 import rootSaga from './sagas';
 
 const sagaMiddleware = createSagaMiddleware();
@@ -18,6 +19,7 @@ export const store = configureStore({
     product: productReducer,
     serviceRequest: serviceRequestReducer,
     mechanic: mechanicReducer,
+    users: userReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ thunk: false, serializableCheck: false }).concat(sagaMiddleware),

@@ -1,7 +1,7 @@
 'use client'
 
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
-import { UserManagement } from '@/components/admin/UserManagement'
+import { UserManagement } from '@/components/admin/UserManagement2'
 
 export default function AdminUsersPage() {
   return (

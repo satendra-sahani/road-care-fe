@@ -728,7 +728,7 @@ export function SalesLedger() {
       {/* SALE DETAIL DIALOG                                           */}
       {/* ============================================================ */}
       <Dialog open={!!viewSale} onOpenChange={(open) => !open && setViewSale(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
           {viewSale && (
             <>
               <DialogHeader>
@@ -901,7 +901,7 @@ export function SalesLedger() {
       {/* RECORD NEW SALE DIALOG                                       */}
       {/* ============================================================ */}
       <Dialog open={showNewSale} onOpenChange={setShowNewSale}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
           <DialogHeader>
             <DialogTitle className="text-[#1B3B6F] flex items-center gap-2">
               <PlusCircle className="w-5 h-5" />
@@ -1288,7 +1288,7 @@ export function SalesLedger() {
 
       {/* User Details Modal */}
       <Dialog open={showUserDetails} onOpenChange={setShowUserDetails}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />

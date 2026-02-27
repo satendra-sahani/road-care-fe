@@ -157,4 +157,16 @@ export const dashboardAPI = {
   getOverview: () => api.get('/admin/dashboard'),
 };
 
+// ─── User Management APIs (Admin) ──────────────────────────────────────
+export const userAPI = {
+  getAll: (params?: Record<string, any>) =>
+    api.get('/users', { params }),
+  getById: (id: string) => api.get(`/users/${id}`),
+  create: (data: any) => api.post('/users', data),
+  update: (id: string, data: any) => api.put(`/users/${id}`, data),
+  delete: (id: string) => api.delete(`/users/${id}`),
+  toggleStatus: (id: string) => api.patch(`/users/${id}/toggle-status`),
+  getStats: () => api.get('/users/stats/summary'),
+};
+
 export default api;

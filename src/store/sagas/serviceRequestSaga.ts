@@ -104,6 +104,7 @@ function normalizeServiceRequest(r: any): ServiceRequest {
   const mech = r.mechanic;
   return {
     _id: r._id,
+    requestId: r.requestId || undefined,
     customer: {
       _id: cust._id || '',
       name: cust.fullName || cust.username || cust.name || '',

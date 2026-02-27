@@ -1087,7 +1087,7 @@ export function PlatformSettings() {
               
               <div>
                 <h4 className="font-medium text-[#1A1D29] mb-2">Permissions</h4>
-                <div className="max-h-40 overflow-y-auto space-y-1">
+                <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-ultra-narrow">
                   {selectedRole.permissions.map((permission: string) => (
                     <div key={permission} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
                       <span>{permission}</span>

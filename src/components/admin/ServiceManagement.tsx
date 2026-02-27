@@ -380,8 +380,26 @@ export function ServiceManagement() {
     dispatch(fetchServiceRequestsRequest())
   }, [dispatch])
 
+  // Debug: Log service requests when they change (separate useEffect)
+  useEffect(() => {
+    console.log('Service Requests in store:', serviceRequests)
+  }, [serviceRequests])
+
   // Helper function to get request ID
   const getRequestId = (request: any) => request._id || request.id
+  
+  // Generate display-friendly request ID — use real requestId (SRV-2024-0001) if available
+  const generateDisplayRequestId = (request: ServiceRequest) => {
+    return request.requestId || `SRV-${request._id.slice(-6).toUpperCase()}`
+  }
+  
+  // Copy to clipboard function
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(null), 2000)
+    })
+  }
 
   const filteredMechanics = useMemo(() => {
     const list = mechanics ?? []
@@ -832,7 +850,7 @@ export function ServiceManagement() {
                         />
                       </TableCell>
                       <TableCell className="font-mono text-xs text-[#6B7280]">
-                        {request._id.slice(-8).toUpperCase()}
+                        {generateDisplayRequestId(request)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -851,9 +869,39 @@ export function ServiceManagement() {
                         <div className="font-medium text-[#1A1D29]">{request.serviceType}</div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-1 text-sm text-[#6B7280]">
-                          <MapPin className="h-3 w-3 flex-shrink-0" />
-                          <span>{request.location?.city || request.location?.address || '—'}</span>
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-1 text-sm text-[#6B7280]">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span>{request.location?.city || request.location?.address || '—'}</span>
+                          </div>
+                          {/* Coordinates display */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">Coords:</span>
+                            {request.location.coordinates?.latitude && request.location.coordinates?.longitude ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs font-mono text-[#6B7280]">
+                                  {request.location.coordinates.latitude.toFixed(4)}, {request.location.coordinates.longitude.toFixed(4)}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost" 
+                                  className="h-auto p-0.5 hover:bg-gray-100"
+                                  onClick={() => copyToClipboard(
+                                    `${request.location.coordinates?.latitude}, ${request.location.coordinates?.longitude}`,
+                                    `table-coords-${request._id}`
+                                  )}
+                                >
+                                  {copiedKey === `table-coords-${request._id}` ? (
+                                    <CheckCircle className="h-3 w-3 text-green-600" />
+                                  ) : (
+                                    <Copy className="h-3 w-3 text-[#6B7280] hover:text-[#374151]" />
+                                  )}
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-red-400 italic">No coordinates</span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>{getPriorityBadge(request.priority)}</TableCell>
@@ -1099,27 +1147,125 @@ export function ServiceManagement() {
                 <CardDescription>Service requests waiting for mechanic assignment</CardDescription>
               </CardHeader>
               <CardContent>
+                {requestsLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="p-4 bg-gray-100 rounded-lg animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-2/3 mb-1"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : serviceRequests.length === 0 ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-[#1A1D29] mb-1">No Service Requests Found</h3>
+                    <p className="text-[#6B7280] text-sm">No service requests have been loaded from the API yet.</p>
+                  </div>
+                ) : (serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic).length === 0 ? (
+                  <div className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-[#1A1D29] mb-1">All Requests Assigned</h3>
+                    <p className="text-[#6B7280] text-sm">No pending requests waiting for mechanic assignment.</p>
+                  </div>
+                ) : (
                 <div className="space-y-3">
                   {(serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic).map((request) => (
-                    <div key={request._id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-[#1A1D29]">{request._id}</h4>
-                          <p className="text-sm text-[#6B7280]">
-                            {request.serviceType} - {request.customer.name}
-                          </p>
-                          <p className="text-xs text-[#9CA3AF]">{request.location.address}</p>
+                    <div key={request._id} className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="font-semibold text-[#1A1D29]">{generateDisplayRequestId(request)}</h4>
+                            <Badge variant="outline" className="text-xs px-2 py-0.5">
+                              {request.serviceType}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <p className="text-sm text-[#6B7280] flex items-center gap-2">
+                              <User className="h-3 w-3" />
+                              <span className="font-medium">{request.customer.name}</span>
+                              <span>•</span>
+                              <span>{request.customer.phone}</span>
+                            </p>
+                            
+                            <div className="text-sm text-[#6B7280]">
+                              <div className="flex items-start gap-2 mb-1">
+                                <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                <span className="flex-1">{request.location.address}, {request.location.city}</span>
+                              </div>
+                              
+                              {/* Coordinates Section - Always show, with fallback */}
+                              <div className="flex items-center gap-3 mt-2 p-2 bg-white rounded border">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="text-xs font-medium text-[#374151]">Coordinates:</span>
+                                  {request.location.coordinates?.latitude && request.location.coordinates?.longitude ? (
+                                    <span className="text-xs font-mono text-[#6B7280]">
+                                      {request.location.coordinates.latitude}, {request.location.coordinates.longitude}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-red-500 italic">
+                                      No coordinates available
+                                    </span>
+                                  )}
+                                </div>
+                                {request.location.coordinates?.latitude && request.location.coordinates?.longitude ? (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost" 
+                                    className="h-auto p-1 hover:bg-gray-100"
+                                    onClick={() => copyToClipboard(
+                                      `${request.location.coordinates?.latitude}, ${request.location.coordinates?.longitude}`,
+                                      `coords-${request._id}`
+                                    )}
+                                  >
+                                    {copiedKey === `coords-${request._id}` ? (
+                                      <CheckCircle className="h-3 w-3 text-green-600" />
+                                    ) : (
+                                      <Copy className="h-3 w-3 text-[#6B7280] hover:text-[#374151]" />
+                                    )}
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-auto p-1"
+                                    onClick={() => {
+                                      console.log('Service Request Data:', request);
+                                      alert('Debug: Check console for service request data');
+                                    }}
+                                  >
+                                    <Eye className="h-3 w-3 text-[#6B7280]" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-right">
+                        
+                        <div className="text-right flex flex-col items-end gap-2">
                           {getPriorityBadge(request.priority)}
-                          <p className="text-xs text-[#6B7280] mt-1">
+                          <p className="text-xs text-[#6B7280]">
                             {formatDate(request.createdAt)}
                           </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs px-2 py-1 h-auto"
+                            onClick={() => {
+                              setAssigningRequest(request)
+                              setAssignDialogOpen(true)
+                            }}
+                          >
+                            Assign Now
+                          </Button>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
+                )}
               </CardContent>
             </Card>
 
@@ -1142,7 +1288,7 @@ export function ServiceManagement() {
                       <SelectContent>
                         {(serviceRequests ?? []).filter(r => !r.mechanic).map((request) => (
                           <SelectItem key={request._id} value={request._id}>
-                            {request._id.slice(-8)} - {request.serviceType}
+                            {generateDisplayRequestId(request)} - {request.serviceType}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1294,7 +1440,7 @@ export function ServiceManagement() {
         setAddMechanicOpen(open)
         if (!open) { setEditingMechanic(false); setNewMechanic(emptyMechanic); setSelectedSpecs([]) }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[#1B3B6F]">
               <UserPlus className="h-5 w-5" />
@@ -1488,7 +1634,7 @@ export function ServiceManagement() {
 
       {/* ==================== VIEW MECHANIC PROFILE DIALOG ==================== */}
       <Dialog open={viewMechanicOpen} onOpenChange={setViewMechanicOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
           {selectedMechanic && (
             <>
               <DialogHeader>
@@ -1714,7 +1860,7 @@ export function ServiceManagement() {
           <div className="bg-gradient-to-r from-[#1B3B6F] to-[#2D5FA8] px-6 pt-5 pb-5 flex-shrink-0 pr-14">
             <div className="flex items-center gap-2 mb-2.5 flex-wrap">
               <span className="text-white/60 text-[11px] font-mono bg-white/10 px-2 py-0.5 rounded">
-                #{selectedRequest?._id?.slice(-8).toUpperCase()}
+                {selectedRequest ? generateDisplayRequestId(selectedRequest) : ''}
               </span>
               {selectedRequest && getStatusBadge(selectedRequest.status)}
               {selectedRequest && getPriorityBadge(selectedRequest.priority)}
@@ -1733,7 +1879,7 @@ export function ServiceManagement() {
 
           {/* Scrollable Content */}
           {selectedRequest && (
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto scrollbar-ultra-narrow">
               <div className="p-6 space-y-5">
 
                 {/* Customer + Cost row */}
@@ -1766,6 +1912,40 @@ export function ServiceManagement() {
                             .filter(Boolean).join(', ') || '—'}
                         </span>
                       </div>
+
+                      {/* Customer service location coordinates */}
+                      {selectedRequest.location?.coordinates?.latitude != null && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                            <Navigation className="h-3 w-3" /> Service Location
+                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <code className="text-[11px] font-mono text-[#1A1D29] bg-white px-2 py-0.5 rounded border border-gray-200">
+                              {selectedRequest.location.coordinates.latitude.toFixed(6)}, {selectedRequest.location.coordinates.longitude.toFixed(6)}
+                            </code>
+                            <button
+                              onClick={() => copyToClipboard(
+                                `${selectedRequest.location.coordinates!.latitude.toFixed(6)}, ${selectedRequest.location.coordinates!.longitude.toFixed(6)}`,
+                                'cust-loc-coords'
+                              )}
+                              className="text-[#6B7280] hover:text-[#1B3B6F] transition-colors p-0.5"
+                              title="Copy coordinates"
+                            >
+                              {copiedKey === 'cust-loc-coords'
+                                ? <Check className="h-3.5 w-3.5 text-green-600" />
+                                : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                            <a
+                              href={`https://www.google.com/maps?q=${selectedRequest.location.coordinates.latitude},${selectedRequest.location.coordinates.longitude}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-700"
+                              title="Open in Google Maps"
+                            >
+                              <MapPin className="h-3.5 w-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

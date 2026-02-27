@@ -1012,7 +1012,7 @@ export function InventoryManagement() {
                 <CardDescription>Manufacturers of auto parts (Michelin, Bosch, Castrol, etc.)</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
+                <div className="space-y-4 max-h-96 overflow-y-auto scrollbar-ultra-narrow">
                   {Object.entries(autoPartBrands).map(([category, brandList]) => (
                     <div key={category} className="border rounded-lg p-4">
                       <h4 className="font-semibold text-sm text-[#1B3B6F] mb-3 capitalize">
@@ -1055,7 +1055,7 @@ export function InventoryManagement() {
                 <CardDescription>Vehicle manufacturers (Honda, Toyota, Royal Enfield, etc.)</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
+                <div className="space-y-4 max-h-96 overflow-y-auto scrollbar-ultra-narrow">
                   {Object.entries(vehicleData).map(([vehicleType, brandData]) => (
                     <div key={vehicleType} className="border rounded-lg p-4">
                       <h4 className="font-semibold text-sm text-[#FF6B35] mb-3 capitalize">
@@ -1378,7 +1378,7 @@ export function InventoryManagement() {
 
       {/* Add Product Modal */}
       <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
           <DialogHeader>
             <DialogTitle>Add New Product</DialogTitle>
             <DialogDescription>
@@ -1762,7 +1762,7 @@ export function InventoryManagement() {
 
       {/* Vehicle Brand Add Modal */}
       <Dialog open={isVehicleBrandModalOpen} onOpenChange={setIsVehicleBrandModalOpen}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto scrollbar-ultra-narrow">
           <DialogHeader>
             <DialogTitle>Add New Vehicle Brand</DialogTitle>
             <DialogDescription>
@@ -1810,7 +1810,7 @@ export function InventoryManagement() {
                   Add Model
                 </Button>
               </div>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
+              <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-ultra-narrow">
                 {vehicleBrandFormData.models.map((model, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <Input
@@ -1867,7 +1867,7 @@ export function InventoryManagement() {
 
       {/* Unit Management Modal */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
           <DialogHeader>
             <DialogTitle>Unit Management - {selectedProductForUnits?.name}</DialogTitle>
             <DialogDescription>
@@ -1905,7 +1905,7 @@ export function InventoryManagement() {
             {/* Stock History */}
             <div className="space-y-3">
               <h4 className="font-medium text-lg">Stock History</h4>
-              <div className="max-h-48 overflow-y-auto border rounded-lg">
+              <div className="max-h-48 overflow-y-auto border rounded-lg scrollbar-ultra-narrow">
                 <Table>
                   <TableHeader>
                     <TableRow>

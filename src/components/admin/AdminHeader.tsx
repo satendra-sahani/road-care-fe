@@ -188,7 +188,7 @@ export function AdminHeader({ collapsed = false, onToggleSidebar }: AdminHeaderP
               )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto scrollbar-ultra-narrow">
               {notifications.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">
                   No notifications

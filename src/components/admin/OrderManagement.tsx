@@ -999,7 +999,7 @@ export function OrderManagement() {
 
       {/* User Details Modal */}
       <Dialog open={showUserDetails} onOpenChange={setShowUserDetails}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
@@ -1382,7 +1382,7 @@ function OrderViewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
         <DialogHeader>
           <DialogTitle>Order Details - {order.orderNumber}</DialogTitle>
           <DialogDescription>Complete order information and status</DialogDescription>

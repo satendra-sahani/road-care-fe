@@ -46,7 +46,7 @@ export function AdminSidebar({ currentPath }: AdminSidebarProps) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-white border-r border-border overflow-y-auto transition-transform duration-300 z-30 ${
+        className={`fixed left-0 top-0 h-screen w-64 bg-white border-r border-border overflow-y-auto scrollbar-ultra-narrow transition-transform duration-300 z-30 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >

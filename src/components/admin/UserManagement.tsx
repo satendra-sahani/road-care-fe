@@ -2,7 +2,24 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { RootState } from '@/store'
+import {
+  fetchUsersRequest,
+  fetchUserByIdRequest,
+  createUserRequest,
+  updateUserRequest,
+  deleteUserRequest,
+  toggleUserStatusRequest,
+  fetchUserStatsRequest,
+  clearUserError,
+  User,
+} from '@/store/slices/userSlice'
+import {
+  fetchMechanicsRequest,
+  Mechanic,
+} from '@/store/slices/mechanicSlice'
 import { 
   Search, 
   Filter, 
@@ -787,32 +804,8 @@ export function UserManagement() {
           </DialogHeader>
 
           <div 
-            className="flex-1 overflow-y-auto pr-2 min-h-0" 
-            style={{
-              scrollbarWidth: 'normal',
-              scrollbarColor: '#1B3B6F #F1F5F9'
-            }}
+            className="flex-1 overflow-y-auto pr-2 min-h-0 scrollbar-ultra-narrow"
           >
-            <style>{`
-              .flex-1.overflow-y-auto::-webkit-scrollbar {
-                width: 12px;
-              }
-              .flex-1.overflow-y-auto::-webkit-scrollbar-track {
-                background: #F1F5F9;
-                border-radius: 6px;
-              }
-              .flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
-                background: linear-gradient(180deg, #1B3B6F 0%, #0F2545 100%);
-                border-radius: 6px;
-                border: 2px solid #F1F5F9;
-              }
-              .flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-                background: linear-gradient(180deg, #0F2545 0%, #1B3B6F 100%);
-              }
-              .flex-1.overflow-y-auto::-webkit-scrollbar-corner {
-                background: #F1F5F9;
-              }
-            `}</style>
             
             {selectedUserForReviews && (
               <div className="space-y-6 py-2">
@@ -976,32 +969,8 @@ export function UserManagement() {
           </DialogHeader>
 
           <div 
-            className="flex-1 overflow-y-auto pr-2 min-h-0" 
-            style={{
-              scrollbarWidth: 'normal',
-              scrollbarColor: '#059669 #F0FDF4'
-            }}
+            className="flex-1 overflow-y-auto pr-2 min-h-0 scrollbar-ultra-narrow"
           >
-            <style>{`
-              .flex-1.overflow-y-auto::-webkit-scrollbar {
-                width: 12px;
-              }
-              .flex-1.overflow-y-auto::-webkit-scrollbar-track {
-                background: #F0FDF4;
-                border-radius: 6px;
-              }
-              .flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
-                background: linear-gradient(180deg, #059669 0%, #047857 100%);
-                border-radius: 6px;
-                border: 2px solid #F0FDF4;
-              }
-              .flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-                background: linear-gradient(180deg, #047857 0%, #059669 100%);
-              }
-              .flex-1.overflow-y-auto::-webkit-scrollbar-corner {
-                background: #F0FDF4;
-              }
-            `}</style>
             
             {selectedUserForReviews && (
               <div className="space-y-6 py-2">

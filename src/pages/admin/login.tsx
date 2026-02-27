@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 export default function AdminLoginPage() {
   const router = useRouter()
   const dispatch = useAppDispatch()
-  const { loading, error, isAuthenticated } = useAppSelector((state) => state.auth)
+  const { loading, error, isAuthenticated, initialCheckDone } = useAppSelector((state) => state.auth)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,10 +22,11 @@ export default function AdminLoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only redirect if both initial check is done and user is authenticated
+    if (initialCheckDone && isAuthenticated) {
       router.replace('/admin')
     }
-  }, [isAuthenticated, router])
+  }, [initialCheckDone, isAuthenticated, router])
 
   useEffect(() => {
     return () => {

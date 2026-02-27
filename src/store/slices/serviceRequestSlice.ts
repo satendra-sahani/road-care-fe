@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface ServiceRequest {
   _id: string;
+  requestId?: string;          // e.g. SRV-2024-0001 from backend
   customer: {
     _id: string;
     name: string;
@@ -26,8 +27,8 @@ export interface ServiceRequest {
     state: string;
     pincode: string;
     coordinates?: {
-      lat: number;
-      lng: number;
+      latitude: number;
+      longitude: number;
     };
   };
   scheduledDate: string;
