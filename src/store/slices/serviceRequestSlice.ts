@@ -38,7 +38,10 @@ export interface ServiceRequest {
   estimatedCost?: number;
   actualCost?: number;
   notes?: string;
-  images?: string[];
+  images?: {
+    before: Array<{ url: string; description?: string }>;
+    after: Array<{ url: string; description?: string }>;
+  };
   feedback?: {
     rating: number;
     comment: string;

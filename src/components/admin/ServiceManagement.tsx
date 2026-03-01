@@ -50,6 +50,7 @@ import {
   Copy,
   Check,
   Navigation,
+  ImageIcon,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -1993,6 +1994,61 @@ export function ServiceManagement() {
                     )}
                   </div>
                 )}
+
+                {/* Uploaded Images */}
+                {(selectedRequest.images?.before?.length || selectedRequest.images?.after?.length) ? (
+                  <div>
+                    <h4 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <ImageIcon className="h-3 w-3" /> Uploaded Images
+                    </h4>
+                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-4">
+                      {/* Before images */}
+                      {(selectedRequest.images?.before?.length ?? 0) > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">Before Service</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {selectedRequest.images!.before.map((img, idx) => (
+                              <a key={idx} href={img.url} target="_blank" rel="noopener noreferrer" className="group relative block rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100 hover:border-[#1B3B6F] transition-colors">
+                                <img
+                                  src={img.url}
+                                  alt={img.description || `Before image ${idx + 1}`}
+                                  className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                                />
+                                {img.description && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-1">
+                                    <p className="text-[10px] text-white truncate">{img.description}</p>
+                                  </div>
+                                )}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* After images */}
+                      {(selectedRequest.images?.after?.length ?? 0) > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-2">After Service</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {selectedRequest.images!.after.map((img, idx) => (
+                              <a key={idx} href={img.url} target="_blank" rel="noopener noreferrer" className="group relative block rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100 hover:border-[#1B3B6F] transition-colors">
+                                <img
+                                  src={img.url}
+                                  alt={img.description || `After image ${idx + 1}`}
+                                  className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                                />
+                                {img.description && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-1">
+                                    <p className="text-[10px] text-white truncate">{img.description}</p>
+                                  </div>
+                                )}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* Assigned Mechanic */}
                 {selectedRequest.mechanic && (

@@ -152,9 +152,105 @@ export const mechanicAPI = {
   delete: (id: string) => api.delete(`/admin/mechanics/${id}`),
 };
 
+// ─── Issue Pricing APIs (Admin) ──────────────────────────────────────
+type VehicleTypeKey = 'bike' | 'car' | 'scooter' | 'auto'
+
+export const issuePricingAPI = {
+  getAll: () =>
+    api.get('/admin/service-pricing'),
+  getByVehicle: (vehicleType: VehicleTypeKey) =>
+    api.get(`/admin/service-pricing/${vehicleType}`),
+  updateVehicle: (vehicleType: VehicleTypeKey, data: Record<string, any>) =>
+    api.put(`/admin/service-pricing/${vehicleType}`, data),
+  updateIssue: (
+    vehicleType: VehicleTypeKey,
+    issueId: string,
+    data: { estimatedPrice?: number; isActive?: boolean; label?: string }
+  ) => api.patch(`/admin/service-pricing/${vehicleType}/issues/${issueId}`, data),
+  addIssue: (
+    vehicleType: VehicleTypeKey,
+    data: { id: string; label: string; estimatedPrice: number; icon?: string }
+  ) => api.post(`/admin/service-pricing/${vehicleType}/issues`, data),
+  deleteIssue: (vehicleType: VehicleTypeKey, issueId: string) =>
+    api.delete(`/admin/service-pricing/${vehicleType}/issues/${issueId}`),
+
+  // ── Emergency Services ──────────────────────────────────────────────
+  addEmergencyService: (
+    vehicleType: VehicleTypeKey,
+    data: { id: string; label: string; price: number; description?: string; estimatedTime?: string; urgencyLevel?: 'high' | 'medium'; icon?: string }
+  ) => api.post(`/admin/service-pricing/${vehicleType}/emergency-services`, data),
+  updateEmergencyService: (
+    vehicleType: VehicleTypeKey,
+    serviceId: string,
+    data: { label?: string; price?: number; description?: string; estimatedTime?: string; urgencyLevel?: 'high' | 'medium'; icon?: string; isActive?: boolean }
+  ) => api.patch(`/admin/service-pricing/${vehicleType}/emergency-services/${serviceId}`, data),
+  deleteEmergencyService: (vehicleType: VehicleTypeKey, serviceId: string) =>
+    api.delete(`/admin/service-pricing/${vehicleType}/emergency-services/${serviceId}`),
+};
+
+// ─── Order Management APIs ───────────────────────────────────────────
+export const orderAPI = {
+  getAll: (params?: any) => api.get('/admin/orders', { params }),
+  getById: (id: string) => api.get(`/admin/orders/${id}`),
+  getStats: () => api.get('/admin/orders/stats'),
+  updateStatus: (id: string, data: { status: string; note?: string }) => api.put(`/admin/orders/${id}/status`, data),
+  assignDelivery: (id: string, deliveryBoyId: string) => api.put(`/admin/orders/${id}/assign-delivery`, { deliveryBoyId }),
+  getDeliveryBoys: () => api.get('/admin/orders/delivery-boys'),
+  create: (formData: FormData) => api.post('/admin/orders', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  searchCustomers: (q: string) => api.get('/admin/orders/search-customers', { params: { q } }),
+  searchProducts: (q: string) => api.get('/common/products', { params: { search: q, inStock: true, limit: 10 } }),
+  downloadInvoice: (id: string) => api.get(`/admin/orders/${id}/invoice`, { responseType: 'blob' }),
+};
+
+// ─── Payment Management APIs ────────────────────────────────────────
+export const paymentAPI = {
+  getStats: (params?: any) => api.get('/admin/payments/stats', { params }),
+  getWallets: (params?: any) => api.get('/admin/payments/wallets', { params }),
+  getWalletByUser: (userId: string) => api.get(`/admin/payments/wallets/${userId}`),
+  getTransactions: (params?: any) => api.get('/admin/payments/transactions', { params }),
+  getUserTransactions: (userId: string, params?: any) => api.get(`/admin/payments/transactions/${userId}`, { params }),
+  transfer: (data: { userId: string; amount: number; description?: string }) => api.post('/admin/payments/transfer', data),
+  debit: (data: { userId: string; amount: number; description?: string; category?: string }) => api.post('/admin/payments/debit', data),
+  transferToWallet: (paymentId: string, data: { percentage: number }) => api.post(`/admin/payments/transfer-to-wallet/${paymentId}`, data),
+  getTransferHistory: (params?: any) => api.get('/admin/payments/transfer-history', { params }),
+
+  // Withdrawal management
+  getWithdrawals: (params?: any) => api.get('/admin/payments/withdrawals', { params }),
+  getWithdrawalStats: () => api.get('/admin/payments/withdrawals/stats'),
+  processWithdrawal: (id: string, formData: FormData) =>
+    api.put(`/admin/payments/withdrawals/${id}/process`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  rejectWithdrawal: (id: string, data: { reason: string }) =>
+    api.put(`/admin/payments/withdrawals/${id}/reject`, data),
+};
+
 // ─── Dashboard API ──────────────────────────────────────────────────
 export const dashboardAPI = {
   getOverview: () => api.get('/admin/dashboard'),
+};
+
+// ─── User Cart APIs (Customer-facing) ────────────────────────────────
+export const userCartAPI = {
+  get: () => api.get('/user/cart'),
+  add: (productId: string, quantity?: number) => api.post('/user/cart/add', { productId, quantity: quantity || 1 }),
+  update: (productId: string, quantity: number) => api.put('/user/cart/update', { productId, quantity }),
+  remove: (productId: string) => api.delete(`/user/cart/remove/${productId}`),
+  clear: () => api.delete('/user/cart/clear'),
+};
+
+// ─── User Order APIs (Customer-facing) ──────────────────────────────
+export const userOrderAPI = {
+  place: (data: any) => api.post('/user/orders/place', data),
+  buyNow: (data: any) => api.post('/user/orders/buy-now', data),
+  getAll: (params?: any) => api.get('/user/orders', { params }),
+  getById: (id: string) => api.get(`/user/orders/${id}`),
+  cancel: (id: string, reason?: string) => api.put(`/user/orders/${id}/cancel`, { reason }),
+  track: (id: string) => api.get(`/user/orders/${id}/track`),
+  verifyPayment: (data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    api.post('/user/orders/verify-payment', data),
 };
 
 // ─── User Management APIs (Admin) ──────────────────────────────────────

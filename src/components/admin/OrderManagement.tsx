@@ -2,13 +2,13 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useMemo } from 'react'
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Eye, 
-  Edit, 
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
+  Eye,
+  Edit,
   Trash2,
   Download,
   Calendar,
@@ -31,7 +31,8 @@ import {
   BadgeCheck,
   TrendingUp,
   FileText,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -75,14 +76,11 @@ import {
 } from '@/components/ui/dialog'
 import { Order, OrderFilters, Customer } from '@/types'
 import { cn } from '@/lib/utils'
-import { 
-  mockOrders, 
-  mockCustomers,
-  mockDeliveryPartners
-} from '@/data/mockData'
+import { orderAPI } from '@/services/api'
+import { CreateOrderDialog } from './CreateOrderDialog'
 
 export function OrderManagement() {
-  const [orders, setOrders] = useState<Order[]>(mockOrders)
+  const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrders, setSelectedOrders] = useState<string[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
@@ -90,8 +88,28 @@ export function OrderManagement() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
-  
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalOrders, setTotalOrders] = useState(0)
+
+  // Loading and error states
+  const [loading, setLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Stats from API
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    processingOrders: 0,
+    shippedOrders: 0,
+    deliveredOrders: 0,
+    totalRevenue: 0,
+    averageOrderValue: 0
+  })
+
   // Dialog states
+  const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false)
   const [isAssignDeliveryOpen, setIsAssignDeliveryOpen] = useState(false)
@@ -112,15 +130,21 @@ export function OrderManagement() {
     specialInstructions: ''
   })
 
+  // Delivery boys from API
+  const [deliveryBoys, setDeliveryBoys] = useState<any[]>([])
+
   // Status configuration
   const statusConfig = {
+    placed: { label: 'Placed', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
     pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
     confirmed: { label: 'Confirmed', className: 'bg-blue-100 text-blue-800', icon: CheckCircle },
     processing: { label: 'Processing', className: 'bg-orange-100 text-orange-800', icon: Package },
     packed: { label: 'Packed', className: 'bg-purple-100 text-purple-800', icon: Package },
     shipped: { label: 'Shipped', className: 'bg-indigo-100 text-indigo-800', icon: Truck },
+    out_for_delivery: { label: 'Out for Delivery', className: 'bg-cyan-100 text-cyan-800', icon: Truck },
     delivered: { label: 'Delivered', className: 'bg-green-100 text-green-800', icon: CheckCircle },
     cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-800', icon: XCircle },
+    return_requested: { label: 'Return Requested', className: 'bg-amber-100 text-amber-800', icon: RefreshCw },
     returned: { label: 'Returned', className: 'bg-gray-100 text-gray-800', icon: RefreshCw }
   }
 
@@ -140,12 +164,6 @@ export function OrderManagement() {
     wallet: { label: 'Wallet', className: 'bg-yellow-100 text-yellow-800', icon: CreditCard }
   }
 
-  // Mock delivery partners with distances for the modal
-  const deliveryPartnersWithDistance = mockDeliveryPartners.map((partner, index) => ({
-    ...partner,
-    distance: [2.1, 3.5, 1.8][index] || (2 + Math.random() * 3) // Random distances between 2-5 km
-  }))
-
   // Utility functions
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -157,7 +175,10 @@ export function OrderManagement() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
+    if (!dateString) return '-'
+    const d = new Date(dateString)
+    if (isNaN(d.getTime())) return '-'
+    return d.toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -166,75 +187,178 @@ export function OrderManagement() {
     })
   }
 
-  // Calculate stats
-  const stats = useMemo(() => {
-    return {
-      totalOrders: orders.length,
-      pendingOrders: orders.filter(o => o.status === 'pending').length,
-      processingOrders: orders.filter(o => o.status === 'processing').length,
-      shippedOrders: orders.filter(o => o.status === 'shipped').length,
-      deliveredOrders: orders.filter(o => o.status === 'delivered').length,
-      totalRevenue: orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
-      averageOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0) / orders.length : 0
+  // Fetch orders from API
+  const fetchOrders = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const params: any = {
+        page: currentPage,
+        limit: itemsPerPage,
+      }
+      if (selectedStatus !== 'all') params.status = selectedStatus
+      if (selectedPaymentStatus !== 'all') params.paymentStatus = selectedPaymentStatus
+      if (selectedPaymentMethod !== 'all') params.paymentMethod = selectedPaymentMethod
+      if (searchTerm) params.search = searchTerm
+
+      const response = await orderAPI.getAll(params)
+      const data = response.data
+      const rawOrders = data.orders || data.data || []
+
+      // Transform backend order data to match frontend types
+      const mappedOrders = rawOrders.map((order: any) => ({
+        ...order,
+        id: order._id || order.id,
+        orderNumber: order.orderId || order.orderNumber || order._id,
+        customer: order.customer ? {
+          id: order.customer._id || order.customer.id,
+          name: order.customer.fullName || order.customer.name || 'Unknown',
+          email: order.customer.email || '',
+          phone: order.customer.phone || '',
+          avatar: order.customer.avatar || '',
+        } : { id: '', name: 'Unknown', email: '', phone: '', avatar: '' },
+        products: (order.items || order.products || []).map((item: any) => ({
+          productId: item.product?._id || item.product || item.productId,
+          name: item.name || item.product?.name || 'Unknown Product',
+          sku: item.sku || item.product?.sku || '',
+          quantity: item.quantity,
+          price: item.price,
+          total: item.total || item.price * item.quantity,
+          thumbnail: item.thumbnail || item.product?.thumbnail?.url || '',
+        })),
+        totalAmount: order.totalAmount || 0,
+        shippingCharges: order.shippingCharge || order.shippingCharges || 0,
+        subtotal: order.subtotal || 0,
+        paymentMethod: order.paymentMethod || 'cod',
+        paymentStatus: order.paymentStatus || 'pending',
+        status: order.status || 'placed',
+        shippingAddress: order.shippingAddress ? {
+          name: order.shippingAddress.fullName || order.shippingAddress.name || '',
+          phone: order.shippingAddress.phone || '',
+          addressLine1: order.shippingAddress.address || order.shippingAddress.addressLine1 || '',
+          addressLine2: order.shippingAddress.addressLine2 || '',
+          landmark: order.shippingAddress.landmark || '',
+          city: order.shippingAddress.city || '',
+          state: order.shippingAddress.state || '',
+          pincode: order.shippingAddress.pincode || '',
+        } : null,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        notes: order.notes || '',
+        timeline: order.timeline || [],
+        deliveryBoy: order.deliveryBoy,
+      }))
+
+      setOrders(mappedOrders)
+      setTotalPages(data.totalPages || data.pagination?.pages || 1)
+      setTotalOrders(data.totalOrders || data.pagination?.total || 0)
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to fetch orders')
+    } finally {
+      setLoading(false)
     }
-  }, [orders])
+  }, [currentPage, itemsPerPage, selectedStatus, selectedPaymentStatus, selectedPaymentMethod, searchTerm])
 
-  // Filter and search orders
-  const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const matchesSearch = searchTerm === '' ||
-        (order.orderNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.customer?.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-      
-      const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus
-      const matchesPaymentStatus = selectedPaymentStatus === 'all' || order.paymentStatus === selectedPaymentStatus
-      const matchesPaymentMethod = selectedPaymentMethod === 'all' || order.paymentMethod === selectedPaymentMethod
+  // Fetch stats from API
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true)
+    try {
+      const response = await orderAPI.getStats()
+      const raw = response.data?.data || response.data || {}
 
-      return matchesSearch && matchesStatus && matchesPaymentStatus && matchesPaymentMethod
-    })
-  }, [orders, searchTerm, selectedStatus, selectedPaymentStatus, selectedPaymentMethod])
+      // Map backend stats shape to frontend expected shape
+      const byStatus = raw.byStatus || {}
+      const revenue = raw.revenue || {}
 
-  // Pagination
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+      setStats({
+        totalOrders: raw.total || revenue.totalOrders || raw.totalOrders || 0,
+        pendingOrders: (byStatus.placed || 0) + (byStatus.pending || 0) + (byStatus.confirmed || 0),
+        processingOrders: byStatus.processing || raw.processingOrders || 0,
+        shippedOrders: (byStatus.shipped || 0) + (byStatus.out_for_delivery || 0) + (raw.shippedOrders || 0),
+        deliveredOrders: byStatus.delivered || raw.deliveredOrders || 0,
+        totalRevenue: revenue.totalRevenue || raw.totalRevenue || 0,
+        averageOrderValue: revenue.avgOrderValue || raw.averageOrderValue || 0,
+      })
+    } catch {
+      // silently ignore stats errors
+    } finally {
+      setStatsLoading(false)
+    }
+  }, [])
+
+  // Fetch delivery boys from API
+  const fetchDeliveryBoys = useCallback(async () => {
+    try {
+      const response = await orderAPI.getDeliveryBoys()
+      const data = response.data
+      setDeliveryBoys(data.deliveryBoys || data.data || [])
+    } catch {
+      // silently ignore
+    }
+  }, [])
+
+  // Load data on mount and when filters/page change
+  useEffect(() => {
+    fetchOrders()
+  }, [fetchOrders])
+
+  useEffect(() => {
+    fetchStats()
+    fetchDeliveryBoys()
+  }, [fetchStats, fetchDeliveryBoys])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedStatus, selectedPaymentStatus, selectedPaymentMethod, searchTerm])
+
+  // The orders are already paginated from the server
+  const paginatedOrders = orders
 
   // Order Management Operations
-  const handleUpdateOrderStatus = () => {
+  const handleUpdateOrderStatus = async () => {
     if (!selectedOrder) return
-    
-    const updatedOrder: Order = {
-      ...selectedOrder,
-      status: statusUpdateData.status as Order['status'],
-      trackingNumber: statusUpdateData.trackingNumber || selectedOrder.trackingNumber,
-      courierPartner: statusUpdateData.courierPartner || selectedOrder.courierPartner,
-      estimatedDelivery: statusUpdateData.estimatedDelivery || selectedOrder.estimatedDelivery,
-      notes: statusUpdateData.notes || selectedOrder.notes,
-      updatedAt: new Date().toISOString() // This is client-side only, so it's safe
+    setActionLoading(true)
+    try {
+      await orderAPI.updateStatus(selectedOrder.id || selectedOrder._id, {
+        status: statusUpdateData.status,
+        note: statusUpdateData.notes || undefined,
+      })
+      setIsUpdateStatusOpen(false)
+      setSelectedOrder(null)
+      setStatusUpdateData({
+        status: '',
+        trackingNumber: '',
+        courierPartner: '',
+        estimatedDelivery: '',
+        notes: ''
+      })
+      // Refresh data
+      fetchOrders()
+      fetchStats()
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to update order status')
+    } finally {
+      setActionLoading(false)
     }
-
-    setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updatedOrder : o))
-    setIsUpdateStatusOpen(false)
-    setSelectedOrder(null)
-    setStatusUpdateData({
-      status: '',
-      trackingNumber: '',
-      courierPartner: '',
-      estimatedDelivery: '',
-      notes: ''
-    })
   }
 
-  const handleBulkStatusUpdate = (status: Order['status']) => {
-    setOrders(prev => prev.map(o => 
-      selectedOrders.includes(o.id)
-        ? { ...o, status, updatedAt: new Date().toISOString() }
-        : o
-    ))
-    setSelectedOrders([])
+  const handleBulkStatusUpdate = async (status: Order['status']) => {
+    setActionLoading(true)
+    try {
+      await Promise.all(
+        selectedOrders.map(orderId =>
+          orderAPI.updateStatus(orderId, { status })
+        )
+      )
+      setSelectedOrders([])
+      fetchOrders()
+      fetchStats()
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to update orders')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const openStatusUpdateDialog = (order: Order) => {
@@ -260,26 +384,30 @@ export function OrderManagement() {
     setIsAssignDeliveryOpen(true)
   }
 
-  const handleAssignDelivery = () => {
+  const handleAssignDelivery = async () => {
     if (selectedOrder && deliveryAssignment.partnerId) {
-      // Here you would typically make an API call to assign the order to delivery partner
-      console.log('Assigning order to delivery partner:', {
-        orderId: selectedOrder.id,
-        ...deliveryAssignment
-      })
-      
-      // Update the order status to 'shipped' when assigned to delivery
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === selectedOrder.id 
-            ? { ...order, status: 'shipped' as any }
-            : order
+      setActionLoading(true)
+      try {
+        await orderAPI.assignDelivery(
+          selectedOrder.id || selectedOrder._id,
+          deliveryAssignment.partnerId
         )
-      )
-      
-      setIsAssignDeliveryOpen(false)
-      // Show success message
-      alert('Order successfully assigned to delivery partner!')
+        setIsAssignDeliveryOpen(false)
+        setSelectedOrder(null)
+        setDeliveryAssignment({
+          partnerId: '',
+          priority: 'normal',
+          estimatedDelivery: '',
+          specialInstructions: ''
+        })
+        // Refresh data
+        fetchOrders()
+        fetchStats()
+      } catch (err: any) {
+        setError(err.response?.data?.message || err.message || 'Failed to assign delivery')
+      } finally {
+        setActionLoading(false)
+      }
     }
   }
 
@@ -296,16 +424,31 @@ export function OrderManagement() {
             <Download className="h-4 w-4 mr-2" />
             Export Orders
           </Button>
-          <Button variant="outline" className="text-sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button
+            variant="outline"
+            className="text-sm"
+            onClick={() => { fetchOrders(); fetchStats(); }}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Sync Orders
           </Button>
-          <Button className="bg-[#1B3B6F] hover:bg-[#0F2545] text-sm">
+          <Button className="bg-[#1B3B6F] hover:bg-[#0F2545] text-sm" onClick={() => setIsCreateOrderOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Order
           </Button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm border border-red-200 flex items-center justify-between">
+          <span>{error}</span>
+          <Button variant="ghost" size="sm" onClick={() => setError('')}>
+            <XCircle className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Order Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
@@ -515,7 +658,7 @@ export function OrderManagement() {
                         checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedOrders(paginatedOrders.map(o => o.id))
+                            setSelectedOrders(paginatedOrders.map(o => o.id || o._id))
                           } else {
                             setSelectedOrders([])
                           }
@@ -534,16 +677,32 @@ export function OrderManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedOrders.map((order) => (
-                    <TableRow key={order.id}>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-12">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
+                        <p className="text-gray-400">Loading orders...</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : paginatedOrders.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-12">
+                        <ShoppingBag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-lg font-medium text-[#1A1D29]">No orders found</p>
+                        <p className="text-[#6B7280]">Try adjusting your search or filter criteria</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : paginatedOrders.map((order) => (
+                    <TableRow key={order.id || order._id}>
                       <TableCell>
                         <Checkbox
-                          checked={selectedOrders.includes(order.id)}
+                          checked={selectedOrders.includes(order.id || order._id)}
                           onCheckedChange={(checked) => {
+                            const orderId = order.id || order._id
                             if (checked) {
-                              setSelectedOrders(prev => [...prev, order.id])
+                              setSelectedOrders(prev => [...prev, orderId])
                             } else {
-                              setSelectedOrders(prev => prev.filter(id => id !== order.id))
+                              setSelectedOrders(prev => prev.filter(id => id !== orderId))
                             }
                           }}
                         />
@@ -559,9 +718,9 @@ export function OrderManagement() {
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={order.customer.avatar} alt={order.customer.name} />
+                            <AvatarImage src={order.customer?.avatar} alt={order.customer?.name} />
                             <AvatarFallback>
-                              {order.customer.name.split(' ').map(n => n[0]).join('')}
+                              {(order.customer?.name || 'U').split(' ').map((n: string) => n[0]).join('')}
                             </AvatarFallback>
                           </Avatar>
                           <div>
@@ -572,18 +731,18 @@ export function OrderManagement() {
                               }}
                               className="font-medium text-[#1B3B6F] hover:text-[#1B3B6F]/80 hover:underline cursor-pointer transition-colors text-left"
                             >
-                              {order.customer.name}
+                              {order.customer?.name || 'Unknown'}
                             </button>
-                            <p className="text-sm text-[#6B7280]">{order.customer.email}</p>
+                            <p className="text-sm text-[#6B7280]">{order.customer?.email || '-'}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{order.products.length} item{order.products.length > 1 ? 's' : ''}</p>
+                          <p className="font-medium">{(order.products || []).length} item{(order.products || []).length > 1 ? 's' : ''}</p>
                           <p className="text-sm text-[#6B7280]">
-                            {order.products[0]?.name}
-                            {order.products.length > 1 && ` +${order.products.length - 1} more`}
+                            {order.products?.[0]?.name}
+                            {(order.products || []).length > 1 && ` +${(order.products || []).length - 1} more`}
                           </p>
                         </div>
                       </TableCell>
@@ -594,13 +753,13 @@ export function OrderManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={statusConfig[order.status].className}>
-                          {statusConfig[order.status].label}
+                        <Badge className={statusConfig[order.status]?.className || 'bg-gray-100 text-gray-800'}>
+                          {statusConfig[order.status]?.label || order.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={paymentStatusConfig[order.paymentStatus].className}>
-                          {paymentStatusConfig[order.paymentStatus].label}
+                        <Badge className={paymentStatusConfig[order.paymentStatus]?.className || 'bg-gray-100 text-gray-800'}>
+                          {paymentStatusConfig[order.paymentStatus]?.label || order.paymentStatus}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -622,7 +781,7 @@ export function OrderManagement() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm">{formatDate(order.orderDate)}</p>
+                        <p className="text-sm">{formatDate(order.orderDate || order.createdAt)}</p>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -653,7 +812,22 @@ export function OrderManagement() {
                               Assign Delivery Boy
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={async () => {
+                              try {
+                                const res = await orderAPI.downloadInvoice(order.id || order._id)
+                                const blob = new Blob([res.data], { type: 'application/pdf' })
+                                const url = window.URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = `invoice-${order.orderNumber || order.id || order._id}.pdf`
+                                document.body.appendChild(a)
+                                a.click()
+                                window.URL.revokeObjectURL(url)
+                                document.body.removeChild(a)
+                              } catch (err: any) {
+                                setError(err.response?.data?.message || 'Failed to download invoice')
+                              }
+                            }}>
                               <Download className="h-4 w-4 mr-2" />
                               Download Invoice
                             </DropdownMenuItem>
@@ -664,14 +838,6 @@ export function OrderManagement() {
                   ))}
                 </TableBody>
               </Table>
-
-              {filteredOrders.length === 0 && (
-                <div className="text-center py-12">
-                  <ShoppingBag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-lg font-medium text-[#1A1D29]">No orders found</p>
-                  <p className="text-[#6B7280]">Try adjusting your search or filter criteria</p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -679,7 +845,7 @@ export function OrderManagement() {
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <p className="text-sm text-[#6B7280] text-center sm:text-left">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredOrders.length)} of {filteredOrders.length} orders
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalOrders)} of {totalOrders} orders
               </p>
               <div className="flex items-center justify-center space-x-1 sm:space-x-2">
                 <Button
@@ -894,8 +1060,8 @@ export function OrderManagement() {
             >
               Cancel
             </Button>
-            <Button onClick={handleUpdateOrderStatus} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
-              Update Order
+            <Button onClick={handleUpdateOrderStatus} className="bg-[#1B3B6F] hover:bg-[#0F2545]" disabled={actionLoading}>
+              {actionLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Updating...</> : 'Update Order'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -922,9 +1088,9 @@ export function OrderManagement() {
                   <SelectValue placeholder="Choose a delivery partner" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockDeliveryPartners.filter(partner => partner.status === 'active').map((partner) => (
-                    <SelectItem key={partner.id} value={partner.id}>
-                      {partner.name} - {partner.contactPerson}
+                  {deliveryBoys.map((partner) => (
+                    <SelectItem key={partner._id || partner.id} value={partner._id || partner.id}>
+                      {partner.fullName || partner.name || 'Delivery Partner'} — {partner.phone || ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -986,12 +1152,12 @@ export function OrderManagement() {
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleAssignDelivery} 
+            <Button
+              onClick={handleAssignDelivery}
               className="bg-[#1B3B6F] hover:bg-[#0F2545]"
-              disabled={!deliveryAssignment.partnerId}
+              disabled={!deliveryAssignment.partnerId || actionLoading}
             >
-              Assign Delivery
+              {actionLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Assigning...</> : 'Assign Delivery'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1026,26 +1192,26 @@ export function OrderManagement() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label className="text-sm font-medium text-muted-foreground">Name</Label>
-                        <p className="font-semibold">{selectedOrder.customer.name}</p>
+                        <p className="font-semibold">{selectedOrder.customer?.name || 'Unknown'}</p>
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-muted-foreground">Email</Label>
-                        <p className="font-semibold">{selectedOrder.customer.email}</p>
+                        <p className="font-semibold">{selectedOrder.customer?.email || '-'}</p>
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-muted-foreground">Phone</Label>
-                        <p className="font-semibold">{selectedOrder.customer.phone || 'Not provided'}</p>
+                        <p className="font-semibold">{selectedOrder.customer?.phone || 'Not provided'}</p>
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-muted-foreground">Customer ID</Label>
-                        <p className="font-mono text-sm">{selectedOrder.customer.id}</p>
+                        <p className="font-mono text-sm">{selectedOrder.customer?.id || '-'}</p>
                       </div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Address</Label>
                       <p className="text-sm">
-                        {selectedOrder.shippingAddress.street}, {selectedOrder.shippingAddress.city}, 
-                        {selectedOrder.shippingAddress.state} - {selectedOrder.shippingAddress.zipCode}
+                        {selectedOrder.shippingAddress?.addressLine1 || selectedOrder.shippingAddress?.street || '-'}, {selectedOrder.shippingAddress?.city || '-'},
+                        {selectedOrder.shippingAddress?.state || '-'} - {selectedOrder.shippingAddress?.pincode || selectedOrder.shippingAddress?.zipCode || '-'}
                       </p>
                     </div>
                   </CardContent>
@@ -1067,7 +1233,7 @@ export function OrderManagement() {
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-muted-foreground">Order Date</Label>
-                        <p className="font-semibold">{formatDate(selectedOrder.orderDate)}</p>
+                        <p className="font-semibold">{formatDate(selectedOrder.orderDate || selectedOrder.createdAt)}</p>
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-muted-foreground">Total Amount</Label>
@@ -1127,57 +1293,71 @@ export function OrderManagement() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {deliveryPartnersWithDistance.map((partner) => (
-                        <div key={partner.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      {deliveryBoys.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400">
+                          <Truck className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                          <p className="text-sm">No delivery partners available</p>
+                        </div>
+                      ) : deliveryBoys.map((partner) => (
+                        <div key={partner._id || partner.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <h4 className="font-semibold text-sm">{partner.name}</h4>
-                              <p className="text-xs text-muted-foreground">{partner.contactPerson}</p>
+                              <h4 className="font-semibold text-sm">{partner.name || partner.fullName}</h4>
+                              <p className="text-xs text-muted-foreground">{partner.contactPerson || partner.email || ''}</p>
                             </div>
                             <div className="text-right">
-                              <div className="flex items-center gap-1 text-sm font-medium text-[#1B3B6F]">
-                                <MapPin className="w-3 h-3" />
-                                {partner.distance.toFixed(1)} km
-                              </div>
-                              <div className="flex items-center gap-1 text-xs text-emerald-600">
-                                <BadgeCheck className="w-3 h-3" />
-                                {partner.onTimeDeliveryRate}% On-time
-                              </div>
+                              {partner.distance != null && (
+                                <div className="flex items-center gap-1 text-sm font-medium text-[#1B3B6F]">
+                                  <MapPin className="w-3 h-3" />
+                                  {Number(partner.distance).toFixed(1)} km
+                                </div>
+                              )}
+                              {partner.onTimeDeliveryRate != null && (
+                                <div className="flex items-center gap-1 text-xs text-emerald-600">
+                                  <BadgeCheck className="w-3 h-3" />
+                                  {partner.onTimeDeliveryRate}% On-time
+                                </div>
+                              )}
                             </div>
                           </div>
-                          
+
                           <div className="flex justify-between items-center text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {partner.phone}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" />
-                              {partner.rating} ⭐
-                            </div>
-                          </div>
-                          
-                          <div className="mt-2 pt-2 border-t">
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div>
-                                <span className="text-muted-foreground">Local: </span>
-                                <span className="font-medium">₹{partner.rateCard.localDelivery}</span>
+                            {partner.phone && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="w-3 h-3" />
+                                {partner.phone}
                               </div>
-                              <div>
-                                <span className="text-muted-foreground">Inter-city: </span>
-                                <span className="font-medium">₹{partner.rateCard.intercityDelivery}</span>
+                            )}
+                            {partner.rating != null && (
+                              <div className="flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                {partner.rating}
+                              </div>
+                            )}
+                          </div>
+
+                          {partner.rateCard && (
+                            <div className="mt-2 pt-2 border-t">
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <span className="text-muted-foreground">Local: </span>
+                                  <span className="font-medium">{formatCurrency(partner.rateCard.localDelivery)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Inter-city: </span>
+                                  <span className="font-medium">{formatCurrency(partner.rateCard.intercityDelivery)}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          
-                          <Button 
-                            size="sm" 
+                          )}
+
+                          <Button
+                            size="sm"
                             className="w-full mt-3 bg-[#1B3B6F] hover:bg-[#1B3B6F]/90"
                             onClick={() => {
-                              // Handle assign delivery partner
                               setDeliveryAssignment({
                                 ...deliveryAssignment,
-                                partnerId: partner.id
+                                partnerId: partner._id || partner.id
                               })
                               setShowUserDetails(false)
                               setIsAssignDeliveryOpen(true)
@@ -1212,14 +1392,14 @@ export function OrderManagement() {
               {/* Customer Info */}
               <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={selectedOrder.customer.avatar} />
+                  <AvatarImage src={selectedOrder.customer?.avatar} />
                   <AvatarFallback>
-                    {selectedOrder.customer.name.split(' ').map(n => n[0]).join('')}
+                    {(selectedOrder.customer?.name || 'U').split(' ').map((n: string) => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">{selectedOrder.customer.name}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.customer.email}</p>
+                  <p className="font-medium">{selectedOrder.customer?.name || 'Unknown'}</p>
+                  <p className="text-sm text-gray-600">{selectedOrder.customer?.email || '-'}</p>
                 </div>
               </div>
 
@@ -1231,7 +1411,7 @@ export function OrderManagement() {
                 </div>
                 <div>
                   <Label className="font-medium text-gray-700">Order Date</Label>
-                  <p>{formatDate(selectedOrder.orderDate)}</p>
+                  <p>{formatDate(selectedOrder.orderDate || selectedOrder.createdAt)}</p>
                 </div>
               </div>
 
@@ -1338,7 +1518,7 @@ export function OrderManagement() {
               {/* Feedback Date */}
               <div className="text-xs text-gray-500">
                 <Label className="font-medium">Feedback submitted on:</Label>
-                <p>{formatDate(selectedOrder.feedbackDate || selectedOrder.orderDate)}</p>
+                <p>{formatDate(selectedOrder.feedbackDate || selectedOrder.orderDate || selectedOrder.createdAt)}</p>
               </div>
             </div>
           )}
@@ -1354,6 +1534,13 @@ export function OrderManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Order Dialog */}
+      <CreateOrderDialog
+        open={isCreateOrderOpen}
+        onOpenChange={setIsCreateOrderOpen}
+        onOrderCreated={() => { fetchOrders(); fetchStats(); }}
+      />
     </div>
   )
 }
@@ -1393,19 +1580,19 @@ function OrderViewDialog({
           <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
             <div>
               <Label className="text-sm font-medium text-gray-500">Order Status</Label>
-              <Badge className={statusConfig[order.status].className + " mt-1"}>
-                {statusConfig[order.status].label}
+              <Badge className={(statusConfig[order.status]?.className || 'bg-gray-100 text-gray-800') + " mt-1"}>
+                {statusConfig[order.status]?.label || order.status}
               </Badge>
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-500">Payment Status</Label>
-              <Badge className={paymentStatusConfig[order.paymentStatus].className + " mt-1"}>
-                {paymentStatusConfig[order.paymentStatus].label}
+              <Badge className={(paymentStatusConfig[order.paymentStatus]?.className || 'bg-gray-100 text-gray-800') + " mt-1"}>
+                {paymentStatusConfig[order.paymentStatus]?.label || order.paymentStatus}
               </Badge>
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-500">Order Date</Label>
-              <p>{formatDate(order.orderDate)}</p>
+              <p>{formatDate(order.orderDate || order.createdAt || order.createdAt)}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-500">Payment Method</Label>
@@ -1418,20 +1605,20 @@ function OrderViewDialog({
             <h3 className="font-semibold text-lg mb-3">Customer Information</h3>
             <div className="flex items-start space-x-4">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={order.customer.avatar} alt={order.customer.name} />
+                <AvatarImage src={order.customer?.avatar} alt={order.customer?.name} />
                 <AvatarFallback>
-                  {order.customer.name.split(' ').map(n => n[0]).join('')}
+                  {(order.customer?.name || 'U').split(' ').map((n: string) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="font-medium text-[#1A1D29]">{order.customer.name}</p>
+                <p className="font-medium text-[#1A1D29]">{order.customer?.name || 'Unknown'}</p>
                 <div className="flex items-center space-x-2 text-sm text-[#6B7280] mt-1">
                   <Mail className="h-4 w-4" />
-                  <span>{order.customer.email}</span>
+                  <span>{order.customer?.email || '-'}</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-[#6B7280] mt-1">
                   <Phone className="h-4 w-4" />
-                  <span>{order.customer.phone}</span>
+                  <span>{order.customer?.phone || '-'}</span>
                 </div>
               </div>
             </div>
@@ -1441,7 +1628,7 @@ function OrderViewDialog({
           <div>
             <h3 className="font-semibold text-lg mb-3">Order Items</h3>
             <div className="space-y-3">
-              {order.products.map((product, index) => (
+              {(order.products || []).map((product, index) => (
                 <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="h-10 w-10 bg-gray-200 rounded-md flex items-center justify-center">
@@ -1470,18 +1657,22 @@ function OrderViewDialog({
                 <span>Subtotal:</span>
                 <span>{formatCurrency(order.subtotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Tax:</span>
-                <span>{formatCurrency(order.tax)}</span>
-              </div>
+              {(order.tax != null && order.tax > 0) && (
+                <div className="flex justify-between">
+                  <span>Tax:</span>
+                  <span>{formatCurrency(order.tax)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Shipping:</span>
-                <span>{formatCurrency(order.shippingCharges)}</span>
+                <span>{formatCurrency(order.shippingCharges || 0)}</span>
               </div>
-              <div className="flex justify-between text-red-600">
-                <span>Discount:</span>
-                <span>-{formatCurrency(order.discount)}</span>
-              </div>
+              {(order.discount != null && order.discount > 0) && (
+                <div className="flex justify-between text-red-600">
+                  <span>Discount:</span>
+                  <span>-{formatCurrency(order.discount)}</span>
+                </div>
+              )}
               <hr />
               <div className="flex justify-between font-semibold text-lg">
                 <span>Total:</span>
@@ -1497,16 +1688,16 @@ function OrderViewDialog({
               <div className="flex items-start space-x-2">
                 <MapPin className="h-4 w-4 text-gray-500 mt-1" />
                 <div>
-                  <p className="font-medium">{order.shippingAddress.name}</p>
-                  <p className="text-sm text-[#6B7280]">{order.shippingAddress.phone}</p>
+                  <p className="font-medium">{order.shippingAddress?.name || '-'}</p>
+                  <p className="text-sm text-[#6B7280]">{order.shippingAddress?.phone || '-'}</p>
                   <p className="text-sm mt-1">
-                    {order.shippingAddress.addressLine1}
-                    {order.shippingAddress.addressLine2 && `, ${order.shippingAddress.addressLine2}`}
+                    {order.shippingAddress?.addressLine1 || '-'}
+                    {order.shippingAddress?.addressLine2 && `, ${order.shippingAddress.addressLine2}`}
                   </p>
                   <p className="text-sm">
-                    {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.pincode}
+                    {order.shippingAddress?.city}, {order.shippingAddress?.state} - {order.shippingAddress?.pincode}
                   </p>
-                  {order.shippingAddress.landmark && (
+                  {order.shippingAddress?.landmark && (
                     <p className="text-sm text-[#6B7280]">Landmark: {order.shippingAddress.landmark}</p>
                   )}
                 </div>
@@ -1582,7 +1773,22 @@ function OrderViewDialog({
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={async () => {
+            try {
+              const res = await orderAPI.downloadInvoice(order.id || order._id)
+              const blob = new Blob([res.data], { type: 'application/pdf' })
+              const url = window.URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `invoice-${order.orderNumber || order.id || order._id}.pdf`
+              document.body.appendChild(a)
+              a.click()
+              window.URL.revokeObjectURL(url)
+              document.body.removeChild(a)
+            } catch (err: any) {
+              console.error('Failed to download invoice:', err)
+            }
+          }}>
             <Download className="h-4 w-4 mr-2" />
             Download Invoice
           </Button>

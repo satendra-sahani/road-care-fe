@@ -26,13 +26,34 @@ import {
   fetchUserStatsFailure,
 } from '../slices/userSlice';
 
+// ─── Role mapping helpers ────────────────────────────────────────────────────
+// Backend stores 'user' but frontend displays 'customer'
+const mapRoleFromBackend = (role: string) => role === 'user' ? 'customer' : role;
+const mapRoleToBackend = (role: string) => role === 'customer' ? 'user' : role;
+
+const mapUserFromBackend = (user: any) => {
+  if (!user) return user;
+  return { ...user, role: mapRoleFromBackend(user.role) };
+};
+
 function* handleFetchUsers(action: PayloadAction<Record<string, any> | undefined>) {
   try {
-    const response: any = yield call(userAPI.getAll, action.payload);
-    yield put(fetchUsersSuccess({
-      users: response.data.data.users,
-      pagination: response.data.data.pagination
-    }));
+    // Map 'customer' role to 'user' for backend query
+    const params = action.payload ? { ...action.payload } : undefined;
+    if (params?.role === 'customer') {
+      params.role = 'user';
+    }
+
+    const response: any = yield call(userAPI.getAll, params);
+    const rawUsers = response.data.data.users || response.data.data || [];
+    const pagination = response.data.data.pagination || response.data.pagination || {};
+
+    // Map 'user' role to 'customer' for frontend display
+    const users = Array.isArray(rawUsers)
+      ? rawUsers.map(mapUserFromBackend)
+      : [];
+
+    yield put(fetchUsersSuccess({ users, pagination }));
   } catch (error: any) {
     const message = error.response?.data?.message || 'Failed to fetch users';
     yield put(fetchUsersFailure(message));
@@ -42,7 +63,8 @@ function* handleFetchUsers(action: PayloadAction<Record<string, any> | undefined
 function* handleFetchUserById(action: PayloadAction<string>) {
   try {
     const response: any = yield call(userAPI.getById, action.payload);
-    yield put(fetchUserByIdSuccess(response.data.data.user));
+    const user = response.data.data?.user || response.data.data;
+    yield put(fetchUserByIdSuccess(mapUserFromBackend(user)));
   } catch (error: any) {
     const message = error.response?.data?.message || 'Failed to fetch user';
     yield put(fetchUserByIdFailure(message));
@@ -51,8 +73,15 @@ function* handleFetchUserById(action: PayloadAction<string>) {
 
 function* handleCreateUser(action: PayloadAction<any>) {
   try {
-    const response: any = yield call(userAPI.create, action.payload);
-    yield put(createUserSuccess(response.data.data.user));
+    // Map 'customer' role to 'user' before sending to backend
+    const payload = { ...action.payload };
+    if (payload.role) {
+      payload.role = mapRoleToBackend(payload.role);
+    }
+
+    const response: any = yield call(userAPI.create, payload);
+    const user = response.data.data?.user || response.data.data;
+    yield put(createUserSuccess(mapUserFromBackend(user)));
   } catch (error: any) {
     const message = error.response?.data?.message || 'Failed to create user';
     yield put(createUserFailure(message));
@@ -62,8 +91,15 @@ function* handleCreateUser(action: PayloadAction<any>) {
 function* handleUpdateUser(action: PayloadAction<{id: string, data: any}>) {
   try {
     const { id, data } = action.payload;
-    const response: any = yield call(userAPI.update, id, data);
-    yield put(updateUserSuccess(response.data.data.user));
+    // Map 'customer' role to 'user' before sending to backend
+    const mappedData = { ...data };
+    if (mappedData.role) {
+      mappedData.role = mapRoleToBackend(mappedData.role);
+    }
+
+    const response: any = yield call(userAPI.update, id, mappedData);
+    const user = response.data.data?.user || response.data.data;
+    yield put(updateUserSuccess(mapUserFromBackend(user)));
   } catch (error: any) {
     const message = error.response?.data?.message || 'Failed to update user';
     yield put(updateUserFailure(message));
@@ -83,7 +119,8 @@ function* handleDeleteUser(action: PayloadAction<string>) {
 function* handleToggleUserStatus(action: PayloadAction<string>) {
   try {
     const response: any = yield call(userAPI.toggleStatus, action.payload);
-    yield put(toggleUserStatusSuccess(response.data.data.user));
+    const user = response.data.data?.user || response.data.data;
+    yield put(toggleUserStatusSuccess(mapUserFromBackend(user)));
   } catch (error: any) {
     const message = error.response?.data?.message || 'Failed to update user status';
     yield put(toggleUserStatusFailure(message));

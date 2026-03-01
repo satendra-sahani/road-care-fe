@@ -51,7 +51,8 @@ const sidebarItems: SidebarItem[] = [
 
   // Services
   { id: 'service-requests', title: 'Service Requests', icon: ClipboardList, href: '/admin/services/requests', badge: '34', separator: true },
-  { id: 'payments', title: 'Payment Management', icon: CreditCard, href: '/admin/services/payments' },
+  { id: 'payments',         title: 'Payment Management', icon: CreditCard,   href: '/admin/services/payments' },
+  { id: 'issue-pricing',    title: 'Issue Pricing',      icon: DollarSign,   href: '/admin/services/issue-pricing' },
 
   // Inventory & Stock
   { id: 'inventory', title: 'Products', icon: Package, href: '/admin/inventory/products', separator: true },
