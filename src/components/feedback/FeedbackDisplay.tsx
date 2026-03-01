@@ -35,7 +35,7 @@ interface Feedback {
       profileImage?: string;
     };
   };
-  serviceRequest: {
+  serviceRequest?: {
     requestId: string;
     serviceCategory: string;
     totalCost: number;
@@ -172,7 +172,7 @@ export default function FeedbackDisplay({
       </div>
 
       {/* Service Details */}
-      {showServiceDetails && (
+      {showServiceDetails && feedback.serviceRequest && (
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="flex items-center justify-between text-sm">
             <span>

@@ -82,6 +82,12 @@ interface Feedback {
       profileImage?: string;
     };
   };
+  serviceRequest?: {
+    requestId: string;
+    serviceCategory: string;
+    totalCost: number;
+    completedDate: string;
+  };
   mechanicResponse?: {
     comment: string;
     respondedAt: string;
