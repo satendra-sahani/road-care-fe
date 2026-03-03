@@ -11,24 +11,24 @@ import {
   Wrench,
   Package,
   DollarSign,
-  MessageSquare,
   Settings,
   Home,
-  TrendingUp,
   ClipboardList,
   CreditCard,
-  MapPin,
   Bell,
   Shield,
   Menu,
   X,
   LogOut,
-  Tag
+  Tag,
+  Image,
+  MapPin
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { logoutRequest } from '@/store/slices/authSlice'
+import { orderAPI, serviceRequestAPI } from '@/services/api'
 
 interface SidebarItem {
   id: string
@@ -39,18 +39,18 @@ interface SidebarItem {
   separator?: boolean
 }
 
-const sidebarItems: SidebarItem[] = [
+const baseSidebarItems: SidebarItem[] = [
   { id: 'dashboard', title: 'Dashboard', icon: Home, href: '/admin' },
   { id: 'analytics', title: 'Analytics', icon: BarChart3, href: '/admin/analytics/overview' },
 
   // Orders
-  { id: 'orders', title: 'Orders', icon: ShoppingCart, href: '/admin/orders', badge: '142', separator: true },
+  { id: 'orders', title: 'Orders', icon: ShoppingCart, href: '/admin/orders', separator: true },
 
   // Users
   { id: 'users', title: 'Users', icon: Users, href: '/admin/users/mechanics' },
 
   // Services
-  { id: 'service-requests', title: 'Service Requests', icon: ClipboardList, href: '/admin/services/requests', badge: '34', separator: true },
+  { id: 'service-requests', title: 'Service Requests', icon: ClipboardList, href: '/admin/services/requests', separator: true },
   { id: 'payments',         title: 'Payment Management', icon: CreditCard,   href: '/admin/services/payments' },
   { id: 'issue-pricing',    title: 'Issue Pricing',      icon: DollarSign,   href: '/admin/services/issue-pricing' },
 
@@ -59,19 +59,13 @@ const sidebarItems: SidebarItem[] = [
   { id: 'categories', title: 'Categories', icon: Tag, href: '/admin/inventory/categories' },
   { id: 'brands', title: 'Brands', icon: Shield, href: '/admin/inventory/brands' },
   { id: 'purchase-ledger', title: 'Purchase Ledger', icon: ClipboardList, href: '/admin/inventory/purchases' },
-  { id: 'sales-ledger', title: 'Sales Ledger', icon: CreditCard, href: '/admin/inventory/sales', badge: 'New' },
-
   // Financial
-  { id: 'profit-analytics', title: 'Profit & Loss', icon: TrendingUp, href: '/admin/financial/profit', badge: 'New', separator: true },
-  { id: 'revenue', title: 'Revenue', icon: DollarSign, href: '/admin/financial/revenue' },
-  { id: 'transactions', title: 'Transactions', icon: CreditCard, href: '/admin/financial/transactions' },
+  { id: 'revenue', title: 'Revenue', icon: DollarSign, href: '/admin/financial/revenue', separator: true },
 
-  // Delivery
-  { id: 'delivery-tracking', title: 'Delivery Tracking', icon: MapPin, href: '/admin/delivery/tracking', separator: true },
-
-  // Communication
+  // Content & Communication
+  { id: 'banners', title: 'Banners', icon: Image, href: '/admin/banners', separator: true },
+  { id: 'locations', title: 'Locations', icon: MapPin, href: '/admin/locations' },
   { id: 'notifications', title: 'Notifications', icon: Bell, href: '/admin/communication/notifications' },
-  { id: 'messages', title: 'Messages', icon: MessageSquare, href: '/admin/communication/messages', badge: '15' },
 
   // Settings
   { id: 'settings', title: 'Settings', icon: Settings, href: '/admin/settings/general', separator: true },
@@ -82,6 +76,54 @@ interface AdminSidebarProps {
   currentPath?: string
 }
 
+// Module-level cache — survives component re-mounts on page navigation
+let cachedBadgeCounts = { orders: '', serviceRequests: '' }
+let badgeFetchInterval: ReturnType<typeof setInterval> | null = null
+
+const fetchBadgeCounts = async (
+  setter: (val: { orders: string; serviceRequests: string }) => void
+) => {
+  try {
+    const [orderRes, srRes] = await Promise.allSettled([
+      orderAPI.getStats(),
+      serviceRequestAPI.getStats(),
+    ])
+
+    let orderCount = 0
+    if (orderRes.status === 'fulfilled') {
+      const orderData = orderRes.value.data?.data || orderRes.value.data
+      if (orderData?.byStatus) {
+        const activeStatuses = ['placed', 'confirmed', 'processing', 'shipped', 'out_for_delivery']
+        orderCount = activeStatuses.reduce(
+          (sum, status) => sum + (orderData.byStatus[status] || 0),
+          0
+        )
+      } else if (orderData?.total != null) {
+        orderCount = orderData.total
+      }
+    }
+
+    let srCount = 0
+    if (srRes.status === 'fulfilled') {
+      const srData = srRes.value.data?.data || srRes.value.data
+      if (srData) {
+        srCount = (srData.pending || 0) + (srData.assigned || 0) + (srData.inProgress || 0)
+      }
+    }
+
+    const newCounts = {
+      orders: orderCount > 0 ? String(orderCount) : '',
+      serviceRequests: srCount > 0 ? String(srCount) : '',
+    }
+
+    // Update module-level cache so next mount gets instant values
+    cachedBadgeCounts = newCounts
+    setter(newCounts)
+  } catch (err) {
+    console.error('Failed to fetch sidebar badge counts:', err)
+  }
+}
+
 export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarProps) {
   const pathname = usePathname() || currentPath || ''
   const router = useRouter()
@@ -90,20 +132,54 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
+  // Initialize from cache so badges never flicker on re-mount
+  const [badgeCounts, setBadgeCounts] = useState(cachedBadgeCounts)
+
   const handleLogout = () => {
     dispatch(logoutRequest())
     router.push('/admin/login')
   }
+
+  // Fetch live badge counts — only one interval across all mounts
+  useEffect(() => {
+    // Always sync latest cache into state on mount (covers fast re-mounts)
+    setBadgeCounts(cachedBadgeCounts)
+
+    // Fetch fresh counts
+    fetchBadgeCounts(setBadgeCounts)
+
+    // Start a single shared interval (clear previous if exists)
+    if (badgeFetchInterval) clearInterval(badgeFetchInterval)
+    badgeFetchInterval = setInterval(() => fetchBadgeCounts(setBadgeCounts), 60000)
+
+    return () => {
+      if (badgeFetchInterval) {
+        clearInterval(badgeFetchInterval)
+        badgeFetchInterval = null
+      }
+    }
+  }, [])
+
+  // Build sidebar items with dynamic badges
+  const sidebarItems = baseSidebarItems.map((item) => {
+    if (item.id === 'orders' && badgeCounts.orders) {
+      return { ...item, badge: badgeCounts.orders }
+    }
+    if (item.id === 'service-requests' && badgeCounts.serviceRequests) {
+      return { ...item, badge: badgeCounts.serviceRequests }
+    }
+    return item
+  })
 
   // Check if mobile/tablet
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 1024)
     }
-    
+
     checkScreenSize()
     window.addEventListener('resize', checkScreenSize)
-    
+
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 

@@ -51,6 +51,7 @@ import {
   Check,
   Navigation,
   ImageIcon,
+  Loader2,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -93,6 +94,44 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
+import { userAPI, serviceRequestAPI } from '@/services/api'
+import { AdminHeader } from './AdminHeader'
+import { cn } from '@/lib/utils'
+
+// Service category options
+const serviceCategories = [
+  'Engine Service', 'Brake Service', 'AC Service', 'Battery Replacement',
+  'Tyre Replacement', 'Oil Change', 'Clutch Repair', 'Suspension Repair',
+  'Electrical Work', 'Body Work', 'Painting', 'General Service',
+  'Roadside Assistance', 'Towing', 'Other'
+]
+
+// Empty new service request template
+const emptyServiceRequest = {
+  customerId: '',
+  serviceType: 'home' as 'home' | 'roadside' | 'walkin',
+  serviceCategory: '',
+  priority: 'medium' as string,
+  isEmergency: false,
+  description: '',
+  vehicleType: '',
+  vehicleBrand: '',
+  vehicleModel: '',
+  vehicleYear: '',
+  registrationNumber: '',
+  address: '',
+  landmark: '',
+  city: '',
+  state: '',
+  pincode: '',
+  latitude: 0,
+  longitude: 0,
+  preferredDate: new Date().toISOString().split('T')[0],
+  preferredTimeSlot: '',
+  estimatedCost: 0,
+  paymentMethod: 'cod' as string,
+  notes: '',
+}
 
 // Mock service request data
 const mockServiceRequests = [
@@ -366,6 +405,13 @@ export function ServiceManagement() {
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>([])
   const [editingMechanic, setEditingMechanic] = useState(false)
 
+  // Add Service Request dialog state
+  const [addRequestOpen, setAddRequestOpen] = useState(false)
+  const [newRequest, setNewRequest] = useState(emptyServiceRequest)
+  const [customerList, setCustomerList] = useState<any[]>([])
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [savingRequest, setSavingRequest] = useState(false)
+
   // Copy-to-clipboard helper
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const handleCopy = (text: string, key: string) => {
@@ -380,6 +426,16 @@ export function ServiceManagement() {
     dispatch(fetchMechanicsRequest())
     dispatch(fetchServiceRequestsRequest())
   }, [dispatch])
+
+  // Fetch customers when add request dialog opens
+  useEffect(() => {
+    if (addRequestOpen && customerList.length === 0) {
+      userAPI.getAll({ role: 'user', limit: 200 }).then(res => {
+        const data = res.data?.data || res.data?.users || res.data || []
+        setCustomerList(Array.isArray(data) ? data : [])
+      }).catch(err => console.error('Failed to fetch customers:', err))
+    }
+  }, [addRequestOpen])
 
   // Debug: Log service requests when they change (separate useEffect)
   useEffect(() => {
@@ -626,103 +682,118 @@ export function ServiceManagement() {
     return labels[next] ?? `Mark ${next}`
   }
 
+  // Filtered customers for dropdown search
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch.trim()) return customerList
+    const q = customerSearch.toLowerCase()
+    return customerList.filter((c: any) =>
+      (c.fullName || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q) ||
+      (c.email || '').toLowerCase().includes(q)
+    )
+  }, [customerList, customerSearch])
+
+  // Handle saving new service request
+  const handleSaveNewRequest = async () => {
+    if (!newRequest.customerId || !newRequest.serviceCategory || !newRequest.description || !newRequest.address) return
+    setSavingRequest(true)
+    try {
+      const res = await serviceRequestAPI.create(newRequest)
+      const result = res.data
+
+      if (result?.success) {
+        // Refresh the service requests list from server
+        dispatch(fetchServiceRequestsRequest())
+        setAddRequestOpen(false)
+        setNewRequest(emptyServiceRequest)
+        setCustomerSearch('')
+      } else {
+        console.error('Failed to create service request:', result?.message)
+      }
+    } catch (err) {
+      console.error('Error creating service request:', err)
+    } finally {
+      setSavingRequest(false)
+    }
+  }
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-screen">
+      <AdminHeader />
+
+      <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1D29]">Service Management</h1>
-          <p className="text-[#6B7280] mt-1">Manage service requests, mechanic assignments, and job tracking</p>
+          <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Service Management</h1>
+          <p className="text-[#6B7280] mt-1 text-sm">Manage service requests, mechanic assignments, and job tracking</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export Reports
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-9 text-xs">
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Export
           </Button>
-          <Button className="bg-[#1B3B6F] hover:bg-[#0F2545]">
-            <Plus className="h-4 w-4 mr-2" />
+          <Button size="sm" className="bg-[#1B3B6F] hover:bg-[#0F2545] h-9 text-xs" onClick={() => setAddRequestOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
             Add Service Request
           </Button>
         </div>
       </div>
 
       {/* Service Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Wrench className="h-5 w-5 text-[#1B3B6F]" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.totalRequests}</p>
-                <p className="text-xs text-[#6B7280]">Total Requests</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.pendingRequests}</p>
-                <p className="text-xs text-[#6B7280]">Pending</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Wrench className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.inProgressRequests}</p>
-                <p className="text-xs text-[#6B7280]">In Progress</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.completedRequests}</p>
-                <p className="text-xs text-[#6B7280]">Completed</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Star className="h-5 w-5 text-yellow-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.avgRating?.toFixed(1) || '0'}</p>
-                <p className="text-xs text-[#6B7280]">Avg Rating</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {[
+          { label: 'Total Requests', value: stats.totalRequests, icon: Wrench, color: 'bg-blue-50 text-blue-600' },
+          { label: 'Pending', value: stats.pendingRequests, icon: Clock, color: 'bg-amber-50 text-amber-600' },
+          { label: 'In Progress', value: stats.inProgressRequests, icon: Wrench, color: 'bg-purple-50 text-purple-600' },
+          { label: 'Completed', value: stats.completedRequests, icon: CheckCircle, color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Avg Rating', value: stats.avgRating?.toFixed(1) || '0', icon: Star, color: 'bg-amber-50 text-amber-600' },
+        ].map((card, i) => {
+          const Icon = card.icon
+          return (
+            <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`h-9 w-9 rounded-lg ${card.color} flex items-center justify-center`}>
+                    <Icon className="h-4.5 w-4.5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-[#1A1D29]">{card.value}</p>
+                <p className="text-xs text-[#6B7280] mt-0.5">{card.label}</p>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {/* Service Management Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="requests">Service Requests</TabsTrigger>
-          <TabsTrigger value="mechanics">Mechanics</TabsTrigger>
-          <TabsTrigger value="assignment">Assignment</TabsTrigger>
+        <TabsList className="bg-white border shadow-sm p-1 h-auto">
+          {[
+            { value: 'requests', label: 'Service Requests', icon: Wrench },
+            { value: 'mechanics', label: 'Mechanics', icon: User },
+            { value: 'assignment', label: 'Assignment', icon: UserPlus },
+          ].map((tab) => {
+            const TabIcon = tab.icon
+            return (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="data-[state=active]:bg-[#1B3B6F] data-[state=active]:text-white text-xs gap-1.5 px-4 py-1.5"
+              >
+                <TabIcon className="h-3.5 w-3.5" />
+                {tab.label}
+              </TabsTrigger>
+            )
+          })}
         </TabsList>
 
         {/* Service Requests Tab */}
-        <TabsContent value="requests" className="space-y-6">
+        <TabsContent value="requests" className="space-y-4">
           {/* Filters and Search */}
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
+            <CardContent className="p-4">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-3">
                 <div className="flex-1 max-w-md">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -730,14 +801,14 @@ export function ServiceManagement() {
                       placeholder="Search by request ID, customer, vehicle..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 h-9 text-sm bg-gray-50 border-gray-200 focus:bg-white"
                     />
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-3">
+
+                <div className="flex items-center gap-2 flex-wrap">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[130px]">
+                    <SelectTrigger className="w-[130px] h-9 text-xs">
                       <SelectValue placeholder="All Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -753,7 +824,7 @@ export function ServiceManagement() {
                   </Select>
 
                   <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                    <SelectTrigger className="w-[120px]">
+                    <SelectTrigger className="w-[120px] h-9 text-xs">
                       <SelectValue placeholder="All Priority" />
                     </SelectTrigger>
                     <SelectContent>
@@ -766,7 +837,7 @@ export function ServiceManagement() {
                   </Select>
 
                   <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
-                    <SelectTrigger className="w-[150px]">
+                    <SelectTrigger className="w-[150px] h-9 text-xs">
                       <SelectValue placeholder="All Services" />
                     </SelectTrigger>
                     <SelectContent>
@@ -783,34 +854,14 @@ export function ServiceManagement() {
 
               {/* Bulk Actions */}
               {selectedRequests.length > 0 && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-blue-800">
-                      {selectedRequests.length} request(s) selected
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleBulkAction('assign')}
-                      >
-                        Assign Mechanic
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleBulkAction('update-status')}
-                      >
-                        Update Status
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleBulkAction('send-notification')}
-                      >
-                        Send Update
-                      </Button>
-                    </div>
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg flex items-center justify-between border border-blue-100">
+                  <span className="text-sm font-medium text-blue-800">
+                    {selectedRequests.length} request(s) selected
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleBulkAction('assign')}>Assign</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleBulkAction('update-status')}>Update Status</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleBulkAction('send-notification')}>Send Update</Button>
                   </div>
                 </div>
               )}
@@ -818,39 +869,41 @@ export function ServiceManagement() {
           </Card>
 
           {/* Service Requests Table */}
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm overflow-hidden">
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="w-12">
+                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+                    <TableHead className="w-10">
                       <Checkbox
-                        checked={selectedRequests.length === filteredRequests.length}
+                        checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
-                    <TableHead>Request ID</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Service Type</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Mechanic</TableHead>
-                    <TableHead>Est. Cost</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Request ID</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Service</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Priority</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Mechanic</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Est. Cost</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Invoice</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.map((request) => (
-                    <TableRow key={request._id}>
+                    <TableRow key={request._id} className="hover:bg-gray-50/50 transition-colors">
                       <TableCell>
                         <Checkbox
                           checked={selectedRequests.includes(request._id)}
                           onCheckedChange={() => handleSelectRequest(request._id)}
                         />
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-[#6B7280]">
+                      <TableCell className="font-mono text-xs font-semibold text-[#1B3B6F]">
                         {generateDisplayRequestId(request)}
                       </TableCell>
                       <TableCell>
@@ -924,8 +977,37 @@ export function ServiceManagement() {
                       <TableCell className="font-medium">
                         {formatCurrency(request.estimatedCost || 0)}
                       </TableCell>
-                      <TableCell className="text-sm text-[#6B7280]">
+                      <TableCell className="text-xs text-[#6B7280]">
                         {formatDate(request.createdAt)}
+                      </TableCell>
+                      {/* PDF Download Column */}
+                      <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-red-50 text-red-500 hover:text-red-700"
+                          onClick={async () => {
+                            try {
+                              const res = await serviceRequestAPI.downloadInvoice(request._id)
+                              if (res.data) {
+                                const blob = new Blob([res.data], { type: 'application/pdf' })
+                                const url = window.URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = `service-${generateDisplayRequestId(request)}.pdf`
+                                document.body.appendChild(a)
+                                a.click()
+                                window.URL.revokeObjectURL(url)
+                                document.body.removeChild(a)
+                              }
+                            } catch (err) {
+                              console.error('Failed to download invoice:', err)
+                            }
+                          }}
+                          title="Download Invoice PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -978,11 +1060,14 @@ export function ServiceManagement() {
                 </TableBody>
               </Table>
 
+              </div>
               {filteredRequests.length === 0 && (
-                <div className="p-8 text-center">
-                  <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-[#1A1D29] mb-2">No service requests found</h3>
-                  <p className="text-[#6B7280]">Try adjusting your search or filter criteria</p>
+                <div className="flex flex-col items-center p-12">
+                  <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                    <Wrench className="h-7 w-7 text-gray-400" />
+                  </div>
+                  <h3 className="text-base font-medium text-[#1A1D29] mb-1">No service requests found</h3>
+                  <p className="text-sm text-[#6B7280]">Try adjusting your search or filter criteria</p>
                 </div>
               )}
             </CardContent>
@@ -1344,8 +1429,10 @@ export function ServiceManagement() {
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-[#1B3B6F]">
-              <User className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                <User className="h-4 w-4 text-indigo-600" />
+              </div>
               {assigningRequest?.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic'}
             </DialogTitle>
             <DialogDescription>
@@ -1400,8 +1487,10 @@ export function ServiceManagement() {
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <XCircle className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center">
+                <XCircle className="h-4 w-4 text-red-600" />
+              </div>
               Cancel Service Request
             </DialogTitle>
             <DialogDescription>
@@ -1441,10 +1530,12 @@ export function ServiceManagement() {
         setAddMechanicOpen(open)
         if (!open) { setEditingMechanic(false); setNewMechanic(emptyMechanic); setSelectedSpecs([]) }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-[#1B3B6F]">
-              <UserPlus className="h-5 w-5" />
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-4 flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <UserPlus className="h-5 w-5 text-emerald-600" />
+              </div>
               {editingMechanic ? 'Edit Mechanic' : 'Add New Mechanic'}
             </DialogTitle>
             <DialogDescription>
@@ -1452,7 +1543,7 @@ export function ServiceManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 mt-2">
+          <div className="flex-1 overflow-y-auto space-y-5 py-4 pr-1" style={{ scrollbarWidth: 'thin' }}>
             {/* Personal Info */}
             <div>
               <h4 className="text-sm font-semibold text-[#1A1D29] mb-3 flex items-center gap-2">
@@ -1611,7 +1702,7 @@ export function ServiceManagement() {
             </div>
           </div>
 
-          <DialogFooter className="mt-4 gap-2">
+          <DialogFooter className="border-t pt-4 flex-shrink-0 gap-2">
             <Button variant="outline" onClick={() => {
               setAddMechanicOpen(false)
               setEditingMechanic(false)
@@ -2352,6 +2443,258 @@ export function ServiceManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Add Service Request Dialog ── */}
+      <Dialog open={addRequestOpen} onOpenChange={setAddRequestOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+          {/* Fixed Header */}
+          <DialogHeader className="border-b pb-4 flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Wrench className="h-5 w-5 text-[#1B3B6F]" />
+              </div>
+              Add Service Request
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              Create a new service request on behalf of a customer. A payment entry will be auto-created.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto space-y-5 py-4 pr-1" style={{ scrollbarWidth: 'thin' }}>
+            {/* Section: Customer Selection */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
+                <User className="h-4 w-4" /> Customer
+              </h3>
+              <div className="space-y-2">
+                <Input
+                  placeholder="Search customer by name, phone, email..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="text-sm"
+                />
+                <Select value={newRequest.customerId} onValueChange={(val) => setNewRequest(prev => ({ ...prev, customerId: val }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select customer" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-52">
+                    {filteredCustomers.map((c: any) => (
+                      <SelectItem key={c._id} value={c._id}>
+                        {c.fullName || c.username || 'Unknown'} — {c.phone || c.email || ''}
+                      </SelectItem>
+                    ))}
+                    {filteredCustomers.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-gray-400">No customers found</div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Section: Service Details */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
+                <Wrench className="h-4 w-4" /> Service Details
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-gray-500">Service Type</Label>
+                  <Select value={newRequest.serviceType} onValueChange={(val) => setNewRequest(prev => ({ ...prev, serviceType: val as 'home' | 'roadside' | 'walkin' }))}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="home">Home Service</SelectItem>
+                      <SelectItem value="roadside">Roadside Assistance</SelectItem>
+                      <SelectItem value="walkin">Walk-in Service</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Service Category *</Label>
+                  <Select value={newRequest.serviceCategory} onValueChange={(val) => setNewRequest(prev => ({ ...prev, serviceCategory: val }))}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                    <SelectContent>
+                      {serviceCategories.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Priority</Label>
+                  <Select value={newRequest.priority} onValueChange={(val) => setNewRequest(prev => ({ ...prev, priority: val, isEmergency: val === 'urgent' }))}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent (Emergency)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Payment Method</Label>
+                  <Select value={newRequest.paymentMethod} onValueChange={(val) => setNewRequest(prev => ({ ...prev, paymentMethod: val }))}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cod">Cash on Delivery</SelectItem>
+                      <SelectItem value="online">Online</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">Description *</Label>
+                <Textarea
+                  placeholder="Describe the issue or service needed..."
+                  className="mt-1"
+                  rows={3}
+                  value={newRequest.description}
+                  onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Section: Vehicle Info */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
+                <Car className="h-4 w-4" /> Vehicle Information
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs text-gray-500">Vehicle Type</Label>
+                  <Select value={newRequest.vehicleType} onValueChange={(val) => setNewRequest(prev => ({ ...prev, vehicleType: val }))}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Car">Car</SelectItem>
+                      <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                      <SelectItem value="Truck">Truck</SelectItem>
+                      <SelectItem value="Bus">Bus</SelectItem>
+                      <SelectItem value="Auto">Auto Rickshaw</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Brand</Label>
+                  <Input className="mt-1" placeholder="e.g. Maruti" value={newRequest.vehicleBrand} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleBrand: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Model</Label>
+                  <Input className="mt-1" placeholder="e.g. Swift" value={newRequest.vehicleModel} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleModel: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Year</Label>
+                  <Input className="mt-1" placeholder="e.g. 2022" value={newRequest.vehicleYear} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleYear: e.target.value }))} />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs text-gray-500">Registration Number</Label>
+                  <Input className="mt-1" placeholder="e.g. UP16AB1234" value={newRequest.registrationNumber} onChange={(e) => setNewRequest(prev => ({ ...prev, registrationNumber: e.target.value.toUpperCase() }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Section: Location */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
+                <MapPin className="h-4 w-4" /> Location
+              </h3>
+              <div>
+                <Label className="text-xs text-gray-500">Address *</Label>
+                <Input className="mt-1" placeholder="Full service address" value={newRequest.address} onChange={(e) => setNewRequest(prev => ({ ...prev, address: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-xs text-gray-500">City</Label>
+                  <Input className="mt-1" placeholder="City" value={newRequest.city} onChange={(e) => setNewRequest(prev => ({ ...prev, city: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">State</Label>
+                  <Input className="mt-1" placeholder="State" value={newRequest.state} onChange={(e) => setNewRequest(prev => ({ ...prev, state: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Pincode</Label>
+                  <Input className="mt-1" placeholder="Pincode" value={newRequest.pincode} onChange={(e) => setNewRequest(prev => ({ ...prev, pincode: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Landmark</Label>
+                  <Input className="mt-1" placeholder="Nearby landmark" value={newRequest.landmark} onChange={(e) => setNewRequest(prev => ({ ...prev, landmark: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Section: Schedule & Cost */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
+                <Calendar className="h-4 w-4" /> Schedule & Cost
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs text-gray-500">Preferred Date *</Label>
+                  <Input className="mt-1" type="date" value={newRequest.preferredDate} onChange={(e) => setNewRequest(prev => ({ ...prev, preferredDate: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Time Slot</Label>
+                  <Select value={newRequest.preferredTimeSlot} onValueChange={(val) => setNewRequest(prev => ({ ...prev, preferredTimeSlot: val }))}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select time" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="08:00-10:00">08:00 - 10:00 AM</SelectItem>
+                      <SelectItem value="10:00-12:00">10:00 - 12:00 PM</SelectItem>
+                      <SelectItem value="12:00-14:00">12:00 - 02:00 PM</SelectItem>
+                      <SelectItem value="14:00-16:00">02:00 - 04:00 PM</SelectItem>
+                      <SelectItem value="16:00-18:00">04:00 - 06:00 PM</SelectItem>
+                      <SelectItem value="18:00-20:00">06:00 - 08:00 PM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Estimated Cost (₹)</Label>
+                  <Input className="mt-1" type="number" min={0} placeholder="0" value={newRequest.estimatedCost || ''} onChange={(e) => setNewRequest(prev => ({ ...prev, estimatedCost: Number(e.target.value) || 0 }))} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">Notes (optional)</Label>
+                <Textarea
+                  className="mt-1"
+                  rows={2}
+                  placeholder="Any additional notes or special instructions..."
+                  value={newRequest.notes}
+                  onChange={(e) => setNewRequest(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Info Banner */}
+            {newRequest.estimatedCost > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                <CreditCard className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-700">
+                  A <strong>{newRequest.paymentMethod === 'cod' ? 'COD' : 'Online'}</strong> payment entry of <strong>₹{newRequest.estimatedCost.toLocaleString('en-IN')}</strong> will be auto-created in Payment Management when this request is saved.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Fixed Footer */}
+          <DialogFooter className="border-t pt-4 flex-shrink-0 gap-2">
+            <Button variant="outline" onClick={() => { setAddRequestOpen(false); setNewRequest(emptyServiceRequest); setCustomerSearch('') }}>
+              <X className="h-4 w-4 mr-2" /> Cancel
+            </Button>
+            <Button
+              className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+              disabled={savingRequest || !newRequest.customerId || !newRequest.serviceCategory || !newRequest.description || !newRequest.address}
+              onClick={handleSaveNewRequest}
+            >
+              {savingRequest ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              ) : (
+                <><Save className="h-4 w-4 mr-2" /> Create Service Request</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      </div>
     </div>
   )
 }

@@ -1,31 +1,34 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useMemo } from 'react'
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Eye, 
-  Edit, 
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import {
+  Search,
+  MoreHorizontal,
+  Eye,
+  Edit,
   Trash2,
-  Download,
   Plus,
   Send,
   Bell,
   MessageSquare,
   Users,
-  Star,
   CheckCircle,
   XCircle,
   Clock,
   AlertTriangle,
-  Archive,
   Mail,
   Phone,
   Headphones,
   Target,
-  TrendingUp
+  TrendingUp,
+  RefreshCw,
+  Calendar,
+  Image,
+  X,
+  Upload,
+  Link,
+  FolderOpen
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -68,312 +71,475 @@ import {
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
+import { notificationAPI, userAPI, uploadAPI } from '@/services/api'
 
-// Mock notification data
-const mockNotifications = [
-  {
-    id: 'NOT-001',
-    title: 'System Maintenance Scheduled',
-    message: 'Scheduled maintenance will occur tomorrow from 2 AM to 4 AM IST. Services may be temporarily unavailable.',
-    type: 'system',
-    priority: 'high',
-    status: 'draft',
-    targetAudience: 'all',
-    scheduledDate: '2026-02-13T02:00:00Z',
-    createdBy: 'System Admin',
-    createdDate: '2026-02-12T10:00:00Z',
-    readCount: 0,
-    clickCount: 0
-  },
-  {
-    id: 'NOT-002',
-    title: 'New Product Launch - BMW Parts Collection',
-    message: 'Exciting news! We have launched our new BMW parts collection with genuine OEM parts. Check out the latest additions.',
-    type: 'promotion',
-    priority: 'medium',
-    status: 'sent',
-    targetAudience: 'customers',
-    scheduledDate: '2026-02-12T09:00:00Z',
-    createdBy: 'Marketing Team',
-    createdDate: '2026-02-11T15:00:00Z',
-    readCount: 847,
-    clickCount: 234
-  },
-  {
-    id: 'NOT-003',
-    title: 'Service Request Update',
-    message: 'Your recent service request #SR-2026-089 has been completed successfully. Please rate your experience.',
-    type: 'service',
-    priority: 'medium',
-    status: 'delivered',
-    targetAudience: 'specific',
-    scheduledDate: '2026-02-12T14:30:00Z',
-    createdBy: 'Service Team',
-    createdDate: '2026-02-12T14:25:00Z',
-    readCount: 1,
-    clickCount: 1
-  }
-]
+// ─── Types ─────────────────────────────────────────────────────────────────
 
-// Mock customer support data
-const mockSupportTickets = [
-  {
-    id: 'SUP-001',
-    ticketNumber: 'TK-2026-0245',
-    customer: {
-      name: 'Rahul Sharma',
-      email: 'rahul@example.com',
-      phone: '+91 9876543210',
-      avatar: '/avatars/rahul.png'
-    },
-    subject: 'Defective brake pads received',
-    category: 'product_quality',
-    priority: 'high',
-    status: 'open',
-    assignedTo: 'Priya Singh',
-    createdDate: '2026-02-12T09:15:00Z',
-    lastUpdated: '2026-02-12T11:30:00Z',
-    responseTime: 135,
-    messages: 4,
-    tags: ['defective', 'brake_pads', 'refund_requested']
-  },
-  {
-    id: 'SUP-002',
-    ticketNumber: 'TK-2026-0246',
-    customer: {
-      name: 'Sarah Johnson',
-      email: 'sarah@example.com',
-      phone: '+91 8765432109',
-      avatar: '/avatars/sarah.png'
-    },
-    subject: 'Order delivery delayed beyond promised date',
-    category: 'delivery',
-    priority: 'medium',
-    status: 'in_progress',
-    assignedTo: 'Amit Kumar',
-    createdDate: '2026-02-11T16:45:00Z',
-    lastUpdated: '2026-02-12T10:20:00Z',
-    responseTime: 67,
-    messages: 6,
-    tags: ['delivery_delay', 'compensation']
-  },
-  {
-    id: 'SUP-003',
-    ticketNumber: 'TK-2026-0247',
-    customer: {
-      name: 'Michael Chen',
-      email: 'michael@example.com',
-      phone: '+91 7654321098',
-      avatar: '/avatars/michael.png'
-    },
-    subject: 'Unable to find compatible parts for my vehicle',
-    category: 'product_inquiry',
-    priority: 'low',
-    status: 'resolved',
-    assignedTo: 'Sneha Patel',
-    createdDate: '2026-02-10T14:20:00Z',
-    lastUpdated: '2026-02-11T09:45:00Z',
-    responseTime: 28,
-    messages: 8,
-    tags: ['part_compatibility', 'resolved']
-  }
-]
-
-// Mock messaging data
-const mockMessages = [
-  {
-    id: 'MSG-001',
-    recipient: 'All Customers',
-    subject: 'Welcome to Road Care Premium Membership',
-    content: 'Thank you for upgrading to our Premium membership. Enjoy exclusive benefits and priority support.',
-    type: 'welcome',
-    status: 'sent',
-    sentDate: '2026-02-12T10:00:00Z',
-    openRate: 78.5,
-    clickRate: 23.4,
-    deliveredTo: 1245
-  },
-  {
-    id: 'MSG-002',
-    recipient: 'Inactive Users',
-    subject: 'We miss you! Come back with 20% off',
-    content: 'Its been a while since your last order. Here\'s a special 20% discount to welcome you back to Road Care.',
-    type: 'promotional',
-    status: 'scheduled',
-    sentDate: '2026-02-13T10:00:00Z',
-    openRate: 0,
-    clickRate: 0,
-    deliveredTo: 0
-  }
-]
-
-// Mock campaign data
-const mockCampaigns = [
-  {
-    id: 'CAM-001',
-    name: 'Summer Service Campaign 2026',
-    type: 'seasonal',
-    status: 'active',
-    startDate: '2026-02-01T00:00:00Z',
-    endDate: '2026-02-28T23:59:59Z',
-    targetAudience: 'all_customers',
-    budget: 50000,
-    spent: 23450,
-    impressions: 45670,
-    clicks: 2344,
-    conversions: 156,
-    revenue: 234500
-  },
-  {
-    id: 'CAM-002',
-    name: 'New Customer Acquisition',
-    type: 'acquisition',
-    status: 'paused',
-    startDate: '2026-01-15T00:00:00Z',
-    endDate: '2026-03-15T23:59:59Z',
-    targetAudience: 'new_users',
-    budget: 75000,
-    spent: 45600,
-    impressions: 78900,
-    clicks: 4567,
-    conversions: 234,
-    revenue: 345600
-  }
-]
-
-const notificationTypes = {
-  system: { color: 'bg-blue-100 text-blue-800', label: 'System' },
-  promotion: { color: 'bg-green-100 text-green-800', label: 'Promotion' },
-  service: { color: 'bg-purple-100 text-purple-800', label: 'Service' },
-  alert: { color: 'bg-red-100 text-red-800', label: 'Alert' }
+interface NotificationItem {
+  _id: string
+  title: string
+  message: string
+  type: string
+  priority: string
+  status: string
+  targetAudience: string
+  targetUsers: any[]
+  scheduledAt: string | null
+  sentAt: string | null
+  sentCount: number
+  readCount: number
+  actionUrl: string | null
+  imageUrl: string | null
+  logoUrl: string | null
+  createdBy: { fullName?: string; username?: string } | null
+  createdAt: string
 }
 
-const priorityConfig = {
+interface NotificationStats {
+  total: number
+  sent: number
+  scheduled: number
+  draft: number
+  failed: number
+  totalDevices: number
+  recentSent: any[]
+}
+
+// ─── Notification Form State ────────────────────────────────────────────────
+
+interface NotificationForm {
+  title: string
+  message: string
+  type: string
+  priority: string
+  targetAudience: string
+  targetUsers: string[]
+  scheduledAt: string
+  actionUrl: string
+  imageUrl: string
+  logoUrl: string
+}
+
+const defaultForm: NotificationForm = {
+  title: '',
+  message: '',
+  type: 'general',
+  priority: 'medium',
+  targetAudience: 'all',
+  targetUsers: [],
+  scheduledAt: '',
+  actionUrl: 'none',
+  imageUrl: '',
+  logoUrl: '',
+}
+
+// Action URL dropdown options (deep-link screens in the mobile app)
+const actionUrlOptions = [
+  { value: '', label: 'None' },
+  { value: 'Notifications', label: 'Notifications Screen' },
+  { value: 'Orders', label: 'Orders Screen' },
+  { value: 'ServiceRequests', label: 'Service Requests Screen' },
+  { value: 'Cart', label: 'Cart Screen' },
+  { value: 'Profile', label: 'Profile Screen' },
+  { value: 'Home', label: 'Home Screen' },
+  { value: 'Promotions', label: 'Promotions Screen' },
+]
+
+// ─── Config ─────────────────────────────────────────────────────────────────
+
+const notificationTypes: Record<string, { color: string; label: string }> = {
+  system: { color: 'bg-blue-100 text-blue-800', label: 'System' },
+  promotion: { color: 'bg-green-100 text-green-800', label: 'Promotion' },
+  order: { color: 'bg-indigo-100 text-indigo-800', label: 'Order' },
+  service: { color: 'bg-purple-100 text-purple-800', label: 'Service' },
+  delivery: { color: 'bg-orange-100 text-orange-800', label: 'Delivery' },
+  alert: { color: 'bg-red-100 text-red-800', label: 'Alert' },
+  general: { color: 'bg-gray-100 text-gray-800', label: 'General' }
+}
+
+const priorityConfig: Record<string, { color: string; label: string }> = {
   low: { color: 'bg-gray-100 text-gray-800', label: 'Low' },
   medium: { color: 'bg-yellow-100 text-yellow-800', label: 'Medium' },
   high: { color: 'bg-red-100 text-red-800', label: 'High' }
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { color: string; label: string }> = {
   draft: { color: 'bg-gray-100 text-gray-800', label: 'Draft' },
   sent: { color: 'bg-green-100 text-green-800', label: 'Sent' },
   scheduled: { color: 'bg-blue-100 text-blue-800', label: 'Scheduled' },
-  delivered: { color: 'bg-purple-100 text-purple-800', label: 'Delivered' },
   failed: { color: 'bg-red-100 text-red-800', label: 'Failed' }
 }
 
-const supportStatusConfig = {
+const audienceLabels: Record<string, string> = {
+  all: 'All Users',
+  users: 'Customers',
+  delivery: 'Delivery Boys',
+  mechanics: 'Mechanics',
+  specific: 'Specific Users'
+}
+
+// ─── Mock data for non-notification tabs (unchanged) ────────────────────────
+
+const mockSupportTickets = [
+  {
+    id: 'SUP-001', ticketNumber: 'TK-2026-0245',
+    customer: { name: 'Rahul Sharma', email: 'rahul@example.com', phone: '+91 9876543210', avatar: '' },
+    subject: 'Defective brake pads received', category: 'product_quality', priority: 'high',
+    status: 'open', assignedTo: 'Priya Singh', createdDate: '2026-02-12T09:15:00Z',
+    lastUpdated: '2026-02-12T11:30:00Z', responseTime: 135, messages: 4,
+    tags: ['defective', 'brake_pads', 'refund_requested']
+  },
+  {
+    id: 'SUP-002', ticketNumber: 'TK-2026-0246',
+    customer: { name: 'Sarah Johnson', email: 'sarah@example.com', phone: '+91 8765432109', avatar: '' },
+    subject: 'Order delivery delayed', category: 'delivery', priority: 'medium',
+    status: 'in_progress', assignedTo: 'Amit Kumar', createdDate: '2026-02-11T16:45:00Z',
+    lastUpdated: '2026-02-12T10:20:00Z', responseTime: 67, messages: 6,
+    tags: ['delivery_delay', 'compensation']
+  },
+]
+
+const supportStatusConfig: Record<string, { color: string; label: string }> = {
   open: { color: 'bg-red-100 text-red-800', label: 'Open' },
   in_progress: { color: 'bg-yellow-100 text-yellow-800', label: 'In Progress' },
   resolved: { color: 'bg-green-100 text-green-800', label: 'Resolved' },
   closed: { color: 'bg-gray-100 text-gray-800', label: 'Closed' }
 }
 
-const campaignStatusConfig = {
-  active: { color: 'bg-green-100 text-green-800', label: 'Active' },
-  paused: { color: 'bg-yellow-100 text-yellow-800', label: 'Paused' },
-  completed: { color: 'bg-blue-100 text-blue-800', label: 'Completed' },
-  draft: { color: 'bg-gray-100 text-gray-800', label: 'Draft' }
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function CommunicationCenter() {
   const [activeTab, setActiveTab] = useState('notifications')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedNotifications, setSelectedNotifications] = useState<string[]>([])
-  const [selectedTickets, setSelectedTickets] = useState<string[]>([])
-  const [showNewNotification, setShowNewNotification] = useState(false)
-  const [showNewMessage, setShowNewMessage] = useState(false)
   const [showTicketDetails, setShowTicketDetails] = useState<any>(null)
 
-  const filteredNotifications = useMemo(() => {
-    return mockNotifications.filter(notification =>
-      notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      notification.message.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [searchQuery])
+  // ─── Notification State ─────────────────────────────────────────────────
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [notifStats, setNotifStats] = useState<NotificationStats>({ total: 0, sent: 0, scheduled: 0, draft: 0, failed: 0, totalDevices: 0, recentSent: [] })
+  const [notifLoading, setNotifLoading] = useState(true)
+  const [notifPage, setNotifPage] = useState(1)
+  const [notifTotal, setNotifTotal] = useState(0)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
-  const filteredTickets = useMemo(() => {
-    return mockSupportTickets.filter(ticket =>
-      ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [searchQuery])
+  // Dialog state
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [editingNotif, setEditingNotif] = useState<NotificationItem | null>(null)
+  const [form, setForm] = useState<NotificationForm>(defaultForm)
+  const [saving, setSaving] = useState(false)
+  const [sendingId, setSendingId] = useState<string | null>(null)
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount)
+  // User search for specific targeting
+  const [userSearchQuery, setUserSearchQuery] = useState('')
+  const [userSearchResults, setUserSearchResults] = useState<any[]>([])
+  const [selectedUsers, setSelectedUsers] = useState<{ id: string; name: string }[]>([])
+
+  // Image upload state
+  const [imageUploading, setImageUploading] = useState(false)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const imageInputRef = React.useRef<HTMLInputElement>(null)
+  const logoInputRef = React.useRef<HTMLInputElement>(null)
+
+  // Media library state
+  const [showMediaPicker, setShowMediaPicker] = useState<'logo' | 'banner' | null>(null)
+  const [mediaLibrary, setMediaLibrary] = useState<any[]>([])
+  const [mediaLoading, setMediaLoading] = useState(false)
+
+  // ─── Fetch Functions ────────────────────────────────────────────────────
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setNotifLoading(true)
+      const params: Record<string, any> = { page: notifPage, limit: 15 }
+      if (statusFilter !== 'all') params.status = statusFilter
+      if (searchQuery) params.search = searchQuery
+
+      const res = await notificationAPI.getAll(params)
+      if (res.data?.success) {
+        setNotifications(res.data.data || [])
+        setNotifTotal(res.data.pagination?.total || 0)
+      }
+    } catch (error) {
+      console.error('Fetch notifications error:', error)
+    } finally {
+      setNotifLoading(false)
+    }
+  }, [notifPage, statusFilter, searchQuery])
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await notificationAPI.getStats()
+      if (res.data?.success) {
+        setNotifStats(res.data.data)
+      }
+    } catch (error) {
+      console.error('Fetch stats error:', error)
+    }
+  }, [])
+
+  const fetchMediaLibrary = useCallback(async (type: 'logo' | 'banner') => {
+    setMediaLoading(true)
+    try {
+      const res = await notificationAPI.getMedia(type)
+      if (res.data?.success) {
+        setMediaLibrary(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('Fetch media library error:', error)
+    } finally {
+      setMediaLoading(false)
+    }
+  }, [])
+
+  // Save uploaded media to library (fire-and-forget)
+  const saveToMediaLibrary = useCallback(async (url: string, type: 'logo' | 'banner', name?: string) => {
+    try {
+      await notificationAPI.saveMedia({ url, type, name })
+    } catch (error) {
+      console.error('Save to media library error:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [fetchNotifications])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
+
+  // ─── User Search ────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (userSearchQuery.length < 2) {
+      setUserSearchResults([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await notificationAPI.searchUsers(userSearchQuery)
+        if (res.data?.success) {
+          setUserSearchResults(res.data.data || [])
+        }
+      } catch (e) {
+        console.error('User search error:', e)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [userSearchQuery])
+
+  // ─── Handlers ───────────────────────────────────────────────────────────
+
+  const openCreate = () => {
+    setForm(defaultForm)
+    setSelectedUsers([])
+    setEditingNotif(null)
+    setImageUploading(false)
+    setLogoUploading(false)
+    setShowMediaPicker(null)
+    setShowCreateDialog(true)
   }
 
-  const formatDate = (dateString: string) => {
+  const openEdit = (notif: NotificationItem) => {
+    setForm({
+      title: notif.title,
+      message: notif.message,
+      type: notif.type,
+      priority: notif.priority,
+      targetAudience: notif.targetAudience,
+      targetUsers: notif.targetUsers?.map((u: any) => u._id || u) || [],
+      scheduledAt: notif.scheduledAt ? new Date(notif.scheduledAt).toISOString().slice(0, 16) : '',
+      actionUrl: notif.actionUrl || 'none',
+      imageUrl: notif.imageUrl || '',
+      logoUrl: notif.logoUrl || '',
+    })
+    setSelectedUsers(
+      notif.targetUsers?.map((u: any) => ({
+        id: u._id || u,
+        name: u.fullName || u.phone || u._id || u,
+      })) || []
+    )
+    setEditingNotif(notif)
+    setShowMediaPicker(null)
+    setShowCreateDialog(true)
+  }
+
+  const handleSave = async (sendNow: boolean) => {
+    if (!form.title.trim() || !form.message.trim()) return
+    setSaving(true)
+    try {
+      const payload: any = {
+        title: form.title,
+        message: form.message,
+        type: form.type,
+        priority: form.priority,
+        targetAudience: form.targetAudience,
+        actionUrl: (form.actionUrl && form.actionUrl !== 'none') ? form.actionUrl : undefined,
+        imageUrl: form.imageUrl || undefined,
+        logoUrl: form.logoUrl || undefined,
+      }
+
+      if (form.targetAudience === 'specific') {
+        payload.targetUsers = selectedUsers.map(u => u.id)
+      }
+
+      if (form.scheduledAt && !sendNow) {
+        payload.scheduledAt = new Date(form.scheduledAt).toISOString()
+      }
+
+      let created
+      if (editingNotif) {
+        const res = await notificationAPI.update(editingNotif._id, payload)
+        created = res.data?.data
+      } else {
+        const res = await notificationAPI.create(payload)
+        created = res.data?.data
+      }
+
+      if (sendNow && created?._id) {
+        await notificationAPI.send(created._id)
+      }
+
+      setShowCreateDialog(false)
+      fetchNotifications()
+      fetchStats()
+    } catch (error: any) {
+      console.error('Save notification error:', error)
+      alert(error.response?.data?.message || 'Failed to save notification')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSend = async (id: string) => {
+    setSendingId(id)
+    try {
+      await notificationAPI.send(id)
+      fetchNotifications()
+      fetchStats()
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to send notification')
+    } finally {
+      setSendingId(null)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this notification?')) return
+    try {
+      await notificationAPI.delete(id)
+      fetchNotifications()
+      fetchStats()
+    } catch (error) {
+      console.error('Delete error:', error)
+    }
+  }
+
+  // ─── Image Upload Handler ───────────────────────────────────────────────
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be less than 5MB')
+      return
+    }
+
+    setImageUploading(true)
+    try {
+      const res = await uploadAPI.uploadImage(file, 'notifications')
+      if (res.data?.success) {
+        const url = res.data.data?.url || res.data.url
+        setForm(f => ({ ...f, imageUrl: url }))
+        // Auto-save to media library
+        saveToMediaLibrary(url, 'banner', file.name)
+      } else {
+        alert('Failed to upload image')
+      }
+    } catch (error: any) {
+      console.error('Image upload error:', error)
+      alert(error.response?.data?.message || 'Failed to upload image')
+    } finally {
+      setImageUploading(false)
+      // Reset file input
+      if (imageInputRef.current) imageInputRef.current.value = ''
+    }
+  }
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Logo max 2MB
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo must be less than 2MB')
+      return
+    }
+
+    setLogoUploading(true)
+    try {
+      const res = await uploadAPI.uploadImage(file, 'notification-logos')
+      if (res.data?.success) {
+        const url = res.data.data?.url || res.data.url
+        setForm(f => ({ ...f, logoUrl: url }))
+        // Auto-save to media library
+        saveToMediaLibrary(url, 'logo', file.name)
+      } else {
+        alert('Failed to upload logo')
+      }
+    } catch (error: any) {
+      console.error('Logo upload error:', error)
+      alert(error.response?.data?.message || 'Failed to upload logo')
+    } finally {
+      setLogoUploading(false)
+      if (logoInputRef.current) logoInputRef.current.value = ''
+    }
+  }
+
+  // ─── Helpers ────────────────────────────────────────────────────────────
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '—'
     return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
 
   const getTypeBadge = (type: string) => {
-    const config = notificationTypes[type as keyof typeof notificationTypes]
-    return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
-    )
+    const config = notificationTypes[type] || notificationTypes.general
+    return <Badge className={`${config.color} border-0`}>{config.label}</Badge>
   }
 
   const getPriorityBadge = (priority: string) => {
-    const config = priorityConfig[priority as keyof typeof priorityConfig]
-    return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
-    )
+    const config = priorityConfig[priority] || priorityConfig.medium
+    return <Badge className={`${config.color} border-0`}>{config.label}</Badge>
   }
 
   const getStatusBadge = (status: string) => {
-    const config = statusConfig[status as keyof typeof statusConfig]
-    return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
-    )
+    const config = statusConfig[status] || statusConfig.draft
+    return <Badge className={`${config.color} border-0`}>{config.label}</Badge>
   }
 
   const getSupportStatusBadge = (status: string) => {
-    const config = supportStatusConfig[status as keyof typeof supportStatusConfig]
-    return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
-    )
+    const config = supportStatusConfig[status] || supportStatusConfig.open
+    return <Badge className={`${config.color} border-0`}>{config.label}</Badge>
   }
 
-  const getCampaignStatusBadge = (status: string) => {
-    const config = campaignStatusConfig[status as keyof typeof campaignStatusConfig]
-    return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
-    )
-  }
-
-  const getCommunicationStats = () => {
-    const totalNotifications = mockNotifications.length
-    const activeNotifications = mockNotifications.filter(n => n.status === 'sent' || n.status === 'scheduled').length
-    const openTickets = mockSupportTickets.filter(t => t.status === 'open').length
-    const avgResponseTime = mockSupportTickets.reduce((sum, t) => sum + t.responseTime, 0) / mockSupportTickets.length
-    const activeCampaigns = mockCampaigns.filter(c => c.status === 'active').length
-    
-    return { totalNotifications, activeNotifications, openTickets, avgResponseTime, activeCampaigns }
-  }
-
-  const stats = getCommunicationStats()
+  // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
     <div className="p-6 space-y-6">
@@ -381,244 +547,229 @@ export function CommunicationCenter() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#1A1D29]">Communication Center</h1>
-          <p className="text-[#6B7280] mt-1">Manage notifications, customer support, and marketing communications</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export Communication Report
-          </Button>
+          <p className="text-[#6B7280] mt-1">Manage notifications, customer support, and communications</p>
         </div>
       </div>
 
-      {/* Communication Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Bell className="h-5 w-5 text-[#1B3B6F]" />
               <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.totalNotifications}</p>
+                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.total}</p>
                 <p className="text-xs text-[#6B7280]">Total Notifications</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Send className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.activeNotifications}</p>
-                <p className="text-xs text-[#6B7280]">Active Campaigns</p>
+                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.sent}</p>
+                <p className="text-xs text-[#6B7280]">Sent</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Headphones className="h-5 w-5 text-red-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.openTickets}</p>
-                <p className="text-xs text-[#6B7280]">Open Tickets</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Clock className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{Math.round(stats.avgResponseTime)}m</p>
-                <p className="text-xs text-[#6B7280]">Avg Response Time</p>
+                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.scheduled}</p>
+                <p className="text-xs text-[#6B7280]">Scheduled</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-purple-600" />
+              <Edit className="h-5 w-5 text-gray-600" />
               <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{stats.activeCampaigns}</p>
-                <p className="text-xs text-[#6B7280]">Active Campaigns</p>
+                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.draft}</p>
+                <p className="text-xs text-[#6B7280]">Drafts</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Users className="h-5 w-5 text-purple-600" />
+              <div>
+                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.totalDevices}</p>
+                <p className="text-xs text-[#6B7280]">Registered Devices</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Communication Tabs */}
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-lg grid-cols-2">
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="support">Customer Support</TabsTrigger>
-          <TabsTrigger value="messaging">Messaging</TabsTrigger>
-          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
         </TabsList>
 
-        {/* Notifications Tab */}
+        {/* ═══ NOTIFICATIONS TAB (REAL API) ═══ */}
         <TabsContent value="notifications" className="space-y-6">
-          {/* Filters and Search */}
+          {/* Search / Filter / Create */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
-                <div className="flex-1 max-w-md">
-                  <div className="relative">
+                <div className="flex-1 flex items-center space-x-3">
+                  <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
                       placeholder="Search notifications..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => { setSearchQuery(e.target.value); setNotifPage(1) }}
                       className="pl-10"
                     />
                   </div>
+                  <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setNotifPage(1) }}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="sent">Sent</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                
                 <div className="flex items-center space-x-3">
-                  <Button
-                    onClick={() => setShowNewNotification(true)}
-                    className="bg-[#1B3B6F] hover:bg-[#0F2545]"
-                  >
+                  <Button variant="outline" size="icon" onClick={() => { fetchNotifications(); fetchStats() }}>
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                  <Button onClick={openCreate} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Notification
                   </Button>
                 </div>
               </div>
-
-              {/* Bulk Actions */}
-              {selectedNotifications.length > 0 && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-blue-800">
-                      {selectedNotifications.length} notification(s) selected
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Send className="h-4 w-4 mr-1" />
-                        Send Now
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Archive className="h-4 w-4 mr-1" />
-                        Archive
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
           {/* Notifications Table */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="w-12">
-                      <Checkbox />
-                    </TableHead>
-                    <TableHead>Notification</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Target Audience</TableHead>
-                    <TableHead>Scheduled Date</TableHead>
-                    <TableHead>Performance</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredNotifications.map((notification) => (
-                    <TableRow key={notification.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <Checkbox />
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium text-[#1A1D29]">{notification.title}</div>
-                          <div className="text-sm text-[#6B7280] max-w-md truncate">
-                            {notification.message}
-                          </div>
-                          <div className="text-xs text-[#9CA3AF] mt-1">
-                            By {notification.createdBy}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getTypeBadge(notification.type)}
-                      </TableCell>
-                      <TableCell>
-                        {getPriorityBadge(notification.priority)}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(notification.status)}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {notification.targetAudience.replace('_', ' ')}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(notification.scheduledDate)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div>👁️ {notification.readCount.toLocaleString()} reads</div>
-                          <div>👆 {notification.clickCount.toLocaleString()} clicks</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Notification
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Send className="h-4 w-4 mr-2" />
-                              Send Now
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Archive className="h-4 w-4 mr-2" />
-                              Archive
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {notifLoading ? (
+                <div className="p-12 text-center text-gray-500">Loading notifications...</div>
+              ) : notifications.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg font-medium">No notifications found</p>
+                  <p className="text-gray-400 text-sm mt-1">Create your first notification to get started</p>
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead>Notification</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Audience</TableHead>
+                        <TableHead>Scheduled / Sent</TableHead>
+                        <TableHead>Reach</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {notifications.map((notif) => (
+                        <TableRow key={notif._id} className="hover:bg-gray-50">
+                          <TableCell>
+                            <div>
+                              <div className="font-medium text-[#1A1D29]">{notif.title}</div>
+                              <div className="text-sm text-[#6B7280] max-w-md truncate">{notif.message}</div>
+                              <div className="text-xs text-[#9CA3AF] mt-1">
+                                By {notif.createdBy?.fullName || notif.createdBy?.username || 'System'}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getTypeBadge(notif.type)}</TableCell>
+                          <TableCell>{getPriorityBadge(notif.priority)}</TableCell>
+                          <TableCell>{getStatusBadge(notif.status)}</TableCell>
+                          <TableCell>{audienceLabels[notif.targetAudience] || notif.targetAudience}</TableCell>
+                          <TableCell className="text-sm">
+                            {notif.sentAt ? formatDate(notif.sentAt) : notif.scheduledAt ? formatDate(notif.scheduledAt) : '—'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <div>{notif.sentCount.toLocaleString()} sent</div>
+                              <div className="text-[#6B7280]">{notif.readCount.toLocaleString()} read</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {notif.status !== 'sent' && (
+                                  <DropdownMenuItem onClick={() => openEdit(notif)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                )}
+                                {(notif.status === 'draft' || notif.status === 'scheduled') && (
+                                  <DropdownMenuItem onClick={() => handleSend(notif._id)}>
+                                    <Send className="h-4 w-4 mr-2" />
+                                    {sendingId === notif._id ? 'Sending...' : 'Send Now'}
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(notif._id)}>
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination */}
+                  {notifTotal > 15 && (
+                    <div className="flex items-center justify-between p-4 border-t">
+                      <p className="text-sm text-gray-500">
+                        Page {notifPage} of {Math.ceil(notifTotal / 15)} ({notifTotal} total)
+                      </p>
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" disabled={notifPage <= 1} onClick={() => setNotifPage(p => p - 1)}>
+                          Previous
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={notifPage >= Math.ceil(notifTotal / 15)} onClick={() => setNotifPage(p => p + 1)}>
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Customer Support Tab */}
+        {/* ═══ CUSTOMER SUPPORT TAB (mock data) ═══ */}
         <TabsContent value="support" className="space-y-6">
-          {/* Support Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 text-center">
                 <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
@@ -626,7 +777,6 @@ export function CommunicationCenter() {
                 <p className="text-sm text-[#6B7280]">Open Tickets</p>
               </CardContent>
             </Card>
-            
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 text-center">
                 <Clock className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
@@ -634,7 +784,6 @@ export function CommunicationCenter() {
                 <p className="text-sm text-[#6B7280]">In Progress</p>
               </CardContent>
             </Card>
-            
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 text-center">
                 <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
@@ -642,137 +791,47 @@ export function CommunicationCenter() {
                 <p className="text-sm text-[#6B7280]">Resolved</p>
               </CardContent>
             </Card>
-            
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 text-center">
-                <TrendingUp className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#1A1D29]">{Math.round(stats.avgResponseTime)}m</p>
-                <p className="text-sm text-[#6B7280]">Avg Response</p>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Support Tickets Table */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Support Tickets</CardTitle>
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search tickets..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 w-80"
-                    />
-                  </div>
-                </div>
-              </div>
+              <CardTitle>Support Tickets</CardTitle>
+              <CardDescription>Customer support ticket management (coming soon)</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50">
-                    <TableHead className="w-12">
-                      <Checkbox />
-                    </TableHead>
                     <TableHead>Ticket</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Category</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Assigned To</TableHead>
                     <TableHead>Response Time</TableHead>
-                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTickets.map((ticket) => (
+                  {mockSupportTickets.map((ticket) => (
                     <TableRow key={ticket.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <Checkbox />
-                      </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium text-[#1A1D29]">{ticket.ticketNumber}</div>
-                          <div className="text-sm text-[#6B7280] max-w-sm truncate">
-                            {ticket.subject}
-                          </div>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {ticket.tags.slice(0, 2).map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
+                          <div className="text-sm text-[#6B7280] max-w-sm truncate">{ticket.subject}</div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={ticket.customer.avatar} />
-                            <AvatarFallback>
-                              {ticket.customer.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium text-[#1A1D29]">{ticket.customer.name}</div>
-                            <div className="text-xs text-[#6B7280]">{ticket.customer.email}</div>
-                          </div>
+                        <div>
+                          <div className="font-medium text-[#1A1D29]">{ticket.customer.name}</div>
+                          <div className="text-xs text-[#6B7280]">{ticket.customer.email}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="capitalize">
-                        {ticket.category.replace('_', ' ')}
-                      </TableCell>
-                      <TableCell>
-                        {getPriorityBadge(ticket.priority)}
-                      </TableCell>
-                      <TableCell>
-                        {getSupportStatusBadge(ticket.status)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {ticket.assignedTo}
-                      </TableCell>
+                      <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
+                      <TableCell>{getSupportStatusBadge(ticket.status)}</TableCell>
+                      <TableCell className="font-medium">{ticket.assignedTo}</TableCell>
                       <TableCell>
                         <span className={`font-medium ${ticket.responseTime > 120 ? 'text-red-600' : ticket.responseTime > 60 ? 'text-yellow-600' : 'text-green-600'}`}>
                           {ticket.responseTime}m
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setShowTicketDetails(ticket)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Ticket
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              Reply
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Phone className="h-4 w-4 mr-2" />
-                              Call Customer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Mail className="h-4 w-4 mr-2" />
-                              Send Email
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Mark Resolved
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -781,177 +840,66 @@ export function CommunicationCenter() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Messaging Tab */}
-        <TabsContent value="messaging" className="space-y-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Message Center</CardTitle>
-                <Button
-                  onClick={() => setShowNewMessage(true)}
-                  className="bg-[#1B3B6F] hover:bg-[#0F2545]"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Compose Message
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {mockMessages.map((message) => (
-                  <div key={message.id} className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-medium text-[#1A1D29]">{message.subject}</h3>
-                        <p className="text-sm text-[#6B7280]">To: {message.recipient}</p>
-                      </div>
-                      {getStatusBadge(message.status)}
-                    </div>
-                    
-                    <p className="text-sm text-[#6B7280] mb-3">{message.content}</p>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-[#6B7280]">Sent Date:</p>
-                        <p className="font-medium">{formatDate(message.sentDate)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Delivered To:</p>
-                        <p className="font-medium">{message.deliveredTo.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Open Rate:</p>
-                        <p className="font-medium">{message.openRate}%</p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Click Rate:</p>
-                        <p className="font-medium">{message.clickRate}%</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Campaigns Tab */}
-        <TabsContent value="campaigns" className="space-y-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Marketing Campaigns</CardTitle>
-                <Button className="bg-[#1B3B6F] hover:bg-[#0F2545]">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Campaign
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {mockCampaigns.map((campaign) => (
-                  <div key={campaign.id} className="p-6 border border-gray-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="font-medium text-[#1A1D29]">{campaign.name}</h3>
-                        <p className="text-sm text-[#6B7280] capitalize">{campaign.type.replace('_', ' ')} Campaign</p>
-                      </div>
-                      {getCampaignStatusBadge(campaign.status)}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-                      <div>
-                        <p className="text-[#6B7280]">Budget:</p>
-                        <p className="font-medium">{formatCurrency(campaign.budget)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Spent:</p>
-                        <p className="font-medium">{formatCurrency(campaign.spent)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Impressions:</p>
-                        <p className="font-medium">{campaign.impressions.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Conversions:</p>
-                        <p className="font-medium">{campaign.conversions}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-[#6B7280]">Budget Usage</span>
-                        <span className="font-medium">{Math.round((campaign.spent / campaign.budget) * 100)}%</span>
-                      </div>
-                      <Progress value={(campaign.spent / campaign.budget) * 100} className="h-2" />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-[#6B7280]">
-                        {formatDate(campaign.startDate)} - {formatDate(campaign.endDate)}
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Details
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
-      {/* Create New Notification Modal */}
-      <Dialog open={showNewNotification} onOpenChange={setShowNewNotification}>
-        <DialogContent className="max-w-2xl">
+      {/* ═══ CREATE / EDIT NOTIFICATION DIALOG ═══ */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Notification</DialogTitle>
+            <DialogTitle>{editingNotif ? 'Edit Notification' : 'Create New Notification'}</DialogTitle>
             <DialogDescription>
-              Send notifications to your users about important updates
+              {editingNotif ? 'Update the notification details' : 'Send push notifications to your users'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
+            {/* Title */}
             <div>
-              <Label htmlFor="title">Notification Title</Label>
-              <Input id="title" placeholder="Enter notification title" />
+              <Label htmlFor="notif-title">Title *</Label>
+              <Input
+                id="notif-title"
+                placeholder="Enter notification title"
+                value={form.title}
+                onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+              />
             </div>
-            
+
+            {/* Message */}
             <div>
-              <Label htmlFor="message">Message Content</Label>
-              <Textarea id="message" placeholder="Enter notification message" rows={4} />
+              <Label htmlFor="notif-message">Message *</Label>
+              <Textarea
+                id="notif-message"
+                placeholder="Enter notification message"
+                rows={3}
+                value={form.message}
+                onChange={(e) => setForm(f => ({ ...f, message: e.target.value }))}
+              />
             </div>
-            
+
+            {/* Type + Priority */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="type">Notification Type</Label>
-                <Select>
+                <Label>Type</Label>
+                <Select value={form.type} onValueChange={(v) => setForm(f => ({ ...f, type: v }))}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="general">General</SelectItem>
                     <SelectItem value="system">System</SelectItem>
                     <SelectItem value="promotion">Promotion</SelectItem>
+                    <SelectItem value="order">Order</SelectItem>
                     <SelectItem value="service">Service</SelectItem>
+                    <SelectItem value="delivery">Delivery</SelectItem>
                     <SelectItem value="alert">Alert</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
               <div>
-                <Label htmlFor="priority">Priority</Label>
-                <Select>
+                <Label>Priority</Label>
+                <Select value={form.priority} onValueChange={(v) => setForm(f => ({ ...f, priority: v }))}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
@@ -961,120 +909,349 @@ export function CommunicationCenter() {
                 </Select>
               </div>
             </div>
-            
+
+            {/* Target Audience */}
             <div>
-              <Label htmlFor="audience">Target Audience</Label>
-              <Select>
+              <Label>Target Audience</Label>
+              <Select value={form.targetAudience} onValueChange={(v) => setForm(f => ({ ...f, targetAudience: v }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select audience" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  <SelectItem value="customers">Customers</SelectItem>
-                  <SelectItem value="mechanics">Mechanics</SelectItem>
-                  <SelectItem value="delivery">Delivery Partners</SelectItem>
+                  <SelectItem value="all">All Users (Everyone)</SelectItem>
+                  <SelectItem value="users">Customers Only</SelectItem>
+                  <SelectItem value="mechanics">Mechanics Only</SelectItem>
+                  <SelectItem value="delivery">Delivery Boys Only</SelectItem>
                   <SelectItem value="specific">Specific Users</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Specific User Search */}
+            {form.targetAudience === 'specific' && (
+              <div>
+                <Label>Search & Select Users</Label>
+                <Input
+                  placeholder="Search by name or phone..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                />
+                {userSearchResults.length > 0 && (
+                  <div className="mt-2 max-h-32 overflow-y-auto border rounded-md">
+                    {userSearchResults.map((u: any) => (
+                      <div
+                        key={u._id}
+                        className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => {
+                          if (!selectedUsers.find(s => s.id === u._id)) {
+                            setSelectedUsers(prev => [...prev, { id: u._id, name: u.fullName || u.phone || u._id }])
+                          }
+                          setUserSearchQuery('')
+                          setUserSearchResults([])
+                        }}
+                      >
+                        <div>
+                          <span className="font-medium text-sm">{u.fullName || u.username || 'Unknown'}</span>
+                          <span className="text-xs text-gray-500 ml-2">{u.phone}</span>
+                          <Badge className="ml-2 text-xs" variant="secondary">{u.role}</Badge>
+                        </div>
+                        <Plus className="h-4 w-4 text-gray-400" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedUsers.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedUsers.map(u => (
+                      <Badge key={u.id} variant="secondary" className="text-sm">
+                        {u.name}
+                        <button
+                          className="ml-1 text-red-500 hover:text-red-700"
+                          onClick={() => setSelectedUsers(prev => prev.filter(s => s.id !== u.id))}
+                        >
+                          &times;
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Schedule */}
+            <div>
+              <Label>Schedule (optional - leave empty to save as draft)</Label>
+              <Input
+                type="datetime-local"
+                value={form.scheduledAt}
+                onChange={(e) => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
+              />
+              {form.scheduledAt && (
+                <p className="text-xs text-blue-600 mt-1">
+                  <Calendar className="h-3 w-3 inline mr-1" />
+                  Will be sent automatically at the scheduled time
+                </p>
+              )}
+            </div>
+
+            {/* Logo + Banner Image Upload (side by side) */}
+            <div className="grid grid-cols-[120px_1fr] gap-4">
+              {/* Notification Logo */}
+              <div>
+                <Label className="text-xs">Logo (optional)</Label>
+                <div className="mt-1">
+                  {form.logoUrl ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={form.logoUrl}
+                        alt="Notification logo"
+                        className="w-[100px] h-[100px] object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, logoUrl: '' }))}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 shadow-md"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div
+                        onClick={() => !logoUploading && logoInputRef.current?.click()}
+                        className={`w-[100px] h-[72px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                          logoUploading ? 'border-blue-300 bg-blue-50' : 'border-gray-300 hover:border-[#1B3B6F] hover:bg-gray-50'
+                        }`}
+                      >
+                        {logoUploading ? (
+                          <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 text-gray-400 mb-0.5" />
+                            <p className="text-[10px] text-gray-400 text-center leading-tight">Upload</p>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setShowMediaPicker('logo'); fetchMediaLibrary('logo') }}
+                        className="w-[100px] flex items-center justify-center gap-1 px-2 py-1 text-[10px] text-[#1B3B6F] bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                      >
+                        <FolderOpen className="h-3 w-3" />
+                        Library
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                  />
+                </div>
+              </div>
+
+              {/* Banner Image */}
+              <div>
+                <Label className="text-xs">Banner Image (optional)</Label>
+                <div className="mt-1">
+                  {form.imageUrl ? (
+                    <div className="relative inline-block w-full">
+                      <img
+                        src={form.imageUrl}
+                        alt="Notification banner"
+                        className="w-full h-[72px] object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, imageUrl: '' }))}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 shadow-md"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowMediaPicker('banner'); fetchMediaLibrary('banner') }}
+                        className="absolute bottom-1 right-1 flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-white bg-black/50 hover:bg-black/70 rounded transition-colors"
+                      >
+                        <FolderOpen className="h-3 w-3" />
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div
+                        onClick={() => !imageUploading && imageInputRef.current?.click()}
+                        className={`h-[72px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                          imageUploading ? 'border-blue-300 bg-blue-50' : 'border-gray-300 hover:border-[#1B3B6F] hover:bg-gray-50'
+                        }`}
+                      >
+                        {imageUploading ? (
+                          <div className="flex flex-col items-center">
+                            <RefreshCw className="h-5 w-5 text-blue-500 animate-spin mb-0.5" />
+                            <p className="text-[10px] text-blue-600 font-medium">Uploading...</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Image className="h-5 w-5 text-gray-400 mb-0.5" />
+                            <p className="text-[10px] text-gray-600 font-medium">Click to upload banner image</p>
+                            <p className="text-[9px] text-gray-400">PNG, JPG, WEBP up to 5MB</p>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setShowMediaPicker('banner'); fetchMediaLibrary('banner') }}
+                        className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[10px] text-[#1B3B6F] bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                      >
+                        <FolderOpen className="h-3 w-3" />
+                        Choose from Library
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Media Library Picker (inline expandable) */}
+            {showMediaPicker && (
+              <div className="border rounded-lg p-3 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4 text-[#1B3B6F]" />
+                    <span className="text-sm font-medium text-[#1A1D29]">
+                      {showMediaPicker === 'logo' ? 'Logo' : 'Banner'} Library
+                    </span>
+                    <Badge variant="secondary" className="text-[10px]">{mediaLibrary.length} items</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Upload new via file picker
+                        if (showMediaPicker === 'logo') {
+                          logoInputRef.current?.click()
+                        } else {
+                          imageInputRef.current?.click()
+                        }
+                        setShowMediaPicker(null)
+                      }}
+                      className="text-xs text-[#1B3B6F] hover:underline flex items-center gap-1"
+                    >
+                      <Upload className="h-3 w-3" />
+                      Upload New
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMediaPicker(null)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {mediaLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
+                    <span className="ml-2 text-sm text-gray-500">Loading library...</span>
+                  </div>
+                ) : mediaLibrary.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Image className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No {showMediaPicker === 'logo' ? 'logos' : 'banners'} uploaded yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Upload one above to start building your library</p>
+                  </div>
+                ) : (
+                  <div className={`grid gap-2 max-h-48 overflow-y-auto ${
+                    showMediaPicker === 'logo' ? 'grid-cols-5' : 'grid-cols-3'
+                  }`}>
+                    {mediaLibrary.map((media: any) => (
+                      <div
+                        key={media._id}
+                        onClick={() => {
+                          if (showMediaPicker === 'logo') {
+                            setForm(f => ({ ...f, logoUrl: media.url }))
+                          } else {
+                            setForm(f => ({ ...f, imageUrl: media.url }))
+                          }
+                          // Increment usage count
+                          saveToMediaLibrary(media.url, showMediaPicker, media.name)
+                          setShowMediaPicker(null)
+                        }}
+                        className="relative group cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-[#1B3B6F] transition-all"
+                      >
+                        <img
+                          src={media.url}
+                          alt={media.name || 'Media'}
+                          className={`w-full object-cover ${
+                            showMediaPicker === 'logo' ? 'h-16' : 'h-20'
+                          }`}
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <CheckCircle className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                        </div>
+                        {media.usageCount > 1 && (
+                          <span className="absolute top-0.5 right-0.5 bg-black/60 text-white text-[9px] px-1 rounded">
+                            {media.usageCount}x
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action URL (Dropdown) */}
+            <div>
+              <Label className="flex items-center gap-1">
+                <Link className="h-3.5 w-3.5" />
+                Action Screen (optional)
+              </Label>
+              <Select value={form.actionUrl} onValueChange={(v) => setForm(f => ({ ...f, actionUrl: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a screen to open on tap" />
+                </SelectTrigger>
+                <SelectContent>
+                  {actionUrlOptions.map(opt => (
+                    <SelectItem key={opt.value || 'none'} value={opt.value || 'none'}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.actionUrl && form.actionUrl !== 'none' && (
+                <p className="text-xs text-blue-600 mt-1">
+                  Tapping the notification will open: <strong>{form.actionUrl}</strong>
+                </p>
+              )}
+            </div>
           </div>
-          
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewNotification(false)}>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} disabled={saving}>
               Cancel
             </Button>
             <div className="flex space-x-2">
-              <Button variant="outline">
-                Save as Draft
+              <Button variant="outline" onClick={() => handleSave(false)} disabled={saving || !form.title || !form.message}>
+                {saving ? 'Saving...' : form.scheduledAt ? 'Schedule' : 'Save Draft'}
               </Button>
-              <Button className="bg-[#1B3B6F] hover:bg-[#0F2545]">
-                Send Now
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Support Ticket Details Modal */}
-      <Dialog open={!!showTicketDetails} onOpenChange={() => setShowTicketDetails(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Support Ticket Details - {showTicketDetails?.ticketNumber}</DialogTitle>
-            <DialogDescription>
-              Complete ticket information and conversation history
-            </DialogDescription>
-          </DialogHeader>
-          
-          {showTicketDetails && (
-            <div className="space-y-6">
-              {/* Ticket Overview */}
-              <div className="flex items-start space-x-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={showTicketDetails.customer.avatar} />
-                  <AvatarFallback>
-                    {showTicketDetails.customer.name.split(' ').map((n: string) => n[0]).join('')}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <h3 className="text-lg font-bold text-[#1A1D29]">{showTicketDetails.subject}</h3>
-                    {getSupportStatusBadge(showTicketDetails.status)}
-                    {getPriorityBadge(showTicketDetails.priority)}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-[#6B7280]">Customer:</p>
-                      <p className="font-medium">{showTicketDetails.customer.name}</p>
-                      <p className="text-[#6B7280]">{showTicketDetails.customer.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-[#6B7280]">Assigned To:</p>
-                      <p className="font-medium">{showTicketDetails.assignedTo}</p>
-                    </div>
-                    <div>
-                      <p className="text-[#6B7280]">Category:</p>
-                      <p className="font-medium capitalize">{showTicketDetails.category.replace('_', ' ')}</p>
-                    </div>
-                    <div>
-                      <p className="text-[#6B7280]">Created:</p>
-                      <p className="font-medium">{formatDate(showTicketDetails.createdDate)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ticket Tags */}
-              <div>
-                <h4 className="font-medium text-[#1A1D29] mb-2">Tags</h4>
-                <div className="flex flex-wrap gap-2">
-                  {showTicketDetails.tags.map((tag: string) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Response Area */}
-              <div>
-                <h4 className="font-medium text-[#1A1D29] mb-2">Add Response</h4>
-                <Textarea placeholder="Type your response here..." rows={4} />
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTicketDetails(null)}>
-              Close
-            </Button>
-            <div className="flex space-x-2">
-              <Button variant="outline">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Mark Resolved
-              </Button>
-              <Button className="bg-[#1B3B6F] hover:bg-[#0F2545]">
+              <Button
+                className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+                onClick={() => handleSave(true)}
+                disabled={saving || !form.title || !form.message}
+              >
                 <Send className="h-4 w-4 mr-2" />
-                Send Response
+                {saving ? 'Sending...' : 'Send Now'}
               </Button>
             </div>
           </DialogFooter>

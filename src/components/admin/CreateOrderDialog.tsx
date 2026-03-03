@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
-import { orderAPI } from '@/services/api'
+import { orderAPI, paymentAPI } from '@/services/api'
 
 const fmt = (n: number) => `Rs.${(n || 0).toLocaleString('en-IN')}`
 
@@ -61,6 +61,9 @@ export function CreateOrderDialog({ open, onOpenChange, onOrderCreated }: Create
   const [discount, setDiscount] = useState('')
   const [notes, setNotes] = useState('')
 
+  // Pricing config (service charge)
+  const [pricingConfig, setPricingConfig] = useState<{ serviceChargePercent: number }>({ serviceChargePercent: 0 })
+
   // Submit
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -70,9 +73,15 @@ export function CreateOrderDialog({ open, onOpenChange, onOrderCreated }: Create
   const prodTimer = useRef<any>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Reset on close
+  // Fetch pricing config + reset on close
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      // Fetch pricing config on dialog open
+      paymentAPI.getPricing().then((res: any) => {
+        const d = res.data?.data || res.data || {}
+        if (d.serviceChargePercent != null) setPricingConfig({ serviceChargePercent: d.serviceChargePercent || 0 })
+      }).catch(() => {})
+    } else {
       setCustSearch(''); setCustResults([]); setSelectedCust(null); setIsNewCust(false)
       setNewCust({ fullName: '', phone: '', email: '' })
       setProdSearch(''); setProdResults([]); setProducts([])
@@ -161,7 +170,8 @@ export function CreateOrderDialog({ open, onOpenChange, onOrderCreated }: Create
   const subtotal = products.reduce((s, p) => s + p.price * p.quantity, 0)
   const shipping = subtotal >= 500 ? 0 : 50
   const discountVal = Math.min(Math.max(parseFloat(discount) || 0, 0), subtotal + shipping)
-  const total = subtotal + shipping - discountVal
+  const serviceChargeAmount = parseFloat(((subtotal * pricingConfig.serviceChargePercent) / 100).toFixed(2))
+  const total = parseFloat((subtotal + serviceChargeAmount + shipping - discountVal).toFixed(2))
 
   // Submit
   const handleSubmit = async () => {
@@ -260,14 +270,21 @@ export function CreateOrderDialog({ open, onOpenChange, onOrderCreated }: Create
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-[#1B3B6F]">
-            <ShoppingBag className="h-5 w-5" /> Create New Order
+        {/* Fixed Header */}
+        <DialogHeader className="border-b pb-4 flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
+              <ShoppingBag className="h-5 w-5 text-[#1B3B6F]" />
+            </div>
+            <div>
+              <span className="text-[#1B3B6F]">Create New Order</span>
+            </div>
           </DialogTitle>
-          <DialogDescription>Create an order on behalf of a customer. Fill all required fields.</DialogDescription>
+          <DialogDescription>Create an order on behalf of a customer. Fill all required fields marked with *</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-2 space-y-6 py-2" style={{ scrollbarWidth: 'thin' }}>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto pr-2 space-y-6 py-4" style={{ scrollbarWidth: 'thin' }}>
 
           {/* ═══ SECTION 1: CUSTOMER ═══ */}
           <section className="space-y-3">
@@ -570,6 +587,12 @@ export function CreateOrderDialog({ open, onOpenChange, onOrderCreated }: Create
                   <span className="text-gray-500">Subtotal</span>
                   <span className="font-medium">{fmt(subtotal)}</span>
                 </div>
+                {serviceChargeAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Service Charge ({pricingConfig.serviceChargePercent}%)</span>
+                    <span className="font-medium">{fmt(serviceChargeAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Shipping</span>
                   <span className={`font-medium ${shipping === 0 ? 'text-emerald-600' : ''}`}>
@@ -601,7 +624,8 @@ export function CreateOrderDialog({ open, onOpenChange, onOrderCreated }: Create
           <div className="bg-red-50 text-red-700 text-sm rounded-lg px-3 py-2 border border-red-200">{error}</div>
         )}
 
-        <DialogFooter className="gap-2 pt-2 border-t">
+        {/* Fixed Footer */}
+        <DialogFooter className="gap-2 pt-4 border-t flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
           <Button
             className="bg-[#1B3B6F] hover:bg-[#0F2545] gap-2"

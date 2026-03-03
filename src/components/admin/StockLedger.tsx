@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Search,
   Plus,
@@ -22,6 +22,7 @@ import {
   X,
   Save,
   Printer,
+  Loader2,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -56,8 +57,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   PurchaseEntry,
   PurchaseItem,
-  mockPurchases,
 } from '@/data/businessMockData'
+import { purchaseLedgerAPI } from '@/services/api'
 
 // INR currency formatter
 const formatINR = new Intl.NumberFormat('en-IN', {
@@ -95,13 +96,56 @@ const emptyPurchaseEntry: Omit<PurchaseEntry, 'id'> = {
 
 export function StockLedger() {
   // Data state
-  const [purchases, setPurchases] = useState<PurchaseEntry[]>(mockPurchases)
+  const [purchases, setPurchases] = useState<PurchaseEntry[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+
+  // Fetch purchases from API
+  const fetchPurchases = async () => {
+    setLoading(true)
+    try {
+      const res = await purchaseLedgerAPI.getAll({ limit: 100 })
+      const data = res.data?.data || res.data || []
+      // Map backend fields to frontend PurchaseEntry interface
+      const mapped: PurchaseEntry[] = (Array.isArray(data) ? data : []).map((p: any) => ({
+        id: p._id || p.id,
+        invoiceNo: p.invoiceNo || '',
+        date: p.date ? new Date(p.date).toISOString().split('T')[0] : '',
+        supplierName: p.supplierName || '',
+        supplierGST: p.supplierGST || '',
+        items: (p.items || []).map((item: any) => ({
+          productId: item.productId || item._id || '',
+          productName: item.productName || '',
+          sku: item.sku || '',
+          quantity: item.quantity || 0,
+          costPerUnit: item.costPerUnit || 0,
+          totalCost: item.totalCost || 0,
+          mrp: item.mrp || 0,
+          sellingPrice: item.sellingPrice || 0,
+        })),
+        totalAmount: p.totalAmount || 0,
+        paidAmount: p.paidAmount || 0,
+        paymentStatus: p.paymentStatus || 'pending',
+        paymentMethod: p.paymentMethod || 'cash',
+        notes: p.notes || '',
+        createdBy: p.createdByName || p.createdBy || '',
+      }))
+      setPurchases(mapped)
+    } catch (err) {
+      console.error('Failed to fetch purchases:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPurchases()
+  }, [])
 
   // Expandable row state
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
@@ -218,14 +262,19 @@ export function StockLedger() {
   }
 
   // ------ Mark as paid ------
-  const markAsPaid = (id: string) => {
-    setPurchases((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? { ...p, paidAmount: p.totalAmount, paymentStatus: 'paid' as const }
-          : p
+  const markAsPaid = async (id: string) => {
+    try {
+      await purchaseLedgerAPI.markAsPaid(id)
+      setPurchases((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, paidAmount: p.totalAmount, paymentStatus: 'paid' as const }
+            : p
+        )
       )
-    )
+    } catch (err) {
+      console.error('Failed to mark as paid:', err)
+    }
   }
 
   // ------ New entry form handlers ------
@@ -271,26 +320,57 @@ export function StockLedger() {
     })
   }
 
-  const saveNewEntry = () => {
-    const id = `PUR-${String(purchases.length + 1).padStart(3, '0')}`
+  const saveNewEntry = async () => {
+    try {
+      const payload = {
+        invoiceNo: newEntry.invoiceNo,
+        date: newEntry.date,
+        supplierName: newEntry.supplierName,
+        supplierGST: newEntry.supplierGST,
+        items: newEntry.items,
+        totalAmount: newEntry.totalAmount,
+        paidAmount: newEntry.paidAmount,
+        paymentMethod: newEntry.paymentMethod,
+        notes: newEntry.notes,
+      }
 
-    // Determine payment status
-    let paymentStatus: PurchaseEntry['paymentStatus'] = 'pending'
-    if (newEntry.paidAmount >= newEntry.totalAmount && newEntry.totalAmount > 0) {
-      paymentStatus = 'paid'
-    } else if (newEntry.paidAmount > 0) {
-      paymentStatus = 'partial'
+      const res = await purchaseLedgerAPI.create(payload)
+      const created = res.data?.data || res.data
+
+      if (created) {
+        // Map to frontend format and prepend
+        const entry: PurchaseEntry = {
+          id: created._id || created.id,
+          invoiceNo: created.invoiceNo || newEntry.invoiceNo,
+          date: created.date ? new Date(created.date).toISOString().split('T')[0] : newEntry.date,
+          supplierName: created.supplierName || newEntry.supplierName,
+          supplierGST: created.supplierGST || '',
+          items: (created.items || newEntry.items).map((item: any) => ({
+            productId: item.productId || item._id || '',
+            productName: item.productName || '',
+            sku: item.sku || '',
+            quantity: item.quantity || 0,
+            costPerUnit: item.costPerUnit || 0,
+            totalCost: item.totalCost || 0,
+            mrp: item.mrp || 0,
+            sellingPrice: item.sellingPrice || 0,
+          })),
+          totalAmount: created.totalAmount || newEntry.totalAmount,
+          paidAmount: created.paidAmount || newEntry.paidAmount,
+          paymentStatus: created.paymentStatus || 'pending',
+          paymentMethod: created.paymentMethod || newEntry.paymentMethod,
+          notes: created.notes || '',
+          createdBy: created.createdByName || '',
+        }
+
+        setPurchases((prev) => [entry, ...prev])
+      }
+
+      setNewEntry({ ...emptyPurchaseEntry, items: [{ ...emptyItem, productId: 'NEW-001' }] })
+      setActiveTab('all')
+    } catch (err) {
+      console.error('Failed to save purchase entry:', err)
     }
-
-    const entry: PurchaseEntry = {
-      ...newEntry,
-      id,
-      paymentStatus,
-    }
-
-    setPurchases((prev) => [entry, ...prev])
-    setNewEntry({ ...emptyPurchaseEntry, items: [{ ...emptyItem, productId: 'NEW-001' }] })
-    setActiveTab('all')
   }
 
   // ------ Profit potential calculator ------
@@ -300,6 +380,14 @@ export function StockLedger() {
   // ==============================
   // RENDER
   // ==============================
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#1B3B6F]" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* ---- Header ---- */}

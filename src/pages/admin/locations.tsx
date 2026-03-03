@@ -1,14 +1,14 @@
 'use client'
 
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
-import { OrderManagement } from '@/components/admin/OrderManagement'
+import { LocationManagement } from '@/components/admin/LocationManagement'
 
-export default function AdminOrdersPage() {
+export default function AdminLocationsPage() {
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
-      <AdminSidebar currentPath="/admin/orders" />
+      <AdminSidebar currentPath="/admin/locations" />
       <main className="lg:pl-72 transition-all duration-300">
-        <OrderManagement />
+        <LocationManagement />
       </main>
     </div>
   )

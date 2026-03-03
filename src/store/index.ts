@@ -7,6 +7,7 @@ import productReducer from './slices/productSlice';
 import serviceRequestReducer from './slices/serviceRequestSlice';
 import mechanicReducer from './slices/mechanicSlice';
 import userReducer from './slices/userSlice';
+import customerAuthReducer from './slices/customerAuthSlice';
 import rootSaga from './sagas';
 
 const sagaMiddleware = createSagaMiddleware();
@@ -20,6 +21,7 @@ export const store = configureStore({
     serviceRequest: serviceRequestReducer,
     mechanic: mechanicReducer,
     users: userReducer,
+    customerAuth: customerAuthReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ thunk: false, serializableCheck: false }).concat(sagaMiddleware),

@@ -10,10 +10,12 @@ const api = axios.create({
   },
 });
 
-// Request interceptor — attach JWT token
+// Request interceptor — attach JWT token (admin or customer)
 api.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('token');
+    const adminToken = Cookies.get('token');
+    const customerToken = Cookies.get('customer_token');
+    const token = adminToken || customerToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -22,14 +24,19 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle 401 redirect
+// Response interceptor — handle 401 redirect (context-aware: admin vs customer)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      Cookies.remove('token');
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.href = '/admin/login';
+        if (window.location.pathname.startsWith('/admin')) {
+          Cookies.remove('token');
+          window.location.href = '/admin/login';
+        } else {
+          Cookies.remove('customer_token');
+          window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+        }
       }
     }
     return Promise.reject(error);
@@ -63,6 +70,21 @@ export const uploadAPI = {
     });
   },
   deleteImage: (fileId: string) => api.delete(`/admin/upload/image/${fileId}`),
+};
+
+// ─── Banner APIs ─────────────────────────────────────────────────────
+export const bannerAPI = {
+  getAll: (params?: Record<string, any>) =>
+    api.get('/admin/banners', { params }),
+  create: (data: any) => api.post('/admin/banners', data),
+  update: (id: string, data: any) => api.put(`/admin/banners/${id}`, data),
+  toggle: (id: string) => api.put(`/admin/banners/${id}/toggle`),
+  reorder: (banners: { id: string; order: number }[]) =>
+    api.put('/admin/banners/reorder', { banners }),
+  delete: (id: string) => api.delete(`/admin/banners/${id}`),
+  // Public endpoint - no auth required
+  getActive: (platform?: string) =>
+    api.get('/common/banners', { params: platform ? { platform } : {} }),
 };
 
 // ─── Category APIs ────────────────────────────────────────────────────
@@ -117,6 +139,7 @@ export const serviceRequestAPI = {
     api.get('/admin/service-requests', { params }),
   getById: (id: string) => api.get(`/admin/service-requests/${id}`),
   getStats: () => api.get('/admin/service-requests/stats'),
+  create: (data: any) => api.post('/admin/service-requests', data),
   update: (id: string, data: any) =>
     api.put(`/admin/service-requests/${id}`, data),
   updateStatus: (id: string, data: { status: string; note?: string }) =>
@@ -132,6 +155,7 @@ export const serviceRequestAPI = {
     partsRequired?: any[];
   }) => api.put(`/admin/service-requests/${id}/cost`, data),
   delete: (id: string) => api.delete(`/admin/service-requests/${id}`),
+  downloadInvoice: (id: string) => api.get(`/admin/service-requests/${id}/invoice`, { responseType: 'blob' }),
 };
 
 // ─── Mechanic APIs (Admin) ──────────────────────────────────────────
@@ -225,11 +249,38 @@ export const paymentAPI = {
     }),
   rejectWithdrawal: (id: string, data: { reason: string }) =>
     api.put(`/admin/payments/withdrawals/${id}/reject`, data),
+
+  // Pricing config (GST, service charge, commissions)
+  getPricing: () => api.get('/admin/payments/pricing'),
+  updatePricing: (data: Record<string, number>) => api.put('/admin/payments/pricing', data),
 };
 
 // ─── Dashboard API ──────────────────────────────────────────────────
 export const dashboardAPI = {
   getOverview: () => api.get('/admin/dashboard'),
+};
+
+// ─── Analytics API ──────────────────────────────────────────────────
+export const analyticsAPI = {
+  getOverview: (params?: { period?: string }) => api.get('/admin/analytics/overview', { params }),
+};
+
+// ─── Financial API ──────────────────────────────────────────────────
+export const financialAPI = {
+  getStats: () => api.get('/admin/financial/stats'),
+  getTransactions: (params?: any) => api.get('/admin/financial/transactions', { params }),
+  getCommissions: () => api.get('/admin/financial/commissions'),
+};
+
+// ─── Purchase Ledger API ────────────────────────────────────────────
+export const purchaseLedgerAPI = {
+  getAll: (params?: Record<string, any>) => api.get('/admin/purchases', { params }),
+  getById: (id: string) => api.get(`/admin/purchases/${id}`),
+  getStats: () => api.get('/admin/purchases/stats'),
+  create: (data: any) => api.post('/admin/purchases', data),
+  update: (id: string, data: any) => api.put(`/admin/purchases/${id}`, data),
+  markAsPaid: (id: string) => api.put(`/admin/purchases/${id}/mark-paid`),
+  delete: (id: string) => api.delete(`/admin/purchases/${id}`),
 };
 
 // ─── User Cart APIs (Customer-facing) ────────────────────────────────
@@ -263,6 +314,122 @@ export const userAPI = {
   delete: (id: string) => api.delete(`/users/${id}`),
   toggleStatus: (id: string) => api.patch(`/users/${id}/toggle-status`),
   getStats: () => api.get('/users/stats/summary'),
+};
+
+// ─── OTP Auth APIs (Customer Phone Login) ─────────────────────────────
+export const otpAuthAPI = {
+  sendOtp: (phone: string, purpose?: string) =>
+    api.post('/common/auth/send-otp', { phone, purpose: purpose || 'login' }),
+  verifyOtp: (phone: string, otp: string, purpose?: string) =>
+    api.post('/common/auth/verify-otp', { phone, otp, purpose: purpose || 'login' }),
+  registerUser: (data: { verificationToken: string; fullName: string; email?: string; address?: string; city?: string; state?: string; pincode?: string }) =>
+    api.post('/common/auth/register/user', data),
+  phoneLogin: (phone: string) =>
+    api.post('/common/auth/phone-login', { phone }),
+};
+
+// ─── Public Catalog APIs (for user-facing pages) ─────────────────────
+export const catalogAPI = {
+  getProducts: (params?: Record<string, any>) => api.get('/common/products', { params }),
+  getProduct: (id: string) => api.get(`/common/products/${id}`),
+  getProductsByCategory: (categoryId: string, params?: Record<string, any>) => api.get(`/common/products/category/${categoryId}`, { params }),
+  getProductsByBrand: (brandId: string, params?: Record<string, any>) => api.get(`/common/products/brand/${brandId}`, { params }),
+  getCategories: () => api.get('/common/categories'),
+  getParentCategories: () => api.get('/common/categories/parent'),
+  getSubcategories: (id: string) => api.get(`/common/categories/${id}/subcategories`),
+  getBrands: () => api.get('/common/brands'),
+  getReviews: (productId: string, params?: Record<string, any>) => api.get(`/common/products/${productId}/reviews`, { params }),
+  addReview: (productId: string, data: { rating: number; title?: string; comment?: string }) => api.post(`/common/products/${productId}/reviews`, data),
+  search: (q: string, params?: Record<string, any>) => api.get('/common/search', { params: { q, ...params } }),
+};
+
+// ─── User Profile APIs (Customer-facing) ──────────────────────────────
+export const userProfileAPI = {
+  get: () => api.get('/common/auth/profile'),
+  update: (data: any) => api.put('/common/auth/profile', data),
+};
+
+// ─── User Address APIs (Customer-facing) ──────────────────────────────
+export const userAddressAPI = {
+  getAll: () => api.get('/user/addresses'),
+  add: (data: any) => api.post('/user/addresses', data),
+  update: (id: string, data: any) => api.put(`/user/addresses/${id}`, data),
+  delete: (id: string) => api.delete(`/user/addresses/${id}`),
+  setDefault: (id: string) => api.patch(`/user/addresses/${id}/default`),
+};
+
+// ─── User Service Request APIs (Customer-facing) ─────────────────────
+export const userServiceAPI = {
+  create: (data: any) => api.post('/user/service-requests', data),
+  getMyRequests: (params?: Record<string, any>) => api.get('/user/service-requests', { params }),
+  getById: (id: string) => api.get(`/user/service-requests/${id}`),
+  cancel: (id: string, reason?: string) => api.put(`/user/service-requests/${id}/cancel`, { reason }),
+  reschedule: (id: string, data: { preferredDate: string; preferredTimeSlot?: string }) => api.put(`/user/service-requests/${id}/reschedule`, data),
+  addReview: (id: string, data: { rating: number; review?: string }) => api.post(`/user/service-requests/${id}/review`, data),
+};
+
+// ─── Public Service Pricing APIs ──────────────────────────────────────
+export const servicePricingAPI = {
+  getAll: () => api.get('/common/service-pricing'),
+  getByVehicle: (vehicleType: string) => api.get(`/common/service-pricing/${vehicleType}`),
+};
+
+// ─── User Review APIs (Customer-facing) ───────────────────────────────
+export const userReviewAPI = {
+  getMyReviews: () => api.get('/user/reviews'),
+  update: (reviewId: string, data: any) => api.put(`/common/reviews/${reviewId}`, data),
+  delete: (reviewId: string) => api.delete(`/common/reviews/${reviewId}`),
+};
+
+// ─── Notification APIs (Admin) ──────────────────────────────────────
+export const notificationAPI = {
+  getAll: (params?: Record<string, any>) =>
+    api.get('/admin/notifications', { params }),
+  getById: (id: string) => api.get(`/admin/notifications/${id}`),
+  getStats: () => api.get('/admin/notifications/stats'),
+  create: (data: any) => api.post('/admin/notifications', data),
+  update: (id: string, data: any) => api.put(`/admin/notifications/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/notifications/${id}`),
+  send: (id: string) => api.post(`/admin/notifications/${id}/send`),
+  processScheduled: () => api.post('/admin/notifications/process-scheduled'),
+  // Search users for 'specific' target audience
+  searchUsers: (q: string) => api.get('/users', { params: { search: q, limit: 20 } }),
+  // Media library — reuse previously uploaded logos/banners
+  getMedia: (type?: 'logo' | 'banner') =>
+    api.get('/admin/notifications/media', { params: type ? { type } : {} }),
+  saveMedia: (data: { url: string; type: 'logo' | 'banner'; name?: string }) =>
+    api.post('/admin/notifications/media', data),
+  deleteMedia: (id: string) => api.delete(`/admin/notifications/media/${id}`),
+};
+
+// ─── User Payment APIs (Customer-facing) ─────────────────────────────
+export const userPaymentAPI = {
+  createOrder: (serviceRequestId: string, amount: number) =>
+    api.post('/payments/create-order', { serviceRequestId, amount }),
+  verifyPayment: (data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    api.post('/payments/verify', data),
+  createCOD: (serviceRequestId: string, amount: number) =>
+    api.post('/payments/cod', { serviceRequestId, amount }),
+  calculateFare: (distanceKm: number, isEmergency?: boolean, vehicleType?: string) =>
+    api.get('/payments/calculate-fare', { params: { distanceKm, isEmergency, vehicleType } }),
+  getPricing: () => api.get('/payments/pricing'),
+  getIssuePricing: (vehicleType?: string) =>
+    vehicleType ? api.get(`/common/service-pricing/${vehicleType}`) : api.get('/common/service-pricing'),
+};
+
+// ─── User Wallet APIs (Customer-facing) ─────────────────────────────
+export const userWalletAPI = {
+  getWallet: () => api.get('/user/wallet'),
+  getTransactions: (params?: { page?: number; limit?: number; type?: string; category?: string }) =>
+    api.get('/user/wallet/transactions', { params }),
+};
+
+// ─── User Notification APIs (Customer-facing) ───────────────────────
+export const userNotificationAPI = {
+  getAll: (params?: { page?: number; limit?: number }) => api.get('/common/notifications', { params }),
+  getUnreadCount: () => api.get('/common/notifications/unread-count'),
+  markAsRead: (id: string) => api.patch(`/common/notifications/${id}/read`),
+  markAllAsRead: () => api.patch('/common/notifications/read-all'),
 };
 
 export default api;

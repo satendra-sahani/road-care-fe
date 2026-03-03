@@ -1,12 +1,12 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useMemo } from 'react'
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Eye, 
+import { useState, useMemo, useEffect } from 'react'
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
+  Eye,
   Download,
   Plus,
   DollarSign,
@@ -18,7 +18,8 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -58,127 +59,9 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { formatDate } from '@/lib/utils'
+import { paymentAPI, financialAPI } from '@/services/api'
 
-// Mock financial data
-const mockTransactions = [
-  {
-    id: 'TXN-001',
-    type: 'sale',
-    orderId: 'ORD-2026-001',
-    customer: 'John Smith',
-    amount: 2580,
-    method: 'UPI',
-    status: 'completed',
-    commission: 258,
-    tax: 464.4,
-    netAmount: 1857.6,
-    timestamp: '2026-02-12T10:30:00Z',
-    gatewayRef: 'GP123456789'
-  },
-  {
-    id: 'TXN-002',
-    type: 'refund',
-    orderId: 'ORD-2026-002',
-    customer: 'Sarah Johnson',
-    amount: -1200,
-    method: 'Credit Card',
-    status: 'processed',
-    commission: -120,
-    tax: -216,
-    netAmount: -864,
-    timestamp: '2026-02-12T09:15:00Z',
-    gatewayRef: 'RF987654321',
-    refundReason: 'Product defect'
-  },
-  {
-    id: 'TXN-003',
-    type: 'service',
-    orderId: 'SRV-2026-001',
-    customer: 'Mike Wilson',
-    amount: 3500,
-    method: 'Cash',
-    status: 'completed',
-    commission: 525,
-    tax: 630,
-    netAmount: 2345,
-    timestamp: '2026-02-11T16:45:00Z',
-    mechanicId: 'MEC-001'
-  },
-  {
-    id: 'TXN-004',
-    type: 'sale',
-    orderId: 'ORD-2026-003',
-    customer: 'Emily Davis',
-    amount: 4500,
-    method: 'Wallet',
-    status: 'failed',
-    commission: 0,
-    tax: 0,
-    netAmount: 0,
-    timestamp: '2026-02-11T14:20:00Z',
-    gatewayRef: 'WL456789123',
-    failureReason: 'Insufficient balance'
-  },
-  {
-    id: 'TXN-005',
-    type: 'delivery',
-    orderId: 'ORD-2026-004',
-    customer: 'Robert Brown',
-    amount: 150,
-    method: 'UPI',
-    status: 'completed',
-    commission: 45,
-    tax: 27,
-    netAmount: 78,
-    timestamp: '2026-02-11T12:00:00Z',
-    deliveryPartnerId: 'DEL-001'
-  }
-]
-
-const mockCommissions = [
-  {
-    id: 'COM-001',
-    type: 'mechanic',
-    partnerId: 'MEC-001',
-    partnerName: 'Rajesh Kumar',
-    totalJobs: 24,
-    totalRevenue: 84000,
-    commissionRate: 15,
-    commissionAmount: 12600,
-    status: 'pending',
-    periodStart: '2026-02-01',
-    periodEnd: '2026-02-28'
-  },
-  {
-    id: 'COM-002',
-    type: 'delivery',
-    partnerId: 'DEL-001',
-    partnerName: 'Priya Sharma',
-    totalDeliveries: 156,
-    totalRevenue: 23400,
-    commissionRate: 20,
-    commissionAmount: 4680,
-    status: 'paid',
-    periodStart: '2026-01-01',
-    periodEnd: '2026-01-31'
-  },
-  {
-    id: 'COM-003',
-    type: 'mechanic',
-    partnerId: 'MEC-002',
-    partnerName: 'Suresh Kumar',
-    totalJobs: 18,
-    totalRevenue: 63000,
-    commissionRate: 15,
-    commissionAmount: 9450,
-    status: 'processing',
-    periodStart: '2026-02-01',
-    periodEnd: '2026-02-28'
-  }
-]
-
-const statusConfig = {
+const statusConfig: Record<string, { color: string; label: string }> = {
   completed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
   processed: { color: 'bg-blue-100 text-blue-800', label: 'Processed' },
   failed: { color: 'bg-red-100 text-red-800', label: 'Failed' },
@@ -187,7 +70,7 @@ const statusConfig = {
   paid: { color: 'bg-green-100 text-green-800', label: 'Paid' }
 }
 
-const typeConfig = {
+const typeConfig: Record<string, { color: string; label: string }> = {
   sale: { color: 'bg-green-100 text-green-800', label: 'Sale' },
   refund: { color: 'bg-red-100 text-red-800', label: 'Refund' },
   service: { color: 'bg-blue-100 text-blue-800', label: 'Service' },
@@ -201,41 +84,81 @@ export function FinancialManagement() {
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([])
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('transactions')
+  const [loading, setLoading] = useState(true)
 
-  const filteredTransactions = useMemo(() => {
-    return mockTransactions.filter(transaction => {
-      const matchesSearch = 
-        transaction.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        transaction.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        transaction.orderId.toLowerCase().includes(searchQuery.toLowerCase())
-      
-      const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter
-      const matchesType = typeFilter === 'all' || transaction.type === typeFilter
-      
-      return matchesSearch && matchesStatus && matchesType
-    })
-  }, [searchQuery, statusFilter, typeFilter])
+  // Data from API
+  const [stats, setStats] = useState({ totalRevenue: 0, totalRefunds: 0, totalCommissions: 0, pendingPayouts: 0 })
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [commissions, setCommissions] = useState<any[]>([])
 
-  const getFinancialStats = () => {
-    const totalRevenue = mockTransactions
-      .filter(t => t.status === 'completed' && t.amount > 0)
-      .reduce((sum, t) => sum + t.amount, 0)
-    
-    const totalRefunds = mockTransactions
-      .filter(t => t.type === 'refund')
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0)
-    
-    const totalCommissions = mockCommissions
-      .reduce((sum, c) => sum + c.commissionAmount, 0)
-    
-    const pendingPayouts = mockCommissions
-      .filter(c => c.status === 'pending')
-      .reduce((sum, c) => sum + c.commissionAmount, 0)
-    
-    return { totalRevenue, totalRefunds, totalCommissions, pendingPayouts }
+  // Tax & commission settings (already connected to API)
+  const [serviceChargeRate, setServiceChargeRate] = useState('0')
+  const [taxSaving, setTaxSaving] = useState(false)
+  const [taxSaveMsg, setTaxSaveMsg] = useState('')
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [statsRes, txnRes, comRes, pricingRes] = await Promise.all([
+        financialAPI.getStats().catch(() => ({ data: { data: {} } })),
+        financialAPI.getTransactions({ limit: 50 }).catch(() => ({ data: { data: [] } })),
+        financialAPI.getCommissions().catch(() => ({ data: { data: [] } })),
+        paymentAPI.getPricing().catch(() => ({ data: {} })),
+      ])
+
+      const s = statsRes.data?.data || statsRes.data || {}
+      setStats({
+        totalRevenue: s.totalRevenue || 0,
+        totalRefunds: s.totalRefunds || 0,
+        totalCommissions: s.totalCommissions || 0,
+        pendingPayouts: s.pendingPayouts || 0,
+      })
+
+      setTransactions(txnRes.data?.data || [])
+      setCommissions(comRes.data?.data || [])
+
+      const pricingData = pricingRes.data?.data || pricingRes.data || {}
+      if (pricingData.serviceChargePercent != null) setServiceChargeRate(String(pricingData.serviceChargePercent))
+    } catch (err) {
+      console.error('Financial data fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const stats = getFinancialStats()
+  const handleUpdateTaxSettings = async () => {
+    setTaxSaving(true)
+    setTaxSaveMsg('')
+    try {
+      await paymentAPI.updatePricing({
+        serviceChargePercent: parseFloat(serviceChargeRate) || 0,
+      })
+      setTaxSaveMsg('Tax settings updated successfully!')
+      setTimeout(() => setTaxSaveMsg(''), 3000)
+    } catch (err: any) {
+      setTaxSaveMsg(err.response?.data?.message || 'Failed to update tax settings')
+    } finally {
+      setTaxSaving(false)
+    }
+  }
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((transaction: any) => {
+      const matchesSearch =
+        (transaction.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (transaction.customer || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (transaction.orderId || '').toLowerCase().includes(searchQuery.toLowerCase())
+
+      const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter
+      const matchesType = typeFilter === 'all' || transaction.type === typeFilter
+
+      return matchesSearch && matchesStatus && matchesType
+    })
+  }, [transactions, searchQuery, statusFilter, typeFilter])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -256,27 +179,17 @@ export function FinancialManagement() {
   }
 
   const getStatusBadge = (status: string) => {
-    const config = statusConfig[status as keyof typeof statusConfig]
-    
-    return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
-    )
+    const config = statusConfig[status] || statusConfig.pending
+    return <Badge className={`${config.color} border-0`}>{config.label}</Badge>
   }
 
   const getTypeBadge = (type: string) => {
-    const config = typeConfig[type as keyof typeof typeConfig]
-    
-    return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
-    )
+    const config = typeConfig[type] || typeConfig.sale
+    return <Badge className={`${config.color} border-0`}>{config.label}</Badge>
   }
 
   const handleSelectTransaction = (transactionId: string) => {
-    setSelectedTransactions(prev => 
+    setSelectedTransactions(prev =>
       prev.includes(transactionId)
         ? prev.filter(id => id !== transactionId)
         : [...prev, transactionId]
@@ -287,8 +200,16 @@ export function FinancialManagement() {
     if (selectedTransactions.length === filteredTransactions.length) {
       setSelectedTransactions([])
     } else {
-      setSelectedTransactions(filteredTransactions.map(transaction => transaction.id))
+      setSelectedTransactions(filteredTransactions.map((t: any) => t.id))
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#1B3B6F]" />
+      </div>
+    )
   }
 
   return (
@@ -324,7 +245,7 @@ export function FinancialManagement() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -336,7 +257,7 @@ export function FinancialManagement() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -348,7 +269,7 @@ export function FinancialManagement() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -373,7 +294,6 @@ export function FinancialManagement() {
 
         {/* Transactions Tab */}
         <TabsContent value="transactions" className="space-y-6">
-          {/* Filters and Search */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
@@ -388,7 +308,7 @@ export function FinancialManagement() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-3">
                   <Select value={typeFilter} onValueChange={setTypeFilter}>
                     <SelectTrigger className="w-[120px]">
@@ -418,7 +338,6 @@ export function FinancialManagement() {
                 </div>
               </div>
 
-              {/* Bulk Actions */}
               {selectedTransactions.length > 0 && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between">
@@ -426,12 +345,7 @@ export function FinancialManagement() {
                       {selectedTransactions.length} transaction(s) selected
                     </span>
                     <div className="flex items-center space-x-2">
-                      <Button size="sm" variant="outline">
-                        Export Selected
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        Bulk Refund
-                      </Button>
+                      <Button size="sm" variant="outline">Export Selected</Button>
                     </div>
                   </div>
                 </div>
@@ -439,7 +353,6 @@ export function FinancialManagement() {
             </CardContent>
           </Card>
 
-          {/* Transactions Table */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
               <Table>
@@ -447,7 +360,7 @@ export function FinancialManagement() {
                   <TableRow className="bg-gray-50">
                     <TableHead className="w-12">
                       <Checkbox
-                        checked={selectedTransactions.length === filteredTransactions.length}
+                        checked={filteredTransactions.length > 0 && selectedTransactions.length === filteredTransactions.length}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
@@ -463,72 +376,64 @@ export function FinancialManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTransactions.map((transaction) => (
-                    <TableRow key={transaction.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedTransactions.includes(transaction.id)}
-                          onCheckedChange={() => handleSelectTransaction(transaction.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium text-[#1B3B6F]">
-                        {transaction.id}
-                      </TableCell>
-                      <TableCell>
-                        {getTypeBadge(transaction.type)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {transaction.customer}
-                      </TableCell>
-                      <TableCell>
-                        <div className={`font-medium ${transaction.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          {formatCurrency(transaction.amount)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <CreditCard className="h-4 w-4 mr-1 text-[#6B7280]" />
-                          {transaction.method}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(transaction.status)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {formatCurrency(transaction.commission)}
-                      </TableCell>
-                      <TableCell className="text-sm text-[#6B7280]">
-                        {formatDate(transaction.timestamp)}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setSelectedTransaction(transaction)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Download className="h-4 w-4 mr-2" />
-                              Download Receipt
-                            </DropdownMenuItem>
-                            {transaction.type === 'sale' && transaction.status === 'completed' && (
-                              <DropdownMenuItem>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Process Refund
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                  {filteredTransactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-8 text-[#6B7280]">
+                        No transactions found
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredTransactions.map((transaction: any) => (
+                      <TableRow key={transaction.id} className="hover:bg-gray-50">
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedTransactions.includes(transaction.id)}
+                            onCheckedChange={() => handleSelectTransaction(transaction.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium text-[#1B3B6F]">
+                          {transaction.id}
+                        </TableCell>
+                        <TableCell>{getTypeBadge(transaction.type)}</TableCell>
+                        <TableCell className="font-medium">{transaction.customer}</TableCell>
+                        <TableCell>
+                          <div className={`font-medium ${transaction.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatCurrency(transaction.amount)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <CreditCard className="h-4 w-4 mr-1 text-[#6B7280]" />
+                            {transaction.method}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                        <TableCell className="font-medium">{formatCurrency(transaction.commission)}</TableCell>
+                        <TableCell className="text-sm text-[#6B7280]">{formatDate(transaction.timestamp)}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setSelectedTransaction(transaction)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download Receipt
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -550,48 +455,38 @@ export function FinancialManagement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockCommissions.map((commission) => (
-                  <div key={commission.id} className="p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-medium text-[#1A1D29]">{commission.partnerName}</h3>
-                        <p className="text-sm text-[#6B7280]">
-                          {commission.type === 'mechanic' ? 'Mechanic' : 'Delivery Partner'} • {commission.id}
-                        </p>
+                {commissions.length === 0 ? (
+                  <p className="text-sm text-[#6B7280] text-center py-8">No commission data available</p>
+                ) : (
+                  commissions.map((commission: any) => (
+                    <div key={commission.id} className="p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="font-medium text-[#1A1D29]">{commission.partnerName}</h3>
+                          <p className="text-sm text-[#6B7280]">
+                            {commission.type === 'mechanic' ? 'Mechanic' : 'Delivery Partner'}
+                          </p>
+                        </div>
+                        {getStatusBadge(commission.status)}
                       </div>
-                      {getStatusBadge(commission.status)}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-[#6B7280]">
-                          {commission.type === 'mechanic' ? 'Total Jobs' : 'Total Deliveries'}
-                        </p>
-                        <p className="font-medium">
-                          {commission.type === 'mechanic' ? commission.totalJobs : commission.totalDeliveries}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Total Revenue</p>
-                        <p className="font-medium">{formatCurrency(commission.totalRevenue)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Commission Rate</p>
-                        <p className="font-medium">{commission.commissionRate}%</p>
-                      </div>
-                      <div>
-                        <p className="text-[#6B7280]">Commission Amount</p>
-                        <p className="font-medium text-green-600">{formatCurrency(commission.commissionAmount)}</p>
+
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <p className="text-[#6B7280]">Total Revenue</p>
+                          <p className="font-medium">{formatCurrency(commission.totalRevenue)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[#6B7280]">Commission Rate</p>
+                          <p className="font-medium">{commission.commissionRate}%</p>
+                        </div>
+                        <div>
+                          <p className="text-[#6B7280]">Commission Amount</p>
+                          <p className="font-medium text-green-600">{formatCurrency(commission.commissionAmount)}</p>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <p className="text-xs text-[#6B7280]">
-                        Period: {formatDate(commission.periodStart)} - {formatDate(commission.periodEnd)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -627,10 +522,6 @@ export function FinancialManagement() {
                 <CardDescription>Generate tax compliance reports</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full" variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  GST Return Report
-                </Button>
                 <Button className="w-full" variant="outline">
                   <Download className="h-4 w-4 mr-2" />
                   TDS Report
@@ -670,19 +561,20 @@ export function FinancialManagement() {
             <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle>Tax Settings</CardTitle>
-                <CardDescription>Configure tax rates and compliance</CardDescription>
+                <CardDescription>Configure service charge rate for product orders</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">GST Rate (%)</label>
-                  <Input type="number" defaultValue="18" />
+                  <label className="text-sm font-medium">Service Charge (%)</label>
+                  <Input type="number" min="0" max="100" value={serviceChargeRate} onChange={e => setServiceChargeRate(e.target.value)} />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">TDS Rate (%)</label>
-                  <Input type="number" defaultValue="1" />
-                </div>
-                <Button className="w-full bg-[#1B3B6F] hover:bg-[#0F2545]">
-                  Update Tax Settings
+                {taxSaveMsg && (
+                  <p className={`text-sm font-medium ${taxSaveMsg.includes('success') ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {taxSaveMsg}
+                  </p>
+                )}
+                <Button className="w-full bg-[#1B3B6F] hover:bg-[#0F2545]" onClick={handleUpdateTaxSettings} disabled={taxSaving}>
+                  {taxSaving ? 'Saving...' : 'Update Tax Settings'}
                 </Button>
               </CardContent>
             </Card>
@@ -699,7 +591,7 @@ export function FinancialManagement() {
               Complete transaction information and breakdown
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedTransaction && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
@@ -711,20 +603,17 @@ export function FinancialManagement() {
                     <p><span className="text-[#6B7280]">Type:</span> {getTypeBadge(selectedTransaction.type)}</p>
                     <p><span className="text-[#6B7280]">Status:</span> {getStatusBadge(selectedTransaction.status)}</p>
                     <p><span className="text-[#6B7280]">Payment Method:</span> {selectedTransaction.method}</p>
-                    {selectedTransaction.gatewayRef && (
-                      <p><span className="text-[#6B7280]">Gateway Ref:</span> {selectedTransaction.gatewayRef}</p>
-                    )}
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium text-[#1A1D29] mb-3">Financial Breakdown</h4>
                   <div className="space-y-2 text-sm">
-                    <p><span className="text-[#6B7280]">Gross Amount:</span> {formatCurrency(selectedTransaction.amount)}</p>
-                    <p><span className="text-[#6B7280]">Tax:</span> {formatCurrency(selectedTransaction.tax)}</p>
-                    <p><span className="text-[#6B7280]">Commission:</span> {formatCurrency(selectedTransaction.commission)}</p>
+                    <p><span className="text-[#6B7280]">Gross Amount:</span> {formatCurrency(Math.abs(selectedTransaction.amount))}</p>
+                    <p><span className="text-[#6B7280]">Tax:</span> {formatCurrency(selectedTransaction.tax || 0)}</p>
+                    <p><span className="text-[#6B7280]">Commission:</span> {formatCurrency(selectedTransaction.commission || 0)}</p>
                     <p className="font-medium border-t pt-2">
-                      <span className="text-[#6B7280]">Net Amount:</span> {formatCurrency(selectedTransaction.netAmount)}
+                      <span className="text-[#6B7280]">Net Amount:</span> {formatCurrency(selectedTransaction.netAmount || 0)}
                     </p>
                   </div>
                 </div>
@@ -735,23 +624,9 @@ export function FinancialManagement() {
                 <p className="text-sm text-[#6B7280]">Customer: {selectedTransaction.customer}</p>
                 <p className="text-sm text-[#6B7280]">Date: {formatDate(selectedTransaction.timestamp)}</p>
               </div>
-
-              {selectedTransaction.refundReason && (
-                <div>
-                  <h4 className="font-medium text-[#1A1D29] mb-2">Refund Information</h4>
-                  <p className="text-sm text-[#6B7280]">Reason: {selectedTransaction.refundReason}</p>
-                </div>
-              )}
-
-              {selectedTransaction.failureReason && (
-                <div>
-                  <h4 className="font-medium text-[#1A1D29] mb-2">Failure Information</h4>
-                  <p className="text-sm text-red-600">Reason: {selectedTransaction.failureReason}</p>
-                </div>
-              )}
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectedTransaction(null)}>
               Close

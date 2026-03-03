@@ -1,0 +1,291 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import { useSelector, useDispatch } from 'react-redux'
+import { RootState } from '@/store'
+import {
+  sendOtpRequest,
+  verifyOtpRequest,
+  registerRequest,
+  resetOtpFlow,
+  clearError,
+} from '@/store/slices/customerAuthSlice'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Car, Phone, ArrowLeft, Loader2 } from 'lucide-react'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
+import { toast } from 'sonner'
+import Link from 'next/link'
+import Cookies from 'js-cookie'
+
+type Step = 'phone' | 'otp' | 'register'
+
+export default function CustomerLoginPage() {
+  const router = useRouter()
+  const dispatch = useDispatch()
+  const {
+    isAuthenticated,
+    otpSending, otpSent,
+    otpVerifying, otpVerified,
+    isNewUser, verificationToken,
+    registering,
+    error, phone: savedPhone,
+  } = useSelector((state: RootState) => state.customerAuth)
+
+  const [step, setStep] = useState<Step>('phone')
+  const [phone, setPhone] = useState('')
+  const [otp, setOtp] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+
+  const redirectTo = (router.query.redirect as string) || '/'
+
+  // If already logged in, redirect
+  useEffect(() => {
+    if (isAuthenticated || Cookies.get('customer_token')) {
+      router.replace(redirectTo)
+    }
+  }, [isAuthenticated])
+
+  // Handle OTP sent
+  useEffect(() => {
+    if (otpSent && step === 'phone') {
+      setStep('otp')
+      toast.success('OTP sent to +91 ' + phone)
+    }
+  }, [otpSent])
+
+  // Handle OTP verified
+  useEffect(() => {
+    if (otpVerified) {
+      if (isNewUser) {
+        setStep('register')
+      } else {
+        // Existing user — already authenticated via saga
+        toast.success('Login successful!')
+        router.replace(redirectTo)
+      }
+    }
+  }, [otpVerified, isNewUser])
+
+  // Handle registration success
+  useEffect(() => {
+    if (isAuthenticated && step === 'register') {
+      toast.success('Account created successfully!')
+      router.replace(redirectTo)
+    }
+  }, [isAuthenticated, step])
+
+  // Handle errors
+  useEffect(() => {
+    if (error) {
+      toast.error(error)
+      dispatch(clearError())
+    }
+  }, [error])
+
+  const handleSendOtp = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!phone || phone.length < 10) {
+      toast.error('Please enter a valid 10-digit phone number')
+      return
+    }
+    dispatch(sendOtpRequest(phone))
+  }
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!otp || otp.length < 6) {
+      toast.error('Please enter the 6-digit OTP')
+      return
+    }
+    dispatch(verifyOtpRequest({ phone, otp }))
+  }
+
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!fullName.trim()) {
+      toast.error('Please enter your name')
+      return
+    }
+    if (!verificationToken) {
+      toast.error('Session expired. Please try again.')
+      setStep('phone')
+      dispatch(resetOtpFlow())
+      return
+    }
+    dispatch(registerRequest({
+      verificationToken,
+      fullName: fullName.trim(),
+      email: email.trim() || undefined,
+    }))
+  }
+
+  const handleBack = () => {
+    if (step === 'otp') {
+      setStep('phone')
+      setOtp('')
+    } else if (step === 'register') {
+      setStep('phone')
+      dispatch(resetOtpFlow())
+      setOtp('')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <div className="h-12 w-12 rounded-xl bg-[#1B3B6F] flex items-center justify-center">
+              <Car className="h-7 w-7 text-white" />
+            </div>
+            <span className="font-bold text-2xl text-gray-900">
+              Road<span className="text-[#FF6B35]">Care</span>
+            </span>
+          </Link>
+        </div>
+
+        <Card className="shadow-xl border-0">
+          <CardHeader className="text-center pb-2">
+            {step !== 'phone' && (
+              <button onClick={handleBack} className="absolute left-4 top-4 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <ArrowLeft className="h-5 w-5 text-gray-600" />
+              </button>
+            )}
+            <CardTitle className="text-xl font-bold">
+              {step === 'phone' && 'Welcome to RoadCare'}
+              {step === 'otp' && 'Verify OTP'}
+              {step === 'register' && 'Complete Profile'}
+            </CardTitle>
+            <CardDescription>
+              {step === 'phone' && 'Enter your phone number to continue'}
+              {step === 'otp' && `Enter the 6-digit code sent to +91 ${phone}`}
+              {step === 'register' && 'Just a few more details to get started'}
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="pt-4">
+            {/* Step 1: Phone Number */}
+            {step === 'phone' && (
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center px-3 bg-gray-100 rounded-md border text-sm font-medium text-gray-600">
+                      +91
+                    </div>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="Enter 10-digit number"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      className="flex-1"
+                      maxLength={10}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#1B3B6F] hover:bg-[#152d55] text-white h-11"
+                  disabled={otpSending || phone.length < 10}
+                >
+                  {otpSending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...</>
+                  ) : (
+                    <><Phone className="mr-2 h-4 w-4" /> Send OTP</>
+                  )}
+                </Button>
+              </form>
+            )}
+
+            {/* Step 2: OTP Verification */}
+            {step === 'otp' && (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="flex justify-center">
+                  <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#1B3B6F] hover:bg-[#152d55] text-white h-11"
+                  disabled={otpVerifying || otp.length < 6}
+                >
+                  {otpVerifying ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</>
+                  ) : (
+                    'Verify OTP'
+                  )}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => dispatch(sendOtpRequest(phone))}
+                  className="w-full text-sm text-[#1B3B6F] hover:underline"
+                  disabled={otpSending}
+                >
+                  {otpSending ? 'Resending...' : 'Resend OTP'}
+                </button>
+              </form>
+            )}
+
+            {/* Step 3: Registration */}
+            {step === 'register' && (
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Input
+                    id="fullName"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email (Optional)</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#FF6B35] hover:bg-[#e55a2a] text-white h-11"
+                  disabled={registering || !fullName.trim()}
+                >
+                  {registering ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...</>
+                  ) : (
+                    'Create Account'
+                  )}
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Admin login link */}
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Admin? <Link href="/admin/login" className="text-[#1B3B6F] hover:underline font-medium">Login here</Link>
+        </p>
+      </div>
+    </div>
+  )
+}

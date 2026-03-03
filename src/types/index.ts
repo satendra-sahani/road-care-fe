@@ -82,7 +82,7 @@ export interface Brand {
 // Service Request Types
 export interface ServiceRequest {
   id: string
-  serviceType: 'home' | 'roadside'
+  serviceType: 'home' | 'roadside' | 'walkin'
   vehicleType: string
   problem: string
   location: string

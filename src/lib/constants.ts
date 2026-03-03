@@ -62,7 +62,7 @@ export interface Order {
 export interface ServiceRequest {
   id: string;
   userId: string;
-  serviceType: 'home' | 'roadside';
+  serviceType: 'home' | 'roadside' | 'walkin';
   vehicleType: 'bike' | 'car' | 'scooter';
   problem: string;
   location: string;
