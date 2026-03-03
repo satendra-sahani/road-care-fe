@@ -10,17 +10,24 @@ import {
   CheckCheck, Loader2, Inbox,
 } from 'lucide-react'
 
-interface Notification {
+interface NotificationData {
   _id: string
   title: string
-  body: string
+  message: string
   type: string
-  isRead: boolean
+  priority?: string
+  actionUrl?: string
+  imageUrl?: string
   createdAt: string
-  data?: {
-    orderId?: string
-    serviceRequestId?: string
-  }
+  sentAt?: string
+}
+
+interface UserNotificationItem {
+  _id: string
+  notification: NotificationData
+  isRead: boolean
+  readAt?: string
+  createdAt: string
 }
 
 function timeAgo(dateStr: string): string {
@@ -55,7 +62,7 @@ function getNotificationIcon(type: string) {
 }
 
 export function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useState<UserNotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [markingAll, setMarkingAll] = useState(false)
@@ -69,7 +76,9 @@ export function NotificationsPage() {
         userNotificationAPI.getUnreadCount(),
       ])
       if (notifRes.data.success) {
-        setNotifications(notifRes.data.data)
+        const items = notifRes.data.data || []
+        // Filter out entries where the notification was deleted
+        setNotifications(items.filter((item: UserNotificationItem) => item.notification))
       }
       if (countRes.data.success) {
         setUnreadCount(countRes.data.data.count)
@@ -85,15 +94,15 @@ export function NotificationsPage() {
     fetchNotifications()
   }, [fetchNotifications])
 
-  const handleMarkAsRead = async (id: string) => {
-    const notification = notifications.find(n => n._id === id)
-    if (!notification || notification.isRead) return
+  const handleMarkAsRead = async (userNotifId: string, notificationId: string) => {
+    const item = notifications.find(n => n._id === userNotifId)
+    if (!item || item.isRead) return
 
-    setMarkingId(id)
+    setMarkingId(userNotifId)
     try {
-      await userNotificationAPI.markAsRead(id)
+      await userNotificationAPI.markAsRead(notificationId)
       setNotifications(prev =>
-        prev.map(n => (n._id === id ? { ...n, isRead: true } : n))
+        prev.map(n => (n._id === userNotifId ? { ...n, isRead: true } : n))
       )
       setUnreadCount(prev => Math.max(0, prev - 1))
     } catch (err) {
@@ -176,17 +185,18 @@ export function NotificationsPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {notifications.map(notification => {
-              const Icon = getNotificationIcon(notification.type)
-              const isMarking = markingId === notification._id
+            {notifications.map(item => {
+              const notif = item.notification
+              const Icon = getNotificationIcon(notif.type)
+              const isMarking = markingId === item._id
 
               return (
                 <button
-                  key={notification._id}
-                  onClick={() => handleMarkAsRead(notification._id)}
+                  key={item._id}
+                  onClick={() => handleMarkAsRead(item._id, notif._id)}
                   disabled={isMarking}
                   className={`w-full text-left rounded-xl border p-4 transition-colors ${
-                    notification.isRead
+                    item.isRead
                       ? 'bg-white hover:bg-gray-50'
                       : 'bg-blue-50/60 border-l-4 border-l-[#1B3B6F] hover:bg-blue-50'
                   }`}
@@ -194,7 +204,7 @@ export function NotificationsPage() {
                   <div className="flex items-start gap-3">
                     <div
                       className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center ${
-                        notification.isRead ? 'bg-gray-100' : 'bg-[#1B3B6F]/10'
+                        item.isRead ? 'bg-gray-100' : 'bg-[#1B3B6F]/10'
                       }`}
                     >
                       {isMarking ? (
@@ -202,7 +212,7 @@ export function NotificationsPage() {
                       ) : (
                         <Icon
                           className={`h-5 w-5 ${
-                            notification.isRead ? 'text-gray-500' : 'text-[#1B3B6F]'
+                            item.isRead ? 'text-gray-500' : 'text-[#1B3B6F]'
                           }`}
                         />
                       )}
@@ -211,20 +221,20 @@ export function NotificationsPage() {
                       <div className="flex items-center justify-between gap-2">
                         <h3
                           className={`text-sm truncate ${
-                            notification.isRead ? 'font-medium text-gray-700' : 'font-semibold text-foreground'
+                            item.isRead ? 'font-medium text-gray-700' : 'font-semibold text-foreground'
                           }`}
                         >
-                          {notification.title}
+                          {notif.title}
                         </h3>
                         <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                          {timeAgo(notification.createdAt)}
+                          {timeAgo(notif.createdAt)}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                        {notification.body}
+                        {notif.message}
                       </p>
                     </div>
-                    {!notification.isRead && (
+                    {!item.isRead && (
                       <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#FF6B35] mt-1.5" />
                     )}
                   </div>

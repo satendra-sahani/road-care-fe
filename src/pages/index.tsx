@@ -198,25 +198,6 @@ export default function HomePage() {
       <div className="bg-[#F8FAFC]">
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 1 — Search Bar (same as Android header search)
-           ══════════════════════════════════════════════════════════════ */}
-        <div className="bg-gradient-to-br from-[#1B3B6F] to-[#0F2545] px-4 py-4 md:hidden">
-          <form onSubmit={handleSearch} className="flex items-center bg-white rounded-2xl px-4 py-3 gap-3 shadow-md">
-            <Search className="h-5 w-5 text-gray-400 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search parts, brands..."
-              className="flex-1 text-sm text-gray-800 placeholder:text-gray-400 outline-none bg-transparent font-medium"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-            <button type="button" onClick={() => setFilterOpen(true)} className="p-1">
-              <SlidersHorizontal className="h-5 w-5 text-gray-400" />
-            </button>
-          </form>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════════════
             SECTION 2 — "What are you looking for?" Hero Categories
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-4 md:px-6 lg:px-8 pt-5 pb-6 md:pt-10 md:pb-10 lg:pt-14 lg:pb-12">

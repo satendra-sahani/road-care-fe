@@ -1,19 +1,52 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
 import { loadUserRequest, customerLogout } from '@/store/slices/customerAuthSlice'
-import { userCartAPI, userNotificationAPI } from '@/services/api'
+import { userCartAPI, userNotificationAPI, catalogAPI } from '@/services/api'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
   Search, ShoppingCart, User, Menu, X, Car, Home, Grid3X3, Receipt, Bell,
-  Phone, MapPin, Truck, LogOut, ChevronDown, Wallet, MapPinned, Star,
+  Phone, MapPin, Truck, LogOut, ChevronDown, Wallet, MapPinned, Star, Wrench,
+  Tag, Loader2, Package, ArrowRight,
 } from 'lucide-react'
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from '@/components/ui/sheet'
 import Cookies from 'js-cookie'
+
+/* ─── Search suggestion types ─────────────────────────────────────── */
+interface SearchProduct {
+  _id: string
+  name: string
+  slug?: string
+  thumbnail?: { url: string; alt?: string }
+  images?: { url: string; alt?: string; isPrimary?: boolean }[]
+  price?: { selling?: number; mrp?: number }
+  brand?: { _id: string; name: string; logo?: string } | string
+}
+interface SearchBrand {
+  _id: string
+  name: string
+  logo?: string
+}
+interface SearchCategory {
+  _id: string
+  name: string
+  slug?: string
+  icon?: string
+  image?: string
+}
+interface SearchResults {
+  products: SearchProduct[]
+  brands: SearchBrand[]
+  categories: SearchCategory[]
+}
 
 export function UserLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -25,6 +58,14 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   const [cartCount, setCartCount] = useState(0)
   const [unreadCount, setUnreadCount] = useState(0)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  // Search autocomplete state
+  const [searchResults, setSearchResults] = useState<SearchResults>({ products: [], brands: [], categories: [] })
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [defaultProducts, setDefaultProducts] = useState<SearchProduct[]>([])
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
 
   // Load user on mount if token exists
   useEffect(() => {
@@ -50,12 +91,98 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated])
 
+  // Fetch default popular products once for empty-state suggestions
+  useEffect(() => {
+    catalogAPI.getProducts({ limit: 5, sortBy: 'popularity' }).then(res => {
+      if (res.data?.success) {
+        const items = res.data.data?.products || res.data.data || []
+        setDefaultProducts(items.slice(0, 5))
+      }
+    }).catch(() => {})
+  }, [])
+
+  // Close suggestions on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Debounced search handler
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchQuery(text)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+
+    if (text.trim().length < 2) {
+      setSearchResults({ products: [], brands: [], categories: [] })
+      setSearchLoading(false)
+      // Keep dropdown open with default products when focused but query empty
+      if (text.trim().length === 0 && defaultProducts.length > 0) {
+        setShowSuggestions(true)
+      } else {
+        setShowSuggestions(false)
+      }
+      return
+    }
+
+    setSearchLoading(true)
+    setShowSuggestions(true)
+
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await catalogAPI.search(text.trim(), { limit: 6 })
+        if (res.data?.success) {
+          setSearchResults(res.data.data || { products: [], brands: [], categories: [] })
+        }
+      } catch {
+        setSearchResults({ products: [], brands: [], categories: [] })
+      } finally {
+        setSearchLoading(false)
+      }
+    }, 400)
+  }, [])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    setShowSuggestions(false)
     if (searchQuery.trim()) {
       router.push(`/shop?search=${encodeURIComponent(searchQuery.trim())}`)
     }
   }
+
+  const handleSuggestionClick = (type: string, item: SearchProduct | SearchBrand | SearchCategory) => {
+    setShowSuggestions(false)
+    setSearchQuery('')
+    if (type === 'product') {
+      const p = item as SearchProduct
+      router.push(`/shop/${p._id}`)
+    } else if (type === 'brand') {
+      router.push(`/shop?brand=${item._id}`)
+    } else if (type === 'category') {
+      const c = item as SearchCategory
+      router.push(`/shop?category=${c._id}`)
+    }
+  }
+
+  const getProductImage = (p: SearchProduct): string => {
+    if (p.thumbnail?.url) return p.thumbnail.url
+    const primary = p.images?.find(i => i.isPrimary)
+    if (primary?.url) return primary.url
+    if (p.images?.[0]?.url) return p.images[0].url
+    return ''
+  }
+
+  const getBrandName = (brand: SearchProduct['brand']): string => {
+    if (!brand) return ''
+    if (typeof brand === 'string') return brand
+    return brand.name || ''
+  }
+
+  const hasAnySuggestions = searchResults.products.length > 0 || searchResults.brands.length > 0 || searchResults.categories.length > 0
 
   const handleLogout = () => {
     dispatch(customerLogout())
@@ -103,16 +230,215 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             </span>
           </Link>
 
-          {/* Search */}
-          <form onSubmit={handleSearch} className="flex-1 max-w-xl relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search parts, accessories..."
-              className="pl-10 pr-4 bg-surface border-border"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
+          {/* Search with Autocomplete */}
+          <div ref={searchContainerRef} className="flex-1 max-w-xl relative">
+            <form onSubmit={handleSearch} className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search parts, accessories..."
+                className="pl-10 pr-10 bg-surface border-border"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => { if (searchQuery.trim().length >= 2 || defaultProducts.length > 0) setShowSuggestions(true) }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setShowSuggestions(false); setSearchResults({ products: [], brands: [], categories: [] }) }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </form>
+
+            {/* Autocomplete Dropdown — full-width on mobile, contained on desktop */}
+            {showSuggestions && (
+              <div className="fixed left-0 right-0 top-[60px] mx-2 sm:mx-0 sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 bg-white rounded-xl border border-gray-200 shadow-xl z-[60] max-h-[70vh] sm:max-h-[420px] overflow-y-auto scrollbar-ultra-narrow">
+                {searchLoading ? (
+                  <div className="flex items-center gap-2 px-4 py-6 justify-center text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Searching...</span>
+                  </div>
+                ) : searchQuery.trim().length < 2 && defaultProducts.length > 0 ? (
+                  /* ── Default / Popular products when search is empty ── */
+                  <div className="py-2">
+                    <div className="px-4 py-1.5 flex items-center justify-between">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Popular Products</span>
+                      <button
+                        onClick={() => { setShowSuggestions(false); router.push('/shop') }}
+                        className="text-[10px] font-medium text-[#1B3B6F] hover:underline flex items-center gap-0.5"
+                      >
+                        View All <ArrowRight className="h-3 w-3" />
+                      </button>
+                    </div>
+                    {defaultProducts.map((product) => {
+                      const imgUrl = getProductImage(product)
+                      const brandName = getBrandName(product.brand)
+                      const selling = product.price?.selling
+                      const mrp = product.price?.mrp
+                      const discount = selling && mrp && mrp > selling
+                        ? Math.round(((mrp - selling) / mrp) * 100)
+                        : 0
+                      return (
+                        <button
+                          key={product._id}
+                          onClick={() => handleSuggestionClick('product', product)}
+                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+                        >
+                          <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
+                            {imgUrl ? (
+                              <Image src={imgUrl} alt={product.name} width={40} height={40} className="object-contain w-full h-full" />
+                            ) : (
+                              <Package className="h-5 w-5 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
+                            {brandName && <p className="text-xs text-muted-foreground truncate">{brandName}</p>}
+                          </div>
+                          <div className="text-right shrink-0">
+                            {selling != null && (
+                              <p className="text-sm font-bold text-[#1B3B6F]">₹{selling.toLocaleString()}</p>
+                            )}
+                            {discount > 0 && mrp != null && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-gray-400 line-through">₹{mrp.toLocaleString()}</span>
+                                <span className="text-[10px] font-semibold text-green-600">{discount}% off</span>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : !hasAnySuggestions ? (
+                  <div className="px-4 py-6 text-center">
+                    <Search className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No results for &quot;{searchQuery}&quot;</p>
+                    <p className="text-xs text-gray-400 mt-1">Try different keywords or browse categories</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Products */}
+                    {searchResults.products.length > 0 && (
+                      <div className="py-2">
+                        <div className="px-4 py-1.5 flex items-center justify-between">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Products</span>
+                          <button
+                            onClick={() => { setShowSuggestions(false); router.push(`/shop?search=${encodeURIComponent(searchQuery.trim())}`) }}
+                            className="text-[10px] font-medium text-[#1B3B6F] hover:underline flex items-center gap-0.5"
+                          >
+                            View All <ArrowRight className="h-3 w-3" />
+                          </button>
+                        </div>
+                        {searchResults.products.slice(0, 5).map((product) => {
+                          const imgUrl = getProductImage(product)
+                          const brandName = getBrandName(product.brand)
+                          const selling = product.price?.selling
+                          const mrp = product.price?.mrp
+                          const discount = selling && mrp && mrp > selling
+                            ? Math.round(((mrp - selling) / mrp) * 100)
+                            : 0
+                          return (
+                            <button
+                              key={product._id}
+                              onClick={() => handleSuggestionClick('product', product)}
+                              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+                            >
+                              <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                {imgUrl ? (
+                                  <Image src={imgUrl} alt={product.name} width={40} height={40} className="object-contain w-full h-full" />
+                                ) : (
+                                  <Package className="h-5 w-5 text-gray-400" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
+                                {brandName && <p className="text-xs text-muted-foreground truncate">{brandName}</p>}
+                              </div>
+                              <div className="text-right shrink-0">
+                                {selling != null && (
+                                  <p className="text-sm font-bold text-[#1B3B6F]">₹{selling.toLocaleString()}</p>
+                                )}
+                                {discount > 0 && mrp != null && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-gray-400 line-through">₹{mrp.toLocaleString()}</span>
+                                    <span className="text-[10px] font-semibold text-green-600">{discount}% off</span>
+                                  </div>
+                                )}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Brands */}
+                    {searchResults.brands.length > 0 && (
+                      <div className="py-2 border-t border-gray-100">
+                        <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Brands</p>
+                        {searchResults.brands.slice(0, 3).map((brand) => (
+                          <button
+                            key={brand._id}
+                            onClick={() => handleSuggestionClick('brand', brand)}
+                            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+                          >
+                            <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 overflow-hidden">
+                              {brand.logo ? (
+                                <Image src={brand.logo} alt={brand.name} width={40} height={40} className="object-contain w-full h-full p-1" />
+                              ) : (
+                                <Tag className="h-5 w-5 text-blue-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{brand.name}</p>
+                              <p className="text-xs text-muted-foreground">Brand</p>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-gray-400 shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Categories */}
+                    {searchResults.categories.length > 0 && (
+                      <div className="py-2 border-t border-gray-100">
+                        <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Categories</p>
+                        {searchResults.categories.slice(0, 3).map((cat) => (
+                          <button
+                            key={cat._id}
+                            onClick={() => handleSuggestionClick('category', cat)}
+                            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+                          >
+                            <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                              <Grid3X3 className="h-5 w-5 text-orange-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{cat.name}</p>
+                              <p className="text-xs text-muted-foreground">Category</p>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-gray-400 shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Footer: Full search link */}
+                    <div className="border-t border-gray-100 px-4 py-2.5">
+                      <button
+                        onClick={() => { setShowSuggestions(false); router.push(`/shop?search=${encodeURIComponent(searchQuery.trim())}`) }}
+                        className="w-full flex items-center justify-center gap-2 text-sm font-medium text-[#1B3B6F] hover:text-[#FF6B35] transition-colors"
+                      >
+                        <Search className="h-4 w-4" />
+                        Search all results for &quot;{searchQuery}&quot;
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-foreground">
@@ -196,29 +522,144 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
             <button
               className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setMobileMenuOpen(true)}
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden border-t bg-background px-4 py-4 space-y-3">
-            <Link href="/" onClick={() => setMobileMenuOpen(false)} className="block py-2 font-medium">Home</Link>
-            <Link href="/shop" onClick={() => setMobileMenuOpen(false)} className="block py-2 font-medium">Shop</Link>
-            <Link href="/service" onClick={() => setMobileMenuOpen(false)} className="block py-2 font-medium">Services</Link>
-            {!isAuthenticated && (
-              <Link href="/login" className="block">
-                <Button className="w-full bg-[#1B3B6F] text-white">
-                  <User className="h-4 w-4 mr-2" /> Login / Register
-                </Button>
+      </header>
+
+      {/* Mobile Side Drawer */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="w-[270px] sm:w-[300px] p-0 flex flex-col">
+          {/* Drawer Header */}
+          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border bg-gradient-to-r from-[#1B3B6F] to-[#2A5298]">
+            <SheetTitle className="flex items-center gap-2.5 text-white">
+              <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
+                <Car className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-bold text-xl">
+                Road<span className="text-[#FF6B35]">Care</span>
+              </span>
+            </SheetTitle>
+          </SheetHeader>
+
+          {/* Authenticated User Info */}
+          {isAuthenticated && user && (
+            <div className="px-5 py-3.5 border-b border-border bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-[#1B3B6F] text-white flex items-center justify-center text-sm font-bold shrink-0">
+                  {(user.fullName || 'U')[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{user.fullName || 'User'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email || user.phone || ''}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Links */}
+          <div className="flex-1 overflow-y-auto scrollbar-ultra-narrow py-2">
+            {/* Main Navigation */}
+            <div className="px-2.5 mb-1">
+              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Menu</p>
+              {[
+                { icon: Home, label: 'Home', href: '/' },
+                { icon: Grid3X3, label: 'Shop', href: '/shop' },
+                { icon: Wrench, label: 'Services', href: '/service' },
+              ].map((item) => {
+                const isActive = item.href === '/'
+                  ? router.pathname === '/'
+                  : router.pathname.startsWith(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-0.5 ${
+                      isActive
+                        ? 'bg-[#FF6B35]/10 text-[#FF6B35]'
+                        : 'text-foreground hover:bg-gray-100'
+                    }`}
+                  >
+                    <item.icon className={`h-[18px] w-[18px] ${isActive ? 'text-[#FF6B35]' : 'text-gray-500'}`} />
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* Account & Activity Links — always visible */}
+            <div className="px-2.5 mt-1 pt-1.5 border-t border-border">
+              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Account</p>
+              {[
+                { icon: User, label: 'My Profile', href: '/profile' },
+                { icon: Receipt, label: 'My Orders', href: '/orders' },
+                { icon: Truck, label: 'Service Requests', href: '/service/my-requests' },
+                { icon: Bell, label: 'Notifications', href: '/notifications', badge: unreadCount },
+                { icon: ShoppingCart, label: 'My Cart', href: '/cart' },
+                { icon: MapPinned, label: 'Addresses', href: '/addresses' },
+                { icon: Wallet, label: 'Wallet', href: '/wallet' },
+                { icon: Star, label: 'My Reviews', href: '/reviews' },
+              ].map((item) => {
+                const isActive = router.pathname === item.href || router.pathname.startsWith(item.href + '/')
+                const needsAuth = item.href !== '/cart'
+                const linkHref = !isAuthenticated && needsAuth
+                  ? `/login?redirect=${encodeURIComponent(item.href)}`
+                  : item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={linkHref}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-0.5 ${
+                      isActive
+                        ? 'bg-[#FF6B35]/10 text-[#FF6B35]'
+                        : 'text-foreground hover:bg-gray-100'
+                    }`}
+                  >
+                    <item.icon className={`h-[18px] w-[18px] ${isActive ? 'text-[#FF6B35]' : 'text-gray-500'}`} />
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge ? (
+                      <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {item.badge > 9 ? '9+' : item.badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Drawer Footer */}
+          <div className="border-t border-border px-4 py-3">
+            {isAuthenticated ? (
+              <button
+                onClick={() => {
+                  handleLogout()
+                  setMobileMenuOpen(false)
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            ) : (
+              <Link
+                href={`/login?redirect=${encodeURIComponent(router.asPath)}`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#1B3B6F] text-white text-sm font-medium hover:bg-[#152d55] transition-colors"
+              >
+                <User className="h-4 w-4" />
+                Login / Register
               </Link>
             )}
           </div>
-        )}
-      </header>
+        </SheetContent>
+      </Sheet>
 
       {/* Main Content */}
       <main>{children}</main>

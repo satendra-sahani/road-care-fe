@@ -411,6 +411,7 @@ export function ServiceManagement() {
   const [customerList, setCustomerList] = useState<any[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
   const [savingRequest, setSavingRequest] = useState(false)
+  const [customerLoading, setCustomerLoading] = useState(false)
 
   // Copy-to-clipboard helper
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
@@ -430,10 +431,12 @@ export function ServiceManagement() {
   // Fetch customers when add request dialog opens
   useEffect(() => {
     if (addRequestOpen && customerList.length === 0) {
+      setCustomerLoading(true)
       userAPI.getAll({ role: 'user', limit: 200 }).then(res => {
-        const data = res.data?.data || res.data?.users || res.data || []
+        const data = res.data?.data?.users || res.data?.data || res.data?.users || res.data || []
         setCustomerList(Array.isArray(data) ? data : [])
       }).catch(err => console.error('Failed to fetch customers:', err))
+        .finally(() => setCustomerLoading(false))
     }
   }, [addRequestOpen])
 
@@ -2446,73 +2449,117 @@ export function ServiceManagement() {
 
       {/* ── Add Service Request Dialog ── */}
       <Dialog open={addRequestOpen} onOpenChange={setAddRequestOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
           {/* Fixed Header */}
-          <DialogHeader className="border-b pb-4 flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Wrench className="h-5 w-5 text-[#1B3B6F]" />
+          <DialogHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-[#1B3B6F] to-[#2A5298] flex-shrink-0 rounded-t-lg">
+            <DialogTitle className="flex items-center gap-3 text-white">
+              <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Wrench className="h-5 w-5 text-white" />
               </div>
-              Add Service Request
+              <div>
+                <span className="text-lg font-semibold">Add Service Request</span>
+                <DialogDescription className="text-blue-100 text-xs mt-0.5">
+                  Create a new service request on behalf of a customer
+                </DialogDescription>
+              </div>
             </DialogTitle>
-            <DialogDescription className="text-sm text-gray-500">
-              Create a new service request on behalf of a customer. A payment entry will be auto-created.
-            </DialogDescription>
           </DialogHeader>
 
           {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto space-y-5 py-4 pr-1" style={{ scrollbarWidth: 'thin' }}>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6" style={{ scrollbarWidth: 'thin' }}>
             {/* Section: Customer Selection */}
-            <div className="space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
-                <User className="h-4 w-4" /> Customer
+                <div className="h-7 w-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <User className="h-3.5 w-3.5 text-[#1B3B6F]" />
+                </div>
+                Select Customer <span className="text-red-400 text-xs">*</span>
               </h3>
-              <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search customer by name, phone, email..."
+                  placeholder="Search by name, phone, or email..."
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
-                  className="text-sm"
+                  className="pl-9 text-sm bg-white border-gray-200 focus:border-[#1B3B6F] focus:ring-[#1B3B6F]/20"
                 />
-                <Select value={newRequest.customerId} onValueChange={(val) => setNewRequest(prev => ({ ...prev, customerId: val }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-52">
-                    {filteredCustomers.map((c: any) => (
-                      <SelectItem key={c._id} value={c._id}>
-                        {c.fullName || c.username || 'Unknown'} — {c.phone || c.email || ''}
-                      </SelectItem>
-                    ))}
-                    {filteredCustomers.length === 0 && (
-                      <div className="px-3 py-2 text-xs text-gray-400">No customers found</div>
-                    )}
-                  </SelectContent>
-                </Select>
               </div>
+              <Select value={newRequest.customerId} onValueChange={(val) => {
+                const selected = customerList.find((c: any) => c._id === val)
+                setNewRequest(prev => ({
+                  ...prev,
+                  customerId: val,
+                  ...(selected?.address ? { address: selected.address } : {}),
+                  ...(selected?.city ? { city: selected.city } : {}),
+                  ...(selected?.state ? { state: selected.state } : {}),
+                  ...(selected?.pincode ? { pincode: selected.pincode } : {}),
+                }))
+              }}>
+                <SelectTrigger className="bg-white border-gray-200">
+                  <SelectValue placeholder={customerLoading ? "Loading customers..." : "Choose a registered customer..."} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {customerLoading ? (
+                    <div className="px-3 py-4 text-center">
+                      <Loader2 className="h-6 w-6 text-[#1B3B6F] mx-auto mb-2 animate-spin" />
+                      <p className="text-xs text-gray-400 font-medium">Loading customers...</p>
+                    </div>
+                  ) : filteredCustomers.length > 0 ? filteredCustomers.map((c: any) => (
+                    <SelectItem key={c._id} value={c._id} className="py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-[#1B3B6F]/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[10px] font-semibold text-[#1B3B6F]">
+                            {(c.fullName || c.username || '?')[0]?.toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="font-medium text-sm">{c.fullName || c.username || 'Unknown'}</span>
+                        <span className="text-gray-400 text-xs">—</span>
+                        <span className="text-xs text-gray-500">{c.phone || c.email || 'No contact'}</span>
+                      </div>
+                    </SelectItem>
+                  )) : (
+                    <div className="px-3 py-4 text-center">
+                      <User className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-xs text-gray-400 font-medium">No customers found</p>
+                      <p className="text-[10px] text-gray-300 mt-0.5">Try a different search term</p>
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+              {newRequest.customerId && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                  <p className="text-xs text-emerald-700 font-medium">
+                    Customer selected: {customerList.find((c: any) => c._id === newRequest.customerId)?.fullName || 'Selected'}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Section: Service Details */}
-            <div className="space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
-                <Wrench className="h-4 w-4" /> Service Details
+                <div className="h-7 w-7 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Wrench className="h-3.5 w-3.5 text-purple-600" />
+                </div>
+                Service Details
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs text-gray-500">Service Type</Label>
+                  <Label className="text-xs font-medium text-gray-600">Service Type</Label>
                   <Select value={newRequest.serviceType} onValueChange={(val) => setNewRequest(prev => ({ ...prev, serviceType: val as 'home' | 'roadside' | 'walkin' }))}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1.5 bg-white"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="home">Home Service</SelectItem>
-                      <SelectItem value="roadside">Roadside Assistance</SelectItem>
-                      <SelectItem value="walkin">Walk-in Service</SelectItem>
+                      <SelectItem value="home"><div className="flex items-center gap-2"><Home className="h-3.5 w-3.5 text-blue-500" /> Home Service</div></SelectItem>
+                      <SelectItem value="roadside"><div className="flex items-center gap-2"><Navigation className="h-3.5 w-3.5 text-orange-500" /> Roadside Assistance</div></SelectItem>
+                      <SelectItem value="walkin"><div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-green-500" /> Walk-in Service</div></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Service Category *</Label>
+                  <Label className="text-xs font-medium text-gray-600">Service Category <span className="text-red-400">*</span></Label>
                   <Select value={newRequest.serviceCategory} onValueChange={(val) => setNewRequest(prev => ({ ...prev, serviceCategory: val }))}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                    <SelectTrigger className="mt-1.5 bg-white"><SelectValue placeholder="Select category" /></SelectTrigger>
                     <SelectContent>
                       {serviceCategories.map(cat => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
@@ -2521,33 +2568,33 @@ export function ServiceManagement() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Priority</Label>
+                  <Label className="text-xs font-medium text-gray-600">Priority</Label>
                   <Select value={newRequest.priority} onValueChange={(val) => setNewRequest(prev => ({ ...prev, priority: val, isEmergency: val === 'urgent' }))}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1.5 bg-white"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent (Emergency)</SelectItem>
+                      <SelectItem value="low"><Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200 text-xs">Low</Badge></SelectItem>
+                      <SelectItem value="medium"><Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 text-xs">Medium</Badge></SelectItem>
+                      <SelectItem value="high"><Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 text-xs">High</Badge></SelectItem>
+                      <SelectItem value="urgent"><Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-xs">Urgent</Badge></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Payment Method</Label>
+                  <Label className="text-xs font-medium text-gray-600">Payment Method</Label>
                   <Select value={newRequest.paymentMethod} onValueChange={(val) => setNewRequest(prev => ({ ...prev, paymentMethod: val }))}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1.5 bg-white"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cod">Cash on Delivery</SelectItem>
-                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="cod"><div className="flex items-center gap-2"><DollarSign className="h-3.5 w-3.5 text-green-500" /> Cash on Delivery</div></SelectItem>
+                      <SelectItem value="online"><div className="flex items-center gap-2"><CreditCard className="h-3.5 w-3.5 text-blue-500" /> Online Payment</div></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-gray-500">Description *</Label>
+                <Label className="text-xs font-medium text-gray-600">Description <span className="text-red-400">*</span></Label>
                 <Textarea
                   placeholder="Describe the issue or service needed..."
-                  className="mt-1"
+                  className="mt-1.5 bg-white"
                   rows={3}
                   value={newRequest.description}
                   onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
@@ -2556,15 +2603,18 @@ export function ServiceManagement() {
             </div>
 
             {/* Section: Vehicle Info */}
-            <div className="space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
-                <Car className="h-4 w-4" /> Vehicle Information
+                <div className="h-7 w-7 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Car className="h-3.5 w-3.5 text-amber-600" />
+                </div>
+                Vehicle Information
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs text-gray-500">Vehicle Type</Label>
+                  <Label className="text-xs font-medium text-gray-600">Vehicle Type</Label>
                   <Select value={newRequest.vehicleType} onValueChange={(val) => setNewRequest(prev => ({ ...prev, vehicleType: val }))}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectTrigger className="mt-1.5 bg-white"><SelectValue placeholder="Select type" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Car">Car</SelectItem>
                       <SelectItem value="Motorcycle">Motorcycle</SelectItem>
@@ -2576,67 +2626,73 @@ export function ServiceManagement() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Brand</Label>
-                  <Input className="mt-1" placeholder="e.g. Maruti" value={newRequest.vehicleBrand} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleBrand: e.target.value }))} />
+                  <Label className="text-xs font-medium text-gray-600">Brand</Label>
+                  <Input className="mt-1.5 bg-white" placeholder="e.g. Maruti" value={newRequest.vehicleBrand} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleBrand: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Model</Label>
-                  <Input className="mt-1" placeholder="e.g. Swift" value={newRequest.vehicleModel} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleModel: e.target.value }))} />
+                  <Label className="text-xs font-medium text-gray-600">Model</Label>
+                  <Input className="mt-1.5 bg-white" placeholder="e.g. Swift" value={newRequest.vehicleModel} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleModel: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Year</Label>
-                  <Input className="mt-1" placeholder="e.g. 2022" value={newRequest.vehicleYear} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleYear: e.target.value }))} />
+                  <Label className="text-xs font-medium text-gray-600">Year</Label>
+                  <Input className="mt-1.5 bg-white" placeholder="e.g. 2022" value={newRequest.vehicleYear} onChange={(e) => setNewRequest(prev => ({ ...prev, vehicleYear: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <Label className="text-xs text-gray-500">Registration Number</Label>
-                  <Input className="mt-1" placeholder="e.g. UP16AB1234" value={newRequest.registrationNumber} onChange={(e) => setNewRequest(prev => ({ ...prev, registrationNumber: e.target.value.toUpperCase() }))} />
+                  <Label className="text-xs font-medium text-gray-600">Registration Number</Label>
+                  <Input className="mt-1.5 bg-white" placeholder="e.g. UP16AB1234" value={newRequest.registrationNumber} onChange={(e) => setNewRequest(prev => ({ ...prev, registrationNumber: e.target.value.toUpperCase() }))} />
                 </div>
               </div>
             </div>
 
             {/* Section: Location */}
-            <div className="space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
-                <MapPin className="h-4 w-4" /> Location
+                <div className="h-7 w-7 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                </div>
+                Location <span className="text-red-400 text-xs">*</span>
               </h3>
               <div>
-                <Label className="text-xs text-gray-500">Address *</Label>
-                <Input className="mt-1" placeholder="Full service address" value={newRequest.address} onChange={(e) => setNewRequest(prev => ({ ...prev, address: e.target.value }))} />
+                <Label className="text-xs font-medium text-gray-600">Address <span className="text-red-400">*</span></Label>
+                <Input className="mt-1.5 bg-white" placeholder="Full service address" value={newRequest.address} onChange={(e) => setNewRequest(prev => ({ ...prev, address: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <Label className="text-xs text-gray-500">City</Label>
-                  <Input className="mt-1" placeholder="City" value={newRequest.city} onChange={(e) => setNewRequest(prev => ({ ...prev, city: e.target.value }))} />
+                  <Label className="text-xs font-medium text-gray-600">City</Label>
+                  <Input className="mt-1.5 bg-white" placeholder="City" value={newRequest.city} onChange={(e) => setNewRequest(prev => ({ ...prev, city: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">State</Label>
-                  <Input className="mt-1" placeholder="State" value={newRequest.state} onChange={(e) => setNewRequest(prev => ({ ...prev, state: e.target.value }))} />
+                  <Label className="text-xs font-medium text-gray-600">State</Label>
+                  <Input className="mt-1.5 bg-white" placeholder="State" value={newRequest.state} onChange={(e) => setNewRequest(prev => ({ ...prev, state: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Pincode</Label>
-                  <Input className="mt-1" placeholder="Pincode" value={newRequest.pincode} onChange={(e) => setNewRequest(prev => ({ ...prev, pincode: e.target.value }))} />
+                  <Label className="text-xs font-medium text-gray-600">Pincode</Label>
+                  <Input className="mt-1.5 bg-white" placeholder="Pincode" value={newRequest.pincode} onChange={(e) => setNewRequest(prev => ({ ...prev, pincode: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Landmark</Label>
-                  <Input className="mt-1" placeholder="Nearby landmark" value={newRequest.landmark} onChange={(e) => setNewRequest(prev => ({ ...prev, landmark: e.target.value }))} />
+                  <Label className="text-xs font-medium text-gray-600">Landmark</Label>
+                  <Input className="mt-1.5 bg-white" placeholder="Nearby landmark" value={newRequest.landmark} onChange={(e) => setNewRequest(prev => ({ ...prev, landmark: e.target.value }))} />
                 </div>
               </div>
             </div>
 
             {/* Section: Schedule & Cost */}
-            <div className="space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-[#1B3B6F] flex items-center gap-2">
-                <Calendar className="h-4 w-4" /> Schedule & Cost
+                <div className="h-7 w-7 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+                </div>
+                Schedule & Cost
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs text-gray-500">Preferred Date *</Label>
-                  <Input className="mt-1" type="date" value={newRequest.preferredDate} onChange={(e) => setNewRequest(prev => ({ ...prev, preferredDate: e.target.value }))} />
+                  <Label className="text-xs font-medium text-gray-600">Preferred Date</Label>
+                  <Input className="mt-1.5 bg-white" type="date" value={newRequest.preferredDate} onChange={(e) => setNewRequest(prev => ({ ...prev, preferredDate: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Time Slot</Label>
+                  <Label className="text-xs font-medium text-gray-600">Time Slot</Label>
                   <Select value={newRequest.preferredTimeSlot} onValueChange={(val) => setNewRequest(prev => ({ ...prev, preferredTimeSlot: val }))}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select time" /></SelectTrigger>
+                    <SelectTrigger className="mt-1.5 bg-white"><SelectValue placeholder="Select time" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="08:00-10:00">08:00 - 10:00 AM</SelectItem>
                       <SelectItem value="10:00-12:00">10:00 - 12:00 PM</SelectItem>
@@ -2648,14 +2704,14 @@ export function ServiceManagement() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Estimated Cost (₹)</Label>
-                  <Input className="mt-1" type="number" min={0} placeholder="0" value={newRequest.estimatedCost || ''} onChange={(e) => setNewRequest(prev => ({ ...prev, estimatedCost: Number(e.target.value) || 0 }))} />
+                  <Label className="text-xs font-medium text-gray-600">Estimated Cost (₹)</Label>
+                  <Input className="mt-1.5 bg-white" type="number" min={0} placeholder="0" value={newRequest.estimatedCost || ''} onChange={(e) => setNewRequest(prev => ({ ...prev, estimatedCost: Number(e.target.value) || 0 }))} />
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-gray-500">Notes (optional)</Label>
+                <Label className="text-xs font-medium text-gray-600">Notes (optional)</Label>
                 <Textarea
-                  className="mt-1"
+                  className="mt-1.5 bg-white"
                   rows={2}
                   placeholder="Any additional notes or special instructions..."
                   value={newRequest.notes}
@@ -2666,9 +2722,11 @@ export function ServiceManagement() {
 
             {/* Info Banner */}
             {newRequest.estimatedCost > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-                <CreditCard className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-blue-700">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-start gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <CreditCard className="h-3.5 w-3.5 text-blue-600" />
+                </div>
+                <p className="text-xs text-blue-700 leading-relaxed">
                   A <strong>{newRequest.paymentMethod === 'cod' ? 'COD' : 'Online'}</strong> payment entry of <strong>₹{newRequest.estimatedCost.toLocaleString('en-IN')}</strong> will be auto-created in Payment Management when this request is saved.
                 </p>
               </div>
@@ -2676,12 +2734,12 @@ export function ServiceManagement() {
           </div>
 
           {/* Fixed Footer */}
-          <DialogFooter className="border-t pt-4 flex-shrink-0 gap-2">
-            <Button variant="outline" onClick={() => { setAddRequestOpen(false); setNewRequest(emptyServiceRequest); setCustomerSearch('') }}>
+          <DialogFooter className="px-6 py-4 border-t bg-gray-50/80 flex-shrink-0 gap-2 rounded-b-lg">
+            <Button variant="outline" className="border-gray-200" onClick={() => { setAddRequestOpen(false); setNewRequest(emptyServiceRequest); setCustomerSearch('') }}>
               <X className="h-4 w-4 mr-2" /> Cancel
             </Button>
             <Button
-              className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+              className="bg-[#1B3B6F] hover:bg-[#0F2545] shadow-sm"
               disabled={savingRequest || !newRequest.customerId || !newRequest.serviceCategory || !newRequest.description || !newRequest.address}
               onClick={handleSaveNewRequest}
             >
