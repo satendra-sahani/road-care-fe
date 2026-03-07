@@ -76,7 +76,7 @@ import { Progress } from '@/components/ui/progress'
 
 // Mock settings data
 const mockGeneralSettings = {
-  siteName: 'Road Care Auto Parts',
+  siteName: 'Bharat Machenics Auto Parts',
   siteDescription: 'Your trusted partner for genuine auto parts and vehicle services',
   contactEmail: 'support@roadcare.com',
   contactPhone: '+91 1800-ROADCARE',

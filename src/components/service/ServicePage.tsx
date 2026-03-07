@@ -201,7 +201,7 @@ export function ServicePage() {
           key: orderResult.keyId,
           amount: orderResult.amount,
           currency: orderResult.currency || 'INR',
-          name: 'Road Care',
+          name: 'Bharat Machenics',
           description: `${serviceType === 'roadside' ? 'Emergency' : serviceType === 'walkin' ? 'Walk-in' : 'Home'} Service`,
           order_id: orderResult.orderId,
           handler: async (response: any) => {

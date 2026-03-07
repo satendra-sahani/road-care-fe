@@ -695,7 +695,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             ))}
           </div>
           <div className="border-t border-gray-700 mt-10 pt-6 text-center">
-            <p className="text-gray-500 text-sm">&copy; 2026 Road Care. All rights reserved.</p>
+            <p className="text-gray-500 text-sm">&copy; 2026 Bharat Machenics. All rights reserved.</p>
           </div>
         </div>
       </footer>

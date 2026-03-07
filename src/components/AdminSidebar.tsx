@@ -56,7 +56,7 @@ export function AdminSidebar({ currentPath }: AdminSidebarProps) {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white text-sm font-bold">
               RC
             </div>
-            Road Care Admin
+            Bharat Machenics Admin
           </Link>
         </div>
 

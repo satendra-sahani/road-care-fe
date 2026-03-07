@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-[#FF6B35] rounded-2xl shadow-lg shadow-orange-500/30 mb-4">
             <Wrench className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white">Road Care</h1>
+          <h1 className="text-3xl font-bold text-white">Bharat Machenics</h1>
           <p className="text-gray-400 mt-1">Admin Panel</p>
         </div>
 
@@ -141,7 +141,7 @@ export default function AdminLoginPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-500 text-xs mt-6">
-          Road Care Admin Panel &copy; {new Date().getFullYear()}
+          Bharat Machenics Admin Panel &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>

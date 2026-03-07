@@ -244,7 +244,7 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
                 <Wrench className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white">Road Care</h1>
+                <h1 className="text-lg font-bold text-white">Bharat Machenics</h1>
                 <p className="text-[10px] text-gray-400">Admin Panel</p>
               </div>
             </div>

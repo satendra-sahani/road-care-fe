@@ -194,7 +194,7 @@ export function CheckoutPage() {
           key: order.razorpay.keyId,
           amount: order.razorpay.amount,
           currency: order.razorpay.currency || 'INR',
-          name: 'Road Care Auto Parts',
+          name: 'Bharat Machenics Auto Parts',
           description: 'Product Order Payment',
           order_id: order.razorpay.orderId,
           handler: async (response: any) => {

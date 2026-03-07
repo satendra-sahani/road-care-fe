@@ -18,7 +18,7 @@ export function Navbar() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
               RC
             </div>
-            Road Care
+            Bharat Machenics
           </Link>
 
           {/* Desktop Navigation */}
