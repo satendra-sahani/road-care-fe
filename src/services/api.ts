@@ -432,4 +432,11 @@ export const userNotificationAPI = {
   markAllAsRead: () => api.patch('/common/notifications/read-all'),
 };
 
+// ─── Admin Call Logs APIs ────────────────────────────────────────────
+export const adminCallLogsAPI = {
+  getAll: (params?: Record<string, any>) => api.get('/admin/calls', { params }),
+  getStats: () => api.get('/admin/calls/stats'),
+  getById: (id: string) => api.get(`/admin/calls/${id}`),
+};
+
 export default api;

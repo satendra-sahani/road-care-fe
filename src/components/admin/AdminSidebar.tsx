@@ -22,7 +22,8 @@ import {
   LogOut,
   Tag,
   Image,
-  MapPin
+  MapPin,
+  Phone
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -66,6 +67,7 @@ const baseSidebarItems: SidebarItem[] = [
   { id: 'banners', title: 'Banners', icon: Image, href: '/admin/banners', separator: true },
   { id: 'locations', title: 'Locations', icon: MapPin, href: '/admin/locations' },
   { id: 'notifications', title: 'Notifications', icon: Bell, href: '/admin/communication/notifications' },
+  { id: 'call-logs', title: 'Call Logs', icon: Phone, href: '/admin/communication/call-logs' },
 
   // Settings
   { id: 'settings', title: 'Settings', icon: Settings, href: '/admin/settings/general', separator: true },
