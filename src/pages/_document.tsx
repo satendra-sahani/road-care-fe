@@ -5,6 +5,7 @@ export default function Document() {
     <Html lang="en">
       <Head>
         <script src="https://checkout.razorpay.com/v1/checkout.js" async />
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
       <body className="antialiased">
         <Main />
