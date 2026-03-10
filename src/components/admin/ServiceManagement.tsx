@@ -678,7 +678,7 @@ export function ServiceManagement() {
         const res = await adminShopAPI.assignOrder(assigningRequest._id, selectedShopId)
         if (res.data?.success) {
           // Refresh service requests to show updated status
-          dispatch(fetchServiceRequestsRequest({}))
+          dispatch(fetchServiceRequestsRequest())
         } else {
           alert(res.data?.message || 'Failed to assign to shop')
           return
@@ -2257,13 +2257,13 @@ export function ServiceManagement() {
                       {(selectedRequest.diagnosis.costBreakdown?.additionalCharges || 0) > 0 && (
                         <div className="flex justify-between text-xs">
                           <span className="text-[#6B7280]">Additional Charges</span>
-                          <span className="font-medium">₹{selectedRequest.diagnosis.costBreakdown.additionalCharges}</span>
+                          <span className="font-medium">₹{selectedRequest.diagnosis.costBreakdown?.additionalCharges}</span>
                         </div>
                       )}
                       {(selectedRequest.diagnosis.costBreakdown?.discount || 0) > 0 && (
                         <div className="flex justify-between text-xs">
                           <span className="text-[#6B7280]">Discount</span>
-                          <span className="font-medium text-green-600">-₹{selectedRequest.diagnosis.costBreakdown.discount}</span>
+                          <span className="font-medium text-green-600">-₹{selectedRequest.diagnosis.costBreakdown?.discount}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-sm font-bold border-t border-amber-200 pt-2">
@@ -2302,17 +2302,17 @@ export function ServiceManagement() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs">
                         <span className="text-[#6B7280]">Reason</span>
-                        <span className="font-medium text-red-700">{selectedRequest.paymentRefusal.reason}</span>
+                        <span className="font-medium text-red-700">{selectedRequest.paymentRefusal?.reason}</span>
                       </div>
-                      {selectedRequest.paymentRefusal.refusedAt && (
+                      {selectedRequest.paymentRefusal?.refusedAt && (
                         <div className="flex justify-between text-xs">
                           <span className="text-[#6B7280]">Reported At</span>
-                          <span className="font-medium">{new Date(selectedRequest.paymentRefusal.refusedAt).toLocaleString('en-IN')}</span>
+                          <span className="font-medium">{new Date(selectedRequest.paymentRefusal?.refusedAt).toLocaleString('en-IN')}</span>
                         </div>
                       )}
-                      {selectedRequest.paymentRefusal.photoProof?.length > 0 && (
+                      {(selectedRequest.paymentRefusal?.photoProof?.length ?? 0) > 0 && (
                         <div className="text-xs text-[#6B7280]">
-                          {selectedRequest.paymentRefusal.photoProof.length} photo proof(s) attached
+                          {selectedRequest.paymentRefusal?.photoProof?.length} photo proof(s) attached
                         </div>
                       )}
                     </div>
@@ -2385,7 +2385,7 @@ export function ServiceManagement() {
                               const { diagnosisAPI } = await import('@/services/api')
                               await diagnosisAPI.markAsPaid(selectedRequest._id)
                               setSelectedRequest(null)
-                              dispatch(fetchServiceRequestsRequest({}))
+                              dispatch(fetchServiceRequestsRequest())
                             } catch (err) {
                               alert('Failed to mark as paid')
                             }
