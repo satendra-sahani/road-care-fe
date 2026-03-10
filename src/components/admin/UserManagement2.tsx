@@ -46,11 +46,14 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  CreditCard,
+  AlertTriangle
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -117,6 +120,15 @@ export function UserManagement() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false)
+  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false)
+  const [isWarnModalOpen, setIsWarnModalOpen] = useState(false)
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false)
+  const [blockForm, setBlockForm] = useState({ reason: '', blockType: 'temporary', days: 30 })
+  const [advanceForm, setAdvanceForm] = useState({ amount: 199, reason: '' })
+  const [warnMessage, setWarnMessage] = useState('')
+  const [noteText, setNoteText] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
   const [newUser, setNewUser] = useState({
     username: '',
     email: '',
@@ -429,6 +441,7 @@ export function UserManagement() {
                           <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">User</TableHead>
                           <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</TableHead>
                           <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Trust</TableHead>
                           <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</TableHead>
                           <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Joined</TableHead>
                           <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Last Active</TableHead>
@@ -460,6 +473,27 @@ export function UserManagement() {
                             </TableCell>
                             <TableCell>{getRoleBadge(user.role)}</TableCell>
                             <TableCell>{getStatusBadge(user.isActive)}</TableCell>
+                            <TableCell>
+                              {user.role === 'user' ? (
+                                <div className="flex items-center gap-1">
+                                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                                    (user.trustScore ?? 100) > 70 ? 'bg-green-100 text-green-700' :
+                                    (user.trustScore ?? 100) > 40 ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                                  }`}>
+                                    {user.trustScore ?? 100}
+                                  </span>
+                                  {user.isBlocked && (
+                                    <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">Blocked</span>
+                                  )}
+                                  {user.forceAdvanceFee && (
+                                    <span className="text-xs bg-orange-100 text-orange-600 px-1 py-0.5 rounded">₹</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </TableCell>
                             <TableCell>
                               <div className="space-y-0.5">
                                 <div className="flex items-center text-xs text-[#6B7280]">
@@ -501,6 +535,64 @@ export function UserManagement() {
                                       <><UserCheck className="h-4 w-4 mr-2" />Activate</>
                                     )}
                                   </DropdownMenuItem>
+                                  {user.role === 'user' && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-sm" onClick={() => {
+                                        setSelectedUser(user)
+                                        if (user.isBlocked) {
+                                          // Unblock immediately with confirmation
+                                          if (confirm('Unblock this customer? Advance fee will be enforced.')) {
+                                            (async () => {
+                                              const { customerManagementAPI } = await import('@/services/api')
+                                              await customerManagementAPI.unblock(user._id)
+                                              toast.success('Customer unblocked')
+                                              dispatch(fetchUsersRequest({ page: pagination.currentPage, limit: pagination.limit }))
+                                            })()
+                                          }
+                                        } else {
+                                          setBlockForm({ reason: '', blockType: 'temporary', days: 30 })
+                                          setIsBlockModalOpen(true)
+                                        }
+                                      }}>
+                                        <Shield className="h-4 w-4 mr-2" />
+                                        {user.isBlocked ? 'Unblock' : 'Block'} Customer
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem className="text-sm" onClick={() => {
+                                        setSelectedUser(user)
+                                        if (user.forceAdvanceFee) {
+                                          (async () => {
+                                            const { customerManagementAPI } = await import('@/services/api')
+                                            await customerManagementAPI.forceAdvance(user._id)
+                                            toast.success('Advance fee removed')
+                                            dispatch(fetchUsersRequest({ page: pagination.currentPage, limit: pagination.limit }))
+                                          })()
+                                        } else {
+                                          setAdvanceForm({ amount: 199, reason: '' })
+                                          setIsAdvanceModalOpen(true)
+                                        }
+                                      }}>
+                                        <CreditCard className="h-4 w-4 mr-2" />
+                                        {user.forceAdvanceFee ? 'Remove' : 'Force'} Advance Fee
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem className="text-sm" onClick={() => {
+                                        setSelectedUser(user)
+                                        setWarnMessage('')
+                                        setIsWarnModalOpen(true)
+                                      }}>
+                                        <AlertTriangle className="h-4 w-4 mr-2" />
+                                        Warn Customer
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem className="text-sm" onClick={() => {
+                                        setSelectedUser(user)
+                                        setNoteText('')
+                                        setIsNoteModalOpen(true)
+                                      }}>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Add Note
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem className="text-sm text-red-600" onClick={() => { setSelectedUser(user); setIsDeleteModalOpen(true) }}>
                                     <Trash2 className="h-4 w-4 mr-2" />
@@ -810,11 +902,11 @@ export function UserManagement() {
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={selectedUser.profileImage} />
                   <AvatarFallback className="bg-red-100 text-red-700 text-xs">
-                    {selectedUser.fullName.split(' ').map(n => n[0]).join('')}
+                    {(selectedUser.fullName || selectedUser.username || 'U').split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="font-medium text-sm text-[#1A1D29]">{selectedUser.fullName}</div>
+                  <div className="font-medium text-sm text-[#1A1D29]">{selectedUser.fullName || selectedUser.username || 'Unknown'}</div>
                   <div className="text-xs text-[#6B7280]">{selectedUser.email}</div>
                 </div>
               </div>
@@ -825,6 +917,286 @@ export function UserManagement() {
             <Button variant="destructive" onClick={handleDeleteUser} disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Delete User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block Customer Modal */}
+      <Dialog open={isBlockModalOpen} onOpenChange={setIsBlockModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center">
+                <Shield className="h-4 w-4 text-red-600" />
+              </div>
+              Block Customer
+            </DialogTitle>
+            <DialogDescription>
+              Customer will not be able to create new bookings after blocking.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-[#1B3B6F] text-white text-xs">
+                    {(selectedUser.fullName || 'U').split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-medium text-sm">{selectedUser.fullName || 'Customer'}</div>
+                  <div className="text-xs text-[#6B7280]">{selectedUser.phone || selectedUser.email}</div>
+                  <div className="text-xs text-[#6B7280]">Trust Score: {selectedUser.trustScore ?? 100}</div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Block Reason *</Label>
+                <Select value={blockForm.reason || ''} onValueChange={(val) => setBlockForm(prev => ({ ...prev, reason: val }))}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select reason..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Refused payment">Refused payment</SelectItem>
+                    <SelectItem value="Abusive behavior">Abusive behavior</SelectItem>
+                    <SelectItem value="Fake bookings">Fake bookings</SelectItem>
+                    <SelectItem value="No-show multiple times">No-show multiple times</SelectItem>
+                    <SelectItem value="custom">Other (type below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {blockForm.reason === 'custom' && (
+                  <Input
+                    placeholder="Enter custom reason..."
+                    className="h-9 text-sm mt-2"
+                    onChange={(e) => setBlockForm(prev => ({ ...prev, reason: e.target.value }))}
+                  />
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Block Type</Label>
+                <Select value={blockForm.blockType} onValueChange={(val) => setBlockForm(prev => ({ ...prev, blockType: val }))}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="temporary">Temporary (auto-unblock after set days)</SelectItem>
+                    <SelectItem value="permanent">Permanent (manual unblock only)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {blockForm.blockType === 'temporary' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Block Duration (days)</Label>
+                  <Input
+                    type="number"
+                    value={blockForm.days}
+                    onChange={(e) => setBlockForm(prev => ({ ...prev, days: parseInt(e.target.value) || 30 }))}
+                    className="h-9 text-sm max-w-[120px]"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="border-t pt-4 gap-2">
+            <Button variant="outline" onClick={() => setIsBlockModalOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={!blockForm.reason || actionLoading}
+              onClick={async () => {
+                if (!selectedUser || !blockForm.reason) return
+                setActionLoading(true)
+                try {
+                  const { customerManagementAPI } = await import('@/services/api')
+                  await customerManagementAPI.block(selectedUser._id, blockForm.reason, blockForm.blockType, blockForm.days)
+                  toast.success('Customer blocked successfully')
+                  setIsBlockModalOpen(false)
+                  dispatch(fetchUsersRequest({ page: pagination.currentPage, limit: pagination.limit }))
+                } catch (err: any) {
+                  toast.error(err.response?.data?.message || 'Failed to block customer')
+                } finally {
+                  setActionLoading(false)
+                }
+              }}
+            >
+              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Block Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Force Advance Fee Modal */}
+      <Dialog open={isAdvanceModalOpen} onOpenChange={setIsAdvanceModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center">
+                <CreditCard className="h-4 w-4 text-orange-600" />
+              </div>
+              Force Advance Payment
+            </DialogTitle>
+            <DialogDescription>
+              This customer will be required to pay advance fee before every booking.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <div className="font-medium text-sm">{selectedUser.fullName || 'Customer'}</div>
+                  <div className="text-xs text-[#6B7280]">Trust Score: {selectedUser.trustScore ?? 100}</div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Advance Amount (₹)</Label>
+                <Input
+                  type="number"
+                  value={advanceForm.amount}
+                  onChange={(e) => setAdvanceForm(prev => ({ ...prev, amount: parseInt(e.target.value) || 199 }))}
+                  className="h-9 text-sm max-w-[150px]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Reason</Label>
+                <Input
+                  value={advanceForm.reason}
+                  onChange={(e) => setAdvanceForm(prev => ({ ...prev, reason: e.target.value }))}
+                  placeholder="e.g. Payment refused 2 times"
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="border-t pt-4 gap-2">
+            <Button variant="outline" onClick={() => setIsAdvanceModalOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-orange-600 hover:bg-orange-700"
+              disabled={actionLoading}
+              onClick={async () => {
+                if (!selectedUser) return
+                setActionLoading(true)
+                try {
+                  const { customerManagementAPI } = await import('@/services/api')
+                  await customerManagementAPI.forceAdvance(selectedUser._id, advanceForm.amount, advanceForm.reason)
+                  toast.success('Advance fee enforced')
+                  setIsAdvanceModalOpen(false)
+                  dispatch(fetchUsersRequest({ page: pagination.currentPage, limit: pagination.limit }))
+                } catch (err: any) {
+                  toast.error(err.response?.data?.message || 'Failed to set advance fee')
+                } finally {
+                  setActionLoading(false)
+                }
+              }}
+            >
+              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Force Advance
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Warn Customer Modal */}
+      <Dialog open={isWarnModalOpen} onOpenChange={setIsWarnModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-yellow-50 flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              </div>
+              Send Warning
+            </DialogTitle>
+            <DialogDescription>
+              Send a warning notification to the customer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Warning Message *</Label>
+              <Textarea
+                value={warnMessage}
+                onChange={(e) => setWarnMessage(e.target.value)}
+                placeholder="e.g. Your account has been flagged for repeated payment issues. Please ensure timely payments."
+                rows={3}
+                className="text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="border-t pt-4 gap-2">
+            <Button variant="outline" onClick={() => setIsWarnModalOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-yellow-600 hover:bg-yellow-700"
+              disabled={!warnMessage || actionLoading}
+              onClick={async () => {
+                if (!selectedUser || !warnMessage) return
+                setActionLoading(true)
+                try {
+                  const { customerManagementAPI } = await import('@/services/api')
+                  await customerManagementAPI.warn(selectedUser._id, warnMessage)
+                  toast.success('Warning sent to customer')
+                  setIsWarnModalOpen(false)
+                  dispatch(fetchUsersRequest({ page: pagination.currentPage, limit: pagination.limit }))
+                } catch (err: any) {
+                  toast.error(err.response?.data?.message || 'Failed to send warning')
+                } finally {
+                  setActionLoading(false)
+                }
+              }}
+            >
+              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Send Warning
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Admin Note Modal */}
+      <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Edit className="h-4 w-4 text-blue-600" />
+              </div>
+              Add Admin Note
+            </DialogTitle>
+            <DialogDescription>
+              Add a note to this customer&#39;s profile for internal tracking.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Note *</Label>
+              <Textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="e.g. Called customer, promised to pay next time"
+                rows={3}
+                className="text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="border-t pt-4 gap-2">
+            <Button variant="outline" onClick={() => setIsNoteModalOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+              disabled={!noteText || actionLoading}
+              onClick={async () => {
+                if (!selectedUser || !noteText) return
+                setActionLoading(true)
+                try {
+                  const { customerManagementAPI } = await import('@/services/api')
+                  await customerManagementAPI.addNote(selectedUser._id, noteText)
+                  toast.success('Note added')
+                  setIsNoteModalOpen(false)
+                } catch (err: any) {
+                  toast.error(err.response?.data?.message || 'Failed to add note')
+                } finally {
+                  setActionLoading(false)
+                }
+              }}
+            >
+              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Add Note
             </Button>
           </DialogFooter>
         </DialogContent>

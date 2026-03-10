@@ -52,6 +52,7 @@ import {
   Navigation,
   ImageIcon,
   Loader2,
+  Store,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -94,7 +95,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { userAPI, serviceRequestAPI } from '@/services/api'
+import { userAPI, serviceRequestAPI, adminShopAPI } from '@/services/api'
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
 
@@ -334,19 +335,26 @@ const allSpecializations = [
 ]
 
 const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
-  pending:     { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock,       label: 'Pending' },
-  assigned:    { color: 'bg-blue-100 text-blue-800 border-blue-200',       icon: User,        label: 'Assigned' },
-  accepted:    { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: CheckCircle, label: 'Accepted' },
-  on_way:      { color: 'bg-cyan-100 text-cyan-800 border-cyan-200',       icon: Car,         label: 'On Way' },
-  in_progress: { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Wrench,      label: 'In Progress' },
-  'in-progress':{ color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Wrench,     label: 'In Progress' },
-  completed:   { color: 'bg-green-100 text-green-800 border-green-200',    icon: CheckCircle, label: 'Completed' },
-  cancelled:   { color: 'bg-red-100 text-red-800 border-red-200',          icon: XCircle,     label: 'Cancelled' },
+  pending:         { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock,       label: 'Pending' },
+  assigned:        { color: 'bg-blue-100 text-blue-800 border-blue-200',       icon: User,        label: 'Assigned' },
+  accepted:        { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: CheckCircle, label: 'Accepted' },
+  mechanic_assigned: { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: Wrench,    label: 'Mechanic Assigned' },
+  on_way:          { color: 'bg-cyan-100 text-cyan-800 border-cyan-200',       icon: Car,         label: 'On Way' },
+  diagnosis:       { color: 'bg-amber-100 text-amber-800 border-amber-200',   icon: Search,      label: 'Diagnosis' },
+  approved:        { color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: CheckCircle, label: 'Approved' },
+  in_progress:     { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Wrench,      label: 'In Progress' },
+  'in-progress':   { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Wrench,      label: 'In Progress' },
+  completed:       { color: 'bg-green-100 text-green-800 border-green-200',    icon: CheckCircle, label: 'Completed' },
+  payment_pending: { color: 'bg-orange-100 text-orange-800 border-orange-200', icon: Clock,       label: 'Payment Pending' },
+  paid:            { color: 'bg-green-200 text-green-900 border-green-300',    icon: CheckCircle, label: 'Paid' },
+  rejected_quote:  { color: 'bg-rose-100 text-rose-800 border-rose-200',       icon: XCircle,     label: 'Quote Rejected' },
+  payment_refused: { color: 'bg-red-200 text-red-900 border-red-300',          icon: AlertCircle, label: 'Payment Refused' },
+  cancelled:       { color: 'bg-red-100 text-red-800 border-red-200',          icon: XCircle,     label: 'Cancelled' },
 };
 
-// Full status progression order (matches Android app flow)
+// Full status progression order (matches pricing flow)
 const STATUS_FLOW: ServiceRequest['status'][] = [
-  'pending', 'assigned', 'accepted', 'on_way', 'in_progress', 'completed'
+  'pending', 'assigned', 'accepted', 'on_way', 'diagnosis', 'approved', 'in_progress', 'completed', 'payment_pending', 'paid'
 ];
 
 // Empty mechanic template
@@ -390,6 +398,10 @@ export function ServiceManagement() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
   const [assigningRequest, setAssigningRequest] = useState<ServiceRequest | null>(null)
   const [assignMechanicId, setAssignMechanicId] = useState('')
+  const [assignMode, setAssignMode] = useState<'mechanic' | 'shop'>('mechanic')
+  const [shopsList, setShopsList] = useState<any[]>([])
+  const [selectedShopId, setSelectedShopId] = useState('')
+  const [shopsLoading, setShopsLoading] = useState(false)
 
   // Cancel request dialog
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
@@ -552,14 +564,16 @@ export function ServiceManagement() {
     const list = serviceRequests ?? []
     const totalRequests = list.length
     const pendingRequests = list.filter(r => r.status === 'pending').length
-    const inProgressRequests = list.filter(r => r.status === 'in_progress' || r.status === 'in-progress').length
-    const completedRequests = list.filter(r => r.status === 'completed').length
+    const diagnosisRequests = list.filter(r => r.status === 'diagnosis').length
+    const inProgressRequests = list.filter(r => r.status === 'in_progress' || r.status === 'in-progress' || r.status === 'approved').length
+    const completedRequests = list.filter(r => r.status === 'completed' || r.status === 'payment_pending').length
+    const paidRequests = list.filter(r => r.status === 'paid').length
     const ratedList = list.filter(r => r.feedback?.rating)
     const avgRating = ratedList.length
       ? ratedList.reduce((sum, r) => sum + (r.feedback?.rating || 0), 0) / ratedList.length
       : 0
-    
-    return { totalRequests, pendingRequests, inProgressRequests, completedRequests, avgRating }
+
+    return { totalRequests, pendingRequests, diagnosisRequests, inProgressRequests, completedRequests, paidRequests, avgRating }
   }
 
   const stats = getServiceStats()
@@ -633,19 +647,52 @@ export function ServiceManagement() {
     dispatch(updateStatusRequest({ id: requestId, status }))
   }
 
-  const handleOpenAssignDialog = (request: ServiceRequest) => {
+  const handleOpenAssignDialog = async (request: ServiceRequest) => {
     setAssigningRequest(request)
     setAssignMechanicId(request.mechanic?._id || '')
+    setAssignMode('mechanic')
+    setSelectedShopId('')
     setAssignDialogOpen(true)
+    // Fetch shops in background
+    setShopsLoading(true)
+    try {
+      const res = await adminShopAPI.getAll({ limit: 100 })
+      if (res.data?.success) {
+        setShopsList((res.data.data || []).filter((s: any) => s.isActive))
+      }
+    } catch {}
+    setShopsLoading(false)
   }
 
-  const handleConfirmAssign = () => {
-    if (assigningRequest && assignMechanicId) {
+  const handleConfirmAssign = async () => {
+    if (!assigningRequest) return
+
+    if (assignMode === 'mechanic') {
+      // Existing mechanic assignment
+      if (!assignMechanicId) return
       dispatch(assignMechanicRequest({ requestId: assigningRequest._id, mechanicId: assignMechanicId }))
-      setAssignDialogOpen(false)
-      setAssigningRequest(null)
-      setAssignMechanicId('')
+    } else {
+      // Assign to shop partner
+      if (!selectedShopId) return
+      try {
+        const res = await adminShopAPI.assignOrder(assigningRequest._id, selectedShopId)
+        if (res.data?.success) {
+          // Refresh service requests to show updated status
+          dispatch(fetchServiceRequestsRequest({}))
+        } else {
+          alert(res.data?.message || 'Failed to assign to shop')
+          return
+        }
+      } catch (err: any) {
+        alert(err.response?.data?.message || 'Failed to assign to shop')
+        return
+      }
     }
+
+    setAssignDialogOpen(false)
+    setAssigningRequest(null)
+    setAssignMechanicId('')
+    setSelectedShopId('')
   }
 
   const handleOpenCancelDialog = (request: ServiceRequest) => {
@@ -744,12 +791,14 @@ export function ServiceManagement() {
       </div>
 
       {/* Service Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {[
           { label: 'Total Requests', value: stats.totalRequests, icon: Wrench, color: 'bg-blue-50 text-blue-600' },
           { label: 'Pending', value: stats.pendingRequests, icon: Clock, color: 'bg-amber-50 text-amber-600' },
+          { label: 'Diagnosis', value: stats.diagnosisRequests, icon: Search, color: 'bg-orange-50 text-orange-600' },
           { label: 'In Progress', value: stats.inProgressRequests, icon: Wrench, color: 'bg-purple-50 text-purple-600' },
           { label: 'Completed', value: stats.completedRequests, icon: CheckCircle, color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Paid', value: stats.paidRequests, icon: CreditCard, color: 'bg-green-50 text-green-600' },
           { label: 'Avg Rating', value: stats.avgRating?.toFixed(1) || '0', icon: Star, color: 'bg-amber-50 text-amber-600' },
         ].map((card, i) => {
           const Icon = card.icon
@@ -820,8 +869,14 @@ export function ServiceManagement() {
                       <SelectItem value="assigned">Assigned</SelectItem>
                       <SelectItem value="accepted">Accepted</SelectItem>
                       <SelectItem value="on_way">On Way</SelectItem>
+                      <SelectItem value="diagnosis">Diagnosis</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
                       <SelectItem value="in_progress">In Progress</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="payment_pending">Payment Pending</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="rejected_quote">Quote Rejected</SelectItem>
+                      <SelectItem value="payment_refused">Payment Refused</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
@@ -972,6 +1027,18 @@ export function ServiceManagement() {
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm font-medium">{request.mechanic.name}</span>
+                          </div>
+                        ) : request.shopPartner ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <Store className="h-3 w-3 text-indigo-600" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-indigo-700">{request.shopPartner.shopName}</span>
+                              {request.shopPartner.city && (
+                                <span className="text-xs text-gray-400 ml-1">({request.shopPartner.city})</span>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <span className="text-sm text-[#6B7280]">Not assigned</span>
@@ -1252,7 +1319,7 @@ export function ServiceManagement() {
                     <h3 className="text-lg font-medium text-[#1A1D29] mb-1">No Service Requests Found</h3>
                     <p className="text-[#6B7280] text-sm">No service requests have been loaded from the API yet.</p>
                   </div>
-                ) : (serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic).length === 0 ? (
+                ) : (serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic && !r.shopPartner).length === 0 ? (
                   <div className="text-center py-8">
                     <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
                     <h3 className="text-lg font-medium text-[#1A1D29] mb-1">All Requests Assigned</h3>
@@ -1260,7 +1327,7 @@ export function ServiceManagement() {
                   </div>
                 ) : (
                 <div className="space-y-3">
-                  {(serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic).map((request) => (
+                  {(serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic && !r.shopPartner).map((request) => (
                     <div key={request._id} className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
@@ -1425,59 +1492,137 @@ export function ServiceManagement() {
         </TabsContent>
       </Tabs>
 
-      {/* ==================== ASSIGN MECHANIC DIALOG ==================== */}
+      {/* ==================== ASSIGN MECHANIC / SHOP DIALOG ==================== */}
       <Dialog open={assignDialogOpen} onOpenChange={(open) => {
         setAssignDialogOpen(open)
-        if (!open) { setAssigningRequest(null); setAssignMechanicId('') }
+        if (!open) { setAssigningRequest(null); setAssignMechanicId(''); setSelectedShopId('') }
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                <User className="h-4 w-4 text-indigo-600" />
+                {assignMode === 'mechanic' ? <User className="h-4 w-4 text-indigo-600" /> : <Store className="h-4 w-4 text-indigo-600" />}
               </div>
-              {assigningRequest?.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic'}
+              {assignMode === 'mechanic'
+                ? (assigningRequest?.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic')
+                : 'Assign to Shop Partner'}
             </DialogTitle>
             <DialogDescription>
               Request: {assigningRequest?._id?.slice(-8).toUpperCase()} — {assigningRequest?.serviceType}
             </DialogDescription>
           </DialogHeader>
+
           <div className="py-4 space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Select Mechanic</Label>
-              <Select value={assignMechanicId} onValueChange={setAssignMechanicId}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Choose an available mechanic..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {(mechanics ?? []).filter(m => m.availability === 'available').map(m => (
-                    <SelectItem key={m._id} value={m._id}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{m.name}</span>
-                        <span className="text-xs text-gray-500">· {m.city}</span>
-                        {(m.rating ?? 0) > 0 && (
-                          <span className="text-xs text-yellow-600 flex items-center gap-0.5">
-                            <Star className="h-3 w-3" />{m.rating}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {(mechanics ?? []).filter(m => m.availability === 'available').length === 0 && (
-                <p className="text-sm text-amber-600 mt-2">No mechanics currently available.</p>
-              )}
+            {/* Toggle: Mechanic vs Shop */}
+            <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+              <button
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all',
+                  assignMode === 'mechanic' ? 'bg-white shadow text-[#1B3B6F]' : 'text-gray-500 hover:text-gray-700'
+                )}
+                onClick={() => { setAssignMode('mechanic'); setSelectedShopId('') }}
+              >
+                <User className="h-4 w-4" /> Mechanic
+              </button>
+              <button
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all',
+                  assignMode === 'shop' ? 'bg-white shadow text-[#FF6B35]' : 'text-gray-500 hover:text-gray-700'
+                )}
+                onClick={() => { setAssignMode('shop'); setAssignMechanicId('') }}
+              >
+                <Store className="h-4 w-4" /> Shop Partner
+              </button>
             </div>
+
+            {/* Mechanic Mode */}
+            {assignMode === 'mechanic' && (
+              <div>
+                <Label className="text-sm font-medium">Select Mechanic</Label>
+                <Select value={assignMechanicId} onValueChange={setAssignMechanicId}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Choose an available mechanic..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(mechanics ?? []).filter(m => m.availability === 'available').map(m => (
+                      <SelectItem key={m._id} value={m._id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{m.name}</span>
+                          <span className="text-xs text-gray-500">· {m.city}</span>
+                          {(m.rating ?? 0) > 0 && (
+                            <span className="text-xs text-yellow-600 flex items-center gap-0.5">
+                              <Star className="h-3 w-3" />{m.rating}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(mechanics ?? []).filter(m => m.availability === 'available').length === 0 && (
+                  <p className="text-sm text-amber-600 mt-2">No mechanics currently available.</p>
+                )}
+              </div>
+            )}
+
+            {/* Shop Mode */}
+            {assignMode === 'shop' && (
+              <div>
+                <Label className="text-sm font-medium">Select Shop Partner</Label>
+                {shopsLoading ? (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading shops...
+                  </div>
+                ) : (
+                  <>
+                    <Select value={selectedShopId} onValueChange={setSelectedShopId}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Choose a shop partner..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shopsList.map((shop: any) => (
+                          <SelectItem key={shop._id} value={shop._id}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{shop.shopName}</span>
+                              <span className="text-xs text-gray-500">· {shop.address?.city || 'N/A'}</span>
+                              {shop.isVerified && (
+                                <span className="text-xs text-green-600">✓</span>
+                              )}
+                              <span className="text-xs text-gray-400">{shop.commissionRate}%</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {shopsList.length === 0 && (
+                      <p className="text-sm text-amber-600 mt-2">No active shop partners found.</p>
+                    )}
+                    {selectedShopId && (() => {
+                      const s = shopsList.find((sh: any) => sh._id === selectedShopId)
+                      if (!s) return null
+                      return (
+                        <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm space-y-1">
+                          <p className="font-medium text-gray-900">{s.shopName}</p>
+                          <p className="text-gray-600 flex items-center gap-1"><MapPin className="h-3 w-3" /> {s.address?.city || 'N/A'}</p>
+                          <p className="text-gray-600 flex items-center gap-1"><Phone className="h-3 w-3" /> {s.user?.phone || s.shopPhone}</p>
+                          <p className="text-gray-500 text-xs">Commission: {s.commissionRate}% · Mechanics: {(s.mechanics?.length || 0) + (s.assignedMechanics?.length || 0)} · Jobs: {s.totalJobsCompleted}</p>
+                        </div>
+                      )
+                    })()}
+                  </>
+                )}
+              </div>
+            )}
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
             <Button
-              className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+              className={assignMode === 'mechanic' ? 'bg-[#1B3B6F] hover:bg-[#0F2545]' : 'bg-[#FF6B35] hover:bg-[#e55a28]'}
               onClick={handleConfirmAssign}
-              disabled={!assignMechanicId}
+              disabled={assignMode === 'mechanic' ? !assignMechanicId : !selectedShopId}
             >
-              Confirm Assignment
+              {assignMode === 'mechanic' ? 'Assign Mechanic' : 'Assign to Shop'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2089,6 +2234,171 @@ export function ServiceManagement() {
                   </div>
                 )}
 
+                {/* Diagnosis Details */}
+                {selectedRequest.diagnosis?.diagnosedAt && (
+                  <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                    <h4 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Search className="h-3 w-3" /> Diagnosis
+                    </h4>
+                    {selectedRequest.diagnosis.notes && (
+                      <p className="text-sm text-[#1A1D29] mb-3">{selectedRequest.diagnosis.notes}</p>
+                    )}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Labor Cost</span>
+                        <span className="font-medium">₹{selectedRequest.diagnosis.costBreakdown?.laborCost || 0}</span>
+                      </div>
+                      {selectedRequest.diagnosis.costBreakdown?.parts?.map((part: any, i: number) => (
+                        <div key={i} className="flex justify-between text-xs">
+                          <span className="text-[#6B7280]">{part.name} x{part.quantity || 1}</span>
+                          <span className="font-medium">₹{part.cost * (part.quantity || 1)}</span>
+                        </div>
+                      ))}
+                      {(selectedRequest.diagnosis.costBreakdown?.additionalCharges || 0) > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B7280]">Additional Charges</span>
+                          <span className="font-medium">₹{selectedRequest.diagnosis.costBreakdown.additionalCharges}</span>
+                        </div>
+                      )}
+                      {(selectedRequest.diagnosis.costBreakdown?.discount || 0) > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B7280]">Discount</span>
+                          <span className="font-medium text-green-600">-₹{selectedRequest.diagnosis.costBreakdown.discount}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm font-bold border-t border-amber-200 pt-2">
+                        <span>Total Estimate</span>
+                        <span className="text-[#1B3B6F]">₹{selectedRequest.diagnosis.costBreakdown?.totalEstimate || 0}</span>
+                      </div>
+                    </div>
+                    {selectedRequest.customerApproval && (
+                      <div className="mt-3 pt-3 border-t border-amber-200">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[#6B7280]">Customer Approval</span>
+                          <span className={`font-medium px-2 py-0.5 rounded ${
+                            selectedRequest.customerApproval.status === 'approved' ? 'bg-green-100 text-green-700' :
+                            selectedRequest.customerApproval.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                            selectedRequest.customerApproval.status === 'negotiating' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {selectedRequest.customerApproval.status?.toUpperCase() || 'PENDING'}
+                          </span>
+                        </div>
+                        {selectedRequest.customerApproval.rejectionReason && (
+                          <p className="text-xs text-red-600 mt-1">Reason: {selectedRequest.customerApproval.rejectionReason}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Payment Info + Admin Actions */}
+                {/* Payment Refusal Details */}
+                {selectedRequest.paymentRefusal?.refused && (
+                  <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                    <h4 className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <AlertCircle className="h-3 w-3" /> Payment Refused
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Reason</span>
+                        <span className="font-medium text-red-700">{selectedRequest.paymentRefusal.reason}</span>
+                      </div>
+                      {selectedRequest.paymentRefusal.refusedAt && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B7280]">Reported At</span>
+                          <span className="font-medium">{new Date(selectedRequest.paymentRefusal.refusedAt).toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      {selectedRequest.paymentRefusal.photoProof?.length > 0 && (
+                        <div className="text-xs text-[#6B7280]">
+                          {selectedRequest.paymentRefusal.photoProof.length} photo proof(s) attached
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Advance Fee Details */}
+                {selectedRequest.advanceFee?.required && (
+                  <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+                    <h4 className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <CreditCard className="h-3 w-3" /> Advance Fee
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Amount</span>
+                        <span className="font-medium">₹{selectedRequest.advanceFee.amount}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Status</span>
+                        <span className={`font-medium px-2 py-0.5 rounded ${
+                          selectedRequest.advanceFee.status === 'paid' ? 'bg-green-100 text-green-700' :
+                          selectedRequest.advanceFee.status === 'forfeited' ? 'bg-red-100 text-red-700' :
+                          selectedRequest.advanceFee.status === 'refunded' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {selectedRequest.advanceFee.status?.toUpperCase() || 'PENDING'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(['completed', 'payment_pending', 'paid', 'payment_refused'] as string[]).includes(selectedRequest.status) && (
+                  <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                    <h4 className="text-[10px] font-bold text-green-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <DollarSign className="h-3 w-3" /> Payment
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Final Cost</span>
+                        <span className="font-bold text-[#1B3B6F]">₹{selectedRequest.finalCost || selectedRequest.totalCost || 0}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Method</span>
+                        <span className="font-medium uppercase">{selectedRequest.paymentDetails?.method || 'COD'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Status</span>
+                        <span className={`font-medium px-2 py-0.5 rounded ${
+                          selectedRequest.status === 'paid' ? 'bg-green-100 text-green-700' :
+                          'bg-orange-100 text-orange-700'
+                        }`}>
+                          {selectedRequest.status === 'paid' ? 'PAID' : 'PENDING'}
+                        </span>
+                      </div>
+                      {selectedRequest.cashCollected && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B7280]">Cash Collected</span>
+                          <span className="font-medium text-green-600">Yes</span>
+                        </div>
+                      )}
+                    </div>
+                    {selectedRequest.status !== 'paid' && (
+                      <Button
+                        size="sm"
+                        className="mt-3 bg-green-600 hover:bg-green-700 text-white text-xs"
+                        onClick={async () => {
+                          if (confirm('Mark this service request as paid?')) {
+                            try {
+                              const { diagnosisAPI } = await import('@/services/api')
+                              await diagnosisAPI.markAsPaid(selectedRequest._id)
+                              setSelectedRequest(null)
+                              dispatch(fetchServiceRequestsRequest({}))
+                            } catch (err) {
+                              alert('Failed to mark as paid')
+                            }
+                          }
+                        }}
+                      >
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                        Mark as Paid
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 {/* Uploaded Images */}
                 {(selectedRequest.images?.before?.length || selectedRequest.images?.after?.length) ? (
                   <div>
@@ -2216,6 +2526,28 @@ export function ServiceManagement() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assigned Shop Partner */}
+                {selectedRequest.shopPartner && !selectedRequest.mechanic && (
+                  <div>
+                    <h4 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Store className="h-3 w-3" /> Assigned Shop
+                    </h4>
+                    <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">
+                          {selectedRequest.shopPartner.shopName?.charAt(0)?.toUpperCase() || 'S'}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{selectedRequest.shopPartner.shopName}</p>
+                          {selectedRequest.shopPartner.city && (
+                            <p className="text-xs text-gray-500">{selectedRequest.shopPartner.city}</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2425,7 +2757,7 @@ export function ServiceManagement() {
                     onClick={() => { handleOpenAssignDialog(selectedRequest); setSelectedRequest(null) }}
                   >
                     <User className="h-3.5 w-3.5 mr-1.5" />
-                    {selectedRequest.mechanic ? 'Reassign' : 'Assign Mechanic'}
+                    {selectedRequest.mechanic || selectedRequest.shopPartner ? 'Reassign' : 'Assign'}
                   </Button>
                   {getNextStatus(selectedRequest.status) && (
                     <Button

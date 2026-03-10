@@ -23,7 +23,9 @@ import {
   Tag,
   Image,
   MapPin,
-  Phone
+  Phone,
+  Store,
+  UserCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -47,8 +49,9 @@ const baseSidebarItems: SidebarItem[] = [
   // Orders
   { id: 'orders', title: 'Orders', icon: ShoppingCart, href: '/admin/orders', separator: true },
 
-  // Users
-  { id: 'users', title: 'Users', icon: Users, href: '/admin/users/mechanics' },
+  // Users & Customers
+  { id: 'users', title: 'Mechanics', icon: Wrench, href: '/admin/users/mechanics', separator: true },
+  { id: 'customers', title: 'Customers', icon: UserCheck, href: '/admin/users/customers' },
 
   // Services
   { id: 'service-requests', title: 'Service Requests', icon: ClipboardList, href: '/admin/services/requests', separator: true },
@@ -60,6 +63,9 @@ const baseSidebarItems: SidebarItem[] = [
   { id: 'categories', title: 'Categories', icon: Tag, href: '/admin/inventory/categories' },
   { id: 'brands', title: 'Brands', icon: Shield, href: '/admin/inventory/brands' },
   { id: 'purchase-ledger', title: 'Purchase Ledger', icon: ClipboardList, href: '/admin/inventory/purchases' },
+  // Shop Partners
+  { id: 'shop-partners', title: 'Shop Partners', icon: Store, href: '/admin/shops', separator: true },
+
   // Financial
   { id: 'revenue', title: 'Revenue', icon: DollarSign, href: '/admin/financial/revenue', separator: true },
 

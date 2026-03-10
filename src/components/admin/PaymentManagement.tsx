@@ -430,9 +430,15 @@ function PaymentHistoryTab() {
     pending: { label: 'Pending', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
     accepted: { label: 'Accepted', className: 'bg-blue-50 text-blue-700 border-blue-200' },
     assigned: { label: 'Assigned', className: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-    in_progress: { label: 'In Progress', className: 'bg-orange-50 text-orange-700 border-orange-200' },
+    mechanic_assigned: { label: 'Mechanic Assigned', className: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    on_way: { label: 'On the Way', className: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
     on_the_way: { label: 'On the Way', className: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+    diagnosis: { label: 'Diagnosis', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+    approved: { label: 'Quote Approved', className: 'bg-teal-50 text-teal-700 border-teal-200' },
+    in_progress: { label: 'In Progress', className: 'bg-orange-50 text-orange-700 border-orange-200' },
     completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    payment_pending: { label: 'Payment Pending', className: 'bg-purple-50 text-purple-700 border-purple-200' },
+    paid: { label: 'Paid', className: 'bg-green-50 text-green-700 border-green-200' },
   }
 
   // Check if transfer is possible — show button for all paid/settled rows
@@ -805,19 +811,63 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
   const [settled,  setSettled]  = useState<PaymentRecord[]>([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [settling, setSettling] = useState<string | null>(null)
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [confirmPayment, setConfirmPayment] = useState<PaymentRecord | null>(null)
+  const [settlementNote, setSettlementNote] = useState('')
+  const [syncing, setSyncing]  = useState(false)
+  const [syncResult, setSyncResult] = useState('')
+  const [hasSynced, setHasSynced] = useState(false)
 
-  const load = useCallback(async () => {
+  // View mode for settled history
+  const [settledView, setSettledView] = useState<'recent' | 'all'>('recent')
+  const [settledPage, setSettledPage] = useState(1)
+  const [settledTotalPages, setSettledTotalPages] = useState(1)
+  const [settledTotal, setSettledTotal] = useState(0)
+  const [settledLoading, setSettledLoading] = useState(false)
+
+  // Summary stats
+  const [codStats, setCodStats] = useState<{
+    pendingCount: number, pendingAmount: number,
+    settledCount: number, settledAmount: number,
+    totalCollected: number
+  } | null>(null)
+
+  // ── Sync COD records (fixes orphaned/stuck payments) ─────────────────
+  const syncCOD = useCallback(async (silent = false) => {
+    if (!silent) setSyncing(true)
+    try {
+      const result = await apiFetch('/admin/payments/sync-cod', { method: 'POST' })
+      const { fixed, created } = result.data || {}
+      if ((fixed || 0) + (created || 0) > 0 && !silent) {
+        setSyncResult(`Synced: ${fixed || 0} fixed, ${created || 0} created`)
+        setTimeout(() => setSyncResult(''), 4000)
+      }
+      return (fixed || 0) + (created || 0)
+    } catch {
+      // Sync is best-effort — don't block the UI
+      return 0
+    } finally {
+      if (!silent) setSyncing(false)
+    }
+  }, [])
+
+  const loadPending = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const [pendingData, settledData] = await Promise.all([
-        apiFetch('/admin/payments?paymentMethod=cod&paymentStatus=cod_collected&limit=50'),
-        apiFetch('/admin/payments?paymentMethod=cod&paymentStatus=settled&limit=20'),
-      ])
-      setPending(pendingData.payments || [])
-      setSettled(settledData.payments || [])
+      const pendingData = await apiFetch('/admin/payments?paymentMethod=cod&paymentStatus=cod_collected&limit=100')
+      const payments = pendingData.payments || []
+      setPending(payments)
+
+      // Calculate pending stats
+      const pendingAmount = payments.reduce((sum: number, p: PaymentRecord) => sum + (p.totalAmount || 0), 0)
+      setCodStats(prev => ({
+        ...prev || { settledCount: 0, settledAmount: 0, totalCollected: 0 },
+        pendingCount: payments.length,
+        pendingAmount,
+        totalCollected: pendingAmount + (prev?.settledAmount || 0),
+      }))
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -825,7 +875,45 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const loadSettled = useCallback(async () => {
+    setSettledLoading(true)
+    try {
+      const limit = settledView === 'recent' ? 10 : 15
+      const settledData = await apiFetch(`/admin/payments?paymentMethod=cod&paymentStatus=settled&limit=${limit}&page=${settledPage}`)
+      setSettled(settledData.payments || [])
+      setSettledTotalPages(settledData.pages || 1)
+      setSettledTotal(settledData.total || 0)
+
+      // Calculate settled stats
+      const settledAmount = (settledData.payments || []).reduce((sum: number, p: PaymentRecord) => sum + (p.totalAmount || 0), 0)
+      setCodStats(prev => ({
+        ...prev || { pendingCount: 0, pendingAmount: 0, totalCollected: 0 },
+        settledCount: settledData.total || 0,
+        settledAmount,
+        totalCollected: (prev?.pendingAmount || 0) + settledAmount,
+      }))
+    } catch (err: any) {
+      // ignore — settled history is secondary
+    } finally {
+      setSettledLoading(false)
+    }
+  }, [settledView, settledPage])
+
+  // Auto-sync on first load, then load data
+  useEffect(() => {
+    if (!hasSynced) {
+      setHasSynced(true)
+      syncCOD(true).then(() => {
+        loadPending()
+        loadSettled()
+      })
+    }
+  }, [hasSynced, syncCOD, loadPending, loadSettled])
+
+  // Reload settled when view/page changes (after initial load)
+  useEffect(() => {
+    if (hasSynced) loadSettled()
+  }, [settledView, settledPage])
 
   // Get the settle/reference ID for a payment — service request, order, or payment itself
   const getRefId = (p: PaymentRecord) => {
@@ -834,23 +922,66 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
     return p._id
   }
 
-  const handleSettle = async (refId: string) => {
+  const handleSettle = async (payment: PaymentRecord) => {
+    const refId = getRefId(payment)
     setSettling(refId)
     try {
-      await apiFetch(`/admin/payments/settle/${refId}`, { method: 'POST' })
+      await apiFetch(`/admin/payments/settle/${refId}`, {
+        method: 'POST',
+        body: JSON.stringify({ note: settlementNote.trim() || undefined })
+      })
       // Move payment from pending to settled list
-      const moved = pending.find(p => getRefId(p) === refId)
-      if (moved) {
-        setPending(prev => prev.filter(p => getRefId(p) !== refId))
-        setSettled(prev => [{ ...moved, paymentStatus: 'settled', codSettledAt: new Date().toISOString() }, ...prev])
-      }
+      setPending(prev => prev.filter(p => getRefId(p) !== refId))
+      setSettled(prev => [{ ...payment, paymentStatus: 'settled', codSettledAt: new Date().toISOString() }, ...prev])
+      setSuccessMsg(`Settlement confirmed for ${payment.paymentFor === 'product' ? payment.order?.orderId : payment.serviceRequest?.requestId} — ${fmt(payment.totalAmount)}`)
+      setTimeout(() => setSuccessMsg(''), 4000)
       onSettled()
     } catch (err: any) {
       setError(err.message)
     } finally {
       setSettling(null)
-      setConfirmId(null)
+      setConfirmPayment(null)
+      setSettlementNote('')
     }
+  }
+
+  // ── Summary Stats Cards ─────────────────────────────────────────
+  const CODStatsBar = () => {
+    if (!codStats) return null
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="bg-orange-100 rounded-lg p-2.5">
+            <Clock className="h-5 w-5 text-orange-600" />
+          </div>
+          <div>
+            <p className="text-xs text-orange-600 font-medium">Pending Settlement</p>
+            <p className="text-xl font-bold text-orange-700">{fmt(codStats.pendingAmount)}</p>
+            <p className="text-xs text-orange-500">{codStats.pendingCount} payment{codStats.pendingCount !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="bg-emerald-100 rounded-lg p-2.5">
+            <BadgeCheck className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-xs text-emerald-600 font-medium">Settled</p>
+            <p className="text-xl font-bold text-emerald-700">{fmt(codStats.settledAmount)}</p>
+            <p className="text-xs text-emerald-500">{codStats.settledCount} settled</p>
+          </div>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="bg-blue-100 rounded-lg p-2.5">
+            <Banknote className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-xs text-blue-600 font-medium">Total COD Collected</p>
+            <p className="text-xl font-bold text-blue-700">{fmt(codStats.totalCollected)}</p>
+            <p className="text-xs text-blue-500">{codStats.pendingCount + codStats.settledCount} total</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // ── Card for a single COD payment ─────────────────────────────────────────
@@ -863,6 +994,18 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
     const assigneePhone = isProduct
       ? (p.deliveryBoy?.phone || '')
       : (p.mechanic?.user?.phone || '')
+
+    // Calculate time since collection
+    const timeSinceCollection = p.codCollectedAt
+      ? (() => {
+          const diff = Date.now() - new Date(p.codCollectedAt).getTime()
+          const hours = Math.floor(diff / (1000 * 60 * 60))
+          const days = Math.floor(hours / 24)
+          if (days > 0) return `${days}d ${hours % 24}h ago`
+          if (hours > 0) return `${hours}h ago`
+          return 'Just now'
+        })()
+      : null
 
     return (
       <div className={`bg-white rounded-xl border shadow-sm p-4 ${showSettle ? 'border-orange-200' : 'border-emerald-200'}`}>
@@ -906,7 +1049,33 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
               <p className="font-medium text-gray-700 text-xs">
                 {fmtDate(showSettle ? p.codCollectedAt : p.codSettledAt)}
               </p>
+              {showSettle && timeSinceCollection && (
+                <p className={`text-[10px] font-medium mt-0.5 ${
+                  timeSinceCollection.includes('d') ? 'text-red-500' : 'text-gray-400'
+                }`}>
+                  {timeSinceCollection}
+                </p>
+              )}
             </div>
+            {/* Service status */}
+            {!isProduct && p.serviceRequest?.status && (
+              <div>
+                <p className="text-xs text-gray-400 font-medium">Service Status</p>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border mt-0.5 ${
+                  linkedStatusConfig[p.serviceRequest.status]?.className || 'bg-gray-50 text-gray-600 border-gray-200'
+                }`}>
+                  <Wrench className="h-2.5 w-2.5" />
+                  {linkedStatusConfig[p.serviceRequest.status]?.label || p.serviceRequest.status}
+                </span>
+              </div>
+            )}
+            {/* Service category */}
+            {!isProduct && p.serviceRequest?.serviceCategory && (
+              <div>
+                <p className="text-xs text-gray-400 font-medium">Category</p>
+                <p className="text-xs text-gray-600 font-medium mt-0.5">{p.serviceRequest.serviceCategory}</p>
+              </div>
+            )}
             {/* Collection note */}
             {p.codCollectedNote && (
               <div className="col-span-2">
@@ -940,7 +1109,7 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shrink-0 self-center"
               disabled={settling === refId}
-              onClick={() => setConfirmId(refId)}
+              onClick={() => setConfirmPayment(p)}
             >
               {settling === refId ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin" />Settling…</>
@@ -961,8 +1130,26 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
     )
   }
 
+  // We need linkedStatusConfig accessible here
+  const linkedStatusConfig: Record<string, { label: string; className: string }> = {
+    pending: { label: 'Pending', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+    accepted: { label: 'Accepted', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+    assigned: { label: 'Assigned', className: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    mechanic_assigned: { label: 'Mechanic Assigned', className: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    on_way: { label: 'On the Way', className: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+    diagnosis: { label: 'Diagnosis', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+    approved: { label: 'Quote Approved', className: 'bg-teal-50 text-teal-700 border-teal-200' },
+    in_progress: { label: 'In Progress', className: 'bg-orange-50 text-orange-700 border-orange-200' },
+    completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    payment_pending: { label: 'Payment Pending', className: 'bg-purple-50 text-purple-700 border-purple-200' },
+    paid: { label: 'Paid', className: 'bg-green-50 text-green-700 border-green-200' },
+  }
+
   return (
     <div className="space-y-8">
+      {/* COD Stats Summary */}
+      <CODStatsBar />
+
       {/* ── Pending Settlement ─────────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -978,14 +1165,40 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
             </h3>
             <p className="text-sm text-gray-500">Mechanics / delivery boys have collected cash — confirm settlement to close.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={load} className="gap-2">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await syncCOD(false)
+                loadPending()
+                loadSettled()
+              }}
+              disabled={syncing}
+              className="gap-2 text-blue-700 border-blue-200 hover:bg-blue-50"
+            >
+              {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUpDown className="h-3.5 w-3.5" />}
+              Sync
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { loadPending(); loadSettled() }} className="gap-2">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {error && (
           <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm mb-4 border border-red-200">{error}</div>
+        )}
+        {syncResult && (
+          <div className="bg-blue-50 text-blue-700 p-3 rounded-lg text-sm mb-4 border border-blue-200 flex items-center gap-2">
+            <ArrowUpDown className="h-4 w-4" />{syncResult}
+          </div>
+        )}
+        {successMsg && (
+          <div className="bg-emerald-50 text-emerald-700 p-3 rounded-lg text-sm mb-4 border border-emerald-200 flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />{successMsg}
+          </div>
         )}
 
         {loading ? (
@@ -1006,40 +1219,146 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
         )}
       </div>
 
-      {/* ── Settled History ────────────────────────────────────── */}
-      {!loading && settled.length > 0 && (
-        <div>
-          <h3 className="font-semibold text-gray-700 flex items-center gap-2 mb-4">
+      {/* ── Settlement History ────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-700 flex items-center gap-2">
             <BadgeCheck className="h-4 w-4 text-emerald-500" />
-            Recently Settled
-            <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-              {settled.length}
-            </span>
+            Settlement History
+            {settledTotal > 0 && (
+              <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                {settledTotal}
+              </span>
+            )}
           </h3>
-          <div className="space-y-3">
-            {settled.map(p => <CODCard key={p._id} p={p} showSettle={false} />)}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+              <button
+                onClick={() => { setSettledView('recent'); setSettledPage(1) }}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                  settledView === 'recent' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Recent
+              </button>
+              <button
+                onClick={() => { setSettledView('all'); setSettledPage(1) }}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                  settledView === 'all' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                All History
+              </button>
+            </div>
+            {settledLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
           </div>
         </div>
-      )}
 
-      {/* Confirm dialog */}
-      <Dialog open={!!confirmId} onOpenChange={(o) => !o && setConfirmId(null)}>
-        <DialogContent className="max-w-sm">
+        {settled.length === 0 && !settledLoading ? (
+          <div className="text-center py-8 bg-white rounded-xl border border-gray-200">
+            <History className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">No settlement history yet</p>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3">
+              {settled.map(p => <CODCard key={p._id} p={p} showSettle={false} />)}
+            </div>
+            {/* Pagination for "All History" view */}
+            {settledView === 'all' && settledTotalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 px-2">
+                <span className="text-sm text-gray-500">Page {settledPage} of {settledTotalPages}</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={settledPage <= 1} onClick={() => setSettledPage(p => p - 1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={settledPage >= settledTotalPages} onClick={() => setSettledPage(p => p + 1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Confirm Settlement dialog */}
+      <Dialog open={!!confirmPayment} onOpenChange={(o) => { if (!o) { setConfirmPayment(null); setSettlementNote('') } }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirm COD Settlement</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Handshake className="h-5 w-5 text-emerald-600" />
+              Confirm COD Settlement
+            </DialogTitle>
             <DialogDescription>
-              This will mark the payment as settled. The cash has been confirmed collected.
-              This action cannot be undone.
+              Confirm that cash has been collected from the {confirmPayment?.paymentFor === 'product' ? 'delivery boy' : 'mechanic'} and settle this payment.
             </DialogDescription>
           </DialogHeader>
+
+          {confirmPayment && (
+            <div className="space-y-4 py-2">
+              {/* Payment Summary */}
+              <div className="bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">{confirmPayment.paymentFor === 'product' ? 'Order' : 'Request'}</span>
+                  <span className="font-semibold text-blue-700">
+                    {confirmPayment.paymentFor === 'product'
+                      ? confirmPayment.order?.orderId || '—'
+                      : confirmPayment.serviceRequest?.requestId || '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Customer</span>
+                  <span className="font-medium">{confirmPayment.customer?.fullName || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">{confirmPayment.paymentFor === 'product' ? 'Delivery Boy' : 'Mechanic'}</span>
+                  <span className="font-medium">
+                    {confirmPayment.paymentFor === 'product'
+                      ? confirmPayment.deliveryBoy?.fullName || '—'
+                      : confirmPayment.mechanic?.user?.fullName || '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
+                  <span className="text-gray-500">Total Amount</span>
+                  <span className="font-bold text-lg">{fmt(confirmPayment.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-emerald-600">Platform: {fmt(confirmPayment.platformAmount)}</span>
+                  <span className="text-violet-600">Mechanic: {fmt(confirmPayment.mechanicAmount)}</span>
+                </div>
+              </div>
+
+              {/* Settlement Note */}
+              <div>
+                <Label className="text-sm font-medium">Settlement Note <span className="text-xs text-gray-400">(optional)</span></Label>
+                <Textarea
+                  className="mt-1"
+                  placeholder="Add any notes about this settlement..."
+                  rows={2}
+                  value={settlementNote}
+                  onChange={(e) => setSettlementNote(e.target.value)}
+                />
+              </div>
+
+              {/* Collection info */}
+              {confirmPayment.codCollectedNote && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2.5 text-xs">
+                  <p className="text-orange-600 font-medium mb-0.5">Collection Note:</p>
+                  <p className="text-orange-700 italic">&ldquo;{confirmPayment.codCollectedNote}&rdquo;</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setConfirmId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setConfirmPayment(null); setSettlementNote('') }}>Cancel</Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
               disabled={!!settling}
-              onClick={() => confirmId && handleSettle(confirmId)}
+              onClick={() => confirmPayment && handleSettle(confirmPayment)}
             >
-              {settling ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Handshake className="h-4 w-4 mr-2" />}
+              {settling ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <BadgeCheck className="h-4 w-4 mr-2" />}
               Confirm Settlement
             </Button>
           </DialogFooter>

@@ -244,6 +244,61 @@ export function PlatformSettings() {
   const [securitySettings, setSecuritySettings] = useState(mockSecuritySettings)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Service Config (from API)
+  const [serviceConfig, setServiceConfig] = useState({
+    advanceFeeEnabled: false,
+    advanceFeeAmount: 199,
+    advanceFeeApplyTo: 'all',
+    advanceFeeType: 'adjustable',
+    bookingFeeEnabled: false,
+    bookingFeeAmount: 99,
+    codEnabled: true,
+    onlineEnabled: true,
+    maxNegotiationRounds: 2,
+    platformCommission: 15,
+    minTrustScore: 40,
+    autoBlockTrustScore: 20,
+    autoCancel: { diagnosisTimeout: 60, paymentTimeout: 1440 },
+    serviceSettings: { minOrderValue: 500, maxCancellations: 3, autoBlockAfterRefusals: 2 }
+  })
+  const [configLoading, setConfigLoading] = useState(false)
+  const [configSaving, setConfigSaving] = useState(false)
+
+  // Load service config from API
+  React.useEffect(() => {
+    const loadConfig = async () => {
+      setConfigLoading(true)
+      try {
+        const { configAPI } = await import('@/services/api')
+        const res = await configAPI.getConfig()
+        if (res.data?.success && res.data?.data) {
+          setServiceConfig(res.data.data)
+        }
+      } catch (err) {
+        console.error('Failed to load config:', err)
+      } finally {
+        setConfigLoading(false)
+      }
+    }
+    loadConfig()
+  }, [])
+
+  const handleSaveServiceConfig = async () => {
+    setConfigSaving(true)
+    try {
+      const { configAPI } = await import('@/services/api')
+      const res = await configAPI.updateConfig(serviceConfig)
+      if (res.data?.success) {
+        alert('Service config saved successfully!')
+      }
+    } catch (err) {
+      console.error('Failed to save config:', err)
+      alert('Failed to save config')
+    } finally {
+      setConfigSaving(false)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
       year: 'numeric',
@@ -631,6 +686,216 @@ export function PlatformSettings() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Service Configuration — real API */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Wrench className="h-5 w-5 mr-2" />
+                    Service Configuration
+                  </CardTitle>
+                  <CardDescription>Configure advance fees, payment methods, and platform settings</CardDescription>
+                </div>
+                <Button
+                  className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+                  onClick={handleSaveServiceConfig}
+                  disabled={configSaving}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {configSaving ? 'Saving...' : 'Save Config'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {configLoading ? (
+                <p className="text-[#6B7280]">Loading config...</p>
+              ) : (
+                <>
+                  {/* Advance Fee */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="font-medium">Advance Fee (Before Mechanic Dispatch)</Label>
+                        <p className="text-sm text-[#6B7280]">Require customers to pay advance fee before mechanic is sent</p>
+                      </div>
+                      <Switch
+                        checked={serviceConfig.advanceFeeEnabled}
+                        onCheckedChange={(checked) => setServiceConfig({...serviceConfig, advanceFeeEnabled: checked})}
+                      />
+                    </div>
+                    {serviceConfig.advanceFeeEnabled && (
+                      <div className="space-y-4 pt-2 border-t border-gray-100">
+                        <div>
+                          <Label htmlFor="advanceFeeAmount">Amount (₹)</Label>
+                          <Input
+                            id="advanceFeeAmount"
+                            type="number"
+                            value={serviceConfig.advanceFeeAmount}
+                            onChange={(e) => setServiceConfig({...serviceConfig, advanceFeeAmount: parseInt(e.target.value) || 0})}
+                            className="max-w-xs"
+                          />
+                        </div>
+                        <div>
+                          <Label>Apply To</Label>
+                          <Select
+                            value={serviceConfig.advanceFeeApplyTo || 'all'}
+                            onValueChange={(val) => setServiceConfig({...serviceConfig, advanceFeeApplyTo: val})}
+                          >
+                            <SelectTrigger className="max-w-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All customers</SelectItem>
+                              <SelectItem value="new_only">New customers only (0 completed orders)</SelectItem>
+                              <SelectItem value="low_trust">Low trust customers (trust score below threshold)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Fee Type</Label>
+                          <Select
+                            value={serviceConfig.advanceFeeType || 'adjustable'}
+                            onValueChange={(val) => setServiceConfig({...serviceConfig, advanceFeeType: val})}
+                          >
+                            <SelectTrigger className="max-w-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="adjustable">Adjustable (deduct from final bill)</SelectItem>
+                              <SelectItem value="non_refundable">Non-refundable (extra charge)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment Methods */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <h3 className="font-medium text-[#1A1D29]">Payment Methods</h3>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Cash on Delivery (COD)</Label>
+                        <p className="text-sm text-[#6B7280]">Allow customers to pay cash after service</p>
+                      </div>
+                      <Switch
+                        checked={serviceConfig.codEnabled}
+                        onCheckedChange={(checked) => setServiceConfig({...serviceConfig, codEnabled: checked})}
+                      />
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Online Payment</Label>
+                        <p className="text-sm text-[#6B7280]">Allow online payment via Razorpay</p>
+                      </div>
+                      <Switch
+                        checked={serviceConfig.onlineEnabled}
+                        onCheckedChange={(checked) => setServiceConfig({...serviceConfig, onlineEnabled: checked})}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Platform Settings */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <h3 className="font-medium text-[#1A1D29]">Platform Settings</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="platformCommission">Platform Commission (%)</Label>
+                        <Input
+                          id="platformCommission"
+                          type="number"
+                          value={serviceConfig.platformCommission}
+                          onChange={(e) => setServiceConfig({...serviceConfig, platformCommission: parseInt(e.target.value) || 0})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="maxNegotiationRounds">Max Negotiation Rounds</Label>
+                        <Input
+                          id="maxNegotiationRounds"
+                          type="number"
+                          value={serviceConfig.maxNegotiationRounds}
+                          onChange={(e) => setServiceConfig({...serviceConfig, maxNegotiationRounds: parseInt(e.target.value) || 0})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="minTrustScore">Min Trust Score (Warning Threshold)</Label>
+                        <Input
+                          id="minTrustScore"
+                          type="number"
+                          value={serviceConfig.minTrustScore}
+                          onChange={(e) => setServiceConfig({...serviceConfig, minTrustScore: parseInt(e.target.value) || 0})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="autoBlockTrustScore">Auto-Block Trust Score</Label>
+                        <Input
+                          id="autoBlockTrustScore"
+                          type="number"
+                          value={serviceConfig.autoBlockTrustScore}
+                          onChange={(e) => setServiceConfig({...serviceConfig, autoBlockTrustScore: parseInt(e.target.value) || 0})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Service Settings */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <h3 className="font-medium text-[#1A1D29]">Service Settings</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="minOrderValue">Minimum Order Value (₹)</Label>
+                        <Input
+                          id="minOrderValue"
+                          type="number"
+                          value={serviceConfig.serviceSettings?.minOrderValue ?? 500}
+                          onChange={(e) => setServiceConfig({
+                            ...serviceConfig,
+                            serviceSettings: {
+                              ...serviceConfig.serviceSettings,
+                              minOrderValue: parseInt(e.target.value) || 0
+                            }
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="maxCancellations">Max Cancellations (per customer)</Label>
+                        <Input
+                          id="maxCancellations"
+                          type="number"
+                          value={serviceConfig.serviceSettings?.maxCancellations ?? 3}
+                          onChange={(e) => setServiceConfig({
+                            ...serviceConfig,
+                            serviceSettings: {
+                              ...serviceConfig.serviceSettings,
+                              maxCancellations: parseInt(e.target.value) || 0
+                            }
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="autoBlockAfterRefusals">Auto-block after refused payments</Label>
+                        <Input
+                          id="autoBlockAfterRefusals"
+                          type="number"
+                          value={serviceConfig.serviceSettings?.autoBlockAfterRefusals ?? 2}
+                          onChange={(e) => setServiceConfig({
+                            ...serviceConfig,
+                            serviceSettings: {
+                              ...serviceConfig.serviceSettings,
+                              autoBlockAfterRefusals: parseInt(e.target.value) || 0
+                            }
+                          })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

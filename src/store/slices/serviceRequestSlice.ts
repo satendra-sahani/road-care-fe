@@ -34,10 +34,56 @@ export interface ServiceRequest {
   scheduledDate: string;
   scheduledTime: string;
   priority: 'low' | 'medium' | 'high' | 'urgent' | 'normal' | 'critical';
-  status: 'pending' | 'assigned' | 'accepted' | 'on_way' | 'in_progress' | 'in-progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'assigned' | 'accepted' | 'mechanic_assigned' | 'on_way' | 'diagnosis' | 'approved' | 'rejected_quote' | 'in_progress' | 'in-progress' | 'completed' | 'payment_pending' | 'paid' | 'payment_refused' | 'cancelled';
   estimatedCost?: number;
   actualCost?: number;
   notes?: string;
+  // Diagnosis fields
+  diagnosis?: {
+    notes?: string;
+    photos?: string[];
+    costBreakdown?: {
+      laborCost: number;
+      parts: Array<{ name: string; cost: number; quantity: number }>;
+      additionalCharges: number;
+      discount: number;
+      totalEstimate: number;
+    };
+    estimatedTime?: string;
+    diagnosedAt?: string;
+    diagnosedBy?: string;
+  };
+  customerApproval?: {
+    status: 'pending' | 'approved' | 'rejected' | 'negotiating';
+    approvedAt?: string;
+    rejectedAt?: string;
+    rejectionReason?: string;
+  };
+  finalCost?: number;
+  cashCollected?: boolean;
+  paymentDetails?: {
+    method: 'cod' | 'online';
+    paidAt?: string;
+    totalPaid?: number;
+  };
+  advanceFee?: {
+    required: boolean;
+    amount: number;
+    status: 'not_required' | 'pending' | 'paid' | 'refunded' | 'forfeited';
+    paymentId?: string;
+    paidAt?: string;
+    feeType?: string;
+  };
+  paymentRefusal?: {
+    refused: boolean;
+    reason: string;
+    refusedAt?: string;
+    reportedBy?: string;
+    photoProof?: string[];
+  };
+  totalCost?: number;
+  laborCost?: number;
+  partsCost?: number;
   images?: {
     before: Array<{ url: string; description?: string }>;
     after: Array<{ url: string; description?: string }>;
@@ -63,6 +109,12 @@ export interface ServiceRequest {
     timestamp: string;
     note?: string;
   }>;
+  shopPartner?: {
+    _id: string;
+    shopName: string;
+    city?: string;
+    commissionRate?: number;
+  };
   createdAt: string;
   updatedAt: string;
 }

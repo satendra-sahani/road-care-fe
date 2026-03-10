@@ -33,6 +33,9 @@ api.interceptors.response.use(
         if (window.location.pathname.startsWith('/admin')) {
           Cookies.remove('token');
           window.location.href = '/admin/login';
+        } else if (window.location.pathname.startsWith('/shop-partner')) {
+          Cookies.remove('token');
+          window.location.href = '/shop-partner/login';
         } else {
           Cookies.remove('customer_token');
           window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
@@ -437,6 +440,100 @@ export const adminCallLogsAPI = {
   getAll: (params?: Record<string, any>) => api.get('/admin/calls', { params }),
   getStats: () => api.get('/admin/calls/stats'),
   getById: (id: string) => api.get(`/admin/calls/${id}`),
+};
+
+// ─── Shop Partner APIs ──────────────────────────────────────────────
+export const shopAPI = {
+  // Dashboard
+  getDashboard: () => api.get('/shop/dashboard'),
+
+  // Profile
+  getProfile: () => api.get('/shop/profile'),
+  updateProfile: (data: any) => api.put('/shop/profile', data),
+
+  // Orders
+  getOrders: (params?: Record<string, any>) => api.get('/shop/orders', { params }),
+  getOrderById: (id: string) => api.get(`/shop/orders/${id}`),
+  acceptOrder: (id: string) => api.put(`/shop/orders/${id}/accept`),
+  rejectOrder: (id: string, reason: string) => api.put(`/shop/orders/${id}/reject`, { reason }),
+  assignMechanic: (id: string, data: { name?: string; phone?: string; mechanicProfileId?: string }) =>
+    api.put(`/shop/orders/${id}/assign-mechanic`, data),
+  updateOrderStatus: (id: string, status: string, notes?: string) =>
+    api.put(`/shop/orders/${id}/status`, { status, notes }),
+  updateOrderCost: (id: string, data: { laborCost?: number; partsCost?: number }) =>
+    api.put(`/shop/orders/${id}/cost`, data),
+
+  // Mechanics (manual / shop employees)
+  addMechanic: (data: { name: string; phone: string; specialization?: string }) =>
+    api.post('/shop/mechanics', data),
+  updateMechanic: (id: string, data: any) => api.put(`/shop/mechanics/${id}`, data),
+  removeMechanic: (id: string) => api.delete(`/shop/mechanics/${id}`),
+
+  // Assigned platform mechanics (assigned by admin)
+  getAssignedMechanics: () => api.get('/shop/assigned-mechanics'),
+
+  // Settlements
+  getSettlements: (params?: Record<string, any>) => api.get('/shop/settlements', { params }),
+};
+
+// ─── Admin Shop Management APIs ─────────────────────────────────────
+export const adminShopAPI = {
+  getAll: (params?: Record<string, any>) => api.get('/admin/shops', { params }),
+  getStats: () => api.get('/admin/shops/stats'),
+  getById: (id: string) => api.get(`/admin/shops/${id}`),
+  create: (data: { ownerData: any; shopData: any }) => api.post('/admin/shops', data),
+  verify: (id: string) => api.put(`/admin/shops/${id}/verify`),
+  toggleStatus: (id: string) => api.put(`/admin/shops/${id}/toggle-status`),
+  updateCommission: (id: string, commissionRate: number) =>
+    api.put(`/admin/shops/${id}/commission`, { commissionRate }),
+  assignOrder: (serviceRequestId: string, shopId: string) =>
+    api.post('/admin/shops/assign-order', { serviceRequestId, shopId }),
+  settle: (id: string) => api.post(`/admin/shops/${id}/settle`),
+  getOrders: (id: string, params?: Record<string, any>) =>
+    api.get(`/admin/shops/${id}/orders`, { params }),
+
+  // Mechanic assignment to shops
+  getAvailableMechanics: (search?: string) =>
+    api.get('/admin/shops/available-mechanics', { params: { search } }),
+  getShopMechanics: (shopId: string) =>
+    api.get(`/admin/shops/${shopId}/mechanics`),
+  assignMechanicToShop: (shopId: string, mechanicProfileId: string) =>
+    api.post(`/admin/shops/${shopId}/assign-mechanic`, { mechanicProfileId }),
+  unassignMechanicFromShop: (shopId: string, mechanicId: string) =>
+    api.delete(`/admin/shops/${shopId}/unassign-mechanic/${mechanicId}`),
+};
+
+// ─── App Config APIs ─────────────────────────────────────────────────
+export const configAPI = {
+  // Public config (for customer app)
+  getPublicConfig: () => api.get('/common/config'),
+  // Admin config
+  getConfig: () => api.get('/admin/config'),
+  updateConfig: (data: any) => api.put('/admin/config', data),
+};
+
+// ─── Customer Management APIs (Admin) ────────────────────────────────
+export const customerManagementAPI = {
+  getAll: (params?: Record<string, any>) => api.get('/admin/customers', { params }),
+  getById: (id: string) => api.get(`/admin/customers/${id}`),
+  block: (id: string, reason: string, blockType?: string, days?: number) =>
+    api.post(`/admin/customers/${id}/block`, { reason, blockType, days }),
+  unblock: (id: string, reason?: string) => api.post(`/admin/customers/${id}/unblock`, { reason }),
+  warn: (id: string, message: string) => api.post(`/admin/customers/${id}/warn`, { message }),
+  forceAdvance: (id: string, amount?: number, reason?: string) =>
+    api.post(`/admin/customers/${id}/force-advance`, { amount, reason }),
+  addNote: (id: string, note: string) => api.post(`/admin/customers/${id}/note`, { note }),
+  adjustTrustScore: (id: string, score: number) => api.put(`/admin/customers/${id}/trust-score`, { score }),
+};
+
+// ─── Diagnosis / Pricing APIs ────────────────────────────────────────
+export const diagnosisAPI = {
+  // User (customer) endpoints
+  getDiagnosis: (requestId: string) => api.get(`/user/service-requests/${requestId}/diagnosis`),
+  approve: (requestId: string) => api.post(`/user/service-requests/${requestId}/approve`),
+  reject: (requestId: string, reason?: string) => api.post(`/user/service-requests/${requestId}/reject-quote`, { reason }),
+  // Admin endpoints
+  markAsPaid: (requestId: string) => api.post(`/admin/service-requests/${requestId}/mark-paid`),
 };
 
 export default api;
