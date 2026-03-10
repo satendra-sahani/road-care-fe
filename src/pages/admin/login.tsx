@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { loginRequest, clearError } from '@/store/slices/authSlice'
-import { Wrench, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -51,10 +52,17 @@ export default function AdminLoginPage() {
       <div className="relative w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#FF6B35] rounded-2xl shadow-lg shadow-orange-500/30 mb-4">
-            <Wrench className="h-8 w-8 text-white" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <Image
+              src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
+              alt="Bharat Mechanics"
+              width={64}
+              height={64}
+              className="w-16 h-16 object-contain"
+              priority
+            />
           </div>
-          <h1 className="text-3xl font-bold text-white">Bharat Machenics</h1>
+          <h1 className="text-3xl font-bold text-white">Bharat Mechanics</h1>
           <p className="text-gray-400 mt-1">Admin Panel</p>
         </div>
 
@@ -141,7 +149,7 @@ export default function AdminLoginPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-500 text-xs mt-6">
-          Bharat Machenics Admin Panel &copy; {new Date().getFullYear()}
+          Bharat Mechanics Admin Panel &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>

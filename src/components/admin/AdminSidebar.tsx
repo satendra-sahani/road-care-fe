@@ -21,12 +21,13 @@ import {
   X,
   LogOut,
   Tag,
-  Image,
+  Image as ImageIcon,
   MapPin,
   Phone,
   Store,
   UserCheck
 } from 'lucide-react'
+import NextImage from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
@@ -70,7 +71,7 @@ const baseSidebarItems: SidebarItem[] = [
   { id: 'revenue', title: 'Revenue', icon: DollarSign, href: '/admin/financial/revenue', separator: true },
 
   // Content & Communication
-  { id: 'banners', title: 'Banners', icon: Image, href: '/admin/banners', separator: true },
+  { id: 'banners', title: 'Banners', icon: ImageIcon, href: '/admin/banners', separator: true },
   { id: 'locations', title: 'Locations', icon: MapPin, href: '/admin/locations' },
   { id: 'notifications', title: 'Notifications', icon: Bell, href: '/admin/communication/notifications' },
   { id: 'call-logs', title: 'Call Logs', icon: Phone, href: '/admin/communication/call-logs' },
@@ -246,18 +247,26 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
         <div className="flex items-center justify-between p-4 border-b border-[#2E5090]">
           {!collapsed ? (
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-[#FF6B35] rounded-lg flex items-center justify-center">
-                <Wrench className="h-5 w-5 text-white" />
-              </div>
+              <NextImage
+                src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
+                alt="Bharat Mechanics"
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain rounded-lg"
+              />
               <div>
-                <h1 className="text-lg font-bold text-white">Bharat Machenics</h1>
+                <h1 className="text-lg font-bold text-white">Bharat Mechanics</h1>
                 <p className="text-[10px] text-gray-400">Admin Panel</p>
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 bg-[#FF6B35] rounded-lg flex items-center justify-center mx-auto">
-              <Wrench className="h-5 w-5 text-white" />
-            </div>
+            <NextImage
+              src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
+              alt="Bharat Mechanics"
+              width={32}
+              height={32}
+              className="w-8 h-8 object-contain rounded-lg mx-auto"
+            />
           )}
           
           {/* Mobile close button */}

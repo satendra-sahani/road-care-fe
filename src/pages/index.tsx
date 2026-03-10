@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
+import { SEOHead } from '@/components/SEOHead'
 import { loadUserRequest } from '@/store/slices/customerAuthSlice'
 import { catalogAPI, userCartAPI, bannerAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
@@ -15,6 +16,7 @@ import {
   Wrench, AlertTriangle, Shield, Zap, Award,
   ShoppingCart, Package, ArrowRight,
   Car, Bike, SlidersHorizontal, X, Check,
+  Receipt, Truck, Wallet, MapPinned, Heart, HelpCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Cookies from 'js-cookie'
@@ -195,6 +197,11 @@ export default function HomePage() {
 
   return (
     <UserLayout>
+      <SEOHead
+        title="Home"
+        description="Bharat Mechanics – Buy genuine auto parts online, book certified mechanics for doorstep vehicle repair and servicing. Car parts, bike parts, engine oil, brake pads, filters & more. Fast delivery across India."
+        keywords="auto parts online, car parts, bike parts, mechanic near me, vehicle repair, Bharat Mechanics, genuine auto parts, doorstep mechanic, car service, bike service, engine oil, brake pads, air filter, spark plug, car battery, tyre"
+      />
       <div className="bg-[#F8FAFC]">
 
         {/* ══════════════════════════════════════════════════════════════
@@ -355,6 +362,68 @@ export default function HomePage() {
                 <ArrowRight className="hidden md:block h-6 w-6 text-white/70 shrink-0 ml-auto" />
               </div>
             </Link>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 4B — Manage Your Account (like Android Profile)
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-4 md:px-6 lg:px-8 mb-8 md:mb-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-4 md:mb-6">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight">Manage Your Account</h2>
+              <p className="text-[13px] md:text-sm text-gray-500 mt-1 font-medium">Quick access to your services</p>
+            </div>
+
+            {/* Mobile: Horizontal scroll */}
+            <div className="md:hidden">
+              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {[
+                  { icon: Receipt, label: 'My Orders', sub: 'Track & manage', href: '/orders', color: 'text-[#1B3B6F]', bg: 'bg-[#1B3B6F]/10' },
+                  { icon: Truck, label: 'Services', sub: 'Repair requests', href: '/service', color: 'text-[#FF6B35]', bg: 'bg-[#FF6B35]/10' },
+                  { icon: Wallet, label: 'Wallet', sub: 'Balance & history', href: '/wallet', color: 'text-[#10B981]', bg: 'bg-[#10B981]/10' },
+                  { icon: MapPinned, label: 'Addresses', sub: 'Delivery locations', href: '/addresses', color: 'text-[#6366F1]', bg: 'bg-[#6366F1]/10' },
+                  { icon: Heart, label: 'Wishlist', sub: 'Saved items', href: '/reviews', color: 'text-[#EF4444]', bg: 'bg-[#EF4444]/10' },
+                  { icon: HelpCircle, label: 'Help', sub: 'Support & FAQ', href: '#', color: 'text-[#F59E0B]', bg: 'bg-[#F59E0B]/10' },
+                ].map((item) => (
+                  <Link
+                    key={item.label}
+                    href={isAuthenticated ? item.href : `/login?redirect=${encodeURIComponent(item.href)}`}
+                    className="shrink-0 w-[110px] bg-white rounded-2xl p-4 flex flex-col items-center text-center border border-gray-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+                  >
+                    <div className={`h-11 w-11 rounded-xl ${item.bg} flex items-center justify-center mb-2.5`}>
+                      <item.icon className={`h-5 w-5 ${item.color}`} />
+                    </div>
+                    <p className="text-xs font-semibold text-[#1A1D29] leading-4">{item.label}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 leading-3">{item.sub}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: Grid */}
+            <div className="hidden md:grid grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5">
+              {[
+                { icon: Receipt, label: 'My Orders', sub: 'Track & manage orders', href: '/orders', color: 'text-[#1B3B6F]', bg: 'bg-[#1B3B6F]/10' },
+                { icon: Truck, label: 'Service Requests', sub: 'Mechanic & repair status', href: '/service', color: 'text-[#FF6B35]', bg: 'bg-[#FF6B35]/10' },
+                { icon: Wallet, label: 'Wallet', sub: 'Balance & transactions', href: '/wallet', color: 'text-[#10B981]', bg: 'bg-[#10B981]/10' },
+                { icon: MapPinned, label: 'Addresses', sub: 'Delivery locations', href: '/addresses', color: 'text-[#6366F1]', bg: 'bg-[#6366F1]/10' },
+                { icon: Heart, label: 'Wishlist', sub: 'Saved items', href: '/reviews', color: 'text-[#EF4444]', bg: 'bg-[#EF4444]/10' },
+                { icon: HelpCircle, label: 'Help & Support', sub: 'FAQ & contact us', href: '#', color: 'text-[#F59E0B]', bg: 'bg-[#F59E0B]/10' },
+              ].map((item) => (
+                <Link
+                  key={item.label}
+                  href={isAuthenticated ? item.href : `/login?redirect=${encodeURIComponent(item.href)}`}
+                  className="bg-white rounded-2xl p-5 lg:p-6 flex flex-col items-center text-center border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group/manage"
+                >
+                  <div className={`h-12 w-12 lg:h-14 lg:w-14 rounded-xl ${item.bg} group-hover/manage:scale-110 flex items-center justify-center mb-3 transition-transform`}>
+                    <item.icon className={`h-6 w-6 lg:h-7 lg:w-7 ${item.color}`} />
+                  </div>
+                  <p className="text-sm lg:text-base font-semibold text-[#1A1D29] leading-5">{item.label}</p>
+                  <p className="text-xs text-gray-400 mt-1 leading-4">{item.sub}</p>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -596,8 +665,8 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto">
             {/* Desktop heading */}
             <div className="hidden md:block text-center mb-8 lg:mb-10">
-              <h2 className="text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight">Why Choose RoadCare?</h2>
-              <p className="text-gray-500 mt-2 text-base lg:text-lg">India&apos;s most trusted auto parts platform</p>
+              <h2 className="text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight">Why Choose Bharat Mechanics?</h2>
+              <p className="text-gray-500 mt-2 text-base lg:text-lg">India&apos;s most trusted auto parts &amp; vehicle service platform</p>
             </div>
 
             <div className="grid grid-cols-3 gap-3 md:gap-5 lg:gap-8">
@@ -625,13 +694,13 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Desktop-only: How RoadCare Works */}
+        {/* Desktop-only: How Bharat Mechanics Works */}
         <section className="hidden md:block px-6 lg:px-8 mb-12 lg:mb-16">
           <div className="max-w-7xl mx-auto">
             <div className="bg-gradient-to-br from-[#1B3B6F] to-[#0F2545] rounded-3xl p-8 lg:p-12 xl:p-16">
               <div className="text-center mb-8 lg:mb-12">
                 <h2 className="text-2xl lg:text-3xl xl:text-4xl font-extrabold text-white tracking-tight">
-                  How RoadCare Works
+                  How Bharat Mechanics Works
                 </h2>
                 <p className="text-white/70 mt-2 text-base lg:text-lg">
                   Get quality parts in 3 simple steps

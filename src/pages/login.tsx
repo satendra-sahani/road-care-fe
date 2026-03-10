@@ -15,7 +15,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Car, Phone, ArrowLeft, Loader2 } from 'lucide-react'
+import { Phone, ArrowLeft, Loader2 } from 'lucide-react'
+import Image from 'next/image'
+import { SEOHead } from '@/components/SEOHead'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -136,17 +138,25 @@ export default function CustomerLoginPage() {
   }
 
   return (
+    <>
+    <SEOHead
+      title="Login"
+      description="Sign in to Bharat Mechanics. Access your orders, service bookings, and manage your vehicle maintenance with India's trusted auto parts and mechanic platform."
+      keywords="Bharat Mechanics login, auto parts account, mechanic booking login"
+    />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="h-12 w-12 rounded-xl bg-[#1B3B6F] flex items-center justify-center">
-              <Car className="h-7 w-7 text-white" />
-            </div>
-            <span className="font-bold text-2xl text-gray-900">
-              Road<span className="text-[#FF6B35]">Care</span>
-            </span>
+            <Image
+              src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png"
+              alt="Bharat Mechanics"
+              width={200}
+              height={56}
+              className="h-12 w-auto object-contain"
+              priority
+            />
           </Link>
         </div>
 
@@ -287,5 +297,6 @@ export default function CustomerLoginPage() {
         </p>
       </div>
     </div>
+    </>
   )
 }

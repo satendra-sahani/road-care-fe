@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import {
   Search, ShoppingCart, User, Menu, X, Car, Home, Grid3X3, Receipt, Bell,
   Phone, MapPin, Truck, LogOut, ChevronDown, Wallet, MapPinned, Star, Wrench,
-  Tag, Loader2, Package, ArrowRight,
+  Tag, Loader2, Package, ArrowRight, HelpCircle, Heart, Headphones,
 } from 'lucide-react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -206,28 +206,43 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background font-sans">
       {/* Top Bar (Desktop) */}
       <div className="hidden md:block gradient-primary">
-        <div className="container mx-auto px-4 py-2 flex items-center justify-between text-primary-foreground text-sm">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> +91 1800-123-4567</span>
-            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Deliver to: India</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/orders" className="flex items-center gap-1 hover:underline"><Truck className="h-3 w-3" /> Track Order</Link>
+        <div className="px-4 md:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto py-2 flex items-center justify-between text-primary-foreground text-sm">
+            <div className="flex items-center gap-4 lg:gap-6">
+              <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> +91 1800-123-4567</span>
+              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Deliver to: India</span>
+            </div>
+            <div className="flex items-center gap-4 lg:gap-6">
+              <Link href="/orders" className="flex items-center gap-1 hover:underline"><Truck className="h-3 w-3" /> Track Order</Link>
+              <Link href="/service" className="flex items-center gap-1 hover:underline"><Wrench className="h-3 w-3" /> Book Mechanic</Link>
+              <Link href="#" className="flex items-center gap-1 hover:underline"><Headphones className="h-3 w-3" /> Help Center</Link>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-4">
+        <div className="px-4 md:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto py-2 flex items-center gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="h-9 w-9 rounded-lg gradient-primary flex items-center justify-center">
-              <Car className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-xl text-foreground hidden sm:block">
-              Road<span className="text-[#FF6B35]">Care</span>
-            </span>
+            <Image
+              src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png"
+              alt="Bharat Mechanics – Auto Parts & Vehicle Services"
+              width={180}
+              height={48}
+              className="h-10 lg:h-11 w-auto object-contain hidden sm:block"
+              priority
+            />
+            <Image
+              src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
+              alt="Bharat Mechanics"
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain sm:hidden"
+              priority
+            />
           </Link>
 
           {/* Search with Autocomplete */}
@@ -441,10 +456,12 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-foreground">
+          <nav className="hidden lg:flex items-center gap-5 text-sm font-medium text-foreground">
             <Link href="/" className={router.pathname === '/' ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Home</Link>
             <Link href="/shop" className={router.pathname.startsWith('/shop') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Shop</Link>
             <Link href="/service" className={router.pathname.startsWith('/service') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Services</Link>
+            <Link href="/orders" className={router.pathname.startsWith('/orders') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Orders</Link>
+            <Link href="/wallet" className={router.pathname.startsWith('/wallet') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Wallet</Link>
           </nav>
 
           {/* Actions */}
@@ -528,6 +545,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </div>
+        </div>
 
       </header>
 
@@ -537,12 +555,14 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           {/* Drawer Header */}
           <SheetHeader className="px-5 pt-5 pb-4 border-b border-border bg-gradient-to-r from-[#1B3B6F] to-[#2A5298]">
             <SheetTitle className="flex items-center gap-2.5 text-white">
-              <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
-                <Car className="h-5 w-5 text-white" />
-              </div>
-              <span className="font-bold text-xl">
-                Road<span className="text-[#FF6B35]">Care</span>
-              </span>
+              <Image
+                src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
+                alt="Bharat Mechanics"
+                width={36}
+                height={36}
+                className="h-9 w-9 object-contain rounded-lg"
+              />
+              <span className="font-bold text-lg">Bharat Mechanics</span>
             </SheetTitle>
           </SheetHeader>
 
@@ -666,16 +686,20 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
       {/* Footer */}
       <footer className="bg-[#0f2340] text-white">
-        <div className="container mx-auto px-4 py-10">
+        <div className="px-4 md:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto py-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <div className="h-9 w-9 rounded-lg bg-[#FF6B35] flex items-center justify-center">
-                  <Car className="h-5 w-5 text-white" />
-                </div>
-                <span className="font-bold text-xl">Road<span className="text-[#FF6B35]">Care</span></span>
+                <Image
+                  src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png"
+                  alt="Bharat Mechanics"
+                  width={240}
+                  height={68}
+                  className="h-11 lg:h-12 w-auto object-contain brightness-0 invert"
+                />
               </div>
-              <p className="text-gray-400 text-sm">Your one-stop solution for vehicle parts, accessories, and professional services.</p>
+              <p className="text-gray-400 text-sm">India&apos;s trusted auto parts and vehicle service platform. Genuine parts, certified mechanics, doorstep delivery.</p>
             </div>
             {[
               { title: 'Quick Links', links: [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Services', href: '/service' }, { label: 'Orders', href: '/orders' }] },
@@ -695,7 +719,8 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             ))}
           </div>
           <div className="border-t border-gray-700 mt-10 pt-6 text-center">
-            <p className="text-gray-500 text-sm">&copy; 2026 Bharat Machenics. All rights reserved.</p>
+            <p className="text-gray-500 text-sm">&copy; 2026 Bharat Mechanics. All rights reserved.</p>
+          </div>
           </div>
         </div>
       </footer>
