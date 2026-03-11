@@ -390,7 +390,10 @@ function PaymentHistoryTab() {
     setTransferring(payment._id)
     setError('')
     try {
-      const calcAmount = parseFloat(((payment.totalAmount * pct) / 100).toFixed(2))
+      const transferBase = (payment.combinedMethod === 'online_cod')
+        ? (payment.srTotalCost || payment.serviceTotalAmount || ((payment.onlineBookingFeeAmount || 0) + payment.totalAmount))
+        : payment.totalAmount
+      const calcAmount = parseFloat(((transferBase * pct) / 100).toFixed(2))
       await apiFetch(`/admin/payments/transfer-to-wallet/${payment._id}`, {
         method: 'POST',
         body: JSON.stringify({ percentage: pct })
@@ -697,8 +700,12 @@ function PaymentHistoryTab() {
 
           {confirmTransfer && (() => {
             const pct = parseFloat(transferPct) || 0
-            const calcAmount = parseFloat(((confirmTransfer.totalAmount * pct) / 100).toFixed(2))
-            const retained = parseFloat((confirmTransfer.totalAmount - calcAmount).toFixed(2))
+            // Use full service total for split payments, not just COD amount
+            const baseAmount = (confirmTransfer.combinedMethod === 'online_cod')
+              ? (confirmTransfer.srTotalCost || confirmTransfer.serviceTotalAmount || ((confirmTransfer.onlineBookingFeeAmount || 0) + confirmTransfer.totalAmount))
+              : confirmTransfer.totalAmount
+            const calcAmount = parseFloat(((baseAmount * pct) / 100).toFixed(2))
+            const retained = parseFloat((baseAmount - calcAmount).toFixed(2))
 
             return (
               <div className="space-y-4 py-2">
@@ -744,7 +751,7 @@ function PaymentHistoryTab() {
                           <span className="font-bold text-orange-700">₹{confirmTransfer.totalAmount}</span>
                         </div>
                       </div>
-                      <p className="text-[10px] text-gray-400">Transfer below is calculated on COD amount (₹{confirmTransfer.totalAmount})</p>
+                      <p className="text-[10px] text-gray-400">Transfer below is calculated on total service amount (₹{confirmTransfer.srTotalCost || confirmTransfer.serviceTotalAmount || ((confirmTransfer.onlineBookingFeeAmount || 0) + confirmTransfer.totalAmount)})</p>
                     </div>
                   ) : (
                     <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
@@ -802,7 +809,7 @@ function PaymentHistoryTab() {
                         <span className="font-medium text-emerald-700">{fmt(retained)}</span>
                       </div>
                       <div className="text-xs text-violet-500 mt-1">
-                        {pct}% of {fmt(confirmTransfer.totalAmount)} = {fmt(calcAmount)}
+                        {pct}% of {fmt(baseAmount)} = {fmt(calcAmount)}
                       </div>
                     </div>
                   )}
@@ -872,7 +879,12 @@ function PaymentHistoryTab() {
               {transferring ? (
                 <><Loader2 className="h-4 w-4 animate-spin" />Transferring…</>
               ) : (
-                <><Send className="h-4 w-4" />Transfer {fmt(((confirmTransfer?.totalAmount || 0) * (parseFloat(transferPct) || 0)) / 100)}</>
+                <><Send className="h-4 w-4" />Transfer {(() => {
+                  const base = confirmTransfer?.combinedMethod === 'online_cod'
+                    ? (confirmTransfer?.srTotalCost || confirmTransfer?.serviceTotalAmount || ((confirmTransfer?.onlineBookingFeeAmount || 0) + (confirmTransfer?.totalAmount || 0)))
+                    : (confirmTransfer?.totalAmount || 0)
+                  return fmt((base * (parseFloat(transferPct) || 0)) / 100)
+                })()}</>
               )}
             </Button>
           </DialogFooter>

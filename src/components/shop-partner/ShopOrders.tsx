@@ -445,23 +445,21 @@ export function ShopOrders() {
 
                   {order.serviceRequest.diagnosis.costBreakdown.bookingFeeAdjusted > 0 && (
                     <div className="flex items-center justify-between text-sm bg-white rounded p-2">
-                      <span className="text-gray-500">Booking Fee Adjusted</span>
-                      <span className="text-green-600 font-semibold">-₹{order.serviceRequest.diagnosis.costBreakdown.bookingFeeAdjusted}</span>
+                      <span className="text-gray-500">✓ Booking Fee (Paid Online)</span>
+                      <span className="text-green-600 font-semibold">₹{order.serviceRequest.diagnosis.costBreakdown.bookingFeeAdjusted}</span>
                     </div>
                   )}
 
                   {order.serviceRequest.diagnosis.costBreakdown.onlinePaidAmount > 0 && (
                     <div className="flex items-center justify-between text-sm bg-blue-50 rounded p-2 border border-blue-200">
-                      <span className="text-blue-700">Online Payment Deducted</span>
-                      <span className="text-blue-700 font-semibold">-₹{order.serviceRequest.diagnosis.costBreakdown.onlinePaidAmount}</span>
+                      <span className="text-blue-700">✓ Online Payment (Paid)</span>
+                      <span className="text-blue-700 font-semibold">₹{order.serviceRequest.diagnosis.costBreakdown.onlinePaidAmount}</span>
                     </div>
                   )}
 
                   {order.serviceRequest.diagnosis.costBreakdown.amountDue >= 0 && (
                     <div className="flex items-center justify-between text-sm bg-green-50 rounded p-2 border border-green-200">
-                      <span className="font-semibold text-green-800">
-                        {order.serviceRequest?.paymentDetails?.method === 'online' ? 'Payable Amount' : 'Amount Due'}
-                      </span>
+                      <span className="font-semibold text-green-800">Balance Due (COD)</span>
                       <span className="text-green-700 font-bold text-base">₹{order.serviceRequest.diagnosis.costBreakdown.amountDue}</span>
                     </div>
                   )}

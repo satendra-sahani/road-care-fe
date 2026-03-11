@@ -1050,14 +1050,18 @@ export function ServiceManagement() {
                           const amtDue = request.diagnosis?.costBreakdown?.amountDue;
                           const bkFee = request.bookingFee || request.diagnosis?.costBreakdown?.bookingFeeAdjusted || 0;
                           const hasSplit = bkFee > 0 && diagTotal && amtDue && amtDue < diagTotal;
+                          const isFullyPaid = ['paid', 'settled'].includes(request.status);
 
                           if (hasSplit) {
                             return (
                               <div>
-                                <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(amtDue)}</span>
+                                <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(diagTotal)}</span>
                                 <div className="text-[10px] text-gray-400 leading-tight">
-                                  <span className="line-through">₹{diagTotal}</span>
-                                  <span className="text-green-600 ml-1">-₹{bkFee}</span>
+                                  <span className="text-green-600">₹{bkFee} online</span>
+                                  {isFullyPaid
+                                    ? <span className="ml-1 text-green-600">· ₹{amtDue} COD ✓</span>
+                                    : <span className="ml-1 text-amber-600">· ₹{amtDue} COD pending</span>
+                                  }
                                 </div>
                               </div>
                             );
@@ -2219,19 +2223,22 @@ export function ServiceManagement() {
                         const bkFee = selectedRequest.bookingFee || selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted || 0;
                         const hasSplit = bkFee > 0 && diagTotal && amtDue && amtDue < diagTotal;
 
+                        const isFullyPaid = ['paid', 'settled'].includes(selectedRequest.status);
                         return hasSplit ? (
                           <>
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-[#6B7280]">Diagnosis Total</span>
-                              <span className="text-sm font-medium text-gray-500 line-through">{formatCurrency(diagTotal)}</span>
+                              <span className="text-xs text-[#6B7280]">Total</span>
+                              <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(diagTotal)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-green-600 font-medium">Booking Fee ✓</span>
-                              <span className="text-sm font-medium text-green-600">-₹{bkFee}</span>
+                              <span className="text-xs text-green-600 font-medium">✓ Booking Fee (Paid Online)</span>
+                              <span className="text-sm font-medium text-green-600">₹{bkFee}</span>
                             </div>
-                            <div className="flex items-center justify-between bg-blue-50 rounded-lg px-2 py-1.5 -mx-1">
-                              <span className="text-xs text-[#1B3B6F] font-bold">Amount Due</span>
-                              <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(amtDue)}</span>
+                            <div className={`flex items-center justify-between ${isFullyPaid ? 'bg-green-50' : 'bg-amber-50'} rounded-lg px-2 py-1.5 -mx-1`}>
+                              <span className={`text-xs font-bold ${isFullyPaid ? 'text-green-700' : 'text-[#1B3B6F]'}`}>
+                                {isFullyPaid ? '✓ COD Collected' : 'Balance Due (COD)'}
+                              </span>
+                              <span className={`text-sm font-bold ${isFullyPaid ? 'text-green-700' : 'text-[#1B3B6F]'}`}>{formatCurrency(amtDue)}</span>
                             </div>
                           </>
                         ) : (
@@ -2314,21 +2321,19 @@ export function ServiceManagement() {
                       </div>
                       {(selectedRequest.diagnosis.costBreakdown?.bookingFeeAdjusted || 0) > 0 && (
                         <div className="flex justify-between text-xs bg-green-50 rounded-lg px-2 py-1.5 mt-1">
-                          <span className="text-green-700 font-medium">Booking Fee (Deducted)</span>
-                          <span className="font-semibold text-green-600">-₹{selectedRequest.diagnosis.costBreakdown?.bookingFeeAdjusted}</span>
+                          <span className="text-green-700 font-medium">✓ Booking Fee (Paid Online)</span>
+                          <span className="font-semibold text-green-600">₹{selectedRequest.diagnosis.costBreakdown?.bookingFeeAdjusted}</span>
                         </div>
                       )}
                       {(selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount || 0) > 0 && (
                         <div className="flex justify-between text-xs bg-blue-50 rounded-lg px-2 py-1.5 mt-1">
-                          <span className="text-blue-700 font-medium">Online Payment (Deducted)</span>
-                          <span className="font-semibold text-blue-600">-₹{selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount}</span>
+                          <span className="text-blue-700 font-medium">✓ Online Payment (Paid)</span>
+                          <span className="font-semibold text-blue-600">₹{selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount}</span>
                         </div>
                       )}
                       {((selectedRequest.diagnosis.costBreakdown?.bookingFeeAdjusted || 0) > 0 || (selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount || 0) > 0) && (
                         <div className="flex justify-between text-sm font-bold bg-amber-100 rounded-lg px-2 py-2 mt-1">
-                          <span className="text-amber-800">
-                            {(selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount || 0) > 0 ? 'Payable Amount' : 'Amount Due'}
-                          </span>
+                          <span className="text-amber-800">Balance Due (COD)</span>
                           <span className="text-amber-700 text-base">₹{selectedRequest.diagnosis.costBreakdown?.amountDue ?? selectedRequest.diagnosis.costBreakdown?.totalEstimate ?? 0}</span>
                         </div>
                       )}
@@ -2405,7 +2410,7 @@ export function ServiceManagement() {
                       {selectedRequest.bookingFeeStatus === 'paid' && (selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted ?? 0) > 0 && (
                         <div className="flex justify-between text-xs">
                           <span className="text-[#6B7280]">Adjusted in Diagnosis</span>
-                          <span className="font-medium text-green-600">Yes (-₹{selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted})</span>
+                          <span className="font-medium text-green-600">Yes (₹{selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted} adjusted)</span>
                         </div>
                       )}
                     </div>
@@ -2462,18 +2467,20 @@ export function ServiceManagement() {
                             <span className="font-medium text-gray-700">₹{serviceTotal}</span>
                           </div>
                           <div className="flex justify-between text-xs">
-                            <span className="text-green-600 font-medium">Booking Fee (Online) ✓</span>
-                            <span className="font-medium text-green-600">-₹{bookingFee}</span>
+                            <span className="text-green-600 font-medium">✓ Booking Fee (Paid Online)</span>
+                            <span className="font-medium text-green-600">₹{bookingFee}</span>
                           </div>
                           {onlinePaid > 0 && (
                             <div className="flex justify-between text-xs">
-                              <span className="text-blue-600 font-medium">Online Payment ✓</span>
-                              <span className="font-medium text-blue-600">-₹{onlinePaid}</span>
+                              <span className="text-blue-600 font-medium">✓ Online Payment (Paid)</span>
+                              <span className="font-medium text-blue-600">₹{onlinePaid}</span>
                             </div>
                           )}
                           <div className="flex justify-between text-xs border-t border-green-200 pt-1">
-                            <span className="text-[#1B3B6F] font-bold">COD Amount Due</span>
-                            <span className="font-bold text-[#1B3B6F]">₹{amountDue}</span>
+                            <span className={`font-bold ${['paid', 'settled'].includes(selectedRequest.status) ? 'text-green-700' : 'text-[#1B3B6F]'}`}>
+                              {['paid', 'settled'].includes(selectedRequest.status) ? '✓ COD Collected' : 'Balance Due (COD)'}
+                            </span>
+                            <span className={`font-bold ${['paid', 'settled'].includes(selectedRequest.status) ? 'text-green-700' : 'text-[#1B3B6F]'}`}>₹{amountDue}</span>
                           </div>
                         </>
                       ) : (
