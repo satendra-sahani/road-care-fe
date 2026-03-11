@@ -29,7 +29,7 @@ export default function CustomerLoginPage() {
   const router = useRouter()
   const dispatch = useDispatch()
   const {
-    isAuthenticated,
+    isAuthenticated, user,
     otpSending, otpSent,
     otpVerifying, otpVerified,
     isNewUser, verificationToken,
@@ -45,9 +45,10 @@ export default function CustomerLoginPage() {
 
   const redirectTo = (router.query.redirect as string) || '/'
 
-  // If already logged in, redirect
+  // If already logged in (on page load), redirect
+  // Skip during OTP flow — role-based redirect is handled separately
   useEffect(() => {
-    if (isAuthenticated || Cookies.get('customer_token')) {
+    if ((isAuthenticated || Cookies.get('customer_token')) && !otpVerified) {
       router.replace(redirectTo)
     }
   }, [isAuthenticated])
@@ -60,15 +61,34 @@ export default function CustomerLoginPage() {
     }
   }, [otpSent])
 
-  // Handle OTP verified
+  // Handle OTP verified — redirect based on user role
   useEffect(() => {
     if (otpVerified) {
       if (isNewUser) {
         setStep('register')
       } else {
-        // Existing user — already authenticated via saga
+        const userRole = user?.role
         toast.success('Login successful!')
-        router.replace(redirectTo)
+
+        if (userRole === 'shop') {
+          // Set token cookie for shop auth guard compatibility
+          const customerToken = Cookies.get('customer_token')
+          if (customerToken) Cookies.set('token', customerToken, { expires: 7 })
+          router.replace('/shop-partner')
+        } else if (userRole === 'admin') {
+          const customerToken = Cookies.get('customer_token')
+          if (customerToken) Cookies.set('token', customerToken, { expires: 7 })
+          router.replace('/admin')
+        } else if (userRole === 'delivery') {
+          toast.info('Delivery dashboard is available on mobile app. You can browse as customer.')
+          router.replace('/')
+        } else if (userRole === 'mechanic') {
+          toast.info('Mechanic dashboard is available on mobile app. You can browse as customer.')
+          router.replace('/')
+        } else {
+          // Default: customer/user role
+          router.replace(redirectTo)
+        }
       }
     }
   }, [otpVerified, isNewUser])

@@ -71,7 +71,7 @@ import { paymentAPI } from '@/services/api'
 interface PaymentRecord {
   _id: string
   paymentFor?: 'service' | 'product'
-  serviceRequest?: { _id?: string; requestId?: string; serviceCategory?: string; status?: string }
+  serviceRequest?: { _id?: string; requestId?: string; serviceCategory?: string; status?: string; bookingFee?: number; bookingFeeStatus?: string; totalCost?: number; finalCost?: number; diagnosis?: { costBreakdown?: { totalEstimate?: number; amountDue?: number; bookingFeeAdjusted?: number } } }
   order?: { _id?: string; orderId?: string; status?: string; totalAmount?: number; deliveryBoy?: string; deliveryStatus?: string; items?: any[] }
   customer?: { fullName?: string; email?: string; phone?: string }
   mechanic?: { user?: { fullName?: string; phone?: string } }
@@ -91,6 +91,24 @@ interface PaymentRecord {
   codSettledAt?: string
   createdAt: string
   updatedAt: string
+  // Split payment fields
+  isBookingFee?: boolean
+  serviceTotalAmount?: number
+  bookingFeeAmount?: number
+  codAmount?: number
+  relatedPayments?: { _id: string; totalAmount: number; paymentMethod: string; paymentStatus: string; isBookingFee?: boolean }[]
+  // Enriched fields from backend
+  srTotalCost?: number
+  srFinalCost?: number
+  srBookingFee?: number
+  srBookingFeeStatus?: string
+  srPaymentMethod?: string
+  isSplitPayment?: boolean
+  shopPartnerName?: string
+  // Merged split payment fields
+  combinedMethod?: 'online_cod' | string
+  onlineBookingFeeAmount?: number
+  onlineBookingFeeStatus?: string
 }
 
 interface WalletRecord {
@@ -126,6 +144,8 @@ interface PaymentStats {
   pendingCOD: number
   totalWalletBalance?: number
   totalTransactions?: number
+  bookingFeeRevenue?: number
+  unrecordedBookingFees?: number
 }
 
 interface PricingConfig {
@@ -230,11 +250,12 @@ function StatsCards({
   period: StatsPeriod
   onPeriodChange: (p: StatsPeriod) => void
 }) {
+  const bookingFees = stats?.bookingFeeRevenue || 0;
   const cards = [
     {
       title: 'Total Revenue',
       value: fmt(stats?.totalRevenue || 0),
-      sub: `${stats?.totalPayments || 0} transactions`,
+      sub: bookingFees > 0 ? `${stats?.totalPayments || 0} txns (incl. ₹${bookingFees} booking fees)` : `${stats?.totalPayments || 0} transactions`,
       icon: IndianRupee,
       gradient: 'from-blue-500 to-blue-600',
     },
@@ -377,7 +398,9 @@ function PaymentHistoryTab() {
       setSuccessMsg(
         payment.paymentFor === 'product'
           ? `${fmt(calcAmount)} (${pct}%) transferred to delivery wallet`
-          : `${fmt(calcAmount)} (${pct}%) transferred to mechanic wallet`
+          : payment.shopPartnerName
+            ? `${fmt(calcAmount)} (${pct}%) transferred to shop wallet`
+            : `${fmt(calcAmount)} (${pct}%) transferred to mechanic wallet`
       )
       setTimeout(() => setSuccessMsg(''), 4000)
       setPayments(prev => prev.map(p => p._id === payment._id ? { ...p, walletTransferred: true, walletTransferredAt: new Date().toISOString() } : p))
@@ -580,8 +603,32 @@ function PaymentHistoryTab() {
                           <span className="text-xs text-gray-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3"><MethodBadge method={p.paymentMethod} /></td>
-                      <td className="px-4 py-3 text-right font-semibold">{fmt(p.totalAmount)}</td>
+                      <td className="px-4 py-3">
+                        {p.combinedMethod === 'online_cod' ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200 w-fit">
+                              ₹{p.onlineBookingFeeAmount || p.srBookingFee} Online
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200 w-fit">
+                              ₹{p.totalAmount} COD
+                            </span>
+                          </div>
+                        ) : (
+                          <MethodBadge method={p.paymentMethod} />
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {p.combinedMethod === 'online_cod' ? (
+                          <div>
+                            <span className="font-bold text-[#1B3B6F]">{fmt(p.srTotalCost || ((p.onlineBookingFeeAmount || 0) + p.totalAmount))}</span>
+                            <div className="text-[10px] text-gray-500 mt-0.5">
+                              ₹{p.onlineBookingFeeAmount || p.srBookingFee} paid + ₹{p.totalAmount} COD
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="font-semibold">{fmt(p.totalAmount)}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right text-violet-700 font-medium">{fmt(p.mechanicAmount)}</td>
                       <td className="px-4 py-3"><StatusBadge status={p.paymentStatus} /></td>
                       <td className="px-4 py-3">
@@ -602,7 +649,7 @@ function PaymentHistoryTab() {
                             ) : (
                               <>
                                 <ArrowRight className="h-3 w-3" />
-                                {p.paymentFor === 'product' ? 'To Delivery' : 'To Mechanic'}
+                                {p.paymentFor === 'product' ? 'To Delivery' : p.shopPartnerName ? 'To Shop' : 'To Mechanic'}
                               </>
                             )}
                           </Button>
@@ -674,15 +721,42 @@ function PaymentHistoryTab() {
                     <span className="font-medium flex items-center gap-1">
                       {confirmTransfer.paymentFor === 'product' ? (
                         <><Truck className="h-3 w-3 text-cyan-600" />{confirmTransfer.deliveryBoy?.fullName || '—'}</>
+                      ) : confirmTransfer.shopPartnerName ? (
+                        <><Package className="h-3 w-3 text-orange-600" />{confirmTransfer.shopPartnerName}</>
                       ) : (
                         <><Wrench className="h-3 w-3 text-indigo-600" />{confirmTransfer.mechanic?.user?.fullName || '—'}</>
                       )}
                     </span>
                   </div>
-                  <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
-                    <span className="text-gray-500">Total Payment</span>
-                    <span className="font-bold text-lg">{fmt(confirmTransfer.totalAmount)}</span>
-                  </div>
+                  {confirmTransfer.combinedMethod === 'online_cod' ? (
+                    <div className="border-t border-gray-200 pt-2 mt-2 space-y-1.5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Service Total</span>
+                        <span className="font-bold text-lg text-[#1B3B6F]">₹{confirmTransfer.srTotalCost || ((confirmTransfer.onlineBookingFeeAmount || 0) + confirmTransfer.totalAmount)}</span>
+                      </div>
+                      <div className="bg-gradient-to-r from-green-50 to-orange-50 border border-green-200 rounded-lg p-2 space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-green-700 font-medium">✓ Online Paid (Booking Fee)</span>
+                          <span className="font-bold text-green-700">₹{confirmTransfer.onlineBookingFeeAmount || confirmTransfer.srBookingFee || 0}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-orange-700 font-medium">💵 COD Collected</span>
+                          <span className="font-bold text-orange-700">₹{confirmTransfer.totalAmount}</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-gray-400">Transfer below is calculated on COD amount (₹{confirmTransfer.totalAmount})</p>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
+                      <span className="text-gray-500">Total Payment</span>
+                      <span className="font-bold text-lg">{fmt(confirmTransfer.totalAmount)}</span>
+                    </div>
+                  )}
+                  {confirmTransfer.isBookingFee && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 mt-2">
+                      <p className="text-[10px] font-bold text-green-700">⚡ This is a booking fee payment. The remaining amount will be collected as COD.</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Percentage Input */}
@@ -763,10 +837,13 @@ function PaymentHistoryTab() {
                             <div className="flex items-center gap-1 text-gray-500">
                               {t.recipientRole === 'delivery' ? (
                                 <Truck className="h-3 w-3 text-cyan-500" />
+                              ) : t.recipientRole === 'shop' ? (
+                                <Package className="h-3 w-3 text-orange-500" />
                               ) : (
                                 <Wrench className="h-3 w-3 text-indigo-500" />
                               )}
                               <span>{t.recipientUser?.fullName || '—'}</span>
+                              {t.recipientRole === 'shop' && <Badge variant="outline" className="text-[10px] px-1 py-0 border-orange-300 text-orange-600">Shop</Badge>}
                               <span className="text-gray-300 mx-1">|</span>
                               <span>by {t.transferredBy?.fullName || 'Admin'}</span>
                             </div>
@@ -990,7 +1067,7 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
     const isProduct = p.paymentFor === 'product'
     const assigneeName = isProduct
       ? (p.deliveryBoy?.fullName || '—')
-      : (p.mechanic?.user?.fullName || '—')
+      : (p.shopPartnerName || p.mechanic?.user?.fullName || '—')
     const assigneePhone = isProduct
       ? (p.deliveryBoy?.phone || '')
       : (p.mechanic?.user?.phone || '')
@@ -1088,19 +1165,57 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
           </div>
 
           {/* Amount breakdown */}
-          <div className="flex gap-4 text-sm sm:border-l sm:pl-4 border-gray-200 shrink-0">
-            <div className="text-center">
-              <p className="text-gray-400 text-xs font-medium">Total</p>
-              <p className="font-bold text-gray-900">{fmt(p.totalAmount)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-gray-400 text-xs font-medium">Platform</p>
-              <p className="font-semibold text-emerald-700">{fmt(p.platformAmount)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-gray-400 text-xs font-medium">{isProduct ? 'Payout' : 'Mechanic'}</p>
-              <p className="font-semibold text-violet-700">{fmt(p.mechanicAmount)}</p>
-            </div>
+          <div className="sm:border-l sm:pl-4 border-gray-200 shrink-0">
+            {p.combinedMethod === 'online_cod' ? (
+              <div className="space-y-2">
+                {/* Combined service total */}
+                <div className="text-center">
+                  <p className="text-gray-400 text-[10px] font-medium uppercase">Service Total</p>
+                  <p className="font-bold text-xl text-[#1B3B6F]">{fmt(p.srTotalCost || ((p.onlineBookingFeeAmount || 0) + p.totalAmount))}</p>
+                </div>
+                {/* Payment split breakdown */}
+                <div className="bg-gradient-to-b from-blue-50 to-green-50 border border-blue-200 rounded-lg px-3 py-2 text-xs space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1 text-green-700 font-medium">
+                      <CheckCircle className="h-3 w-3" /> Online Paid
+                    </span>
+                    <span className="font-bold text-green-700">₹{p.onlineBookingFeeAmount || p.srBookingFee}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1 text-orange-700 font-medium">
+                      <Banknote className="h-3 w-3" /> COD Collected
+                    </span>
+                    <span className="font-bold text-orange-700">₹{p.totalAmount}</span>
+                  </div>
+                </div>
+                {/* Platform/Mechanic split (on COD portion) */}
+                <div className="flex gap-3 text-xs justify-center">
+                  <div className="text-center">
+                    <p className="text-gray-400 text-[10px]">Platform</p>
+                    <p className="font-semibold text-emerald-700">{fmt(p.platformAmount)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-400 text-[10px]">{isProduct ? 'Payout' : 'Mechanic'}</p>
+                    <p className="font-semibold text-violet-700">{fmt(p.mechanicAmount)}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-4 text-sm">
+                <div className="text-center">
+                  <p className="text-gray-400 text-xs font-medium">Total</p>
+                  <p className="font-bold text-gray-900">{fmt(p.totalAmount)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-400 text-xs font-medium">Platform</p>
+                  <p className="font-semibold text-emerald-700">{fmt(p.platformAmount)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-400 text-xs font-medium">{isProduct ? 'Payout' : 'Mechanic'}</p>
+                  <p className="font-semibold text-violet-700">{fmt(p.mechanicAmount)}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action */}
@@ -1759,6 +1874,7 @@ function WalletsTab() {
             <SelectItem value="customer">Customer</SelectItem>
             <SelectItem value="mechanic">Mechanic</SelectItem>
             <SelectItem value="delivery">Delivery</SelectItem>
+            <SelectItem value="shop">Shop Partner</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" onClick={load} className="h-9 gap-2">
@@ -1812,8 +1928,13 @@ function WalletsTab() {
                       <div className="text-xs text-gray-500">{w.user?.email || w.user?.phone || ''}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 capitalize">
-                        {w.user?.role || 'user'}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${
+                        w.user?.role === 'shop' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                        w.user?.role === 'mechanic' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                        w.user?.role === 'delivery' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
+                        'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                        {w.user?.role === 'shop' ? 'Shop Partner' : w.user?.role || 'user'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">{fmt(w.balance)}</td>

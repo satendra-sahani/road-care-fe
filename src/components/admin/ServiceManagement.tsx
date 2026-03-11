@@ -1045,7 +1045,25 @@ export function ServiceManagement() {
                         )}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {formatCurrency(request.estimatedCost || 0)}
+                        {(() => {
+                          const diagTotal = request.diagnosis?.costBreakdown?.totalEstimate;
+                          const amtDue = request.diagnosis?.costBreakdown?.amountDue;
+                          const bkFee = request.bookingFee || request.diagnosis?.costBreakdown?.bookingFeeAdjusted || 0;
+                          const hasSplit = bkFee > 0 && diagTotal && amtDue && amtDue < diagTotal;
+
+                          if (hasSplit) {
+                            return (
+                              <div>
+                                <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(amtDue)}</span>
+                                <div className="text-[10px] text-gray-400 leading-tight">
+                                  <span className="line-through">₹{diagTotal}</span>
+                                  <span className="text-green-600 ml-1">-₹{bkFee}</span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return <span className="text-sm">{formatCurrency(diagTotal || request.finalCost || request.totalCost || request.estimatedCost || 0)}</span>;
+                        })()}
                       </TableCell>
                       <TableCell className="text-xs text-[#6B7280]">
                         {formatDate(request.createdAt)}
@@ -2195,10 +2213,34 @@ export function ServiceManagement() {
                       <DollarSign className="h-3 w-3" /> Cost &amp; Schedule
                     </h4>
                     <div className="space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-[#6B7280]">Estimated</span>
-                        <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(selectedRequest.estimatedCost || 0)}</span>
-                      </div>
+                      {(() => {
+                        const diagTotal = selectedRequest.diagnosis?.costBreakdown?.totalEstimate;
+                        const amtDue = selectedRequest.diagnosis?.costBreakdown?.amountDue;
+                        const bkFee = selectedRequest.bookingFee || selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted || 0;
+                        const hasSplit = bkFee > 0 && diagTotal && amtDue && amtDue < diagTotal;
+
+                        return hasSplit ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-[#6B7280]">Diagnosis Total</span>
+                              <span className="text-sm font-medium text-gray-500 line-through">{formatCurrency(diagTotal)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-green-600 font-medium">Booking Fee ✓</span>
+                              <span className="text-sm font-medium text-green-600">-₹{bkFee}</span>
+                            </div>
+                            <div className="flex items-center justify-between bg-blue-50 rounded-lg px-2 py-1.5 -mx-1">
+                              <span className="text-xs text-[#1B3B6F] font-bold">Amount Due</span>
+                              <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(amtDue)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-[#6B7280]">{diagTotal ? 'Diagnosis Total' : 'Estimated'}</span>
+                            <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(diagTotal || selectedRequest.finalCost || selectedRequest.totalCost || selectedRequest.estimatedCost || 0)}</span>
+                          </div>
+                        );
+                      })()}
                       {(selectedRequest.actualCost ?? 0) > 0 && (
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-[#6B7280]">Actual</span>
@@ -2270,6 +2312,26 @@ export function ServiceManagement() {
                         <span>Total Estimate</span>
                         <span className="text-[#1B3B6F]">₹{selectedRequest.diagnosis.costBreakdown?.totalEstimate || 0}</span>
                       </div>
+                      {(selectedRequest.diagnosis.costBreakdown?.bookingFeeAdjusted || 0) > 0 && (
+                        <div className="flex justify-between text-xs bg-green-50 rounded-lg px-2 py-1.5 mt-1">
+                          <span className="text-green-700 font-medium">Booking Fee (Deducted)</span>
+                          <span className="font-semibold text-green-600">-₹{selectedRequest.diagnosis.costBreakdown?.bookingFeeAdjusted}</span>
+                        </div>
+                      )}
+                      {(selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount || 0) > 0 && (
+                        <div className="flex justify-between text-xs bg-blue-50 rounded-lg px-2 py-1.5 mt-1">
+                          <span className="text-blue-700 font-medium">Online Payment (Deducted)</span>
+                          <span className="font-semibold text-blue-600">-₹{selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount}</span>
+                        </div>
+                      )}
+                      {((selectedRequest.diagnosis.costBreakdown?.bookingFeeAdjusted || 0) > 0 || (selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount || 0) > 0) && (
+                        <div className="flex justify-between text-sm font-bold bg-amber-100 rounded-lg px-2 py-2 mt-1">
+                          <span className="text-amber-800">
+                            {(selectedRequest.diagnosis.costBreakdown?.onlinePaidAmount || 0) > 0 ? 'Payable Amount' : 'Amount Due'}
+                          </span>
+                          <span className="text-amber-700 text-base">₹{selectedRequest.diagnosis.costBreakdown?.amountDue ?? selectedRequest.diagnosis.costBreakdown?.totalEstimate ?? 0}</span>
+                        </div>
+                      )}
                     </div>
                     {selectedRequest.customerApproval && (
                       <div className="mt-3 pt-3 border-t border-amber-200">
@@ -2319,6 +2381,37 @@ export function ServiceManagement() {
                   </div>
                 )}
 
+                {/* Booking Fee Details */}
+                {(selectedRequest.bookingFee ?? 0) > 0 && (
+                  <div className="bg-teal-50 rounded-xl p-4 border border-teal-100">
+                    <h4 className="text-[10px] font-bold text-teal-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <CreditCard className="h-3 w-3" /> Booking Fee
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Amount</span>
+                        <span className="font-medium">₹{selectedRequest.bookingFee}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[#6B7280]">Status</span>
+                        <span className={`font-medium px-2 py-0.5 rounded ${
+                          selectedRequest.bookingFeeStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                          selectedRequest.bookingFeeStatus === 'refunded' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {(selectedRequest.bookingFeeStatus || 'NOT SET').toUpperCase()}
+                        </span>
+                      </div>
+                      {selectedRequest.bookingFeeStatus === 'paid' && (selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted ?? 0) > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B7280]">Adjusted in Diagnosis</span>
+                          <span className="font-medium text-green-600">Yes (-₹{selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted})</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Advance Fee Details */}
                 {selectedRequest.advanceFee?.required && (
                   <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
@@ -2345,27 +2438,64 @@ export function ServiceManagement() {
                   </div>
                 )}
 
-                {(['completed', 'payment_pending', 'paid', 'payment_refused'] as string[]).includes(selectedRequest.status) && (
+                {(() => {
+                  // Compute payment values outside JSX for clarity
+                  const diagCB = selectedRequest.diagnosis?.costBreakdown;
+                  const serviceTotal = diagCB?.totalEstimate || selectedRequest.totalCost || 0;
+                  const bookingFee = selectedRequest.bookingFee || diagCB?.bookingFeeAdjusted || 0;
+                  const bookingFeePaid = bookingFee > 0 && (selectedRequest.bookingFeeStatus === 'paid' || (diagCB?.bookingFeeAdjusted || 0) > 0);
+                  const onlinePaid = diagCB?.onlinePaidAmount || 0;
+                  const amountDue = diagCB?.amountDue ?? selectedRequest.finalCost ?? serviceTotal;
+                  const isSplit = bookingFeePaid && serviceTotal > 0 && amountDue < serviceTotal;
+                  const showPayment = (['completed', 'payment_pending', 'paid', 'payment_refused'] as string[]).includes(selectedRequest.status);
+
+                  return showPayment ? (
                   <div className="bg-green-50 rounded-xl p-4 border border-green-100">
                     <h4 className="text-[10px] font-bold text-green-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                       <DollarSign className="h-3 w-3" /> Payment
                     </h4>
                     <div className="space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-[#6B7280]">Final Cost</span>
-                        <span className="font-bold text-[#1B3B6F]">₹{selectedRequest.finalCost || selectedRequest.totalCost || 0}</span>
-                      </div>
+                      {isSplit ? (
+                        <>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-[#6B7280]">Service Total</span>
+                            <span className="font-medium text-gray-700">₹{serviceTotal}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-green-600 font-medium">Booking Fee (Online) ✓</span>
+                            <span className="font-medium text-green-600">-₹{bookingFee}</span>
+                          </div>
+                          {onlinePaid > 0 && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-blue-600 font-medium">Online Payment ✓</span>
+                              <span className="font-medium text-blue-600">-₹{onlinePaid}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-xs border-t border-green-200 pt-1">
+                            <span className="text-[#1B3B6F] font-bold">COD Amount Due</span>
+                            <span className="font-bold text-[#1B3B6F]">₹{amountDue}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B7280]">Final Cost</span>
+                          <span className="font-bold text-[#1B3B6F]">₹{amountDue}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-xs">
                         <span className="text-[#6B7280]">Method</span>
-                        <span className="font-medium uppercase">{selectedRequest.paymentDetails?.method || 'COD'}</span>
+                        <span className="font-medium uppercase">
+                          {isSplit ? 'ONLINE + COD' : (selectedRequest.paymentDetails?.method || 'COD').toUpperCase()}
+                        </span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-[#6B7280]">Status</span>
                         <span className={`font-medium px-2 py-0.5 rounded ${
                           selectedRequest.status === 'paid' ? 'bg-green-100 text-green-700' :
+                          selectedRequest.cashCollected ? 'bg-green-100 text-green-700' :
                           'bg-orange-100 text-orange-700'
                         }`}>
-                          {selectedRequest.status === 'paid' ? 'PAID' : 'PENDING'}
+                          {selectedRequest.status === 'paid' ? 'PAID' : selectedRequest.cashCollected ? 'CASH COLLECTED' : 'PENDING'}
                         </span>
                       </div>
                       {selectedRequest.cashCollected && (
@@ -2397,7 +2527,8 @@ export function ServiceManagement() {
                       </Button>
                     )}
                   </div>
-                )}
+                  ) : null;
+                })()}
 
                 {/* Uploaded Images */}
                 {(selectedRequest.images?.before?.length || selectedRequest.images?.after?.length) ? (

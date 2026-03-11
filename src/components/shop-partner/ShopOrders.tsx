@@ -394,6 +394,86 @@ export function ShopOrders() {
                 </div>
               )}
 
+              {/* Diagnosis Details — shown when mechanic submits diagnosis */}
+              {order.serviceRequest?.diagnosis?.costBreakdown?.totalEstimate > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm">
+                    <ClipboardList className="h-4 w-4" />
+                    <span>Diagnosis Report</span>
+                    {order.serviceRequest?.customerApproval?.status && (
+                      <span className={cn(
+                        'ml-auto px-2 py-0.5 rounded-full text-xs font-semibold',
+                        order.serviceRequest.customerApproval.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        order.serviceRequest.customerApproval.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      )}>
+                        {order.serviceRequest.customerApproval.status === 'approved' ? 'Customer Approved' :
+                         order.serviceRequest.customerApproval.status === 'rejected' ? 'Customer Rejected' :
+                         'Awaiting Approval'}
+                      </span>
+                    )}
+                  </div>
+
+                  {order.serviceRequest.diagnosis.notes && (
+                    <p className="text-sm text-gray-700">{order.serviceRequest.diagnosis.notes}</p>
+                  )}
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                    {order.serviceRequest.diagnosis.costBreakdown.laborCost > 0 && (
+                      <div className="bg-white rounded p-2">
+                        <p className="text-xs text-gray-500">Labor</p>
+                        <p className="font-bold text-gray-900">₹{order.serviceRequest.diagnosis.costBreakdown.laborCost}</p>
+                      </div>
+                    )}
+                    {order.serviceRequest.diagnosis.costBreakdown.parts?.length > 0 && (
+                      <div className="bg-white rounded p-2">
+                        <p className="text-xs text-gray-500">Parts ({order.serviceRequest.diagnosis.costBreakdown.parts.length})</p>
+                        <p className="font-bold text-gray-900">₹{order.serviceRequest.diagnosis.costBreakdown.parts.reduce((s: number, p: any) => s + (p.cost * (p.quantity || 1)), 0)}</p>
+                      </div>
+                    )}
+                    {order.serviceRequest.diagnosis.costBreakdown.additionalCharges > 0 && (
+                      <div className="bg-white rounded p-2">
+                        <p className="text-xs text-gray-500">Additional</p>
+                        <p className="font-bold text-gray-900">₹{order.serviceRequest.diagnosis.costBreakdown.additionalCharges}</p>
+                      </div>
+                    )}
+                    <div className="bg-white rounded p-2">
+                      <p className="text-xs text-gray-500">Total Estimate</p>
+                      <p className="font-bold text-amber-700">₹{order.serviceRequest.diagnosis.costBreakdown.totalEstimate}</p>
+                    </div>
+                  </div>
+
+                  {order.serviceRequest.diagnosis.costBreakdown.bookingFeeAdjusted > 0 && (
+                    <div className="flex items-center justify-between text-sm bg-white rounded p-2">
+                      <span className="text-gray-500">Booking Fee Adjusted</span>
+                      <span className="text-green-600 font-semibold">-₹{order.serviceRequest.diagnosis.costBreakdown.bookingFeeAdjusted}</span>
+                    </div>
+                  )}
+
+                  {order.serviceRequest.diagnosis.costBreakdown.onlinePaidAmount > 0 && (
+                    <div className="flex items-center justify-between text-sm bg-blue-50 rounded p-2 border border-blue-200">
+                      <span className="text-blue-700">Online Payment Deducted</span>
+                      <span className="text-blue-700 font-semibold">-₹{order.serviceRequest.diagnosis.costBreakdown.onlinePaidAmount}</span>
+                    </div>
+                  )}
+
+                  {order.serviceRequest.diagnosis.costBreakdown.amountDue >= 0 && (
+                    <div className="flex items-center justify-between text-sm bg-green-50 rounded p-2 border border-green-200">
+                      <span className="font-semibold text-green-800">
+                        {order.serviceRequest?.paymentDetails?.method === 'online' ? 'Payable Amount' : 'Amount Due'}
+                      </span>
+                      <span className="text-green-700 font-bold text-base">₹{order.serviceRequest.diagnosis.costBreakdown.amountDue}</span>
+                    </div>
+                  )}
+
+                  {order.serviceRequest.diagnosis.estimatedTime && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> Est. time: {order.serviceRequest.diagnosis.estimatedTime}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Description */}
               {order.description && (
                 <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{order.description}</p>

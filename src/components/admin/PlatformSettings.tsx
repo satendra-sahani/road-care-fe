@@ -250,8 +250,14 @@ export function PlatformSettings() {
     advanceFeeAmount: 199,
     advanceFeeApplyTo: 'all',
     advanceFeeType: 'adjustable',
-    bookingFeeEnabled: false,
+    bookingFeeEnabled: true,
     bookingFeeAmount: 99,
+    emergencyBookingFeeAmount: 199,
+    bookingFeeRefundPolicy: {
+      shortText: 'Non-refundable booking fee. Adjusted against final service cost.',
+      detailedText: '',
+      adjustable: true,
+    },
     codEnabled: true,
     onlineEnabled: true,
     maxNegotiationRounds: 2,
@@ -272,7 +278,23 @@ export function PlatformSettings() {
         const { configAPI } = await import('@/services/api')
         const res = await configAPI.getConfig()
         if (res.data?.success && res.data?.data) {
-          setServiceConfig(res.data.data)
+          setServiceConfig(prev => ({
+            ...prev,
+            ...res.data.data,
+            // Ensure nested objects are properly merged with defaults
+            bookingFeeRefundPolicy: {
+              ...prev.bookingFeeRefundPolicy,
+              ...(res.data.data.bookingFeeRefundPolicy || {})
+            },
+            autoCancel: {
+              ...prev.autoCancel,
+              ...(res.data.data.autoCancel || {})
+            },
+            serviceSettings: {
+              ...prev.serviceSettings,
+              ...(res.data.data.serviceSettings || {})
+            }
+          }))
         }
       } catch (err) {
         console.error('Failed to load config:', err)
@@ -769,6 +791,71 @@ export function PlatformSettings() {
                               <SelectItem value="non_refundable">Non-refundable (extra charge)</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Booking Fee */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="font-medium">Booking Fee</Label>
+                        <p className="text-sm text-[#6B7280]">Starting price shown to customers at booking (non-refundable, adjusted against final bill)</p>
+                      </div>
+                      <Switch
+                        checked={serviceConfig.bookingFeeEnabled}
+                        onCheckedChange={(checked) => setServiceConfig({...serviceConfig, bookingFeeEnabled: checked})}
+                      />
+                    </div>
+                    {serviceConfig.bookingFeeEnabled && (
+                      <div className="space-y-4 pt-2 border-t border-gray-100">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="bookingFeeAmount">Normal Booking Fee (₹)</Label>
+                            <Input
+                              id="bookingFeeAmount"
+                              type="number"
+                              value={serviceConfig.bookingFeeAmount}
+                              onChange={(e) => setServiceConfig({...serviceConfig, bookingFeeAmount: parseInt(e.target.value) || 0})}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="emergencyBookingFeeAmount">Emergency Booking Fee (₹)</Label>
+                            <Input
+                              id="emergencyBookingFeeAmount"
+                              type="number"
+                              value={serviceConfig.emergencyBookingFeeAmount}
+                              onChange={(e) => setServiceConfig({...serviceConfig, emergencyBookingFeeAmount: parseInt(e.target.value) || 0})}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="refundPolicyShort">Refund Policy (Short Text — shown next to price)</Label>
+                          <Input
+                            id="refundPolicyShort"
+                            value={serviceConfig.bookingFeeRefundPolicy?.shortText || ''}
+                            onChange={(e) => setServiceConfig({...serviceConfig, bookingFeeRefundPolicy: {...serviceConfig.bookingFeeRefundPolicy, shortText: e.target.value}})}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="refundPolicyDetailed">Refund Policy (Detailed — shown on expand)</Label>
+                          <textarea
+                            id="refundPolicyDetailed"
+                            className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            value={serviceConfig.bookingFeeRefundPolicy?.detailedText || ''}
+                            onChange={(e) => setServiceConfig({...serviceConfig, bookingFeeRefundPolicy: {...serviceConfig.bookingFeeRefundPolicy, detailedText: e.target.value}})}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Adjustable Against Final Bill</Label>
+                            <p className="text-sm text-[#6B7280]">Deduct booking fee from mechanic&apos;s diagnosis total</p>
+                          </div>
+                          <Switch
+                            checked={serviceConfig.bookingFeeRefundPolicy?.adjustable ?? true}
+                            onCheckedChange={(checked) => setServiceConfig({...serviceConfig, bookingFeeRefundPolicy: {...serviceConfig.bookingFeeRefundPolicy, adjustable: checked}})}
+                          />
                         </div>
                       </div>
                     )}

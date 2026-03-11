@@ -48,6 +48,9 @@ export interface ServiceRequest {
       additionalCharges: number;
       discount: number;
       totalEstimate: number;
+      bookingFeeAdjusted?: number;
+      onlinePaidAmount?: number;
+      amountDue?: number;
     };
     estimatedTime?: string;
     diagnosedAt?: string;
@@ -60,6 +63,8 @@ export interface ServiceRequest {
     rejectionReason?: string;
   };
   finalCost?: number;
+  bookingFee?: number;
+  bookingFeeStatus?: string;
   cashCollected?: boolean;
   paymentDetails?: {
     method: 'cod' | 'online';

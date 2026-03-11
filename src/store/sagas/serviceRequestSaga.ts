@@ -93,10 +93,14 @@ const api = {
 // Normalize backend ServiceRequest → frontend ServiceRequest slice type
 function normalizeStatus(s: string): ServiceRequest['status'] {
   const known: ServiceRequest['status'][] = [
-    'pending', 'assigned', 'accepted', 'on_way', 'in_progress', 'in-progress', 'completed', 'cancelled'
+    'pending', 'assigned', 'accepted', 'mechanic_assigned', 'on_way',
+    'diagnosis', 'approved', 'rejected_quote',
+    'in_progress', 'in-progress',
+    'completed', 'payment_pending', 'paid', 'payment_refused',
+    'cancelled'
   ];
   if (known.includes(s as ServiceRequest['status'])) return s as ServiceRequest['status'];
-  return 'pending';
+  return s as ServiceRequest['status']; // pass through unknown statuses instead of hiding them
 }
 
 function normalizeServiceRequest(r: any): ServiceRequest {
@@ -133,14 +137,83 @@ function normalizeServiceRequest(r: any): ServiceRequest {
     estimatedCost: r.estimatedCost ?? 0,
     actualCost: r.totalCost ?? r.actualCost ?? 0,
     notes: r.notes || undefined,
-    images: r.images?.after?.map((i: any) => i.url) || r.images?.before?.map((i: any) => i.url) || [],
+    // Diagnosis fields
+    diagnosis: r.diagnosis ? {
+      notes: r.diagnosis.notes || undefined,
+      photos: r.diagnosis.photos || [],
+      costBreakdown: r.diagnosis.costBreakdown ? {
+        laborCost: r.diagnosis.costBreakdown.laborCost || 0,
+        parts: (r.diagnosis.costBreakdown.parts || []).map((p: any) => ({
+          name: p.name || '', cost: p.cost || 0, quantity: p.quantity || 1
+        })),
+        additionalCharges: r.diagnosis.costBreakdown.additionalCharges || 0,
+        discount: r.diagnosis.costBreakdown.discount || 0,
+        totalEstimate: r.diagnosis.costBreakdown.totalEstimate || 0,
+        bookingFeeAdjusted: r.diagnosis.costBreakdown.bookingFeeAdjusted || 0,
+        onlinePaidAmount: r.diagnosis.costBreakdown.onlinePaidAmount || 0,
+        amountDue: r.diagnosis.costBreakdown.amountDue ?? undefined,
+      } : undefined,
+      estimatedTime: r.diagnosis.estimatedTime || undefined,
+      diagnosedAt: r.diagnosis.diagnosedAt || undefined,
+      diagnosedBy: r.diagnosis.diagnosedBy || undefined,
+    } : undefined,
+    // Customer approval
+    customerApproval: r.customerApproval ? {
+      status: r.customerApproval.status || 'pending',
+      approvedAt: r.customerApproval.approvedAt || undefined,
+      rejectedAt: r.customerApproval.rejectedAt || undefined,
+      rejectionReason: r.customerApproval.rejectionReason || undefined,
+    } : undefined,
+    // Cost fields
+    finalCost: r.finalCost ?? undefined,
+    totalCost: r.totalCost ?? undefined,
+    laborCost: r.laborCost ?? undefined,
+    partsCost: r.partsCost ?? undefined,
+    // Booking fee
+    bookingFee: r.bookingFee ?? undefined,
+    bookingFeeStatus: r.bookingFeeStatus || undefined,
+    // Payment
+    cashCollected: r.cashCollected || false,
+    paymentDetails: r.paymentDetails ? {
+      method: r.paymentDetails.method || 'cod',
+      paidAt: r.paymentDetails.paidAt || undefined,
+      totalPaid: r.paymentDetails.totalPaid || undefined,
+    } : undefined,
+    // Advance fee
+    advanceFee: r.advanceFee?.required ? {
+      required: r.advanceFee.required,
+      amount: r.advanceFee.amount || 0,
+      status: r.advanceFee.status || 'not_required',
+      paymentId: r.advanceFee.paymentId || undefined,
+      paidAt: r.advanceFee.paidAt || undefined,
+      feeType: r.advanceFee.feeType || undefined,
+    } : undefined,
+    // Payment refusal
+    paymentRefusal: r.paymentRefusal?.refused ? {
+      refused: true,
+      reason: r.paymentRefusal.reason || '',
+      refusedAt: r.paymentRefusal.refusedAt || undefined,
+      reportedBy: r.paymentRefusal.reportedBy || undefined,
+      photoProof: r.paymentRefusal.photoProof || [],
+    } : undefined,
+    // Images (pass through full structure for detail view)
+    images: r.images ? {
+      before: (r.images.before || []).map((i: any) => typeof i === 'string' ? { url: i } : { url: i.url, description: i.description }),
+      after: (r.images.after || []).map((i: any) => typeof i === 'string' ? { url: i } : { url: i.url, description: i.description }),
+    } : undefined,
+    // Shop partner
+    shopPartner: r.shopPartner ? {
+      _id: r.shopPartner._id || '',
+      shopName: r.shopPartner.shopName || '',
+      city: r.shopPartner.city || undefined,
+      commissionRate: r.shopPartner.commissionRate ?? undefined,
+    } : undefined,
     // Prefer populated ServiceFeedback doc; fall back to legacy customerRating fields
     feedback: r.feedback?.overallRating
       ? {
           rating: r.feedback.overallRating,
           comment: r.feedback.review?.comment || r.feedback.review?.title || '',
           createdAt: r.feedback.createdAt || r.updatedAt,
-          // Extra detail from ServiceFeedback
           ratings: r.feedback.ratings || undefined,
           wouldRecommend: r.feedback.wouldRecommend ?? undefined,
           liked: r.feedback.serviceAspects?.liked || [],
