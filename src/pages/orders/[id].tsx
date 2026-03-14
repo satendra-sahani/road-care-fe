@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Package, Clock, Truck, CheckCircle, XCircle,
-  MapPin, CreditCard, Loader2,
+  MapPin, CreditCard, Loader2, Locate,
 } from 'lucide-react'
 
 const statusSteps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered']
@@ -198,6 +198,19 @@ export default function OrderDetailPage() {
           <p className="text-sm">Method: {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</p>
           <p className="text-sm">Status: <span className="font-medium capitalize">{order.paymentStatus || 'pending'}</span></p>
         </div>
+
+        {/* Track Delivery */}
+        {['shipped', 'out_for_delivery'].includes(order.status) && (
+          <div className="mb-4">
+            <Link
+              href={`/orders/${order._id}/track`}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3.5 rounded-xl hover:shadow-lg transition"
+            >
+              <Locate className="h-5 w-5" />
+              Track Delivery Live
+            </Link>
+          </div>
+        )}
 
         {/* Cancel */}
         {canCancel && (

@@ -16,7 +16,7 @@ const adminPublicPaths = ['/admin/login'];
 const shopPublicPaths = ['/shop-partner/login'];
 
 // Customer pages that need customer auth
-const customerProtectedPaths = ['/cart', '/checkout', '/orders', '/profile', '/service', '/addresses', '/wallet', '/notifications', '/reviews'];
+const customerProtectedPaths = ['/cart', '/checkout', '/orders', '/profile', '/service', '/addresses', '/wallet', '/notifications', '/reviews', '/ai-booking', '/emergency'];
 
 function needsAdminAuth(pathname: string) {
   return pathname.startsWith('/admin') && !adminPublicPaths.includes(pathname);

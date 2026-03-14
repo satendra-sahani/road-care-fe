@@ -12,21 +12,37 @@ import {
 
 function* handleSendOtp(action) {
   try {
-    const response = yield call(otpAuthAPI.sendOtp, action.payload);
+    // Try login purpose first
+    const response = yield call(otpAuthAPI.sendOtp, action.payload, 'login');
     if (response.data.success) {
-      yield put(sendOtpSuccess());
+      yield put(sendOtpSuccess({ purpose: 'login' }));
     } else {
       yield put(sendOtpFailure(response.data.message || 'Failed to send OTP'));
     }
   } catch (error) {
-    yield put(sendOtpFailure(error.response?.data?.message || 'Failed to send OTP'));
+    const msg = (error.response?.data?.message || '').toLowerCase();
+    // If user not registered, retry with registration purpose (like Android app)
+    if (msg.includes('not registered') || msg.includes('not found') || msg.includes('no user')) {
+      try {
+        const regResponse = yield call(otpAuthAPI.sendOtp, action.payload, 'registration');
+        if (regResponse.data.success) {
+          yield put(sendOtpSuccess({ purpose: 'registration' }));
+        } else {
+          yield put(sendOtpFailure(regResponse.data.message || 'Failed to send OTP'));
+        }
+      } catch (regError) {
+        yield put(sendOtpFailure(regError.response?.data?.message || 'Failed to send OTP'));
+      }
+    } else {
+      yield put(sendOtpFailure(error.response?.data?.message || 'Failed to send OTP'));
+    }
   }
 }
 
 function* handleVerifyOtp(action) {
   try {
-    const { phone, otp } = action.payload;
-    const response = yield call(otpAuthAPI.verifyOtp, phone, otp);
+    const { phone, otp, purpose } = action.payload;
+    const response = yield call(otpAuthAPI.verifyOtp, phone, otp, purpose);
     const data = response.data;
 
     if (!data.success) {

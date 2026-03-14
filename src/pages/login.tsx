@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Phone, ArrowLeft, Loader2 } from 'lucide-react'
+import { Phone, ArrowLeft, Loader2, MapPin, Locate } from 'lucide-react'
 import Image from 'next/image'
 import { SEOHead } from '@/components/SEOHead'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
@@ -31,6 +31,7 @@ export default function CustomerLoginPage() {
   const {
     isAuthenticated, user,
     otpSending, otpSent,
+    otpPurpose,
     otpVerifying, otpVerified,
     isNewUser, verificationToken,
     registering,
@@ -42,6 +43,15 @@ export default function CustomerLoginPage() {
   const [otp, setOtp] = useState('')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [address, setAddress] = useState('')
+  const [landmark, setLandmark] = useState('')
+  const [city, setCity] = useState('')
+  const [addrState, setAddrState] = useState('')
+  const [pincode, setPincode] = useState('')
+  const [latitude, setLatitude] = useState<number | null>(null)
+  const [longitude, setLongitude] = useState<number | null>(null)
+  const [detectingLocation, setDetectingLocation] = useState(false)
+  const [detectedAddress, setDetectedAddress] = useState('')
 
   const redirectTo = (router.query.redirect as string) || '/'
 
@@ -124,7 +134,7 @@ export default function CustomerLoginPage() {
       toast.error('Please enter the 6-digit OTP')
       return
     }
-    dispatch(verifyOtpRequest({ phone, otp }))
+    dispatch(verifyOtpRequest({ phone, otp, purpose: otpPurpose }))
   }
 
   const handleRegister = (e: React.FormEvent) => {
@@ -143,7 +153,62 @@ export default function CustomerLoginPage() {
       verificationToken,
       fullName: fullName.trim(),
       email: email.trim() || undefined,
+      address: address.trim() || undefined,
+      city: city.trim() || undefined,
+      landmark: landmark.trim() || undefined,
+      state: addrState.trim() || undefined,
+      latitude: latitude || undefined,
+      longitude: longitude || undefined,
+      pincode: pincode.trim() || undefined,
     }))
+  }
+
+  const handleDetectLocation = async () => {
+    setDetectingLocation(true)
+    setDetectedAddress('Detecting location...')
+
+    if (!navigator.geolocation) {
+      setDetectingLocation(false)
+      setDetectedAddress('')
+      toast.error('Geolocation is not supported by your browser')
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude: lat, longitude: lng } = position.coords
+        setLatitude(lat)
+        setLongitude(lng)
+
+        try {
+          const resp = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=en`
+          )
+          const data = await resp.json()
+          if (data?.address) {
+            const a = data.address
+            const addrLine = [a.road, a.neighbourhood, a.suburb].filter(Boolean).join(', ')
+            if (addrLine && !address) setAddress(addrLine)
+            if ((a.suburb || a.neighbourhood) && !landmark) setLandmark(a.suburb || a.neighbourhood || '')
+            if ((a.city || a.town || a.village || a.state_district) && !city) setCity(a.city || a.town || a.village || a.state_district || '')
+            if (a.state && !addrState) setAddrState(a.state || '')
+            if (a.postcode && !pincode) setPincode(a.postcode || '')
+            setDetectedAddress(data.display_name || addrLine || `${lat.toFixed(6)}, ${lng.toFixed(6)}`)
+          } else {
+            setDetectedAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`)
+          }
+        } catch {
+          setDetectedAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`)
+        }
+        setDetectingLocation(false)
+      },
+      () => {
+        setDetectingLocation(false)
+        setDetectedAddress('')
+        toast.error('Could not detect location. Please enter your address manually.')
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    )
   }
 
   const handleBack = () => {
@@ -274,7 +339,7 @@ export default function CustomerLoginPage() {
 
             {/* Step 3: Registration */}
             {step === 'register' && (
-              <form onSubmit={handleRegister} className="space-y-4">
+              <form onSubmit={handleRegister} className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name *</Label>
                   <Input
@@ -293,6 +358,75 @@ export default function CustomerLoginPage() {
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+
+                {/* GPS Detect Button */}
+                <button
+                  type="button"
+                  onClick={handleDetectLocation}
+                  disabled={detectingLocation}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border-2 border-dashed border-blue-300 rounded-lg text-sm font-medium text-[#1B3B6F] hover:bg-blue-50 transition disabled:opacity-60"
+                >
+                  {detectingLocation ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Detecting location...</>
+                  ) : (
+                    <><Locate className="h-4 w-4" /> Detect My Location via GPS</>
+                  )}
+                </button>
+                {detectedAddress && !detectingLocation && (
+                  <div className="flex items-start gap-2 p-2.5 bg-green-50 border border-green-200 rounded-lg">
+                    <MapPin className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-green-800 line-clamp-2">{detectedAddress}</p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    placeholder="House no, Street, Area"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="landmark">Landmark</Label>
+                  <Input
+                    id="landmark"
+                    placeholder="Near temple, school, etc."
+                    value={landmark}
+                    onChange={(e) => setLandmark(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      placeholder="City"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="addrState">State</Label>
+                    <Input
+                      id="addrState"
+                      placeholder="State"
+                      value={addrState}
+                      onChange={(e) => setAddrState(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pincode">Pincode</Label>
+                  <Input
+                    id="pincode"
+                    placeholder="6-digit pincode"
+                    value={pincode}
+                    onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
                   />
                 </div>
                 <Button

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
-import { userServiceAPI, servicePricingAPI, userPaymentAPI } from '@/services/api'
+import { userServiceAPI, servicePricingAPI, userPaymentAPI, userAddressAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,7 +44,7 @@ const timeSlots = [
 
 export function ServicePage() {
   const router = useRouter()
-  const { isAuthenticated } = useSelector((state: RootState) => state.customerAuth)
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.customerAuth)
 
   const [activeTab, setActiveTab] = useState<'book' | 'requests'>('book')
 
@@ -80,6 +80,36 @@ export function ServicePage() {
   useEffect(() => {
     if (activeTab === 'requests' && isAuthenticated) fetchRequests()
   }, [activeTab, isAuthenticated])
+
+  // Auto-fill address from saved addresses or user profile when entering step 2
+  useEffect(() => {
+    if (step === 2 && isAuthenticated && !address) {
+      (async () => {
+        try {
+          const res = await userAddressAPI.getAll()
+          const addresses = res.data?.data || res.data?.addresses || []
+          const defaultAddr = addresses.find((a: any) => a.isDefault) || addresses[0]
+          if (defaultAddr) {
+            setAddress(defaultAddr.address || defaultAddr.addressLine1 || '')
+            if (!city && (defaultAddr.city || defaultAddr.town)) setCity(defaultAddr.city || defaultAddr.town || '')
+            if (!landmark && defaultAddr.landmark) setLandmark(defaultAddr.landmark || '')
+            return
+          }
+        } catch { /* no saved addresses */ }
+        // Fallback: auto-fill from user profile location
+        if (user?.location) {
+          const loc = user.location
+          if (loc.address && !address) setAddress(loc.address)
+          if (loc.city && !city) setCity(loc.city)
+          if (loc.landmark && !landmark) setLandmark(loc.landmark)
+        }
+        // Fallback: auto-detect GPS
+        if (!address && navigator.geolocation) {
+          handleGPS()
+        }
+      })()
+    }
+  }, [step, isAuthenticated])
 
   const fetchPricing = async (vType: string) => {
     setLoadingPricing(true)
@@ -167,7 +197,7 @@ export function ServicePage() {
 
       if (paymentMethod === 'cod') {
         setSubmitProgress('Confirming COD booking...')
-        try { await userPaymentAPI.createCOD(serviceRequestId, estimatedTotal) } catch { /* COD record optional */ }
+        try { await userPaymentAPI.createCOD(serviceRequestId, bookingFee) } catch { /* COD record optional */ }
         setSubmitting(false); setSubmitProgress('')
         toast.success('Service request booked successfully! Payment will be collected after service.')
         resetForm()
@@ -177,7 +207,7 @@ export function ServicePage() {
         setSubmitProgress('Setting up payment...')
         let orderResult: any
         try {
-          const orderRes = await userPaymentAPI.createOrder(serviceRequestId, estimatedTotal)
+          const orderRes = await userPaymentAPI.createOrder(serviceRequestId, bookingFee)
           orderResult = orderRes.data?.data || orderRes.data
         } catch (e: any) {
           toast.error(e.response?.data?.message || 'Payment setup failed. Try COD instead.')
@@ -290,6 +320,9 @@ export function ServicePage() {
     const issue = pricingData?.issues?.find((i: any) => (i.id || i._id) === id)
     return sum + (issue?.estimatedPrice || issue?.estimatedCost || issue?.price || 0)
   }, 0)
+
+  // Booking fee: ₹199 for emergency/roadside, ₹99 for normal
+  const bookingFee = serviceType === 'roadside' ? 199 : 99
 
   const todayStr = new Date().toISOString().split('T')[0]
 
@@ -463,9 +496,12 @@ export function ServicePage() {
                     )}
 
                     {estimatedTotal > 0 && (
-                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                        <span className="text-sm font-medium text-green-800">Estimated Total</span>
-                        <span className="text-lg font-bold text-green-800">₹{estimatedTotal.toLocaleString('en-IN')}</span>
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-green-800">Estimated Service Cost</span>
+                          <span className="text-lg font-bold text-green-800">₹{estimatedTotal.toLocaleString('en-IN')}</span>
+                        </div>
+                        <p className="text-xs text-green-700 mt-1">Booking fee: ₹{bookingFee} (paid at booking) • Rest after service</p>
                       </div>
                     )}
                   </div>
@@ -642,14 +678,27 @@ export function ServicePage() {
                         {paymentMethod === 'online' ? 'Online' : 'Cash on Delivery'}
                       </span>
                     </div>
-                    {estimatedTotal > 0 && (
-                      <>
-                        <div className="border-t pt-3 flex justify-between">
-                          <span className="font-semibold">Estimated Total</span>
-                          <span className="text-lg font-bold text-green-700">₹{estimatedTotal.toLocaleString('en-IN')}</span>
+                    <div className="border-t pt-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Booking Fee ({serviceType === 'roadside' ? 'Emergency' : 'Visiting Charge'})</span>
+                        <span className="font-semibold">₹{bookingFee}</span>
+                      </div>
+                      {estimatedTotal > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Estimated Service Cost</span>
+                          <span className="font-medium">₹{estimatedTotal.toLocaleString('en-IN')}</span>
                         </div>
-                      </>
-                    )}
+                      )}
+                      <div className="flex justify-between pt-1 border-t border-dashed">
+                        <span className="font-semibold text-sm">Pay Now</span>
+                        <span className="text-lg font-bold text-green-700">₹{bookingFee}</span>
+                      </div>
+                      {estimatedTotal > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Remaining ₹{(estimatedTotal - bookingFee > 0 ? estimatedTotal - bookingFee : 0).toLocaleString('en-IN')} to be paid after service completion
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -659,8 +708,8 @@ export function ServicePage() {
                   <div className="text-sm text-amber-800 space-y-1">
                     <p className="font-medium">Before you book:</p>
                     <p>A mechanic will be assigned and will contact you.</p>
-                    {paymentMethod === 'cod' && <p>Cash payment will be collected after service completion.</p>}
-                    {paymentMethod === 'online' && <p>You will be redirected to Razorpay for secure payment.</p>}
+                    {paymentMethod === 'cod' && <p>Booking fee of ₹{bookingFee} will be collected by mechanic. Remaining payment after service.</p>}
+                    {paymentMethod === 'online' && <p>Booking fee of ₹{bookingFee} will be charged via Razorpay. Remaining payment after service.</p>}
                     <p>Free cancellation up to 2 hours before appointment.</p>
                   </div>
                 </div>
@@ -684,7 +733,7 @@ export function ServicePage() {
                   ) : (
                     <Wrench className="h-4 w-4 mr-2" />
                   )}
-                  {paymentMethod === 'online' ? 'Pay & Book Service' : 'Confirm Booking (COD)'}
+                  {paymentMethod === 'online' ? `Pay ₹${bookingFee} & Book Service` : 'Confirm Booking (COD)'}
                 </Button>
               </div>
             )}

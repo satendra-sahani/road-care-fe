@@ -325,7 +325,7 @@ export const otpAuthAPI = {
     api.post('/common/auth/send-otp', { phone, purpose: purpose || 'login' }),
   verifyOtp: (phone: string, otp: string, purpose?: string) =>
     api.post('/common/auth/verify-otp', { phone, otp, purpose: purpose || 'login' }),
-  registerUser: (data: { verificationToken: string; fullName: string; email?: string; address?: string; city?: string; state?: string; pincode?: string }) =>
+  registerUser: (data: { verificationToken: string; fullName: string; email?: string; address?: string; landmark?: string; city?: string; state?: string; pincode?: string; latitude?: number; longitude?: number }) =>
     api.post('/common/auth/register/user', data),
   phoneLogin: (phone: string) =>
     api.post('/common/auth/phone-login', { phone }),
@@ -534,6 +534,56 @@ export const diagnosisAPI = {
   reject: (requestId: string, reason?: string) => api.post(`/user/service-requests/${requestId}/reject-quote`, { reason }),
   // Admin endpoints
   markAsPaid: (requestId: string) => api.post(`/admin/service-requests/${requestId}/mark-paid`),
+};
+
+// ─── AI Booking APIs (Customer-facing) ─────────────────────────────
+export const aiBookingAPI = {
+  chat: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) =>
+    api.post('/user/ai-booking/chat', { messages }),
+  confirm: (data: {
+    collectedData: {
+      vehicleType: string;
+      problem: string;
+      problemDetails?: string;
+      preferredDate?: string;
+      preferredTimeSlot?: string;
+      paymentMethod?: 'online' | 'cod';
+      newAddress?: string | null;
+    };
+    address?: string;
+    landmark?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    latitude?: number;
+    longitude?: number;
+  }) => api.post('/user/ai-booking/confirm', data),
+  confirmOrder: (data: {
+    productId: string;
+    quantity: number;
+    paymentMethod: 'online' | 'cod';
+    address?: string;
+    landmark?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    latitude?: number;
+    longitude?: number;
+  }) => api.post('/user/ai-booking/confirm-order', data),
+  tts: (text: string, language: string = 'hindi') =>
+    api.post('/user/ai-booking/tts', { text, language }),
+};
+
+// ─── Mechanic Location API (Customer-facing) ───────────────────────
+export const mechanicLocationAPI = {
+  get: (requestId: string) =>
+    api.get(`/user/service-requests/${requestId}/mechanic-location`),
+};
+
+// ─── Delivery Location API (Customer-facing) ───────────────────────
+export const deliveryLocationAPI = {
+  get: (orderId: string) =>
+    api.get(`/user/orders/${orderId}/delivery-location`),
 };
 
 export default api;

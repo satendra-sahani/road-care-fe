@@ -50,7 +50,10 @@ import {
   IndianRupee,
   FileText,
   CalendarClock,
+  Locate,
 } from 'lucide-react'
+import Link from 'next/link'
+import DiagnosisCard from './DiagnosisCard'
 
 // ---- Constants ----
 
@@ -849,6 +852,26 @@ export function ServiceDetailPage() {
                 </Button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Live Mechanic Tracking ── */}
+        {(status === 'assigned' || status === 'on_way') && request._id && (
+          <div className="mb-4">
+            <Link
+              href={`/service/${request._id}/track`}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF6B35] to-[#E8521A] text-white font-bold py-3.5 rounded-xl hover:shadow-lg transition"
+            >
+              <Locate className="h-5 w-5" />
+              Track Mechanic Live
+            </Link>
+          </div>
+        )}
+
+        {/* ── Mechanic Diagnosis ── */}
+        {(status === 'in_progress' || status === 'diagnosed' || status === 'quote_pending') && request._id && (
+          <div className="mb-4">
+            <DiagnosisCard requestId={request._id} onStatusChange={fetchRequest} />
           </div>
         )}
 

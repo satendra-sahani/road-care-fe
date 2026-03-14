@@ -17,6 +17,7 @@ interface CustomerAuthState {
   loading: boolean;
   otpSending: boolean;
   otpSent: boolean;
+  otpPurpose: 'login' | 'registration';
   otpVerifying: boolean;
   otpVerified: boolean;
   verificationToken: string | null;
@@ -32,6 +33,7 @@ const initialState: CustomerAuthState = {
   loading: false,
   otpSending: false,
   otpSent: false,
+  otpPurpose: 'login' as const,
   otpVerifying: false,
   otpVerified: false,
   verificationToken: null,
@@ -52,9 +54,10 @@ const customerAuthSlice = createSlice({
       state.phone = action.payload;
       state.error = null;
     },
-    sendOtpSuccess(state) {
+    sendOtpSuccess(state, action: PayloadAction<{ purpose?: 'login' | 'registration' } | undefined>) {
       state.otpSending = false;
       state.otpSent = true;
+      state.otpPurpose = action.payload?.purpose || 'login';
     },
     sendOtpFailure(state, action: PayloadAction<string>) {
       state.otpSending = false;
@@ -63,7 +66,7 @@ const customerAuthSlice = createSlice({
     },
 
     // Verify OTP
-    verifyOtpRequest(state, action: PayloadAction<{ phone: string; otp: string }>) {
+    verifyOtpRequest(state, action: PayloadAction<{ phone: string; otp: string; purpose?: string }>) {
       state.otpVerifying = true;
       state.error = null;
     },
@@ -89,7 +92,7 @@ const customerAuthSlice = createSlice({
     },
 
     // Register new user
-    registerRequest(state, _action: PayloadAction<{ verificationToken: string; fullName: string; email?: string }>) {
+    registerRequest(state, _action: PayloadAction<{ verificationToken: string; fullName: string; email?: string; address?: string; landmark?: string; city?: string; state?: string; pincode?: string; latitude?: number; longitude?: number }>) {
       state.registering = true;
       state.error = null;
     },
@@ -126,6 +129,7 @@ const customerAuthSlice = createSlice({
     // Reset OTP flow
     resetOtpFlow(state) {
       state.otpSent = false;
+      state.otpPurpose = 'login';
       state.otpVerified = false;
       state.verificationToken = null;
       state.isNewUser = false;
