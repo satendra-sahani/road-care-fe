@@ -25,7 +25,10 @@ import {
   MapPin,
   Phone,
   Store,
-  UserCheck
+  UserCheck,
+  Sparkles,
+  Gift,
+  Coins,
 } from 'lucide-react'
 import NextImage from 'next/image'
 import { cn } from '@/lib/utils'
@@ -69,6 +72,11 @@ const baseSidebarItems: SidebarItem[] = [
 
   // Financial
   { id: 'revenue', title: 'Revenue', icon: DollarSign, href: '/admin/financial/revenue', separator: true },
+
+  // Growth & Rewards
+  { id: 'spin-wheel',      title: 'Spin & Win',      icon: Sparkles, href: '/admin/growth/spin-wheel', separator: true },
+  { id: 'referrals',       title: 'Referrals',       icon: Gift,     href: '/admin/growth/referrals' },
+  { id: 'rewards-wallet',  title: 'Rewards Wallet',  icon: Coins,    href: '/admin/growth/rewards-wallet' },
 
   // Content & Communication
   { id: 'banners', title: 'Banners', icon: ImageIcon, href: '/admin/banners', separator: true },

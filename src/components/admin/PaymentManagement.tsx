@@ -103,8 +103,12 @@ interface PaymentRecord {
   srBookingFee?: number
   srBookingFeeStatus?: string
   srPaymentMethod?: string
+  srIsEmergency?: boolean
+  srEmergencyCharges?: number
   isSplitPayment?: boolean
   shopPartnerName?: string
+  shopPartnerId?: string
+  shopCommissionRate?: number
   // Merged split payment fields
   combinedMethod?: 'online_cod' | string
   onlineBookingFeeAmount?: number
@@ -419,7 +423,15 @@ function PaymentHistoryTab() {
   // Load transfer history when dialog opens
   const openTransferDialog = async (p: PaymentRecord) => {
     setConfirmTransfer(p)
-    setTransferPct('80')
+    // For shop-dispatch payments, default to (100 - commissionRate)% so platform
+    // retains only its commission and rest flows to the shop's wallet.
+    if (p.shopPartnerName) {
+      const commission = typeof p.shopCommissionRate === 'number' ? p.shopCommissionRate : 25
+      const shopShare = Math.max(1, Math.min(100, 100 - commission))
+      setTransferPct(String(shopShare))
+    } else {
+      setTransferPct('80')
+    }
     setTransferHistory([])
     setHistoryLoading(true)
     try {
@@ -583,7 +595,14 @@ function PaymentHistoryTab() {
                           </>
                         ) : (
                           <>
-                            <div className="font-medium text-blue-700">{p.serviceRequest?.requestId || '—'}</div>
+                            <div className="font-medium text-blue-700 flex items-center gap-1">
+                              {p.serviceRequest?.requestId || '—'}
+                              {p.srIsEmergency && (
+                                <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold bg-rose-100 text-rose-700 border border-rose-300">
+                                  EMR
+                                </span>
+                              )}
+                            </div>
                             <div className="text-xs text-gray-500 truncate max-w-[120px]">{p.serviceRequest?.serviceCategory || ''}</div>
                           </>
                         )}
@@ -627,9 +646,21 @@ function PaymentHistoryTab() {
                             <div className="text-[10px] text-gray-500 mt-0.5">
                               ₹{p.onlineBookingFeeAmount || p.srBookingFee} paid + ₹{p.totalAmount} COD
                             </div>
+                            {p.srIsEmergency && (p.srEmergencyCharges ?? 0) > 0 && (
+                              <div className="text-[10px] text-rose-600 mt-0.5 font-medium">
+                                incl. ₹{p.srEmergencyCharges} emergency surcharge
+                              </div>
+                            )}
                           </div>
                         ) : (
-                          <span className="font-semibold">{fmt(p.totalAmount)}</span>
+                          <div>
+                            <span className="font-semibold">{fmt(p.totalAmount)}</span>
+                            {p.srIsEmergency && (p.srEmergencyCharges ?? 0) > 0 && (
+                              <div className="text-[10px] text-rose-600 mt-0.5 font-medium">
+                                incl. ₹{p.srEmergencyCharges} emergency surcharge
+                              </div>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right text-violet-700 font-medium">{fmt(p.mechanicAmount)}</td>
@@ -691,10 +722,14 @@ function PaymentHistoryTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-violet-600" />
-              Transfer to {confirmTransfer?.paymentFor === 'product' ? 'Delivery' : 'Mechanic'} Wallet
+              Transfer to {confirmTransfer?.paymentFor === 'product'
+                ? 'Delivery'
+                : confirmTransfer?.shopPartnerName ? 'Shop' : 'Mechanic'} Wallet
             </DialogTitle>
             <DialogDescription>
-              Enter percentage to calculate transfer amount for the {confirmTransfer?.paymentFor === 'product' ? 'delivery boy' : 'mechanic'}.
+              {confirmTransfer?.shopPartnerName
+                ? `Shop-dispatched job — platform keeps ${typeof confirmTransfer.shopCommissionRate === 'number' ? confirmTransfer.shopCommissionRate : 25}% commission, rest is credited to the shop wallet.`
+                : `Enter percentage to calculate transfer amount for the ${confirmTransfer?.paymentFor === 'product' ? 'delivery boy' : 'mechanic'}.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -782,18 +817,26 @@ function PaymentHistoryTab() {
                     />
                     <span className="text-gray-400 font-medium text-lg">%</span>
                     <div className="flex-1 flex gap-1.5">
-                      {[60, 70, 80, 90, 100].map(v => (
-                        <Button
-                          key={v}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className={`h-8 px-2.5 text-xs ${transferPct === String(v) ? 'bg-violet-100 border-violet-400 text-violet-700' : ''}`}
-                          onClick={() => setTransferPct(String(v))}
-                        >
-                          {v}%
-                        </Button>
-                      ))}
+                      {(() => {
+                        const presets = confirmTransfer.shopPartnerName
+                          ? [
+                              Math.max(1, 100 - (typeof confirmTransfer.shopCommissionRate === 'number' ? confirmTransfer.shopCommissionRate : 25)),
+                              70, 80, 90, 100,
+                            ].filter((v, i, a) => a.indexOf(v) === i)
+                          : [60, 70, 80, 90, 100]
+                        return presets.map(v => (
+                          <Button
+                            key={v}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={`h-8 px-2.5 text-xs ${transferPct === String(v) ? 'bg-violet-100 border-violet-400 text-violet-700' : ''}`}
+                            onClick={() => setTransferPct(String(v))}
+                          >
+                            {v}%
+                          </Button>
+                        ))
+                      })()}
                     </div>
                   </div>
 
@@ -801,16 +844,25 @@ function PaymentHistoryTab() {
                   {pct > 0 && pct <= 100 && (
                     <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 space-y-1.5">
                       <div className="flex justify-between text-sm">
-                        <span className="text-violet-600">Transfer to {confirmTransfer.paymentFor === 'product' ? 'Delivery' : 'Mechanic'}</span>
+                        <span className="text-violet-600">
+                          Transfer to {confirmTransfer.paymentFor === 'product'
+                            ? 'Delivery'
+                            : confirmTransfer.shopPartnerName ? 'Shop' : 'Mechanic'}
+                        </span>
                         <span className="font-bold text-violet-700 text-lg">{fmt(calcAmount)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Platform Retains</span>
+                        <span className="text-gray-500">Platform Retains {confirmTransfer.shopPartnerName ? '(Commission)' : ''}</span>
                         <span className="font-medium text-emerald-700">{fmt(retained)}</span>
                       </div>
                       <div className="text-xs text-violet-500 mt-1">
                         {pct}% of {fmt(baseAmount)} = {fmt(calcAmount)}
                       </div>
+                      {confirmTransfer.shopPartnerName && typeof confirmTransfer.shopCommissionRate === 'number' && (
+                        <div className="text-[10px] text-gray-500 bg-white/60 rounded px-2 py-1 mt-1">
+                          Suggested: shop share {100 - confirmTransfer.shopCommissionRate}% (platform commission {confirmTransfer.shopCommissionRate}%). Do <b>not</b> use "Settle COD" for shop-dispatched jobs — use this transfer instead.
+                        </div>
+                      )}
                     </div>
                   )}
                   {(pct <= 0 || pct > 100) && transferPct !== '' && (
@@ -1473,6 +1525,14 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-2.5 text-xs">
                   <p className="text-orange-600 font-medium mb-0.5">Collection Note:</p>
                   <p className="text-orange-700 italic">&ldquo;{confirmPayment.codCollectedNote}&rdquo;</p>
+                </div>
+              )}
+
+              {/* Shop-dispatch warning — settlement should go via shop transfer, not platform */}
+              {confirmPayment.shopPartnerName && (
+                <div className="bg-amber-50 border border-amber-300 rounded-lg p-2.5 text-xs">
+                  <p className="text-amber-700 font-semibold mb-0.5">⚠ Shop-dispatched job ({confirmPayment.shopPartnerName})</p>
+                  <p className="text-amber-700">Prefer "Transfer to Shop Wallet" instead of settling to platform. Platform should retain only its {typeof confirmPayment.shopCommissionRate === 'number' ? `${confirmPayment.shopCommissionRate}% commission` : 'commission'} and credit the rest to the shop.</p>
                 </div>
               )}
             </div>
@@ -2364,6 +2424,15 @@ interface WithdrawalRecord {
   processedBy?: { fullName?: string; role?: string }
   processedAt?: string
   createdAt: string
+  // Payout details captured when the user submitted the request
+  payoutMethod?: 'upi' | 'bank' | null
+  upiId?: string
+  bankDetails?: {
+    accountNumber?: string
+    ifscCode?: string
+    accountHolderName?: string
+    bankName?: string
+  }
 }
 
 interface WithdrawalStats {
@@ -2619,7 +2688,29 @@ function WithdrawalsTab() {
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-800">{w.user?.fullName || '—'}</div>
                       <div className="text-xs text-gray-400">{w.user?.phone || w.user?.email || ''}</div>
-                      <Badge variant="outline" className="text-[10px] mt-0.5">{w.user?.role || 'mechanic'}</Badge>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Badge variant="outline" className="text-[10px]">{w.user?.role || 'mechanic'}</Badge>
+                        {w.payoutMethod === 'upi' && (
+                          <Badge variant="outline" className="text-[10px] border-violet-300 text-violet-700 bg-violet-50">
+                            UPI
+                          </Badge>
+                        )}
+                        {w.payoutMethod === 'bank' && (
+                          <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-700 bg-blue-50">
+                            Bank
+                          </Badge>
+                        )}
+                      </div>
+                      {w.payoutMethod === 'upi' && w.upiId && (
+                        <div className="text-[11px] font-mono text-gray-500 mt-0.5 truncate max-w-[200px]" title={w.upiId}>
+                          {w.upiId}
+                        </div>
+                      )}
+                      {w.payoutMethod === 'bank' && w.bankDetails?.accountNumber && (
+                        <div className="text-[11px] font-mono text-gray-500 mt-0.5">
+                          A/C ****{w.bankDetails.accountNumber.slice(-4)} • {w.bankDetails.ifscCode}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className="text-base font-bold text-gray-800">₹{w.amount.toLocaleString('en-IN')}</span>
@@ -2730,6 +2821,56 @@ function WithdrawalsTab() {
                   </div>
                 </div>
               </div>
+
+              {/* Payout details provided by the user */}
+              {processDialog.payoutMethod ? (
+                <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-violet-700 mb-2">
+                    Pay to — {processDialog.payoutMethod === 'upi' ? 'UPI' : 'Bank Account'}
+                  </p>
+                  {processDialog.payoutMethod === 'upi' ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">UPI ID</span>
+                      <span className="font-mono text-sm font-semibold text-gray-900 select-all">
+                        {processDialog.upiId || '—'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Account No.</span>
+                        <span className="font-mono font-semibold text-gray-900 select-all">
+                          {processDialog.bankDetails?.accountNumber || '—'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">IFSC</span>
+                        <span className="font-mono font-semibold text-gray-900 select-all">
+                          {processDialog.bankDetails?.ifscCode || '—'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Holder</span>
+                        <span className="font-semibold text-gray-900">
+                          {processDialog.bankDetails?.accountHolderName || '—'}
+                        </span>
+                      </div>
+                      {processDialog.bankDetails?.bankName ? (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Bank</span>
+                          <span className="font-semibold text-gray-900">
+                            {processDialog.bankDetails.bankName}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  No payout details were provided with this request. Contact the user for UPI / bank information before processing.
+                </div>
+              )}
 
               {/* Payment ID */}
               <div>

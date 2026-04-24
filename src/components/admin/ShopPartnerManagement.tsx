@@ -42,6 +42,11 @@ export function ShopPartnerManagement() {
   const [mechanicSearch, setMechanicSearch] = useState('')
   const [mechanicLoading, setMechanicLoading] = useState(false)
 
+  // KYC review
+  const [showKycDialog, setShowKycDialog] = useState(false)
+  const [kycShop, setKycShop] = useState<any>(null)
+  const [kycRejectReason, setKycRejectReason] = useState('')
+
   const fetchData = async () => {
     try {
       const [shopsRes, statsRes] = await Promise.all([
@@ -98,9 +103,44 @@ export function ShopPartnerManagement() {
     setActionLoading(true)
     try {
       await adminShopAPI.verify(id)
+      setShowKycDialog(false)
+      setKycShop(null)
       fetchData()
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleRejectKyc = async (id: string, reason: string) => {
+    if (!reason.trim()) return alert('Please enter a rejection reason')
+    setActionLoading(true)
+    try {
+      await adminShopAPI.rejectKyc(id, reason.trim())
+      setShowKycDialog(false)
+      setKycShop(null)
+      setKycRejectReason('')
+      fetchData()
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const openKycDialog = async (shop: any) => {
+    setActionLoading(true)
+    try {
+      // Fetch fresh full shop data (includes kyc, documents etc.)
+      const res = await adminShopAPI.getById(shop._id)
+      const full = res.data?.data || shop
+      setKycShop(full)
+      setKycRejectReason(full.rejectionReason || '')
+      setShowKycDialog(true)
+    } catch {
+      setKycShop(shop)
+      setShowKycDialog(true)
     } finally {
       setActionLoading(false)
     }
@@ -337,12 +377,11 @@ export function ShopPartnerManagement() {
                   onClick={() => openMechanicDialog(shop)}>
                   <UserPlus className="h-3 w-3 mr-1" /> Mechanics
                 </Button>
-                {!shop.isVerified && (
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs flex-1"
-                    onClick={() => handleVerify(shop._id)} disabled={actionLoading}>
-                    <ShieldCheck className="h-3 w-3 mr-1" /> Verify
-                  </Button>
-                )}
+                <Button size="sm" variant="outline" className="text-xs flex-1 border-purple-300 text-purple-700"
+                  onClick={() => openKycDialog(shop)} disabled={actionLoading}>
+                  <Shield className="h-3 w-3 mr-1" />
+                  {shop.isVerified ? 'View KYC' : 'Review KYC'}
+                </Button>
                 <Button size="sm" variant="outline" className="text-xs flex-1"
                   onClick={() => handleToggleStatus(shop._id)} disabled={actionLoading}>
                   {shop.isActive ? <ToggleRight className="h-3 w-3 mr-1" /> : <ToggleLeft className="h-3 w-3 mr-1" />}
@@ -616,6 +655,177 @@ export function ShopPartnerManagement() {
               >
                 Done
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── KYC Review Dialog ─────────────────────────────────── */}
+      {showKycDialog && kycShop && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-purple-600" /> KYC Review — {kycShop.shopName}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Submitted {kycShop.kyc?.submittedAt ? new Date(kycShop.kyc.submittedAt).toLocaleString() : '—'}
+                </p>
+              </div>
+              <button onClick={() => { setShowKycDialog(false); setKycShop(null); setKycRejectReason('') }} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Status banner */}
+              <div className={cn(
+                'rounded-xl p-3 text-sm flex items-center gap-2',
+                kycShop.isVerified ? 'bg-green-50 text-green-700' : kycShop.rejectionReason ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+              )}>
+                {kycShop.isVerified ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                <span className="font-medium">
+                  {kycShop.isVerified
+                    ? `Verified ${kycShop.verifiedAt ? 'on ' + new Date(kycShop.verifiedAt).toLocaleDateString() : ''}`
+                    : kycShop.rejectionReason
+                      ? `Rejected: ${kycShop.rejectionReason}`
+                      : 'Awaiting verification'}
+                </span>
+              </div>
+
+              {/* Owner */}
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Owner</h4>
+                <div className="flex items-center gap-4 bg-gray-50 rounded-xl p-3">
+                  {kycShop.kyc?.ownerPhoto ? (
+                    <img src={kycShop.kyc.ownerPhoto} alt="Owner" className="w-20 h-20 rounded-xl object-cover border" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-xl bg-white border flex items-center justify-center text-gray-300">
+                      <Users className="h-8 w-8" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">{kycShop.kyc?.ownerName || kycShop.user?.fullName || '—'}</p>
+                    <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-1">
+                      <Phone className="h-3.5 w-3.5" /> {kycShop.user?.phone || kycShop.shopPhone || '—'}
+                    </p>
+                    {kycShop.user?.email && (
+                      <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
+                        <Mail className="h-3.5 w-3.5" /> {kycShop.user.email}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents */}
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Documents</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Aadhaar', num: kycShop.kyc?.aadhaarNumber, img: kycShop.kyc?.aadhaarImage, required: true },
+                    { label: 'PAN', num: kycShop.kyc?.panNumber, img: kycShop.kyc?.panImage, required: true },
+                    { label: 'GST', num: kycShop.kyc?.gstNumber, img: kycShop.kyc?.gstImage, required: false },
+                  ].map(doc => (
+                    <div key={doc.label} className="bg-white border rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">{doc.label}</span>
+                        {doc.required && !doc.num && <span className="text-[10px] text-red-500">Missing</span>}
+                      </div>
+                      <p className="font-mono text-sm text-gray-900 truncate">{doc.num || '—'}</p>
+                      {doc.img ? (
+                        <a href={doc.img} target="_blank" rel="noreferrer" className="block">
+                          <img src={doc.img} alt={doc.label} className="w-full h-32 object-cover rounded border" />
+                        </a>
+                      ) : (
+                        <div className="w-full h-32 bg-gray-50 rounded border border-dashed flex items-center justify-center text-xs text-gray-400">
+                          No image
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Shop Location</h4>
+                <div className="bg-gray-50 rounded-xl p-3 text-sm space-y-1">
+                  <p className="flex items-center gap-2 text-gray-700">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    {kycShop.address?.city || kycShop.address?.street
+                      ? [kycShop.address?.street, kycShop.address?.landmark, kycShop.address?.city, kycShop.address?.state, kycShop.address?.pincode].filter(Boolean).join(', ')
+                      : 'No address on file'}
+                  </p>
+                  {kycShop.address?.coordinates?.latitude && kycShop.address?.coordinates?.longitude ? (
+                    <a
+                      href={`https://www.google.com/maps?q=${kycShop.address.coordinates.latitude},${kycShop.address.coordinates.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 hover:underline ml-6"
+                    >
+                      {kycShop.address.coordinates.latitude.toFixed(5)}, {kycShop.address.coordinates.longitude.toFixed(5)} — open in Maps
+                    </a>
+                  ) : (
+                    <p className="ml-6 text-xs text-amber-600">No GPS coordinates captured</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Shop photos */}
+              {kycShop.shopImages?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Shop Photos</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {kycShop.shopImages.map((img: any, idx: number) => (
+                      <a key={idx} href={img.url || img} target="_blank" rel="noreferrer">
+                        <img src={img.url || img} alt={`Shop ${idx + 1}`} className="w-full h-24 object-cover rounded border" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Reject reason */}
+              {!kycShop.isVerified && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Rejection Reason (optional)</h4>
+                  <textarea
+                    className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-purple-300"
+                    rows={2}
+                    placeholder="If rejecting, explain what needs to be fixed"
+                    value={kycRejectReason}
+                    onChange={e => setKycRejectReason(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex flex-wrap gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setShowKycDialog(false); setKycShop(null); setKycRejectReason('') }}>
+                Close
+              </Button>
+              {!kycShop.isVerified && (
+                <>
+                  <Button
+                    variant="outline"
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    onClick={() => handleRejectKyc(kycShop._id, kycRejectReason)}
+                    disabled={actionLoading || !kycRejectReason.trim()}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" /> Reject KYC
+                  </Button>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => handleVerify(kycShop._id)}
+                    disabled={actionLoading}
+                  >
+                    <ShieldCheck className="h-4 w-4 mr-1" /> Approve & Verify
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

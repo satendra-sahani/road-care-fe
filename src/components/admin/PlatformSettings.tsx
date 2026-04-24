@@ -265,7 +265,15 @@ export function PlatformSettings() {
     minTrustScore: 40,
     autoBlockTrustScore: 20,
     autoCancel: { diagnosisTimeout: 60, paymentTimeout: 1440 },
-    serviceSettings: { minOrderValue: 500, maxCancellations: 3, autoBlockAfterRefusals: 2 }
+    serviceSettings: { minOrderValue: 500, maxCancellations: 3, autoBlockAfterRefusals: 2 },
+    androidApp: {
+      latestVersion: '1.0.0',
+      minimumVersion: '1.0.0',
+      forceUpdate: false,
+      playStoreUrl: 'https://play.google.com/store/apps/details?id=com.bharatmechanics',
+      updateTitle: 'Update Available',
+      updateMessage: 'A new version of Bharat Mechanics is available. Please update to continue using the app.'
+    }
   })
   const [configLoading, setConfigLoading] = useState(false)
   const [configSaving, setConfigSaving] = useState(false)
@@ -293,6 +301,10 @@ export function PlatformSettings() {
             serviceSettings: {
               ...prev.serviceSettings,
               ...(res.data.data.serviceSettings || {})
+            },
+            androidApp: {
+              ...prev.androidApp,
+              ...(res.data.data.androidApp || {})
             }
           }))
         }
@@ -474,12 +486,13 @@ export function PlatformSettings() {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-3xl grid-cols-5">
+        <TabsList className="grid w-full max-w-4xl grid-cols-6">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="permissions">Permissions</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
+          <TabsTrigger value="app-update">App Update</TabsTrigger>
         </TabsList>
 
         {/* General Settings Tab */}
@@ -1352,6 +1365,157 @@ export function PlatformSettings() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* App Update Tab — Android force-update control */}
+        <TabsContent value="app-update" className="space-y-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Smartphone className="h-5 w-5 mr-2" />
+                    Android App Update Control
+                  </CardTitle>
+                  <CardDescription>
+                    Control force-update behavior after publishing a new build on Play Store. Users with an older version than the "Minimum Version" will be blocked from using the app until they update.
+                  </CardDescription>
+                </div>
+                <Button
+                  className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+                  onClick={handleSaveServiceConfig}
+                  disabled={configSaving}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {configSaving ? 'Saving...' : 'Save Config'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {configLoading ? (
+                <p className="text-[#6B7280]">Loading config...</p>
+              ) : (
+                <>
+                  {/* How it works banner */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-blue-900 space-y-1">
+                        <p className="font-semibold">How it works</p>
+                        <p>• <strong>Latest Version</strong> — the newest version available on Play Store. Users on older builds see an optional update prompt.</p>
+                        <p>• <strong>Minimum Version</strong> — the oldest version still allowed to run. Users below this are <strong>blocked</strong> with a mandatory update screen.</p>
+                        <p>• <strong>Force Update</strong> — when ON, everyone below <em>latest</em> is blocked (treats latest as minimum).</p>
+                        <p>• After uploading a new APK to Play Store, bump Latest Version here. To force everyone to update, also bump Minimum Version.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Version fields */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <h3 className="font-medium text-[#1A1D29]">Version Numbers</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="latestVersion">Latest Version (e.g., 1.2.0)</Label>
+                        <Input
+                          id="latestVersion"
+                          placeholder="1.0.0"
+                          value={serviceConfig.androidApp?.latestVersion || ''}
+                          onChange={(e) => setServiceConfig({
+                            ...serviceConfig,
+                            androidApp: { ...serviceConfig.androidApp, latestVersion: e.target.value }
+                          })}
+                        />
+                        <p className="text-xs text-[#6B7280] mt-1">Current build published on Play Store</p>
+                      </div>
+                      <div>
+                        <Label htmlFor="minimumVersion">Minimum Allowed Version</Label>
+                        <Input
+                          id="minimumVersion"
+                          placeholder="1.0.0"
+                          value={serviceConfig.androidApp?.minimumVersion || ''}
+                          onChange={(e) => setServiceConfig({
+                            ...serviceConfig,
+                            androidApp: { ...serviceConfig.androidApp, minimumVersion: e.target.value }
+                          })}
+                        />
+                        <p className="text-xs text-[#6B7280] mt-1">Users below this are force-blocked</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Force-update toggle */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="font-medium">Force Update (Block all older versions)</Label>
+                        <p className="text-sm text-[#6B7280]">When ON, treats Latest Version as the minimum. Everyone below is blocked.</p>
+                      </div>
+                      <Switch
+                        checked={!!serviceConfig.androidApp?.forceUpdate}
+                        onCheckedChange={(checked) => setServiceConfig({
+                          ...serviceConfig,
+                          androidApp: { ...serviceConfig.androidApp, forceUpdate: checked }
+                        })}
+                      />
+                    </div>
+                    {serviceConfig.androidApp?.forceUpdate && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                        <div className="flex items-start space-x-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-amber-900">
+                            <strong>Warning:</strong> Force update is ON. Every user below version <strong>{serviceConfig.androidApp?.latestVersion || '1.0.0'}</strong> will see a mandatory update screen and cannot use the app until they update from Play Store.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Play Store URL + messaging */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <h3 className="font-medium text-[#1A1D29]">Update Screen Content</h3>
+                    <div>
+                      <Label htmlFor="playStoreUrl">Play Store URL</Label>
+                      <Input
+                        id="playStoreUrl"
+                        placeholder="https://play.google.com/store/apps/details?id=..."
+                        value={serviceConfig.androidApp?.playStoreUrl || ''}
+                        onChange={(e) => setServiceConfig({
+                          ...serviceConfig,
+                          androidApp: { ...serviceConfig.androidApp, playStoreUrl: e.target.value }
+                        })}
+                      />
+                      <p className="text-xs text-[#6B7280] mt-1">Tapped from the in-app update screen</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="updateTitle">Update Title</Label>
+                      <Input
+                        id="updateTitle"
+                        placeholder="Update Available"
+                        value={serviceConfig.androidApp?.updateTitle || ''}
+                        onChange={(e) => setServiceConfig({
+                          ...serviceConfig,
+                          androidApp: { ...serviceConfig.androidApp, updateTitle: e.target.value }
+                        })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="updateMessage">Update Message</Label>
+                      <textarea
+                        id="updateMessage"
+                        className="w-full min-h-[90px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        placeholder="A new version is available. Please update to continue."
+                        value={serviceConfig.androidApp?.updateMessage || ''}
+                        onChange={(e) => setServiceConfig({
+                          ...serviceConfig,
+                          androidApp: { ...serviceConfig.androidApp, updateMessage: e.target.value }
+                        })}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

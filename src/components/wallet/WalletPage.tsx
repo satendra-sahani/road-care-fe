@@ -1,9 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { userWalletAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
   Wallet,
@@ -16,6 +26,10 @@ import {
   TrendingUp,
   TrendingDown,
   Filter,
+  Banknote,
+  CreditCard,
+  Smartphone,
+  Info,
 } from 'lucide-react'
 
 type Transaction = {
@@ -44,6 +58,26 @@ type Pagination = {
   total: number
   pages: number
 }
+
+type WithdrawalItem = {
+  _id: string
+  withdrawalId: string
+  amount: number
+  status: 'pending' | 'processed' | 'rejected'
+  payoutMethod?: 'upi' | 'bank' | null
+  upiId?: string
+  bankDetails?: {
+    accountNumber?: string
+    ifscCode?: string
+    accountHolderName?: string
+    bankName?: string
+  }
+  rejectionReason?: string
+  processedAt?: string
+  createdAt: string
+}
+
+const MIN_WITHDRAWAL = 100
 
 const filterOptions = [
   { label: 'All', value: '' },
@@ -86,6 +120,17 @@ function getStatusColor(status: string): string {
   }
 }
 
+function getWithdrawalStatusClasses(status: string): string {
+  switch (status) {
+    case 'processed':
+      return 'bg-green-100 text-green-700 border-green-200'
+    case 'rejected':
+      return 'bg-red-100 text-red-700 border-red-200'
+    default:
+      return 'bg-amber-100 text-amber-700 border-amber-200'
+  }
+}
+
 export function WalletPage() {
   const [wallet, setWallet] = useState<WalletData | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -94,8 +139,21 @@ export function WalletPage() {
   const [txnLoading, setTxnLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState('')
 
+  // Withdrawal state
+  const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([])
+  const [showWithdraw, setShowWithdraw] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [payoutMethod, setPayoutMethod] = useState<'upi' | 'bank'>('upi')
+  const [upiId, setUpiId] = useState('')
+  const [bankAccount, setBankAccount] = useState('')
+  const [bankIfsc, setBankIfsc] = useState('')
+  const [bankHolder, setBankHolder] = useState('')
+  const [bankName, setBankName] = useState('')
+
   useEffect(() => {
     fetchWallet()
+    fetchWithdrawals()
   }, [])
 
   useEffect(() => {
@@ -116,6 +174,17 @@ export function WalletPage() {
       setLoading(false)
     }
   }
+
+  const fetchWithdrawals = useCallback(async () => {
+    try {
+      const res = await userWalletAPI.getWithdrawals({ page: 1, limit: 5 })
+      if (res.data.success) {
+        setWithdrawals(res.data.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch withdrawals:', err)
+    }
+  }, [])
 
   const fetchTransactions = async (page: number, type?: string) => {
     setTxnLoading(true)
@@ -146,6 +215,82 @@ export function WalletPage() {
     fetchTransactions(page, activeFilter)
   }
 
+  const resetWithdrawForm = () => {
+    setWithdrawAmount('')
+    setPayoutMethod('upi')
+    setUpiId('')
+    setBankAccount('')
+    setBankIfsc('')
+    setBankHolder('')
+    setBankName('')
+  }
+
+  const openWithdraw = () => {
+    resetWithdrawForm()
+    setShowWithdraw(true)
+  }
+
+  const submitWithdraw = async () => {
+    const amt = parseInt(withdrawAmount, 10)
+    if (!amt || amt < MIN_WITHDRAWAL) {
+      toast.error(`Minimum withdrawal is Rs.${MIN_WITHDRAWAL}`)
+      return
+    }
+    if (wallet && amt > wallet.balance) {
+      toast.error(`Insufficient balance. Available: Rs.${wallet.balance}`)
+      return
+    }
+
+    const payload: any = { amount: amt, method: payoutMethod }
+    if (payoutMethod === 'upi') {
+      const upi = upiId.trim()
+      if (!upi || !/^[\w.\-]+@[\w.\-]+$/.test(upi)) {
+        toast.error('Please enter a valid UPI ID like name@bank')
+        return
+      }
+      payload.upiId = upi
+    } else {
+      const acc = bankAccount.trim()
+      const ifsc = bankIfsc.trim().toUpperCase()
+      const holder = bankHolder.trim()
+      if (!acc || acc.length < 6) {
+        toast.error('Please enter a valid account number')
+        return
+      }
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
+        toast.error('Please enter a valid IFSC code (e.g. SBIN0001234)')
+        return
+      }
+      if (!holder) {
+        toast.error('Please enter the account holder name')
+        return
+      }
+      payload.bankDetails = {
+        accountNumber: acc,
+        ifscCode: ifsc,
+        accountHolderName: holder,
+        bankName: bankName.trim(),
+      }
+    }
+
+    try {
+      setSubmitting(true)
+      const res = await userWalletAPI.requestWithdrawal(payload)
+      if (res.data?.success) {
+        toast.success('Withdrawal request submitted. Admin will process it shortly.')
+        setShowWithdraw(false)
+        resetWithdrawForm()
+        fetchWithdrawals()
+      } else {
+        toast.error(res.data?.message || 'Unable to submit withdrawal request')
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Unable to submit withdrawal request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (loading) {
     return (
       <UserLayout>
@@ -162,6 +307,8 @@ export function WalletPage() {
       </UserLayout>
     )
   }
+
+  const canWithdraw = !!wallet && wallet.balance >= MIN_WITHDRAWAL
 
   return (
     <UserLayout>
@@ -180,7 +327,7 @@ export function WalletPage() {
               {formatCurrency(wallet?.balance ?? 0)}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 mb-6">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center">
                   <TrendingUp className="h-5 w-5 text-green-400" />
@@ -205,8 +352,76 @@ export function WalletPage() {
                 </div>
               </div>
             </div>
+
+            <Button
+              onClick={openWithdraw}
+              disabled={!canWithdraw}
+              className="bg-white text-[#1B3B6F] hover:bg-white/90 font-semibold w-full sm:w-auto"
+            >
+              <Banknote className="h-4 w-4 mr-2" />
+              Withdraw Money
+            </Button>
+            {!canWithdraw && wallet && (
+              <p className="text-xs text-white/70 mt-2">
+                Minimum Rs.{MIN_WITHDRAWAL} required to withdraw
+              </p>
+            )}
           </div>
         </div>
+
+        {/* Recent Withdrawals */}
+        {withdrawals.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-foreground mb-3">Recent Withdrawals</h2>
+            <div className="space-y-3">
+              {withdrawals.map((w) => (
+                <div
+                  key={w._id}
+                  className="bg-white border rounded-xl p-4 flex items-start gap-3"
+                >
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-[#1B3B6F]/10 flex items-center justify-center">
+                    <Banknote className="h-5 w-5 text-[#1B3B6F]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-base font-bold text-foreground">
+                          {formatCurrency(w.amount)}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono truncate">
+                          {w.withdrawalId}
+                        </p>
+                        {w.payoutMethod === 'upi' && w.upiId && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            UPI: <span className="font-mono">{w.upiId}</span>
+                          </p>
+                        )}
+                        {w.payoutMethod === 'bank' && w.bankDetails?.accountNumber && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Bank: ****{w.bankDetails.accountNumber.slice(-4)} • {w.bankDetails.ifscCode}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatDate(w.createdAt)} at {formatTime(w.createdAt)}
+                        </p>
+                        {w.status === 'rejected' && w.rejectionReason && (
+                          <p className="text-xs text-red-600 mt-1">
+                            Reason: {w.rejectionReason}
+                          </p>
+                        )}
+                      </div>
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border capitalize ${getWithdrawalStatusClasses(w.status)}`}
+                      >
+                        {w.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Transaction Filters */}
         <div className="flex items-center gap-2 mb-4">
@@ -334,7 +549,6 @@ export function WalletPage() {
             <div className="flex items-center gap-1">
               {Array.from({ length: pagination.pages }, (_, i) => i + 1)
                 .filter((p) => {
-                  // Show first, last, current, and adjacent pages
                   return p === 1 || p === pagination.pages || Math.abs(p - pagination.page) <= 1
                 })
                 .reduce<(number | string)[]>((acc, p, idx, arr) => {
@@ -377,6 +591,173 @@ export function WalletPage() {
           </div>
         )}
       </div>
+
+      {/* ── Withdraw Dialog ── */}
+      <Dialog
+        open={showWithdraw}
+        onOpenChange={(o) => {
+          if (!submitting) {
+            setShowWithdraw(o)
+            if (!o) resetWithdrawForm()
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="h-5 w-5 text-[#1B3B6F]" />
+              Withdraw Money
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Balance */}
+            <div className="rounded-lg bg-gray-50 p-4 text-center">
+              <p className="text-xs text-muted-foreground">Available Balance</p>
+              <p className="text-2xl font-bold text-[#1B3B6F] mt-1">
+                {formatCurrency(wallet?.balance ?? 0)}
+              </p>
+            </div>
+
+            {/* Amount */}
+            <div>
+              <Label htmlFor="wdAmount" className="text-sm font-semibold">
+                Enter amount (Rs.)
+              </Label>
+              <Input
+                id="wdAmount"
+                className="mt-1 text-lg font-semibold"
+                placeholder={`Min Rs.${MIN_WITHDRAWAL}`}
+                value={withdrawAmount}
+                inputMode="numeric"
+                onChange={(e) => setWithdrawAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                disabled={submitting}
+              />
+            </div>
+
+            {/* Payout method tabs */}
+            <div>
+              <Label className="text-sm font-semibold">Payout method</Label>
+              <Tabs
+                value={payoutMethod}
+                onValueChange={(v) => setPayoutMethod(v as 'upi' | 'bank')}
+                className="mt-2"
+              >
+                <TabsList className="grid grid-cols-2 w-full">
+                  <TabsTrigger value="upi" className="flex items-center gap-2">
+                    <Smartphone className="h-4 w-4" /> UPI
+                  </TabsTrigger>
+                  <TabsTrigger value="bank" className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" /> Bank Account
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="upi" className="pt-3">
+                  <Label htmlFor="upiId" className="text-sm font-semibold">
+                    UPI ID
+                  </Label>
+                  <Input
+                    id="upiId"
+                    className="mt-1"
+                    placeholder="name@bank"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    disabled={submitting}
+                    autoComplete="off"
+                  />
+                </TabsContent>
+
+                <TabsContent value="bank" className="pt-3 space-y-3">
+                  <div>
+                    <Label htmlFor="bankAcc" className="text-sm font-semibold">
+                      Account number
+                    </Label>
+                    <Input
+                      id="bankAcc"
+                      className="mt-1"
+                      placeholder="e.g. 1234567890"
+                      value={bankAccount}
+                      inputMode="numeric"
+                      onChange={(e) => setBankAccount(e.target.value.replace(/[^0-9]/g, ''))}
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bankIfsc" className="text-sm font-semibold">
+                      IFSC code
+                    </Label>
+                    <Input
+                      id="bankIfsc"
+                      className="mt-1 uppercase"
+                      placeholder="e.g. SBIN0001234"
+                      value={bankIfsc}
+                      onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bankHolder" className="text-sm font-semibold">
+                      Account holder name
+                    </Label>
+                    <Input
+                      id="bankHolder"
+                      className="mt-1"
+                      placeholder="As per bank records"
+                      value={bankHolder}
+                      onChange={(e) => setBankHolder(e.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bankName" className="text-sm font-semibold">
+                      Bank name <span className="text-xs text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input
+                      id="bankName"
+                      className="mt-1"
+                      placeholder="e.g. State Bank of India"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* Info strip */}
+            <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
+              <Info className="h-4 w-4 shrink-0 mt-0.5" />
+              <p>
+                Withdrawals are reviewed by admin and usually processed within 24–48 hours.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!submitting) {
+                  setShowWithdraw(false)
+                  resetWithdrawForm()
+                }
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#1B3B6F] hover:bg-[#234981] text-white"
+              onClick={submitWithdraw}
+              disabled={submitting}
+            >
+              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </UserLayout>
   )
 }

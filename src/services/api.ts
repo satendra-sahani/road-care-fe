@@ -425,6 +425,19 @@ export const userWalletAPI = {
   getWallet: () => api.get('/user/wallet'),
   getTransactions: (params?: { page?: number; limit?: number; type?: string; category?: string }) =>
     api.get('/user/wallet/transactions', { params }),
+  requestWithdrawal: (payload: {
+    amount: number;
+    method: 'upi' | 'bank';
+    upiId?: string;
+    bankDetails?: {
+      accountNumber: string;
+      ifscCode: string;
+      accountHolderName: string;
+      bankName?: string;
+    };
+  }) => api.post('/user/wallet/withdraw', payload),
+  getWithdrawals: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get('/user/wallet/withdrawals', { params }),
 };
 
 // ─── User Notification APIs (Customer-facing) ───────────────────────
@@ -483,6 +496,9 @@ export const adminShopAPI = {
   getById: (id: string) => api.get(`/admin/shops/${id}`),
   create: (data: { ownerData: any; shopData: any }) => api.post('/admin/shops', data),
   verify: (id: string) => api.put(`/admin/shops/${id}/verify`),
+  rejectKyc: (id: string, reason: string) =>
+    api.put(`/admin/shops/${id}/reject-kyc`, { reason }),
+  updateKyc: (id: string, data: any) => api.put(`/admin/shops/${id}/kyc`, data),
   toggleStatus: (id: string) => api.put(`/admin/shops/${id}/toggle-status`),
   updateCommission: (id: string, commissionRate: number) =>
     api.put(`/admin/shops/${id}/commission`, { commissionRate }),
@@ -584,6 +600,48 @@ export const mechanicLocationAPI = {
 export const deliveryLocationAPI = {
   get: (orderId: string) =>
     api.get(`/user/orders/${orderId}/delivery-location`),
+};
+
+// ─── Growth: Spin & Win (Admin) ────────────────────────────────────
+export const spinConfigAPI = {
+  list: () => api.get('/admin/spin/configs'),
+  getActive: () => api.get('/admin/spin/active'),
+  create: (data: any) => api.post('/admin/spin/configs', data),
+  update: (id: string, data: any) => api.put(`/admin/spin/configs/${id}`, data),
+  activate: (id: string) => api.post(`/admin/spin/configs/${id}/activate`),
+  delete: (id: string) => api.delete(`/admin/spin/configs/${id}`),
+  analytics: (days?: number) => api.get('/admin/spin/analytics', { params: { days } }),
+  // Bonus spin grants
+  searchUsers: (search: string) =>
+    api.get('/admin/spin/users/search', { params: { search } }),
+  grantSpins: (userId: string, spins: number, reason?: string) =>
+    api.post('/admin/spin/grant', { userId, spins, reason }),
+  listGrants: (params?: any) => api.get('/admin/spin/grants', { params }),
+  // Per-user spin-outcome restriction (influencer/demo rigging)
+  setRestriction: (payload: {
+    userId: string;
+    enabled: boolean;
+    isInfluencer?: boolean;
+    reason?: string;
+  }) => api.post('/admin/spin/restriction', payload),
+  listRestrictions: (params?: any) =>
+    api.get('/admin/spin/restrictions', { params }),
+};
+
+// ─── Growth: Referrals (Admin) ────────────────────────────────────
+export const referralAdminAPI = {
+  list: (params?: any) => api.get('/admin/referrals', { params }),
+  analytics: (days?: number) => api.get('/admin/referrals/analytics', { params: { days } }),
+  reject: (id: string, reason?: string) => api.post(`/admin/referrals/${id}/reject`, { reason }),
+};
+
+// ─── Growth: User Rewards Wallet (Admin) ──────────────────────────
+export const rewardsWalletAPI = {
+  transactions: (params?: any) => api.get('/admin/wallet/transactions', { params }),
+  getByUser: (userId: string) => api.get(`/admin/wallet/${userId}`),
+  adjust: (userId: string, amount: number, description?: string) =>
+    api.post(`/admin/wallet/${userId}/adjust`, { amount, description }),
+  statsOverview: () => api.get('/admin/wallet/stats/overview'),
 };
 
 export default api;
