@@ -174,30 +174,33 @@ export default function HomePage() {
       <div className="bg-[#F5F7FA] min-h-screen">
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 1 — Hero Banner Carousel (admin banners only)
+            SECTION 1 — Enhanced Hero Banner Carousel (admin banners only)
            ══════════════════════════════════════════════════════════════ */}
         {bannerSlides.length > 0 && (
-          <section className="px-4 md:px-6 lg:px-8 pt-4 md:pt-6">
+          <section className="px-3 md:px-6 lg:px-8 pt-3 md:pt-5 lg:pt-6">
             <div className="max-w-7xl mx-auto relative">
               <div
                 ref={bannerRef}
-                className="overflow-hidden rounded-2xl shadow-sm md:shadow-md"
+                className="overflow-hidden rounded-3xl shadow-lg md:shadow-xl md:hover:shadow-2xl transition-shadow duration-300"
               >
+                {/* Banner Image with Gradient Overlay */}
                 <div
                   className="flex transition-transform duration-700 ease-out"
                   style={{ transform: `translateX(-${currentBanner * 100}%)` }}
                 >
                   {bannerSlides.map((slide, idx) => {
                     const content = (
-                      <div className="w-full shrink-0 relative">
+                      <div className="w-full shrink-0 relative group">
                         <img
                           src={slide.imageUrl}
                           alt={slide.title || `Promo banner ${idx + 1}`}
-                          className="w-full h-[180px] sm:h-[220px] md:h-[320px] lg:h-[400px] xl:h-[460px] object-cover"
+                          className="w-full h-[200px] sm:h-[240px] md:h-[340px] lg:h-[420px] xl:h-[500px] object-cover transition-transform duration-700 group-hover:scale-105"
                           onError={(e) => {
                             e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" fill="%23e5e7eb"/>'
                           }}
                         />
+                        {/* Gradient overlay for better text readability */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                       </div>
                     )
                     return slide.link ? (
@@ -216,29 +219,31 @@ export default function HomePage() {
                 <>
                   <button
                     onClick={() => setCurrentBanner(prev => prev === 0 ? bannerSlides.length - 1 : prev - 1)}
-                    className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-white/90 shadow-lg items-center justify-center hover:bg-white hover:scale-105 transition-all z-10"
+                    className="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/95 backdrop-blur-sm shadow-xl items-center justify-center hover:bg-white hover:scale-110 transition-all z-10 group"
                   >
-                    <ChevronLeft className="h-5 w-5 lg:h-6 lg:w-6 text-[#1A1D29]" />
+                    <ChevronLeft className="h-6 w-6 text-[#1B3B6F] group-hover:scale-125 transition-transform" />
                   </button>
                   <button
                     onClick={() => setCurrentBanner(prev => (prev + 1) % bannerSlides.length)}
-                    className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 h-11 w-11 lg:h-12 lg:w-12 rounded-full bg-white/90 shadow-lg items-center justify-center hover:bg-white hover:scale-105 transition-all z-10"
+                    className="hidden lg:flex absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/95 backdrop-blur-sm shadow-xl items-center justify-center hover:bg-white hover:scale-110 transition-all z-10 group"
                   >
-                    <ChevronRight className="h-5 w-5 lg:h-6 lg:w-6 text-[#1A1D29]" />
+                    <ChevronRight className="h-6 w-6 text-[#1B3B6F] group-hover:scale-125 transition-transform" />
                   </button>
                 </>
               )}
 
-              {/* Pagination dots */}
+              {/* Pagination dots with improved indicators */}
               {bannerSlides.length > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-3 md:mt-4">
+                <div className="flex items-center justify-center gap-2 mt-3 md:mt-4 lg:mt-5">
                   {bannerSlides.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentBanner(idx)}
                       aria-label={`Go to slide ${idx + 1}`}
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        idx === currentBanner ? 'w-8 bg-[#1B3B6F]' : 'w-2 bg-gray-300 hover:bg-gray-400'
+                      className={`transition-all duration-300 rounded-full ${
+                        idx === currentBanner 
+                          ? 'w-10 h-3 bg-[#1B3B6F] shadow-md' 
+                          : 'w-3 h-3 bg-gray-300 hover:bg-gray-400'
                       }`}
                     />
                   ))}
@@ -249,12 +254,12 @@ export default function HomePage() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 2 — 4 Quick Action Circles
+            SECTION 2 — Enhanced Quick Action Cards
             (Book Service / Buy Parts / Bikes Service / Emergency)
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-4 md:px-6 lg:px-8 mt-3 md:mt-5">
+        <section className="px-3 md:px-6 lg:px-8 mt-4 md:mt-6 lg:mt-8">
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-sm py-4 px-2 md:py-6 md:px-4 lg:py-7 lg:px-6 grid grid-cols-4 gap-1 md:gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 lg:gap-4">
               <QuickAction
                 icon={Wrench}
                 iconColor="#1B3B6F"
@@ -275,8 +280,8 @@ export default function HomePage() {
                 icon={Bike}
                 iconColor="#B45309"
                 bg="#FED7AA"
-                title="Bikes Service"
-                sub="Two Wheeler"
+                title="Two Wheelers"
+                sub="Bike Parts"
                 onClick={goToBikesService}
               />
               <QuickAction
@@ -292,24 +297,49 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 3 — Popular Categories (horizontal scroll)
+            SECTION 3 — Enhanced Popular Categories
            ══════════════════════════════════════════════════════════════ */}
         {!loading && (subCategories.length > 0 || categories.length > 0) && (
-          <section className="mt-5 md:mt-8">
-            <div className="px-4 md:px-6 lg:px-8 mb-3 md:mb-4">
-              <div className="max-w-7xl mx-auto flex items-center justify-between">
-                <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold text-[#1A1D29] tracking-tight">Popular Categories</h2>
-                <Link href="/shop" className="flex items-center gap-0.5 text-[#1B3B6F] font-semibold text-sm md:text-base hover:underline">
+          <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-8 lg:mt-10">
+            <div className="max-w-7xl mx-auto mb-4 md:mb-5 lg:mb-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg md:text-2xl lg:text-3xl font-bold text-[#1A1D29] tracking-tight">Popular Categories</h2>
+                <Link href="/shop" className="flex items-center gap-0.5 text-[#1B3B6F] font-semibold text-sm md:text-base hover:text-[#0F2545] transition-colors">
                   View all
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
                 </Link>
               </div>
             </div>
 
-            {/* Mobile: horizontal scroll */}
+            {/* Mobile: 2x3 grid */}
             <div className="md:hidden">
+              <div className="grid grid-cols-3 gap-2">
+                {(subCategories.length > 0 ? subCategories : categories).slice(0, 6).map((cat: any) => {
+                  const img = cat.icon?.startsWith?.('http') ? cat.icon : (cat.image?.url || (typeof cat.image === 'string' ? cat.image : null))
+                  return (
+                    <Link
+                      key={cat._id || cat.id}
+                      href={`/shop?category=${cat._id || cat.id}`}
+                      className="bg-white rounded-2xl p-2.5 flex flex-col items-center border border-[#EEF0F3] shadow-sm hover:shadow-md hover:border-[#1B3B6F] transition-all active:scale-95"
+                    >
+                      <div className="h-[60px] w-full flex items-center justify-center mb-2">
+                        {img ? (
+                          <img src={img} alt={cat.name} className="h-[60px] w-[60px] object-contain" />
+                        ) : (
+                          <Package className="h-8 w-8 text-[#1B3B6F]" />
+                        )}
+                      </div>
+                      <p className="text-[11px] font-semibold text-[#1A1D29] text-center line-clamp-2">{cat.name}</p>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Tablet: horizontal scroll */}
+            <div className="hidden md:block lg:hidden">
               <div
-                className="flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-2"
+                className="flex gap-3 overflow-x-auto scrollbar-hide pb-1"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {(subCategories.length > 0 ? subCategories : categories).slice(0, 10).map((cat: any) => {
@@ -318,92 +348,112 @@ export default function HomePage() {
                     <Link
                       key={cat._id || cat.id}
                       href={`/shop?category=${cat._id || cat.id}`}
-                      className="shrink-0 w-[110px] bg-white rounded-xl p-3 flex flex-col items-center border border-[#EEF0F3]"
+                      className="shrink-0 w-[140px] bg-white rounded-2xl p-3 flex flex-col items-center border border-[#EEF0F3] shadow-sm hover:shadow-md hover:border-[#1B3B6F] transition-all"
                     >
-                      <div className="h-[76px] w-full flex items-center justify-center mb-2.5">
+                      <div className="h-20 w-full flex items-center justify-center mb-2.5">
                         {img ? (
-                          <img src={img} alt={cat.name} className="h-[76px] w-20 object-contain" />
+                          <img src={img} alt={cat.name} className="h-20 w-20 object-contain" />
                         ) : (
                           <Package className="h-10 w-10 text-[#1B3B6F]" />
                         )}
                       </div>
-                      <p className="text-[13px] font-semibold text-[#1A1D29] text-center truncate w-full">{cat.name}</p>
+                      <p className="text-xs font-semibold text-[#1A1D29] text-center truncate w-full">{cat.name}</p>
                     </Link>
                   )
                 })}
               </div>
             </div>
 
-            {/* Desktop: horizontal scroll with grid feel */}
-            <div className="hidden md:block px-6 lg:px-8">
-              <div className="max-w-7xl mx-auto">
-                <div
-                  className="flex gap-4 lg:gap-5 overflow-x-auto scrollbar-hide pb-2"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                  {(subCategories.length > 0 ? subCategories : categories).slice(0, 12).map((cat: any) => {
-                    const img = cat.icon?.startsWith?.('http') ? cat.icon : (cat.image?.url || (typeof cat.image === 'string' ? cat.image : null))
-                    return (
-                      <Link
-                        key={cat._id || cat.id}
-                        href={`/shop?category=${cat._id || cat.id}`}
-                        className="shrink-0 w-[160px] lg:w-[180px] bg-white rounded-2xl p-4 lg:p-5 flex flex-col items-center border border-[#EEF0F3] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
-                      >
-                        <div className="h-24 w-full flex items-center justify-center mb-3">
-                          {img ? (
-                            <img src={img} alt={cat.name} className="h-24 w-24 object-contain" />
-                          ) : (
-                            <Package className="h-14 w-14 text-[#1B3B6F]" />
-                          )}
-                        </div>
-                        <p className="text-sm lg:text-base font-semibold text-[#1A1D29] text-center truncate w-full">{cat.name}</p>
-                      </Link>
-                    )
-                  })}
-                </div>
+            {/* Desktop: larger cards in grid */}
+            <div className="hidden lg:block">
+              <div className="grid grid-cols-6 gap-4">
+                {(subCategories.length > 0 ? subCategories : categories).slice(0, 12).map((cat: any) => {
+                  const img = cat.icon?.startsWith?.('http') ? cat.icon : (cat.image?.url || (typeof cat.image === 'string' ? cat.image : null))
+                  return (
+                    <Link
+                      key={cat._id || cat.id}
+                      href={`/shop?category=${cat._id || cat.id}`}
+                      className="bg-white rounded-2xl p-4 flex flex-col items-center border border-[#EEF0F3] shadow-sm hover:shadow-lg hover:border-[#1B3B6F] hover:-translate-y-1 transition-all duration-300"
+                    >
+                      <div className="h-28 w-full flex items-center justify-center mb-3">
+                        {img ? (
+                          <img src={img} alt={cat.name} className="h-28 w-28 object-contain" />
+                        ) : (
+                          <Package className="h-16 w-16 text-[#1B3B6F]" />
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-[#1A1D29] text-center line-clamp-2">{cat.name}</p>
+                    </Link>
+                  )
+                })}
               </div>
             </div>
           </section>
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 4 — AI Voice Booking card
+            SECTION 4 — Enhanced AI Voice Booking
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-4 md:px-6 lg:px-8 mt-5 md:mt-8">
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-8 lg:mt-10">
           <div className="max-w-7xl mx-auto">
             <Link
               href="/ai-booking"
-              className="flex items-center gap-3 bg-[#EFF6FF] border border-[#DBEAFE] rounded-2xl py-3.5 px-4 md:py-5 md:px-6 lg:py-6 lg:px-8 hover:shadow-md transition-all"
+              className="flex items-center gap-3 bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] border border-[#93C5FD] rounded-3xl py-4 px-3.5 md:py-6 md:px-6 lg:py-7 lg:px-8 hover:shadow-xl hover:border-[#60A5FA] transition-all duration-300 group"
             >
-              <div className="h-[42px] w-[42px] md:h-14 md:w-14 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                <Mic className="h-[22px] w-[22px] md:h-7 md:w-7 text-[#1B3B6F]" />
+              <div className="h-[48px] w-[48px] md:h-16 md:w-16 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                <Mic className="h-6 w-6 md:h-8 md:w-8 text-[#1B3B6F] group-hover:scale-125 transition-transform" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] md:text-lg lg:text-xl font-bold text-[#1A1D29] mb-0.5">Try AI Voice Booking</p>
-                <p className="text-xs md:text-sm text-[#1B3B6F] font-medium">Baat karein, booking ho jayegi!</p>
+                <p className="text-xs md:text-sm text-[#0F2545] font-semibold">Baat karein, booking ho jayegi!</p>
               </div>
-              <div className="flex items-center gap-0.5 bg-white px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shrink-0">
-                <span className="text-[13px] md:text-sm font-bold text-[#1B3B6F]">Try Now</span>
-                <ChevronRight className="h-4 w-4 text-[#1B3B6F]" />
+              <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3.5 py-2 md:px-5 md:py-2.5 rounded-full shrink-0 shadow-md group-hover:bg-white group-hover:shadow-lg transition-all">
+                <span className="text-[13px] md:text-sm font-bold text-[#1B3B6F]">Try</span>
+                <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-[#1B3B6F] group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
           </div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 5 — How it works (4 steps)
+            SECTION 5 — Enhanced How It Works
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-4 md:px-6 lg:px-8 mt-4 md:mt-6">
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-8 lg:mt-10">
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-sm py-4 px-3 md:py-7 md:px-6 lg:py-8 lg:px-10">
-              <h3 className="text-[15px] md:text-xl lg:text-2xl font-bold text-[#1A1D29] ml-1 mb-3.5 md:mb-6">How it works</h3>
-              <div className="flex items-start justify-between">
+            <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-3xl shadow-lg py-5 px-3.5 md:py-8 md:px-6 lg:py-10 lg:px-10 border border-blue-100/50">
+              <h3 className="text-[16px] md:text-2xl lg:text-3xl font-bold text-[#1A1D29] mb-5 md:mb-8 lg:mb-10">How it works</h3>
+              
+              {/* Mobile: Vertical Timeline */}
+              <div className="md:hidden space-y-4">
+                <HowStepMobile num="1" icon={List} title="Choose Service or Parts" />
+                <div className="flex justify-center">
+                  <div className="w-1 h-6 bg-gradient-to-b from-[#1B3B6F] to-[#93C5FD]" />
+                </div>
+                <HowStepMobile num="2" icon={Calendar} title="Select Date & Time" />
+                <div className="flex justify-center">
+                  <div className="w-1 h-6 bg-gradient-to-b from-[#1B3B6F] to-[#93C5FD]" />
+                </div>
+                <HowStepMobile num="3" icon={ShieldCheck} title="Confirm & Relax" />
+                <div className="flex justify-center">
+                  <div className="w-1 h-6 bg-gradient-to-b from-[#1B3B6F] to-[#93C5FD]" />
+                </div>
+                <HowStepMobile num="4" icon={HomeIcon} title="We Come to You" />
+              </div>
+
+              {/* Desktop: Horizontal Flow */}
+              <div className="hidden md:flex items-start justify-between gap-2 lg:gap-3">
                 <HowStep num="1" icon={List} title={"Choose\nService/Parts"} />
-                <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-gray-400 mt-3 md:mt-5 shrink-0" />
+                <div className="flex-1 flex items-center justify-center mt-6 lg:mt-8">
+                  <div className="h-1 w-full bg-gradient-to-r from-[#1B3B6F] to-transparent" />
+                </div>
                 <HowStep num="2" icon={Calendar} title={"Select Date\n& Time"} />
-                <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-gray-400 mt-3 md:mt-5 shrink-0" />
+                <div className="flex-1 flex items-center justify-center mt-6 lg:mt-8">
+                  <div className="h-1 w-full bg-gradient-to-r from-[#1B3B6F] to-transparent" />
+                </div>
                 <HowStep num="3" icon={ShieldCheck} title={"Confirm\n& Relax"} />
-                <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-gray-400 mt-3 md:mt-5 shrink-0" />
+                <div className="flex-1 flex items-center justify-center mt-6 lg:mt-8">
+                  <div className="h-1 w-full bg-gradient-to-r from-[#1B3B6F] to-transparent" />
+                </div>
                 <HowStep num="4" icon={HomeIcon} title={"We come to\nyou"} />
               </div>
             </div>
@@ -411,22 +461,20 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 6 — Trust Badges (3 items)
+            SECTION 6 — Enhanced Trust Badges
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-4 md:px-6 lg:px-8 mt-3 md:mt-5">
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-8 lg:mt-10">
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-sm py-3.5 px-3 md:py-6 md:px-6 lg:py-8 lg:px-10 flex items-center">
-              <TrustItem icon={ShieldCheck} title="Genuine Parts" subtitle="100% Original" />
-              <div className="w-px bg-gray-200 self-stretch my-1" />
-              <TrustItem icon={Award} title="Best Price" subtitle="Guaranteed" />
-              <div className="w-px bg-gray-200 self-stretch my-1" />
-              <TrustItem icon={Clock} title="On-time Service" subtitle="At your doorstep" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
+              <TrustItemCard icon={ShieldCheck} title="Genuine Parts" subtitle="100% Original & Verified" />
+              <TrustItemCard icon={Award} title="Best Price" subtitle="Price Match Guaranteed" />
+              <TrustItemCard icon={Clock} title="On-time Service" subtitle="Fast Delivery Guaranteed" />
             </div>
           </div>
         </section>
 
-        {/* Bottom spacer */}
-        <div className="h-8 md:h-12" />
+        {/* Bottom spacer for mobile nav and padding */}
+        <div className="h-12 md:h-16 lg:h-20" />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
@@ -580,27 +628,34 @@ function QuickAction({
   onClick?: () => void
 }) {
   const content = (
-    <div className="flex flex-col items-center text-center px-1">
+    <div className="flex flex-col items-center text-center px-1 w-full h-full justify-center">
       <div
-        className="h-14 w-14 md:h-16 md:w-16 lg:h-[72px] lg:w-[72px] rounded-full flex items-center justify-center mb-2 md:mb-2.5"
+        className="h-12 w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 rounded-2xl flex items-center justify-center mb-2 md:mb-2.5 shadow-sm transition-all duration-300"
         style={{ backgroundColor: bg }}
       >
-        <Icon className="h-7 w-7 md:h-8 md:w-8 lg:h-9 lg:w-9" style={{ color: iconColor }} />
+        <Icon className="h-6 w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 transition-transform" style={{ color: iconColor }} />
       </div>
-      <p className="text-[13px] md:text-sm lg:text-base font-bold text-[#1A1D29] leading-tight line-clamp-2">{title}</p>
-      <p className="text-[11px] md:text-xs text-gray-500 mt-0.5 truncate w-full">{sub}</p>
+      <p className="text-[12px] md:text-sm lg:text-base font-bold text-[#1A1D29] leading-tight line-clamp-2">{title}</p>
+      <p className="text-[10px] md:text-xs text-gray-500 mt-0.5 line-clamp-1">{sub}</p>
     </div>
   )
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="flex flex-col items-center hover:opacity-80 transition-opacity">
+      <button 
+        type="button" 
+        onClick={onClick} 
+        className="bg-white rounded-2xl md:rounded-3xl shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 p-3 md:p-4 active:scale-95 group"
+      >
         {content}
       </button>
     )
   }
   return (
-    <Link href={href || '#'} className="flex flex-col items-center hover:opacity-80 transition-opacity">
+    <Link 
+      href={href || '#'} 
+      className="bg-white rounded-2xl md:rounded-3xl shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 p-3 md:p-4 active:scale-95 group flex"
+    >
       {content}
     </Link>
   )
@@ -609,25 +664,48 @@ function QuickAction({
 function HowStep({ num, icon: Icon, title }: { num: string; icon: any; title: string }) {
   return (
     <div className="flex-1 flex flex-col items-center px-0.5">
-      <div className="h-[42px] w-[42px] md:h-14 md:w-14 lg:h-16 lg:w-16 rounded-full bg-[#EFF6FF] flex items-center justify-center mb-2">
-        <Icon className="h-[22px] w-[22px] md:h-6 md:w-6 lg:h-7 lg:w-7 text-[#1B3B6F]" />
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1B3B6F]/20 to-[#93C5FD]/20 rounded-full blur-lg" />
+        <div className="relative h-[48px] w-[48px] md:h-16 md:w-16 lg:h-20 lg:w-20 rounded-full bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] flex items-center justify-center mb-3 border border-[#93C5FD] shadow-lg">
+          <Icon className="h-6 w-6 md:h-8 md:w-8 lg:h-10 lg:w-10 text-[#1B3B6F]" />
+        </div>
       </div>
-      <p className="text-[11px] md:text-[13px] lg:text-sm text-center text-gray-600 font-medium leading-[14px] md:leading-4 whitespace-pre-line">
-        <span className="font-bold text-[#1A1D29]">{num}. </span>
+      <div className="bg-[#1B3B6F] text-white rounded-full w-6 h-6 md:w-7 md:h-7 flex items-center justify-center text-xs md:text-sm font-bold -mt-2 md:-mt-3 relative z-10 shadow-md">
+        {num}
+      </div>
+      <p className="text-[11px] md:text-[13px] lg:text-sm text-center text-gray-600 font-medium leading-[14px] md:leading-5 whitespace-pre-line mt-2">
         {title}
       </p>
     </div>
   )
 }
 
-function TrustItem({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
+function HowStepMobile({ num, icon: Icon, title }: { num: string; icon: any; title: string }) {
   return (
-    <div className="flex-1 flex items-center px-1 md:px-3">
-      <Icon className="h-6 w-6 md:h-8 md:w-8 lg:h-9 lg:w-9 text-[#1B3B6F] shrink-0" />
-      <div className="ml-2 md:ml-3 min-w-0">
-        <p className="text-xs md:text-sm lg:text-base font-bold text-[#1A1D29] truncate">{title}</p>
-        <p className="text-[10px] md:text-xs lg:text-sm text-gray-500 truncate">{subtitle}</p>
+    <div className="flex items-start gap-4">
+      <div className="relative">
+        <div className="h-[48px] w-[48px] rounded-full bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] flex items-center justify-center border border-[#93C5FD] shadow-lg shrink-0 relative z-10">
+          <Icon className="h-6 w-6 text-[#1B3B6F]" />
+        </div>
+        <div className="absolute -top-2 -left-2 bg-[#1B3B6F] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md">
+          {num}
+        </div>
       </div>
+      <div className="pt-2">
+        <p className="text-sm font-medium text-[#1A1D29]">{title}</p>
+      </div>
+    </div>
+  )
+}
+
+function TrustItemCard({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
+  return (
+    <div className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 border border-gray-100 shadow-sm hover:shadow-md hover:border-[#1B3B6F] transition-all duration-300 flex flex-col items-center text-center md:text-left md:items-start group">
+      <div className="h-14 w-14 md:h-16 md:w-16 bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+        <Icon className="h-7 w-7 md:h-8 md:w-8 text-[#1B3B6F]" />
+      </div>
+      <p className="text-sm md:text-base lg:text-lg font-bold text-[#1A1D29] mb-1">{title}</p>
+      <p className="text-xs md:text-sm text-gray-500">{subtitle}</p>
     </div>
   )
 }
