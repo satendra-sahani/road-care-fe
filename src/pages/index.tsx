@@ -174,33 +174,31 @@ export default function HomePage() {
       <div className="bg-[#F5F7FA] min-h-screen">
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 1 — Enhanced Hero Banner Carousel (admin banners only)
+            SECTION 1 — Professional Hero Banner (Compact)
            ══════════════════════════════════════════════════════════════ */}
         {bannerSlides.length > 0 && (
-          <section className="px-3 md:px-6 lg:px-8 pt-3 md:pt-5 lg:pt-6">
-            <div className="max-w-7xl mx-auto relative">
+          <section className="px-3 md:px-6 lg:px-8 pt-2.5 md:pt-3 lg:pt-4">
+            <div className="max-w-6xl mx-auto relative">
               <div
                 ref={bannerRef}
-                className="overflow-hidden rounded-3xl shadow-lg md:shadow-xl md:hover:shadow-2xl transition-shadow duration-300"
+                className="overflow-hidden rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300"
               >
-                {/* Banner Image with Gradient Overlay */}
                 <div
                   className="flex transition-transform duration-700 ease-out"
                   style={{ transform: `translateX(-${currentBanner * 100}%)` }}
                 >
                   {bannerSlides.map((slide, idx) => {
                     const content = (
-                      <div className="w-full shrink-0 relative group">
+                      <div className="w-full shrink-0 relative">
                         <img
                           src={slide.imageUrl}
                           alt={slide.title || `Promo banner ${idx + 1}`}
-                          className="w-full h-[200px] sm:h-[240px] md:h-[340px] lg:h-[420px] xl:h-[500px] object-cover transition-transform duration-700 group-hover:scale-105"
+                          className="w-full h-[140px] sm:h-[180px] md:h-[240px] lg:h-[300px] object-cover"
                           onError={(e) => {
-                            e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" fill="%23e5e7eb"/>'
+                            e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300" fill="%23e5e7eb"/>'
                           }}
                         />
-                        {/* Gradient overlay for better text readability */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
                       </div>
                     )
                     return slide.link ? (
@@ -214,27 +212,27 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Navigation arrows (desktop) */}
+              {/* Navigation arrows */}
               {bannerSlides.length > 1 && (
                 <>
                   <button
                     onClick={() => setCurrentBanner(prev => prev === 0 ? bannerSlides.length - 1 : prev - 1)}
-                    className="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/95 backdrop-blur-sm shadow-xl items-center justify-center hover:bg-white hover:scale-110 transition-all z-10 group"
+                    className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/90 shadow-md items-center justify-center hover:bg-white transition-all z-10"
                   >
-                    <ChevronLeft className="h-6 w-6 text-[#1B3B6F] group-hover:scale-125 transition-transform" />
+                    <ChevronLeft className="h-5 w-5 text-[#1B3B6F]" />
                   </button>
                   <button
                     onClick={() => setCurrentBanner(prev => (prev + 1) % bannerSlides.length)}
-                    className="hidden lg:flex absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/95 backdrop-blur-sm shadow-xl items-center justify-center hover:bg-white hover:scale-110 transition-all z-10 group"
+                    className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white/90 shadow-md items-center justify-center hover:bg-white transition-all z-10"
                   >
-                    <ChevronRight className="h-6 w-6 text-[#1B3B6F] group-hover:scale-125 transition-transform" />
+                    <ChevronRight className="h-5 w-5 text-[#1B3B6F]" />
                   </button>
                 </>
               )}
 
-              {/* Pagination dots with improved indicators */}
+              {/* Pagination dots */}
               {bannerSlides.length > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-3 md:mt-4 lg:mt-5">
+                <div className="flex items-center justify-center gap-1.5 mt-2 md:mt-2.5">
                   {bannerSlides.map((_, idx) => (
                     <button
                       key={idx}
@@ -242,8 +240,8 @@ export default function HomePage() {
                       aria-label={`Go to slide ${idx + 1}`}
                       className={`transition-all duration-300 rounded-full ${
                         idx === currentBanner 
-                          ? 'w-10 h-3 bg-[#1B3B6F] shadow-md' 
-                          : 'w-3 h-3 bg-gray-300 hover:bg-gray-400'
+                          ? 'w-6 h-2 bg-[#1B3B6F]' 
+                          : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
                       }`}
                     />
                   ))}
@@ -254,42 +252,41 @@ export default function HomePage() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 2 — Enhanced Quick Action Cards
-            (Book Service / Buy Parts / Bikes Service / Emergency)
+            SECTION 2 — Professional Quick Actions (Compact)
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-4 md:mt-6 lg:mt-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 lg:gap-4">
+        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
               <QuickAction
                 icon={Wrench}
                 iconColor="#1B3B6F"
-                bg="#DBEAFE"
+                bg="#EFF6FF"
                 title="Book Service"
-                sub="At your doorstep"
+                sub="Doorstep service"
                 href="/service"
               />
               <QuickAction
                 icon={ShoppingBag}
                 iconColor="#059669"
-                bg="#D1FAE5"
+                bg="#F0FDF4"
                 title="Buy Parts"
-                sub="Genuine Parts"
+                sub="Genuine parts"
                 href="/shop"
               />
               <QuickAction
                 icon={Bike}
                 iconColor="#B45309"
-                bg="#FED7AA"
+                bg="#FFFBEB"
                 title="Two Wheelers"
-                sub="Bike Parts"
+                sub="Bike services"
                 onClick={goToBikesService}
               />
               <QuickAction
                 icon={Headphones}
                 iconColor="#BE185D"
-                bg="#FCE7F3"
+                bg="#FDF2F8"
                 title="Emergency"
-                sub="24/7 Support"
+                sub="24/7 support"
                 href="/emergency"
               />
             </div>
@@ -297,21 +294,21 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 3 — Enhanced Popular Categories
+            SECTION 3 — Professional Categories
            ══════════════════════════════════════════════════════════════ */}
         {!loading && (subCategories.length > 0 || categories.length > 0) && (
-          <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-8 lg:mt-10">
-            <div className="max-w-7xl mx-auto mb-4 md:mb-5 lg:mb-6">
+          <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4 lg:mt-5">
+            <div className="max-w-6xl mx-auto mb-2.5 md:mb-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg md:text-2xl lg:text-3xl font-bold text-[#1A1D29] tracking-tight">Popular Categories</h2>
-                <Link href="/shop" className="flex items-center gap-0.5 text-[#1B3B6F] font-semibold text-sm md:text-base hover:text-[#0F2545] transition-colors">
+                <h3 className="text-sm md:text-base lg:text-lg font-bold text-[#1A1D29]">Popular Categories</h3>
+                <Link href="/shop" className="flex items-center gap-0.5 text-[#1B3B6F] font-medium text-xs md:text-sm hover:underline">
                   View all
-                  <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
+                  <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 </Link>
               </div>
             </div>
 
-            {/* Mobile: 2x3 grid */}
+            {/* Mobile: 3 columns */}
             <div className="md:hidden">
               <div className="grid grid-cols-3 gap-2">
                 {(subCategories.length > 0 ? subCategories : categories).slice(0, 6).map((cat: any) => {
@@ -320,161 +317,127 @@ export default function HomePage() {
                     <Link
                       key={cat._id || cat.id}
                       href={`/shop?category=${cat._id || cat.id}`}
-                      className="bg-white rounded-2xl p-2.5 flex flex-col items-center border border-[#EEF0F3] shadow-sm hover:shadow-md hover:border-[#1B3B6F] transition-all active:scale-95"
+                      className="bg-white rounded-lg p-2 flex flex-col items-center border border-gray-200 shadow-xs hover:shadow-sm transition-shadow"
                     >
-                      <div className="h-[60px] w-full flex items-center justify-center mb-2">
+                      <div className="h-[50px] w-full flex items-center justify-center mb-1.5">
                         {img ? (
-                          <img src={img} alt={cat.name} className="h-[60px] w-[60px] object-contain" />
+                          <img src={img} alt={cat.name} className="h-12 w-12 object-contain" />
                         ) : (
-                          <Package className="h-8 w-8 text-[#1B3B6F]" />
+                          <Package className="h-6 w-6 text-[#1B3B6F]" />
                         )}
                       </div>
-                      <p className="text-[11px] font-semibold text-[#1A1D29] text-center line-clamp-2">{cat.name}</p>
+                      <p className="text-[10px] font-medium text-[#1A1D29] text-center line-clamp-2">{cat.name}</p>
                     </Link>
                   )
                 })}
               </div>
             </div>
 
-            {/* Tablet: horizontal scroll */}
-            <div className="hidden md:block lg:hidden">
-              <div
-                className="flex gap-3 overflow-x-auto scrollbar-hide pb-1"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {(subCategories.length > 0 ? subCategories : categories).slice(0, 10).map((cat: any) => {
-                  const img = cat.icon?.startsWith?.('http') ? cat.icon : (cat.image?.url || (typeof cat.image === 'string' ? cat.image : null))
-                  return (
-                    <Link
-                      key={cat._id || cat.id}
-                      href={`/shop?category=${cat._id || cat.id}`}
-                      className="shrink-0 w-[140px] bg-white rounded-2xl p-3 flex flex-col items-center border border-[#EEF0F3] shadow-sm hover:shadow-md hover:border-[#1B3B6F] transition-all"
-                    >
-                      <div className="h-20 w-full flex items-center justify-center mb-2.5">
-                        {img ? (
-                          <img src={img} alt={cat.name} className="h-20 w-20 object-contain" />
-                        ) : (
-                          <Package className="h-10 w-10 text-[#1B3B6F]" />
-                        )}
-                      </div>
-                      <p className="text-xs font-semibold text-[#1A1D29] text-center truncate w-full">{cat.name}</p>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Desktop: larger cards in grid */}
-            <div className="hidden lg:block">
-              <div className="grid grid-cols-6 gap-4">
-                {(subCategories.length > 0 ? subCategories : categories).slice(0, 12).map((cat: any) => {
-                  const img = cat.icon?.startsWith?.('http') ? cat.icon : (cat.image?.url || (typeof cat.image === 'string' ? cat.image : null))
-                  return (
-                    <Link
-                      key={cat._id || cat.id}
-                      href={`/shop?category=${cat._id || cat.id}`}
-                      className="bg-white rounded-2xl p-4 flex flex-col items-center border border-[#EEF0F3] shadow-sm hover:shadow-lg hover:border-[#1B3B6F] hover:-translate-y-1 transition-all duration-300"
-                    >
-                      <div className="h-28 w-full flex items-center justify-center mb-3">
-                        {img ? (
-                          <img src={img} alt={cat.name} className="h-28 w-28 object-contain" />
-                        ) : (
-                          <Package className="h-16 w-16 text-[#1B3B6F]" />
-                        )}
-                      </div>
-                      <p className="text-sm font-semibold text-[#1A1D29] text-center line-clamp-2">{cat.name}</p>
-                    </Link>
-                  )
-                })}
+            {/* Tablet & Desktop */}
+            <div className="hidden md:block">
+              <div className="overflow-x-auto scrollbar-hide">
+                <div
+                  className="flex gap-2.5 pb-1 min-w-max"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {(subCategories.length > 0 ? subCategories : categories).slice(0, 15).map((cat: any) => {
+                    const img = cat.icon?.startsWith?.('http') ? cat.icon : (cat.image?.url || (typeof cat.image === 'string' ? cat.image : null))
+                    return (
+                      <Link
+                        key={cat._id || cat.id}
+                        href={`/shop?category=${cat._id || cat.id}`}
+                        className="shrink-0 w-[110px] lg:w-[130px] bg-white rounded-lg p-2.5 lg:p-3 flex flex-col items-center border border-gray-200 shadow-xs hover:shadow-sm hover:border-[#1B3B6F] transition-all"
+                      >
+                        <div className="h-[60px] lg:h-[70px] w-full flex items-center justify-center mb-2">
+                          {img ? (
+                            <img src={img} alt={cat.name} className="h-14 lg:h-16 w-14 lg:w-16 object-contain" />
+                          ) : (
+                            <Package className="h-7 w-7 lg:h-8 lg:w-8 text-[#1B3B6F]" />
+                          )}
+                        </div>
+                        <p className="text-[10px] lg:text-xs font-medium text-[#1A1D29] text-center line-clamp-2">{cat.name}</p>
+                      </Link>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </section>
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 4 — Enhanced AI Voice Booking
+            SECTION 4 — Professional AI Voice Booking
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-8 lg:mt-10">
-          <div className="max-w-7xl mx-auto">
+        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+          <div className="max-w-6xl mx-auto">
             <Link
               href="/ai-booking"
-              className="flex items-center gap-3 bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] border border-[#93C5FD] rounded-3xl py-4 px-3.5 md:py-6 md:px-6 lg:py-7 lg:px-8 hover:shadow-xl hover:border-[#60A5FA] transition-all duration-300 group"
+              className="flex items-center gap-2.5 bg-blue-50 border border-blue-200 rounded-lg py-3 px-3 md:py-4 md:px-4 hover:bg-blue-100 hover:border-blue-300 transition-all group"
             >
-              <div className="h-[48px] w-[48px] md:h-16 md:w-16 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
-                <Mic className="h-6 w-6 md:h-8 md:w-8 text-[#1B3B6F] group-hover:scale-125 transition-transform" />
+              <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                <Mic className="h-5 w-5 md:h-6 md:w-6 text-[#1B3B6F]" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[15px] md:text-lg lg:text-xl font-bold text-[#1A1D29] mb-0.5">Try AI Voice Booking</p>
-                <p className="text-xs md:text-sm text-[#0F2545] font-semibold">Baat karein, booking ho jayegi!</p>
+                <p className="text-xs md:text-sm font-semibold text-[#1A1D29]">Try AI Voice Booking</p>
+                <p className="text-[10px] md:text-xs text-gray-600">Baat karein, booking ho jayegi!</p>
               </div>
-              <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3.5 py-2 md:px-5 md:py-2.5 rounded-full shrink-0 shadow-md group-hover:bg-white group-hover:shadow-lg transition-all">
-                <span className="text-[13px] md:text-sm font-bold text-[#1B3B6F]">Try</span>
-                <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-[#1B3B6F] group-hover:translate-x-1 transition-transform" />
-              </div>
+              <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-[#1B3B6F] shrink-0" />
             </Link>
           </div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 5 — Enhanced How It Works
+            SECTION 5 — Professional How It Works
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-8 lg:mt-10">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-3xl shadow-lg py-5 px-3.5 md:py-8 md:px-6 lg:py-10 lg:px-10 border border-blue-100/50">
-              <h3 className="text-[16px] md:text-2xl lg:text-3xl font-bold text-[#1A1D29] mb-5 md:mb-8 lg:mb-10">How it works</h3>
-              
-              {/* Mobile: Vertical Timeline */}
-              <div className="md:hidden space-y-4">
-                <HowStepMobile num="1" icon={List} title="Choose Service or Parts" />
-                <div className="flex justify-center">
-                  <div className="w-1 h-6 bg-gradient-to-b from-[#1B3B6F] to-[#93C5FD]" />
-                </div>
-                <HowStepMobile num="2" icon={Calendar} title="Select Date & Time" />
-                <div className="flex justify-center">
-                  <div className="w-1 h-6 bg-gradient-to-b from-[#1B3B6F] to-[#93C5FD]" />
-                </div>
-                <HowStepMobile num="3" icon={ShieldCheck} title="Confirm & Relax" />
-                <div className="flex justify-center">
-                  <div className="w-1 h-6 bg-gradient-to-b from-[#1B3B6F] to-[#93C5FD]" />
-                </div>
-                <HowStepMobile num="4" icon={HomeIcon} title="We Come to You" />
+        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+          <div className="max-w-6xl mx-auto">
+            <h3 className="text-sm md:text-base lg:text-lg font-bold text-[#1A1D29] mb-3">How it works</h3>
+            
+            {/* Mobile: Vertical Timeline */}
+            <div className="md:hidden space-y-2.5">
+              <HowStepMobileCompact num="1" icon={List} title="Choose Service or Parts" />
+              <div className="flex justify-center py-1">
+                <div className="w-0.5 h-4 bg-gray-300" />
               </div>
+              <HowStepMobileCompact num="2" icon={Calendar} title="Select Date & Time" />
+              <div className="flex justify-center py-1">
+                <div className="w-0.5 h-4 bg-gray-300" />
+              </div>
+              <HowStepMobileCompact num="3" icon={ShieldCheck} title="Confirm & Pay" />
+              <div className="flex justify-center py-1">
+                <div className="w-0.5 h-4 bg-gray-300" />
+              </div>
+              <HowStepMobileCompact num="4" icon={HomeIcon} title="We Come to You" />
+            </div>
 
-              {/* Desktop: Horizontal Flow */}
-              <div className="hidden md:flex items-start justify-between gap-2 lg:gap-3">
-                <HowStep num="1" icon={List} title={"Choose\nService/Parts"} />
-                <div className="flex-1 flex items-center justify-center mt-6 lg:mt-8">
-                  <div className="h-1 w-full bg-gradient-to-r from-[#1B3B6F] to-transparent" />
-                </div>
-                <HowStep num="2" icon={Calendar} title={"Select Date\n& Time"} />
-                <div className="flex-1 flex items-center justify-center mt-6 lg:mt-8">
-                  <div className="h-1 w-full bg-gradient-to-r from-[#1B3B6F] to-transparent" />
-                </div>
-                <HowStep num="3" icon={ShieldCheck} title={"Confirm\n& Relax"} />
-                <div className="flex-1 flex items-center justify-center mt-6 lg:mt-8">
-                  <div className="h-1 w-full bg-gradient-to-r from-[#1B3B6F] to-transparent" />
-                </div>
-                <HowStep num="4" icon={HomeIcon} title={"We come to\nyou"} />
-              </div>
+            {/* Desktop: Horizontal Flow */}
+            <div className="hidden md:flex items-center justify-between gap-1.5 lg:gap-2">
+              <HowStepCompact num="1" icon={List} title="Choose Service" />
+              <div className="flex-1 flex items-center h-px bg-gray-300" />
+              <HowStepCompact num="2" icon={Calendar} title="Select Time" />
+              <div className="flex-1 flex items-center h-px bg-gray-300" />
+              <HowStepCompact num="3" icon={ShieldCheck} title="Confirm & Pay" />
+              <div className="flex-1 flex items-center h-px bg-gray-300" />
+              <HowStepCompact num="4" icon={HomeIcon} title="We Come to You" />
             </div>
           </div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 6 — Enhanced Trust Badges
+            SECTION 6 — Professional Trust Badges
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-8 lg:mt-10">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
-              <TrustItemCard icon={ShieldCheck} title="Genuine Parts" subtitle="100% Original & Verified" />
-              <TrustItemCard icon={Award} title="Best Price" subtitle="Price Match Guaranteed" />
-              <TrustItemCard icon={Clock} title="On-time Service" subtitle="Fast Delivery Guaranteed" />
+        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-3 md:grid-cols-3 gap-2 md:gap-3">
+              <TrustItemCardCompact icon={ShieldCheck} title="Genuine Parts" subtitle="100% Original" />
+              <TrustItemCardCompact icon={Award} title="Best Price" subtitle="Price Guaranteed" />
+              <TrustItemCardCompact icon={Clock} title="On-time Service" subtitle="Fast Delivery" />
             </div>
           </div>
         </section>
 
-        {/* Bottom spacer for mobile nav and padding */}
-        <div className="h-12 md:h-16 lg:h-20" />
+        {/* Bottom spacer */}
+        <div className="h-8 md:h-10 lg:h-12" />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
@@ -606,7 +569,7 @@ export default function HomePage() {
   )
 }
 
-/* ═════════════════════════════════════════════════════════════════════
+/* ════════════════════════════════════���════════════════════════════════
    Sub-components (match mobile)
    ═════════════════════════════════════════════════════════════════════ */
 
@@ -630,13 +593,13 @@ function QuickAction({
   const content = (
     <div className="flex flex-col items-center text-center px-1 w-full h-full justify-center">
       <div
-        className="h-12 w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 rounded-2xl flex items-center justify-center mb-2 md:mb-2.5 shadow-sm transition-all duration-300"
+        className="h-10 w-10 md:h-11 md:w-11 rounded-lg flex items-center justify-center mb-1.5 md:mb-2"
         style={{ backgroundColor: bg }}
       >
-        <Icon className="h-6 w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 transition-transform" style={{ color: iconColor }} />
+        <Icon className="h-5 w-5 md:h-6 md:w-6" style={{ color: iconColor }} />
       </div>
-      <p className="text-[12px] md:text-sm lg:text-base font-bold text-[#1A1D29] leading-tight line-clamp-2">{title}</p>
-      <p className="text-[10px] md:text-xs text-gray-500 mt-0.5 line-clamp-1">{sub}</p>
+      <p className="text-[11px] md:text-xs lg:text-sm font-semibold text-[#1A1D29] leading-tight line-clamp-2">{title}</p>
+      <p className="text-[9px] md:text-[10px] text-gray-600 mt-0.5 line-clamp-1">{sub}</p>
     </div>
   )
 
@@ -645,7 +608,7 @@ function QuickAction({
       <button 
         type="button" 
         onClick={onClick} 
-        className="bg-white rounded-2xl md:rounded-3xl shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 p-3 md:p-4 active:scale-95 group"
+        className="bg-white rounded-lg shadow-xs hover:shadow-sm transition-shadow p-2.5 md:p-3"
       >
         {content}
       </button>
@@ -654,58 +617,55 @@ function QuickAction({
   return (
     <Link 
       href={href || '#'} 
-      className="bg-white rounded-2xl md:rounded-3xl shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 p-3 md:p-4 active:scale-95 group flex"
+      className="bg-white rounded-lg shadow-xs hover:shadow-sm transition-shadow p-2.5 md:p-3 flex"
     >
       {content}
     </Link>
   )
 }
 
-function HowStep({ num, icon: Icon, title }: { num: string; icon: any; title: string }) {
+function HowStepCompact({ num, icon: Icon, title }: { num: string; icon: any; title: string }) {
   return (
-    <div className="flex-1 flex flex-col items-center px-0.5">
+    <div className="flex flex-col items-center shrink-0">
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1B3B6F]/20 to-[#93C5FD]/20 rounded-full blur-lg" />
-        <div className="relative h-[48px] w-[48px] md:h-16 md:w-16 lg:h-20 lg:w-20 rounded-full bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] flex items-center justify-center mb-3 border border-[#93C5FD] shadow-lg">
-          <Icon className="h-6 w-6 md:h-8 md:w-8 lg:h-10 lg:w-10 text-[#1B3B6F]" />
+        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-blue-50 flex items-center justify-center border border-gray-200 shadow-xs">
+          <Icon className="h-5 w-5 md:h-6 md:w-6 text-[#1B3B6F]" />
+        </div>
+        <div className="absolute -top-1.5 -left-1.5 bg-[#1B3B6F] text-white rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-xs font-bold shadow-sm">
+          {num}
         </div>
       </div>
-      <div className="bg-[#1B3B6F] text-white rounded-full w-6 h-6 md:w-7 md:h-7 flex items-center justify-center text-xs md:text-sm font-bold -mt-2 md:-mt-3 relative z-10 shadow-md">
-        {num}
-      </div>
-      <p className="text-[11px] md:text-[13px] lg:text-sm text-center text-gray-600 font-medium leading-[14px] md:leading-5 whitespace-pre-line mt-2">
+      <p className="text-[10px] md:text-xs text-center text-gray-700 font-medium mt-2 max-w-[70px] md:max-w-[80px]">
         {title}
       </p>
     </div>
   )
 }
 
-function HowStepMobile({ num, icon: Icon, title }: { num: string; icon: any; title: string }) {
+function HowStepMobileCompact({ num, icon: Icon, title }: { num: string; icon: any; title: string }) {
   return (
-    <div className="flex items-start gap-4">
-      <div className="relative">
-        <div className="h-[48px] w-[48px] rounded-full bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] flex items-center justify-center border border-[#93C5FD] shadow-lg shrink-0 relative z-10">
-          <Icon className="h-6 w-6 text-[#1B3B6F]" />
+    <div className="flex items-center gap-3">
+      <div className="relative shrink-0">
+        <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center border border-gray-200 shadow-xs">
+          <Icon className="h-5 w-5 text-[#1B3B6F]" />
         </div>
-        <div className="absolute -top-2 -left-2 bg-[#1B3B6F] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md">
+        <div className="absolute -top-1.5 -left-1.5 bg-[#1B3B6F] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-sm">
           {num}
         </div>
       </div>
-      <div className="pt-2">
-        <p className="text-sm font-medium text-[#1A1D29]">{title}</p>
-      </div>
+      <p className="text-xs font-medium text-[#1A1D29]">{title}</p>
     </div>
   )
 }
 
-function TrustItemCard({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
+function TrustItemCardCompact({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
   return (
-    <div className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 border border-gray-100 shadow-sm hover:shadow-md hover:border-[#1B3B6F] transition-all duration-300 flex flex-col items-center text-center md:text-left md:items-start group">
-      <div className="h-14 w-14 md:h-16 md:w-16 bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm">
-        <Icon className="h-7 w-7 md:h-8 md:w-8 text-[#1B3B6F]" />
+    <div className="bg-white rounded-lg p-2.5 md:p-3 border border-gray-200 shadow-xs hover:shadow-sm hover:border-gray-300 transition-all flex flex-col items-center text-center">
+      <div className="h-8 w-8 md:h-9 md:w-9 bg-blue-50 rounded-lg flex items-center justify-center mb-1.5 shadow-xs">
+        <Icon className="h-4.5 w-4.5 md:h-5 md:w-5 text-[#1B3B6F]" />
       </div>
-      <p className="text-sm md:text-base lg:text-lg font-bold text-[#1A1D29] mb-1">{title}</p>
-      <p className="text-xs md:text-sm text-gray-500">{subtitle}</p>
+      <p className="text-[10px] md:text-xs lg:text-sm font-semibold text-[#1A1D29]">{title}</p>
+      <p className="text-[8px] md:text-[9px] text-gray-600 mt-0.5">{subtitle}</p>
     </div>
   )
 }
