@@ -690,21 +690,25 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           <div className="max-w-7xl mx-auto py-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2.5 mb-4">
                 <Image
-                  src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png"
+                  src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
                   alt="Bharat Mechanics"
-                  width={240}
-                  height={68}
-                  className="h-11 lg:h-12 w-auto object-contain brightness-0 invert"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 object-contain rounded-lg bg-white/5 p-1 ring-1 ring-white/10"
                 />
+                <div className="flex flex-col leading-tight">
+                  <span className="text-base font-extrabold tracking-tight text-white">Bharat Mechanics</span>
+                  <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#FF6B35]">Auto Parts &amp; Service</span>
+                </div>
               </div>
-              <p className="text-gray-400 text-sm">India&apos;s trusted auto parts and vehicle service platform. Genuine parts, certified mechanics, doorstep delivery.</p>
+              <p className="text-gray-400 text-sm leading-relaxed">India&apos;s trusted auto parts and vehicle service platform. Genuine parts, certified mechanics, doorstep delivery.</p>
             </div>
             {[
               { title: 'Quick Links', links: [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Services', href: '/service' }, { label: 'Orders', href: '/orders' }] },
               { title: 'Customer Service', links: [{ label: 'Track Order', href: '/orders' }, { label: 'My Profile', href: '/profile' }, { label: 'Contact Us', href: '#' }] },
-              { title: 'Legal', links: [{ label: 'Terms & Conditions', href: '#' }, { label: 'Privacy Policy', href: '#' }, { label: 'Refund Policy', href: '#' }] },
+              { title: 'Legal', links: [{ label: 'Terms & Conditions', href: '/terms' }, { label: 'Privacy Policy', href: '/privacy' }, { label: 'Refund Policy', href: '/refund-policy' }] },
             ].map((col) => (
               <div key={col.title}>
                 <h4 className="font-bold text-sm mb-4">{col.title}</h4>

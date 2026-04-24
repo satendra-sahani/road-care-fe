@@ -78,10 +78,13 @@ export function ShopListing() {
       const res = await catalogAPI.getProducts(params)
       if (res.data.success) {
         setProducts(res.data.data || [])
+        // Backend returns pagination as { current, pages, total, limit }.
+        // Older callers referenced { page, totalPages } — accept both shapes.
+        const p = res.data.pagination || {}
         setPagination({
-          page: res.data.pagination?.page || 1,
-          totalPages: res.data.pagination?.totalPages || 1,
-          total: res.data.pagination?.total || 0,
+          page: p.current || p.page || 1,
+          totalPages: p.pages || p.totalPages || 1,
+          total: p.total || 0,
         })
       }
     } catch (err) {

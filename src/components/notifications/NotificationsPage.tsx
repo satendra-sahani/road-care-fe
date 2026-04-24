@@ -81,7 +81,7 @@ export function NotificationsPage() {
         setNotifications(items.filter((item: UserNotificationItem) => item.notification))
       }
       if (countRes.data.success) {
-        setUnreadCount(countRes.data.data.count)
+        setUnreadCount(countRes.data.data?.count ?? countRes.data.data?.unreadCount ?? 0)
       }
     } catch (err) {
       console.error('Failed to fetch notifications:', err)

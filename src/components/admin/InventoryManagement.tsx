@@ -1240,6 +1240,35 @@ export function InventoryManagement() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Product Confirmation */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{selectedProduct?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                if (selectedProduct?.id) {
+                  setProducts(prev => prev.filter((p: any) => p.id !== selectedProduct.id))
+                }
+                setIsDeleteDialogOpen(false)
+                setSelectedProduct(null)
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Brand Add/Edit Modal */}
       <Dialog open={isBrandModalOpen} onOpenChange={setIsBrandModalOpen}>
         <DialogContent className="max-w-md">

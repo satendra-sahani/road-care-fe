@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { AdminHeader } from './AdminHeader'
 import { referralAdminAPI } from '@/services/api'
 
 interface Referral {
@@ -100,7 +99,10 @@ export function ReferralManagement() {
 
   return (
     <div className="p-6 space-y-6">
-      <AdminHeader title="Referrals" subtitle="Refer & earn program — monitor activity and top referrers" />
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Referrals</h1>
+        <p className="text-sm text-gray-500 mt-1">Refer &amp; earn program — monitor activity and top referrers</p>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

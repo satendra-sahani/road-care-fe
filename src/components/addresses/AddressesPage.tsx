@@ -35,7 +35,9 @@ interface Address {
   city: string
   state: string
   pincode: string
-  type: 'Home' | 'Work' | 'Other'
+  // Backend stores as `label`; older local state may still use `type`.
+  label?: 'Home' | 'Work' | 'Other'
+  type?: 'Home' | 'Work' | 'Other'
   isDefault: boolean
 }
 
@@ -93,7 +95,7 @@ export function AddressesPage() {
       city: addr.city || '',
       state: addr.state || '',
       pincode: addr.pincode || '',
-      type: addr.type || 'Home',
+      type: (addr.label || addr.type || 'Home') as 'Home' | 'Work' | 'Other',
       isDefault: addr.isDefault || false,
     })
     setDialogOpen(true)
@@ -134,7 +136,8 @@ export function AddressesPage() {
         city: form.city.trim(),
         state: form.state.trim(),
         pincode: form.pincode.trim(),
-        type: form.type,
+        // Backend field name is `label`; we keep `type` in local state for UX readability.
+        label: form.type,
         isDefault: form.isDefault,
       }
 
@@ -259,8 +262,8 @@ export function AddressesPage() {
                     variant="secondary"
                     className="text-xs flex items-center gap-1"
                   >
-                    {getTypeIcon(addr.type)}
-                    {addr.type}
+                    {getTypeIcon(addr.label || addr.type || 'Home')}
+                    {addr.label || addr.type || 'Home'}
                   </Badge>
                   {addr.isDefault && (
                     <Badge className="bg-[#1B3B6F] text-white text-xs">

@@ -632,7 +632,7 @@ export function StockLedger() {
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge variant="secondary" className="text-xs">
-                              {purchase.items.length} items
+                              {purchase.items?.length || 0} items
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-semibold text-sm">
@@ -690,7 +690,7 @@ export function StockLedger() {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {purchase.items.map((item, idx) => (
+                                    {(purchase.items || []).map((item, idx) => (
                                       <TableRow key={idx} className="bg-white">
                                         <TableCell className="text-sm font-medium">
                                           {item.productName}
@@ -1189,7 +1189,7 @@ export function StockLedger() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedPurchase.items.map((item, idx) => (
+                        {(selectedPurchase.items || []).map((item, idx) => (
                           <TableRow key={idx}>
                             <TableCell className="text-xs text-gray-400">{idx + 1}</TableCell>
                             <TableCell>

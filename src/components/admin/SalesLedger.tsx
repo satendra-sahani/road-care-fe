@@ -188,7 +188,7 @@ export function SalesLedger() {
     const totalSales = filteredSales.reduce((a, s) => a + s.totalAmount, 0)
     const totalProfit = filteredSales.reduce((a, s) => a + s.profit, 0)
     const totalItems = filteredSales.reduce(
-      (a, s) => a + s.items.reduce((b, i) => b + i.quantity, 0),
+      (a, s) => a + (s.items || []).reduce((b, i) => b + i.quantity, 0),
       0
     )
     const avgMargin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0
@@ -335,7 +335,7 @@ export function SalesLedger() {
       s.invoiceNo,
       s.customerName,
       s.customerPhone,
-      s.items.map((i) => `${i.productName} x${i.quantity}`).join('; '),
+      (s.items || []).map((i) => `${i.productName} x${i.quantity}`).join('; '),
       s.subtotal,
       s.discount,
       s.totalAmount,
@@ -578,7 +578,7 @@ export function SalesLedger() {
                   </TableRow>
                 ) : (
                   filteredSales.map((sale) => {
-                    const itemCount = sale.items.reduce((a, i) => a + i.quantity, 0)
+                    const itemCount = (sale.items || []).reduce((a, i) => a + i.quantity, 0)
                     const marginPct =
                       sale.totalAmount > 0
                         ? ((sale.profit / sale.totalAmount) * 100).toFixed(1)
@@ -623,7 +623,7 @@ export function SalesLedger() {
                               {itemCount} {itemCount === 1 ? 'item' : 'items'}
                             </Badge>
                             <div className="absolute z-50 hidden group-hover:block left-1/2 -translate-x-1/2 top-full mt-1 bg-slate-900 text-white text-xs rounded-md px-3 py-2 shadow-lg w-max max-w-xs">
-                              {sale.items.map((item, idx) => (
+                              {(sale.items || []).map((item, idx) => (
                                 <div key={idx} className="py-0.5">
                                   {item.productName} x{item.quantity}
                                 </div>
@@ -784,7 +784,7 @@ export function SalesLedger() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {viewSale.items.map((item, idx) => (
+                    {(viewSale.items || []).map((item, idx) => (
                       <TableRow key={idx}>
                         <TableCell>
                           <div>
@@ -1361,7 +1361,7 @@ export function SalesLedger() {
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Items Purchased</Label>
                       <div className="mt-2 space-y-2">
-                        {selectedUserSale.items.map((item, index) => (
+                        {(selectedUserSale.items || []).map((item, index) => (
                           <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                             <div>
                               <p className="font-medium text-sm">{item.productName}</p>

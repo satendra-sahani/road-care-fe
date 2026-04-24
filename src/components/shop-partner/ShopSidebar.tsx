@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Home, ClipboardList, DollarSign, Users, Store,
   Menu, X, LogOut
@@ -28,18 +28,30 @@ const sidebarItems: SidebarItem[] = [
   { id: 'profile', title: 'Shop Profile', icon: Store, href: '/shop-partner/profile', separator: true },
 ]
 
-// Module-level cache — survives page navigations, prevents blinking
+// Module-level cache — survives page navigations between shop-partner routes, prevents badge blinking.
+// mountCount tracks how many live ShopSidebar instances exist so the last unmount can stop polling
+// when the user leaves the shop-partner area entirely (avoids a silent background poll leak).
 let cachedPendingCount = 0
 let badgeInterval: ReturnType<typeof setInterval> | null = null
+let mountCount = 0
+// Global setter registry so the single interval updates all live instances
+const listeners = new Set<(val: number) => void>()
 
-const fetchBadge = async (setter: (val: number) => void) => {
+const fetchBadge = async () => {
   try {
     const res = await shopAPI.getDashboard()
     if (res.data?.success) {
       cachedPendingCount = res.data.data.stats.pendingOrders || 0
-      setter(cachedPendingCount)
+      listeners.forEach(fn => fn(cachedPendingCount))
     }
   } catch {}
+}
+
+const stopPolling = () => {
+  if (badgeInterval) {
+    clearInterval(badgeInterval)
+    badgeInterval = null
+  }
 }
 
 export function ShopSidebar() {
@@ -47,24 +59,33 @@ export function ShopSidebar() {
   const [isOpen, setIsOpen] = useState(false)
   // Initialize from cache — no flash
   const [pendingCount, setPendingCount] = useState(cachedPendingCount)
-  const mountedRef = useRef(true)
 
   useEffect(() => {
-    mountedRef.current = true
+    const setter = (val: number) => setPendingCount(val)
+    listeners.add(setter)
+    mountCount++
 
-    // Start polling only once (module-level singleton)
+    // Start polling only once across instances
     if (!badgeInterval) {
-      fetchBadge((val) => { if (mountedRef.current) setPendingCount(val) })
-      badgeInterval = setInterval(() => {
-        fetchBadge((val) => { if (mountedRef.current) setPendingCount(val) })
-      }, 30000)
+      fetchBadge()
+      badgeInterval = setInterval(fetchBadge, 30000)
     }
 
-    return () => { mountedRef.current = false }
+    return () => {
+      listeners.delete(setter)
+      mountCount--
+      // When the last sidebar unmounts (user navigated out of shop-partner area), stop polling
+      if (mountCount <= 0) {
+        mountCount = 0
+        stopPolling()
+      }
+    }
   }, [])
 
   const handleLogout = () => {
-    if (badgeInterval) { clearInterval(badgeInterval); badgeInterval = null }
+    stopPolling()
+    listeners.clear()
+    mountCount = 0
     cachedPendingCount = 0
     Cookies.remove('token')
     Cookies.remove('customer_token')

@@ -494,23 +494,30 @@ export function ServiceManagement() {
   const handleSaveMechanic = () => {
     if (!newMechanic.name.trim() || !newMechanic.phone.trim() || !newMechanic.aadhaarNo.trim()) return
 
-    const mechanicData = {
+    // Build backend-compatible payload: nested address object matches MechanicProfile schema
+    const mechanicData: any = {
       ...newMechanic,
       specializations: selectedSpecs,
       location: newMechanic.city || newMechanic.address,
+      address: {
+        street: newMechanic.address || '',
+        city: newMechanic.city || '',
+        state: newMechanic.state || '',
+        pincode: newMechanic.pincode || '',
+      },
     }
 
     if (editingMechanic && selectedMechanic) {
       // Update existing
-      dispatch(updateMechanicRequest({ 
-        id: selectedMechanic._id, 
-        data: mechanicData 
+      dispatch(updateMechanicRequest({
+        id: selectedMechanic._id,
+        data: mechanicData
       }))
     } else {
       // Add new
       dispatch(addMechanicRequest(mechanicData))
     }
-    
+
     setAddMechanicOpen(false)
     setEditingMechanic(false)
     setNewMechanic(emptyMechanic)
@@ -518,14 +525,21 @@ export function ServiceManagement() {
   }
 
   const handleEditMechanic = (mechanic: Mechanic) => {
+    // Support both flat and nested address shapes (backend returns nested)
+    const nestedAddr = (mechanic as any).address
+    const addressString = typeof nestedAddr === 'string' ? nestedAddr : (nestedAddr?.street || '')
+    const city = (typeof nestedAddr === 'object' && nestedAddr?.city) || mechanic.city || ''
+    const state = (typeof nestedAddr === 'object' && nestedAddr?.state) || mechanic.state || ''
+    const pincode = (typeof nestedAddr === 'object' && nestedAddr?.pincode) || mechanic.pincode || ''
+
     setNewMechanic({
       name: mechanic.name,
       phone: mechanic.phone,
       aadhaarNo: mechanic.aadhaarNo,
-      address: mechanic.address,
-      city: mechanic.city,
-      state: mechanic.state,
-      pincode: mechanic.pincode,
+      address: addressString,
+      city,
+      state,
+      pincode,
       specializations: mechanic.specializations,
       location: mechanic.location,
       availability: mechanic.availability,
@@ -541,6 +555,9 @@ export function ServiceManagement() {
   }
 
   const handleDeleteMechanic = (id: string) => {
+    if (typeof window !== 'undefined' && !window.confirm('Are you sure you want to delete this mechanic? This action cannot be undone.')) {
+      return
+    }
     dispatch(deleteMechanicRequest(id))
   }
 

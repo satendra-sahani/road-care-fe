@@ -474,7 +474,7 @@ export function UserManagement() {
                             <TableCell>{getRoleBadge(user.role)}</TableCell>
                             <TableCell>{getStatusBadge(user.isActive)}</TableCell>
                             <TableCell>
-                              {user.role === 'user' ? (
+                              {(user.role === 'customer' || user.role === 'user') ? (
                                 <div className="flex items-center gap-1">
                                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
                                     (user.trustScore ?? 100) > 70 ? 'bg-green-100 text-green-700' :
@@ -535,7 +535,7 @@ export function UserManagement() {
                                       <><UserCheck className="h-4 w-4 mr-2" />Activate</>
                                     )}
                                   </DropdownMenuItem>
-                                  {user.role === 'user' && (
+                                  {(user.role === 'customer' || user.role === 'user') && (
                                     <>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem className="text-sm" onClick={() => {

@@ -2,12 +2,15 @@
 
 import * as React from 'react'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import { Search, Bell, Settings, User, ChevronDown, Menu, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/utils'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { logoutRequest } from '@/store/slices/authSlice'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,6 +80,14 @@ const mockNotifications: Notification[] = [
 export function AdminHeader({ collapsed = false, onToggleSidebar }: AdminHeaderProps) {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
   const [searchQuery, setSearchQuery] = useState('')
+  const router = useRouter()
+  const dispatch = useAppDispatch()
+  const { user } = useAppSelector((state) => state.auth)
+
+  const handleLogout = () => {
+    dispatch(logoutRequest())
+    router.replace('/admin/login')
+  }
 
   const unreadNotifications = notifications.filter(n => !n.read)
 
@@ -260,8 +271,8 @@ export function AdminHeader({ collapsed = false, onToggleSidebar }: AdminHeaderP
                 <AvatarFallback className="bg-[#1B3B6F] text-white">AD</AvatarFallback>
               </Avatar>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium">Admin User</p>
-                <p className="text-xs text-gray-500">Super Admin</p>
+                <p className="text-sm font-medium">{(user as any)?.fullName || (user as any)?.name || 'Admin User'}</p>
+                <p className="text-xs text-gray-500 capitalize">{((user as any)?.role || 'admin').replace('_', ' ')}</p>
               </div>
               <ChevronDown className="h-4 w-4" />
             </Button>
@@ -282,7 +293,7 @@ export function AdminHeader({ collapsed = false, onToggleSidebar }: AdminHeaderP
               <span>Notification Preferences</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">
+            <DropdownMenuItem className="text-red-600" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Logout</span>
             </DropdownMenuItem>

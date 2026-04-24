@@ -194,7 +194,7 @@ export function CheckoutPage() {
           key: order.razorpay.keyId,
           amount: order.razorpay.amount,
           currency: order.razorpay.currency || 'INR',
-          name: 'Bharat Machenics Auto Parts',
+          name: 'Bharat Mechanics Auto Parts',
           description: 'Product Order Payment',
           order_id: order.razorpay.orderId,
           handler: async (response: any) => {
@@ -218,8 +218,11 @@ export function CheckoutPage() {
           theme: { color: '#1B3B6F' },
           modal: {
             ondismiss: () => {
-              toast.info('Payment cancelled. Your order is saved and you can pay later.')
+              toast.info('Payment cancelled. Your order is saved — you can pay later from Order History.')
               setPlacing(false)
+              // Move to confirmation anyway so user sees the order was created and can retry payment from there
+              setOrderResult(order)
+              setStep('confirmation')
             },
           },
         }
@@ -229,6 +232,7 @@ export function CheckoutPage() {
           rzp.open()
         } else {
           toast.error('Payment gateway not loaded. Please refresh and try again.')
+          setPlacing(false)
         }
       } else {
         // If online but no razorpay data

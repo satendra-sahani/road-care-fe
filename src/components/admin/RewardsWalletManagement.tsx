@@ -15,7 +15,6 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
-import { AdminHeader } from './AdminHeader'
 import { rewardsWalletAPI } from '@/services/api'
 
 interface Transaction {
@@ -100,7 +99,10 @@ export function RewardsWalletManagement() {
 
   return (
     <div className="p-6 space-y-6">
-      <AdminHeader title="Rewards Wallet" subtitle="User wallet balances — credits from spin, referrals, manual adjustments" />
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Rewards Wallet</h1>
+        <p className="text-sm text-gray-500 mt-1">User wallet balances — credits from spin, referrals, manual adjustments</p>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

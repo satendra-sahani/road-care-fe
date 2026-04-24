@@ -26,8 +26,17 @@ export function AuthGuard({ children }: AuthGuardProps) {
     // Only redirect to login after the initial auth check is completed and user is not authenticated
     if (initialCheckDone && !isAuthenticated) {
       router.replace('/admin/login')
+      return
     }
-  }, [initialCheckDone, isAuthenticated, router])
+    // Admin area requires an admin or superadmin role — reject other roles
+    if (initialCheckDone && isAuthenticated && user) {
+      const role = (user as any).role
+      const allowed = ['admin', 'superadmin', 'super_admin']
+      if (role && !allowed.includes(role)) {
+        router.replace('/admin/login?error=not_authorized')
+      }
+    }
+  }, [initialCheckDone, isAuthenticated, user, router])
 
   // Show loading while auth check is in progress
   if (loading || !initialCheckDone) {
@@ -43,6 +52,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!isAuthenticated) {
+    return null
+  }
+
+  // Block render while we wait for role-based redirect to kick in
+  const role = (user as any)?.role
+  if (role && !['admin', 'superadmin', 'super_admin'].includes(role)) {
     return null
   }
 

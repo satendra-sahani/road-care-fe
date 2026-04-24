@@ -169,16 +169,24 @@ export default function ServiceTrackPage() {
                 <span className="text-sm text-gray-500">{getStatusText()}</span>
               </div>
             </div>
-            <button className="h-11 w-11 rounded-full bg-green-50 border border-green-200 flex items-center justify-center hover:bg-green-100 transition">
+            <button
+              onClick={() => { if (workerInfo.phone) window.location.href = `tel:${workerInfo.phone}` }}
+              disabled={!workerInfo.phone}
+              className="h-11 w-11 rounded-full bg-green-50 border border-green-200 flex items-center justify-center hover:bg-green-100 transition disabled:opacity-50"
+            >
               <Phone className="h-5 w-5 text-green-600" />
             </button>
           </div>
 
           {/* Action buttons */}
           <div className="flex gap-3">
-            <button className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition">
+            <button
+              onClick={() => { if (workerInfo.phone) window.location.href = `tel:${workerInfo.phone}` }}
+              disabled={!workerInfo.phone}
+              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition disabled:opacity-50"
+            >
               <Phone className="h-4 w-4" />
-              Call Mechanic
+              {workerInfo.phone ? 'Call Mechanic' : 'No phone available'}
             </button>
             <button
               onClick={() => {

@@ -2,8 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Star, MessageSquare, Calendar, MapPin, User, Wrench, Phone } from 'lucide-react';
+import Cookies from 'js-cookie';
 import FeedbackForm from './FeedbackForm';
 import FeedbackDisplay from './FeedbackDisplay';
+
+// Read auth token from cookies (same source as axios interceptor in services/api.ts)
+const getAuthToken = (): string => {
+  return Cookies.get('customer_token') || Cookies.get('token') || Cookies.get('admin_token') || Cookies.get('mechanic_token') || '';
+};
 
 interface ServiceRequest {
   _id: string;
@@ -141,7 +147,7 @@ export default function ServiceRequestDetail({
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         }
       });
 
@@ -181,7 +187,7 @@ export default function ServiceRequestDetail({
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         }
       });
 
@@ -200,7 +206,7 @@ export default function ServiceRequestDetail({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify(feedbackData)
       });
@@ -230,7 +236,7 @@ export default function ServiceRequestDetail({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({ voteType })
       });
@@ -263,7 +269,7 @@ export default function ServiceRequestDetail({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({ comment: response })
       });

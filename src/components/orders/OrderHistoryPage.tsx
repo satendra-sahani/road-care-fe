@@ -129,7 +129,7 @@ export function OrderHistoryPage() {
                     </div>
                     <Badge className={`${status.bg} ${status.color} border-none flex items-center gap-1`}>
                       <StatusIcon className="h-3 w-3" />
-                      {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
+                      {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending'}
                     </Badge>
                   </div>
 

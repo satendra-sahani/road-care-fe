@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/router'
 import { shopAPI } from '@/services/api'
 import {
   ClipboardList, Check, X, UserPlus, ArrowRight, Clock, Phone,
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 type OrderStatus = 'pending' | 'accepted' | 'rejected' | 'mechanic_assigned' | 'on_way' | 'in_progress' | 'completed' | 'cancelled'
 
@@ -24,9 +26,12 @@ const statusTabs = [
 ]
 
 export function ShopOrders() {
+  const router = useRouter()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('all')
+  // Pick initial tab from URL query (?status=pending) so deep links and sidebar badges work
+  const initialStatus = typeof router.query.status === 'string' ? router.query.status : 'all'
+  const [activeTab, setActiveTab] = useState(initialStatus)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -43,6 +48,11 @@ export function ShopOrders() {
   const [showCostDialog, setShowCostDialog] = useState(false)
   const [laborCost, setLaborCost] = useState('')
   const [partsCost, setPartsCost] = useState('')
+
+  // Reject dialog (replaces native prompt — see handleReject)
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -61,6 +71,15 @@ export function ShopOrders() {
     setLoading(true)
     fetchOrders()
   }, [fetchOrders])
+
+  // Sync activeTab with URL query param when router is ready or user navigates via sidebar links.
+  // router.query is empty during SSR; only hydrates after isReady.
+  useEffect(() => {
+    if (!router.isReady) return
+    const q = typeof router.query.status === 'string' ? router.query.status : 'all'
+    if (q !== activeTab) setActiveTab(q)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.status])
 
   // Fetch all mechanics when opening assign dialog
   const openAssignDialog = async (order: any) => {
@@ -126,23 +145,37 @@ export function ShopOrders() {
     setActionLoading(true)
     try {
       await shopAPI.acceptOrder(orderId)
+      toast.success('Order accepted')
       fetchOrders()
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to accept')
+      toast.error(err.response?.data?.message || 'Failed to accept')
     } finally {
       setActionLoading(false)
     }
   }
 
-  const handleReject = async (orderId: string) => {
-    const reason = prompt('Rejection reason:')
-    if (!reason) return
+  const openRejectDialog = (orderId: string) => {
+    setRejectTargetId(orderId)
+    setRejectReason('')
+    setShowRejectDialog(true)
+  }
+
+  const handleConfirmReject = async () => {
+    if (!rejectTargetId) return
+    if (!rejectReason.trim()) {
+      toast.error('Please enter a rejection reason')
+      return
+    }
     setActionLoading(true)
     try {
-      await shopAPI.rejectOrder(orderId, reason)
+      await shopAPI.rejectOrder(rejectTargetId, rejectReason.trim())
+      toast.success('Order rejected')
+      setShowRejectDialog(false)
+      setRejectReason('')
+      setRejectTargetId(null)
       fetchOrders()
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to reject')
+      toast.error(err.response?.data?.message || 'Failed to reject')
     } finally {
       setActionLoading(false)
     }
@@ -150,19 +183,26 @@ export function ShopOrders() {
 
   const handleAssignMechanic = async (orderId: string) => {
     if (mechanicType === 'custom') {
-      if (!customName || !customPhone) return alert('Name and phone required')
+      if (!customName.trim() || !customPhone.trim()) {
+        toast.error('Name and phone required')
+        return
+      }
       setActionLoading(true)
       try {
-        await shopAPI.assignMechanic(orderId, { name: customName, phone: customPhone })
+        await shopAPI.assignMechanic(orderId, { name: customName.trim(), phone: customPhone.trim() })
+        toast.success('Mechanic assigned')
         closeAssignDialog()
         fetchOrders()
       } catch (err: any) {
-        alert(err.response?.data?.message || 'Failed')
+        toast.error(err.response?.data?.message || 'Failed to assign mechanic')
       } finally {
         setActionLoading(false)
       }
     } else {
-      if (!selectedMechanicId) return alert('Select a mechanic')
+      if (!selectedMechanicId) {
+        toast.error('Select a mechanic')
+        return
+      }
       const mech = allMechanics.find(m => m._id === selectedMechanicId)
       if (!mech) return
 
@@ -173,10 +213,11 @@ export function ShopOrders() {
           data.mechanicProfileId = mech._id
         }
         await shopAPI.assignMechanic(orderId, data)
+        toast.success('Mechanic assigned')
         closeAssignDialog()
         fetchOrders()
       } catch (err: any) {
-        alert(err.response?.data?.message || 'Failed')
+        toast.error(err.response?.data?.message || 'Failed to assign mechanic')
       } finally {
         setActionLoading(false)
       }
@@ -195,28 +236,42 @@ export function ShopOrders() {
     setActionLoading(true)
     try {
       await shopAPI.updateOrderStatus(orderId, status)
+      toast.success(`Status updated to ${status.replace(/_/g, ' ')}`)
       fetchOrders()
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed')
+      toast.error(err.response?.data?.message || 'Failed to update status')
     } finally {
       setActionLoading(false)
     }
   }
 
   const handleCostUpdate = async (orderId: string) => {
-    if (!laborCost && !partsCost) return alert('Enter at least one cost')
+    if (!laborCost && !partsCost) {
+      toast.error('Enter at least one cost')
+      return
+    }
+    // NaN / negative guards — users can paste non-numeric strings or negative values
+    const labor = Number(laborCost)
+    const parts = Number(partsCost)
+    const safeLabor = Number.isFinite(labor) && labor >= 0 ? labor : 0
+    const safeParts = Number.isFinite(parts) && parts >= 0 ? parts : 0
+    if (safeLabor === 0 && safeParts === 0) {
+      toast.error('Please enter a valid non-negative cost')
+      return
+    }
     setActionLoading(true)
     try {
       await shopAPI.updateOrderCost(orderId, {
-        laborCost: Number(laborCost) || 0,
-        partsCost: Number(partsCost) || 0
+        laborCost: safeLabor,
+        partsCost: safeParts
       })
+      toast.success('Cost updated')
       setShowCostDialog(false)
       setLaborCost('')
       setPartsCost('')
       fetchOrders()
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed')
+      toast.error(err.response?.data?.message || 'Failed to update cost')
     } finally {
       setActionLoading(false)
     }
@@ -244,7 +299,7 @@ export function ShopOrders() {
             <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleAccept(order._id)} disabled={actionLoading}>
               <Check className="h-4 w-4 mr-1" /> Accept
             </Button>
-            <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => handleReject(order._id)} disabled={actionLoading}>
+            <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => openRejectDialog(order._id)} disabled={actionLoading}>
               <X className="h-4 w-4 mr-1" /> Reject
             </Button>
           </div>
@@ -653,6 +708,36 @@ export function ShopOrders() {
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 Assign Mechanic
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Order Dialog — replaces native prompt() so we get proper styling + keyboard UX */}
+      {showRejectDialog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">Reject Order</h3>
+            <p className="text-sm text-gray-500">Please provide a reason for rejecting this order. The customer will be notified.</p>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Reason *</label>
+              <textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                rows={4}
+                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                placeholder="e.g., Vehicle type not supported, out of service area, etc."
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => { setShowRejectDialog(false); setRejectReason(''); setRejectTargetId(null) }}>
+                Cancel
+              </Button>
+              <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleConfirmReject} disabled={actionLoading || !rejectReason.trim()}>
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Reject Order
               </Button>
             </div>
           </div>

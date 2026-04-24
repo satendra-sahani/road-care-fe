@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Star, TrendingUp, Users, Award, Target, BarChart3, ThumbsUp } from 'lucide-react';
+import Cookies from 'js-cookie';
+
+const getAuthToken = (): string => {
+  return Cookies.get('customer_token') || Cookies.get('token') || Cookies.get('admin_token') || Cookies.get('mechanic_token') || '';
+};
 
 interface AnalyticsData {
   totalFeedbacks: number;
@@ -89,7 +94,7 @@ export default function FeedbackAnalytics({
       promises.push(
         fetch(analyticsUrl, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${getAuthToken()}`
           }
         })
       );
@@ -100,7 +105,7 @@ export default function FeedbackAnalytics({
         promises.push(
           fetch(comparisonUrl, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${getAuthToken()}`
             }
           })
         );

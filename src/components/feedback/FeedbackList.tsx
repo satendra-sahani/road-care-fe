@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Star, Filter, Search, ChevronDown } from 'lucide-react';
+import Cookies from 'js-cookie';
 import FeedbackDisplay from './FeedbackDisplay';
+
+const getAuthToken = (): string => {
+  return Cookies.get('customer_token') || Cookies.get('token') || Cookies.get('admin_token') || Cookies.get('mechanic_token') || '';
+};
 
 interface FeedbackListProps {
   mechanicId?: string;
@@ -135,7 +140,7 @@ export default function FeedbackList({
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         }
       });
 

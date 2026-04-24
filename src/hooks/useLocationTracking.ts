@@ -29,6 +29,7 @@ export function useLocationTracking(
     name: type === 'mechanic' ? 'Mechanic' : 'Delivery Partner',
     photo: '',
     rating: 0,
+    phone: '',
   });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -169,6 +170,7 @@ export function useLocationTracking(
               name: info.name || prev.name,
               photo: info.photo || prev.photo,
               rating: info.rating || prev.rating,
+              phone: info.phone || info.user?.phone || prev.phone,
             }));
           }
         }

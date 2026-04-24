@@ -116,23 +116,31 @@ export default function EmergencyPage() {
     setSubmitting(true);
     try {
       const serviceData = emergencyServices.find((s) => s.id === selectedService);
+      // Payload shape must match the backend validator and the Android
+      // ServiceConfirmationScreen.tsx contract — flat address/coords, required
+      // serviceType ('home' | 'roadside' | 'walkin'), serviceCategory,
+      // description, address, preferredDate.
       const res = await userServiceAPI.create({
+        serviceType: 'roadside',
+        serviceCategory: selectedService,
+        description: serviceData?.description || serviceData?.label || selectedService,
+        address: location.address,
+        latitude: location.lat,
+        longitude: location.lng,
+        preferredDate: new Date().toISOString(),
+        priority: 'high',
+        isEmergency: true,
         vehicleType: selectedVehicle,
         issues: [selectedService],
-        isEmergency: true,
-        emergencyType: selectedService,
-        location: {
-          latitude: location.lat,
-          longitude: location.lng,
-          address: location.address,
-        },
-        description: serviceData?.description || selectedService,
+        estimatedCost: serviceData?.price && serviceData.price > 0 ? serviceData.price : 199,
+        paymentMethod: 'cod',
       });
 
       const data = res.data?.data || res.data;
       toast.success('Emergency request submitted! A mechanic is being dispatched.');
-      if (data?._id) {
-        router.push(`/service/${data._id}`);
+      const newId = data?._id || data?.serviceRequest?._id || data?.id;
+      if (newId) {
+        router.push(`/service/${newId}`);
       } else {
         router.push('/service');
       }
