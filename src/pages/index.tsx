@@ -12,7 +12,10 @@ import {
   Wrench, ShoppingBag, Bike, Headphones, Mic,
   ChevronRight, ChevronLeft, ShieldCheck, Award, Clock,
   List, Calendar, Home as HomeIcon, Package, Star, X, Check,
-  ShoppingCart, Zap, Users, TrendingUp, Heart, ArrowRight,
+  ShoppingCart, Zap, Users, Heart, ArrowRight,
+  Smartphone, BadgeCheck, MapPin,
+  Quote, Building2, Truck, Plus, Minus,
+  CreditCard, Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Cookies from 'js-cookie'
@@ -47,6 +50,9 @@ export default function HomePage() {
   const [filterPriceMax, setFilterPriceMax] = useState('')
   const [filterSelectedBrands, setFilterSelectedBrands] = useState<string[]>([])
   const [filterRating, setFilterRating] = useState(0)
+
+  /* ─── FAQ accordion state ─── */
+  const [openFaq, setOpenFaq] = useState<number | null>(0)
 
   // ─── Load user if token exists ───
   useEffect(() => {
@@ -605,15 +611,372 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 8 — Stats row (desktop only)
+            SECTION 8 — Stats row (responsive — visible on mobile too)
            ══════════════════════════════════════════════════════════════ */}
-        <section className="hidden md:block px-6 lg:px-8 mt-4 lg:mt-5">
+        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-5">
           <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-4 gap-3 lg:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 lg:gap-4">
               <StatCard icon={Users} value="10,000+" label="Happy Customers" color="#1B3B6F" bg="#DBEAFE" />
               <StatCard icon={Package} value="50,000+" label="Parts Available" color="#FF6B35" bg="#FFE4D6" />
               <StatCard icon={Award} value="500+" label="Trusted Brands" color="#6366F1" bg="#E0E7FF" />
               <StatCard icon={Star} value="4.8/5" label="Customer Rating" color="#F59E0B" bg="#FEF3C7" />
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 9 — Why Choose Bharat Mechanics (6 differentiators)
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-5 md:mb-8">
+              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Why Bharat Mechanics</p>
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
+                Built for India's drivers
+              </h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1.5 md:mt-2 max-w-xl mx-auto">
+                Every order, every service, every interaction is designed to be transparent, safe and on-time.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4">
+              <FeatureCard icon={BadgeCheck} title="100% Genuine Parts" desc="OEM-grade components sourced directly from authorised brand distributors." color="#1B3B6F" bg="#DBEAFE" />
+              <FeatureCard icon={Wrench} title="Certified Mechanics" desc="Background-verified, ID-checked technicians with hands-on training." color="#059669" bg="#D1FAE5" />
+              <FeatureCard icon={HomeIcon} title="Doorstep Service" desc="We come to your home, office or wherever your vehicle is parked." color="#FF6B35" bg="#FFE4D6" />
+              <FeatureCard icon={CreditCard} title="Transparent Pricing" desc="Upfront quotes, no hidden charges. Pay only after the job is done." color="#6366F1" bg="#E0E7FF" />
+              <FeatureCard icon={MapPin} title="Live Tracking" desc="Track your mechanic in real-time, with GPS-enabled service ETA." color="#BE185D" bg="#FCE7F3" />
+              <FeatureCard icon={Headphones} title="24×7 Support" desc="Roadside emergencies handled around the clock, every day of the year." color="#F59E0B" bg="#FEF3C7" />
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 10 — Get the App (download promotion)
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-[#0F2545] via-[#1B3B6F] to-[#0F2545] shadow-lg">
+              {/* Glow blobs */}
+              <div className="absolute -top-16 -right-16 w-72 h-72 bg-[#FF6B35]/25 rounded-full blur-3xl" />
+              <div className="absolute -bottom-20 -left-12 w-80 h-80 bg-[#FF6B35]/12 rounded-full blur-3xl" />
+              <div className="absolute top-1/2 left-1/3 w-56 h-56 bg-blue-400/10 rounded-full blur-3xl" />
+
+              <div className="relative grid md:grid-cols-2 gap-6 md:gap-8 px-5 py-7 md:px-10 md:py-12 lg:px-14 lg:py-14">
+                {/* Left — copy + CTAs */}
+                <div className="flex flex-col justify-center">
+                  <span className="inline-flex w-fit items-center gap-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-2.5 py-1 text-[10px] md:text-[11px] font-bold text-white">
+                    <Sparkles className="h-3 w-3 text-[#FF6B35]" />
+                    Now on Google Play
+                  </span>
+                  <h2 className="mt-3 text-2xl md:text-3xl lg:text-4xl font-extrabold text-white leading-tight tracking-tight">
+                    Get the app —<br className="hidden md:inline" /> book on the go
+                  </h2>
+                  <p className="mt-2 md:mt-3 text-xs md:text-sm lg:text-base text-white/75 max-w-md">
+                    Faster checkout, exclusive in-app offers, real-time mechanic tracking and AI Voice Booking.
+                  </p>
+
+                  <ul className="mt-4 md:mt-5 grid grid-cols-2 gap-x-4 gap-y-2 max-w-md">
+                    <AppFeatureItem text="AI Voice Booking" />
+                    <AppFeatureItem text="Real-time Tracking" />
+                    <AppFeatureItem text="Wallet Rewards" />
+                    <AppFeatureItem text="Push Notifications" />
+                  </ul>
+
+                  <div className="mt-5 md:mt-7 flex flex-wrap gap-2.5 md:gap-3">
+                    <a
+                      href="https://play.google.com/store/apps/details?id=com.bharatmechanics.app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group/dl inline-flex items-center gap-2.5 bg-white text-[#0F2545] hover:bg-[#FF6B35] hover:text-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+                    >
+                      <div className="h-7 w-7 md:h-8 md:w-8 rounded-lg bg-[#0F2545] group-hover/dl:bg-white flex items-center justify-center transition-colors">
+                        <Smartphone className="h-3.5 w-3.5 md:h-4 md:w-4 text-white group-hover/dl:text-[#FF6B35] transition-colors" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[9px] md:text-[10px] font-medium opacity-80 leading-none">GET IT ON</p>
+                        <p className="text-sm md:text-base font-extrabold leading-tight">Google Play</p>
+                      </div>
+                    </a>
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex items-center gap-2.5 bg-white/10 backdrop-blur border border-white/20 text-white/70 px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-not-allowed"
+                    >
+                      <div className="h-7 w-7 md:h-8 md:w-8 rounded-lg bg-white/10 flex items-center justify-center">
+                        <Smartphone className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[9px] md:text-[10px] font-medium opacity-80 leading-none">COMING SOON</p>
+                        <p className="text-sm md:text-base font-extrabold leading-tight">App Store</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right — phone mockup */}
+                <div className="relative hidden md:flex items-center justify-center">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-[#FF6B35]/30 blur-3xl rounded-full" />
+                    <div className="relative w-[230px] lg:w-[260px] aspect-[9/19] rounded-[36px] bg-[#0F2545] border-[10px] border-[#0F2545] shadow-2xl shadow-black/40 ring-1 ring-white/10">
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-[#0F2545] rounded-b-2xl z-20" />
+                      <div className="h-full w-full rounded-[26px] bg-gradient-to-br from-white via-[#F7F8FA] to-[#DBEAFE] overflow-hidden flex flex-col">
+                        {/* Mock app header */}
+                        <div className="px-4 pt-7 pb-3">
+                          <p className="text-[10px] font-medium text-gray-500">Deliver to</p>
+                          <p className="text-sm font-bold text-[#1A1D29]">Mumbai · 400001 ▾</p>
+                        </div>
+                        <div className="px-4">
+                          <div className="h-9 rounded-xl bg-white border border-gray-200 flex items-center px-3 text-[10px] text-gray-400 shadow-sm">
+                            🔍 Search parts, brands, services…
+                          </div>
+                        </div>
+                        {/* Mock banner */}
+                        <div className="mx-4 mt-3 h-20 rounded-xl bg-gradient-to-br from-[#0F2545] via-[#1B3B6F] to-[#FF6B35] flex items-center justify-center">
+                          <p className="text-white font-extrabold text-sm tracking-tight">SPIN &amp; EARN</p>
+                        </div>
+                        {/* Mock quick actions */}
+                        <div className="grid grid-cols-4 gap-1 mx-4 mt-3 bg-white rounded-xl p-2 border border-gray-100">
+                          {[
+                            { bg: '#DBEAFE', color: '#1B3B6F', Icon: Wrench },
+                            { bg: '#D1FAE5', color: '#059669', Icon: ShoppingBag },
+                            { bg: '#FED7AA', color: '#B45309', Icon: Bike },
+                            { bg: '#FCE7F3', color: '#BE185D', Icon: Headphones },
+                          ].map((qa, i) => (
+                            <div key={i} className="flex flex-col items-center gap-0.5">
+                              <div className="h-7 w-7 rounded-full flex items-center justify-center" style={{ backgroundColor: qa.bg }}>
+                                <qa.Icon className="h-3.5 w-3.5" style={{ color: qa.color }} />
+                              </div>
+                              <span className="text-[6px] font-semibold text-[#1A1D29]">·</span>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Mock product cards */}
+                        <div className="grid grid-cols-2 gap-1.5 mx-4 mt-3">
+                          <div className="h-16 rounded-md bg-white border border-gray-100" />
+                          <div className="h-16 rounded-md bg-white border border-gray-100" />
+                        </div>
+                        <div className="flex-1" />
+                        {/* Mock bottom nav */}
+                        <div className="grid grid-cols-5 gap-1 mx-2 mb-2 px-2 py-2 rounded-xl bg-white border border-gray-100">
+                          {[HomeIcon, ShoppingBag, Package, Wrench, Users].map((NavIcon, i) => (
+                            <div key={i} className="flex justify-center">
+                              <NavIcon className={`h-3.5 w-3.5 ${i === 0 ? 'text-[#FF6B35]' : 'text-gray-300'}`} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 11 — Trusted Brands strip
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-4 md:mb-6">
+              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Trusted Brands</p>
+              <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
+                500+ brands you already know
+              </h2>
+            </div>
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 px-4 py-5 md:px-8 md:py-8">
+              <div className="grid grid-cols-4 md:grid-cols-8 gap-3 md:gap-6">
+                {filterBrands.map((brand) => (
+                  <Link
+                    key={brand}
+                    href={`/shop?brands=${encodeURIComponent(brand)}`}
+                    className="group/br flex items-center justify-center h-12 md:h-14 rounded-xl bg-gray-50 hover:bg-[#1B3B6F] transition-colors"
+                  >
+                    <span className="text-xs md:text-sm font-bold text-gray-500 group-hover/br:text-white tracking-wide transition-colors">
+                      {brand}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 12 — Customer Testimonials
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-5 md:mb-8">
+              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Real Reviews</p>
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
+                What our customers say
+              </h2>
+              <div className="inline-flex items-center gap-1.5 mt-2.5">
+                <div className="flex">
+                  {[1,2,3,4,5].map(i => <Star key={i} className="h-4 w-4 md:h-5 md:w-5 fill-[#F59E0B] text-[#F59E0B]" />)}
+                </div>
+                <span className="text-sm md:text-base font-bold text-[#1A1D29]">4.8</span>
+                <span className="text-xs md:text-sm text-gray-500">· based on 10,000+ reviews</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
+              <TestimonialCard
+                name="Rahul Sharma"
+                location="Delhi"
+                rating={5}
+                quote="Booked a service for my Honda City via the app. The mechanic arrived on time, fixed the AC issue at my doorstep, and pricing was exactly as quoted. Highly recommended."
+                initials="RS"
+                bgColor="#1B3B6F"
+              />
+              <TestimonialCard
+                name="Priya Patel"
+                location="Ahmedabad"
+                rating={5}
+                quote="Ordered brake pads for my Activa. Genuine Bosch parts arrived next day, packed properly. The app's voice booking feature in Hindi is a game changer for my dad."
+                initials="PP"
+                bgColor="#FF6B35"
+              />
+              <TestimonialCard
+                name="Karthik Reddy"
+                location="Bengaluru"
+                rating={5}
+                quote="My car broke down on the highway at 11pm. Used Bharat Mechanics emergency feature, a verified mechanic reached me in 30 minutes. Saved my night, literally."
+                initials="KR"
+                bgColor="#059669"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 13 — Become a Partner (B2B CTAs)
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-5 md:mb-8">
+              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Grow With Us</p>
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
+                Become a partner
+              </h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1.5 md:mt-2 max-w-xl mx-auto">
+                Join thousands of mechanics, shops and delivery partners earning with Bharat Mechanics.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
+              <PartnerCard
+                icon={Wrench}
+                title="Become a Mechanic"
+                desc="Get verified service requests, fixed payouts, and grow your customer base."
+                cta="Apply now"
+                href="/login?role=mechanic"
+                gradient="from-[#1B3B6F] via-[#1B3B6F] to-[#0F2545]"
+                accent="#FF6B35"
+              />
+              <PartnerCard
+                icon={Building2}
+                title="List Your Shop"
+                desc="Sell genuine parts to thousands of customers across India with zero setup fees."
+                cta="Partner with us"
+                href="/shop-partner"
+                gradient="from-[#FF6B35] via-[#F25C2A] to-[#E94E20]"
+                accent="#FFFFFF"
+              />
+              <PartnerCard
+                icon={Truck}
+                title="Drive &amp; Deliver"
+                desc="Earn flexible income delivering parts and helping customers in your city."
+                cta="Start delivering"
+                href="/login?role=delivery"
+                gradient="from-[#059669] via-[#047857] to-[#065F46]"
+                accent="#FFFFFF"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 14 — FAQ (accordion)
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-5 md:mb-8">
+              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Got Questions?</p>
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
+                Frequently asked questions
+              </h2>
+            </div>
+            <div className="space-y-2.5 md:space-y-3">
+              {[
+                {
+                  q: 'Are the auto parts genuine?',
+                  a: 'Yes — every part on Bharat Mechanics is sourced directly from authorised brand distributors (Bosch, Denso, NGK, Mann, Mobil, Shell, Castrol, Monroe and 500+ others). Each order ships with a verifiable invoice.',
+                },
+                {
+                  q: 'How long does delivery take?',
+                  a: 'Standard delivery is 1–3 days across most Indian cities, and 4–7 days for non-metro areas. Same-day delivery is available in select cities for in-stock items ordered before 12 PM.',
+                },
+                {
+                  q: 'Are your mechanics verified?',
+                  a: 'Every mechanic on the platform is background-verified with Aadhaar / DL checks, has hands-on training, and shows a live photo + ID before starting any service. You can rate and review after every visit.',
+                },
+                {
+                  q: 'Do you offer doorstep service?',
+                  a: 'Yes — most routine services (oil change, brake pad replacement, AC service, battery, electrical, etc.) can be done at your home, office, or wherever your vehicle is parked, at no extra charge.',
+                },
+                {
+                  q: 'What if I\'m not satisfied with the service?',
+                  a: 'You only pay after the job is complete. If anything is wrong within 7 days, raise a ticket from the app and we\'ll send a mechanic back free of charge — or refund the service fee.',
+                },
+                {
+                  q: 'How do refunds work?',
+                  a: 'Refunds for cancelled or returned parts are credited to your wallet instantly, and to the original payment method within 5–7 business days. See our refund policy for full details.',
+                },
+              ].map((item, i) => (
+                <FaqItem
+                  key={i}
+                  question={item.q}
+                  answer={item.a}
+                  isOpen={openFaq === i}
+                  onToggle={() => setOpenFaq(openFaq === i ? null : i)}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 15 — Final CTA banner
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#FF6B35] via-[#F25C2A] to-[#E94E20] shadow-md">
+              <div className="absolute -top-12 -left-12 w-48 h-48 bg-white/20 rounded-full blur-3xl" />
+              <div className="absolute -bottom-12 -right-12 w-56 h-56 bg-[#0F2545]/30 rounded-full blur-3xl" />
+              <div className="relative px-5 py-7 md:px-10 md:py-10 lg:px-14 lg:py-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6">
+                <div className="max-w-xl">
+                  <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+                    Ready to give your vehicle the care it deserves?
+                  </h2>
+                  <p className="mt-1.5 md:mt-2 text-xs md:text-sm text-white/85">
+                    Book a service in 60 seconds, or shop genuine parts with same-day delivery.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2.5 shrink-0">
+                  <Link
+                    href="/service"
+                    className="inline-flex items-center gap-1.5 bg-white text-[#FF6B35] hover:bg-[#0F2545] hover:text-white font-bold px-4 py-2.5 md:px-5 md:py-3 text-xs md:text-sm rounded-lg shadow-md transition-all"
+                  >
+                    Book a Service
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                  <Link
+                    href="/shop"
+                    className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/30 text-white font-bold px-4 py-2.5 md:px-5 md:py-3 text-xs md:text-sm rounded-lg transition-all"
+                  >
+                    Shop Parts
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -1111,6 +1474,112 @@ function CategorySkeleton({ variant }: { variant: 'mobile' | 'desktop' }) {
       <div className="h-12 w-12 lg:h-14 lg:w-14 rounded-xl bg-gray-200 animate-pulse" />
       <div className="h-3 w-20 rounded bg-gray-200 animate-pulse mt-1" />
       <div className="h-2.5 w-14 rounded bg-gray-100 animate-pulse" />
+    </div>
+  )
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+   New section sub-components (FeatureCard, AppFeatureItem, TestimonialCard,
+   PartnerCard, FaqItem) — added in the home-page enhancement pass.
+   ═════════════════════════════════════════════════════════════════════ */
+
+function FeatureCard({ icon: Icon, title, desc, color, bg }: { icon: any; title: string; desc: string; color: string; bg: string }) {
+  return (
+    <div className="bg-white rounded-xl md:rounded-2xl p-3.5 md:p-5 border border-[#EEF0F3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+      <div
+        className="h-10 w-10 md:h-11 md:w-11 rounded-lg md:rounded-xl flex items-center justify-center mb-2.5 md:mb-3"
+        style={{ backgroundColor: bg }}
+      >
+        <Icon className="h-5 w-5 md:h-[22px] md:w-[22px]" style={{ color }} />
+      </div>
+      <h3 className="text-sm md:text-base font-bold text-[#1A1D29] tracking-tight">{title}</h3>
+      <p className="text-[11.5px] md:text-[13px] text-gray-500 leading-snug mt-1">{desc}</p>
+    </div>
+  )
+}
+
+function AppFeatureItem({ text }: { text: string }) {
+  return (
+    <li className="flex items-center gap-1.5 text-white/90 text-xs md:text-sm">
+      <Check className="h-3.5 w-3.5 md:h-4 md:w-4 text-[#FF6B35] shrink-0" />
+      {text}
+    </li>
+  )
+}
+
+function TestimonialCard({ name, location, rating, quote, initials, bgColor }: { name: string; location: string; rating: number; quote: string; initials: string; bgColor: string }) {
+  return (
+    <div className="relative bg-white rounded-2xl p-4 md:p-5 border border-[#EEF0F3] hover:shadow-md transition-all duration-200">
+      <Quote className="absolute top-3 right-3 h-6 w-6 text-[#FF6B35]/15" />
+      <div className="flex items-center gap-2.5 mb-3">
+        <div
+          className="h-10 w-10 md:h-11 md:w-11 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
+          style={{ backgroundColor: bgColor }}
+        >
+          {initials}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-[#1A1D29] truncate">{name}</p>
+          <p className="text-[11px] text-gray-500 truncate">{location}</p>
+        </div>
+      </div>
+      <div className="flex mb-2">
+        {Array.from({ length: rating }).map((_, i) => (
+          <Star key={i} className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />
+        ))}
+      </div>
+      <p className="text-[12.5px] md:text-[13.5px] text-gray-600 leading-relaxed">&ldquo;{quote}&rdquo;</p>
+    </div>
+  )
+}
+
+function PartnerCard({ icon: Icon, title, desc, cta, href, gradient, accent }: { icon: any; title: string; desc: string; cta: string; href: string; gradient: string; accent: string }) {
+  return (
+    <Link
+      href={href}
+      className={`group/pn relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-5 md:p-6 lg:p-7 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5`}
+    >
+      <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover/pn:bg-white/20 transition-colors" />
+      <div className="relative">
+        <div className="h-11 w-11 md:h-12 md:w-12 rounded-xl bg-white/15 backdrop-blur ring-1 ring-white/20 flex items-center justify-center mb-3.5 md:mb-4">
+          <Icon className="h-5 w-5 md:h-6 md:w-6 text-white" />
+        </div>
+        <h3 className="text-base md:text-lg font-extrabold text-white tracking-tight">{title}</h3>
+        <p className="text-[12.5px] md:text-[13.5px] text-white/80 leading-snug mt-1.5 max-w-xs">{desc}</p>
+        <div
+          className="inline-flex items-center gap-1 mt-4 md:mt-5 text-xs md:text-sm font-bold group-hover/pn:gap-2 transition-all"
+          style={{ color: accent }}
+        >
+          {cta}
+          <ArrowRight className="h-3.5 w-3.5 md:h-4 md:w-4" />
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function FaqItem({ question, answer, isOpen, onToggle }: { question: string; answer: string; isOpen: boolean; onToggle: () => void }) {
+  return (
+    <div className={`bg-white rounded-xl border transition-colors ${isOpen ? 'border-[#1B3B6F]/30 shadow-sm' : 'border-[#EEF0F3]'}`}>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 md:px-5 md:py-4 text-left"
+        aria-expanded={isOpen}
+      >
+        <span className="text-sm md:text-base font-bold text-[#1A1D29] tracking-tight">{question}</span>
+        <span
+          className={`h-7 w-7 md:h-8 md:w-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+            isOpen ? 'bg-[#FF6B35] text-white' : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {isOpen ? <Minus className="h-3.5 w-3.5 md:h-4 md:w-4" /> : <Plus className="h-3.5 w-3.5 md:h-4 md:w-4" />}
+        </span>
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 md:px-5 md:pb-5 -mt-1">
+          <p className="text-[12.5px] md:text-sm text-gray-600 leading-relaxed">{answer}</p>
+        </div>
+      )}
     </div>
   )
 }
