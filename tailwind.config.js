@@ -111,6 +111,35 @@ module.exports = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        // `font-sans` (default) → Inter for body and UI.
+        // `font-display` → Plus Jakarta Sans for headings / hero copy.
+        // Fallback chain runs Inter → system → platform defaults so we
+        // never get an invisible flash if next/font fails to load.
+        sans: [
+          'var(--font-inter)',
+          'Inter',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif',
+        ],
+        display: [
+          'var(--font-jakarta)',
+          'var(--font-inter)',
+          'Inter',
+          'system-ui',
+          'sans-serif',
+        ],
+      },
+      letterSpacing: {
+        tightest: '-0.04em',
+        tighter: '-0.025em',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

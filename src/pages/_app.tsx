@@ -8,6 +8,27 @@ import { ShopAuthGuard } from "@/components/shop-partner/ShopAuthGuard";
 import { ShopLayout } from "@/components/shop-partner/ShopLayout";
 import { useRouter } from "next/router";
 import { Toaster } from "sonner";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+
+// ─── Self-hosted, preloaded fonts via next/font ────────────────────────
+// Inter for body / UI text — clean, dense, optimised for screens.
+// Plus Jakarta Sans for display / headings — slightly more characterful,
+// gives headings a premium editorial feel without losing legibility.
+// Both are exposed as CSS variables so Tailwind can wire them into
+// `font-sans` and `font-display` utility classes (see tailwind.config.js).
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  display: "swap",
+  weight: ["500", "600", "700", "800"],
+});
 
 // Admin pages that don't need admin auth
 const adminPublicPaths = ['/admin/login'];
@@ -35,24 +56,26 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <Provider store={store}>
-      <Toaster position="top-right" richColors closeButton />
-      {needsAdminAuth(router.pathname) ? (
-        <AuthGuard>
-          <Component {...pageProps} />
-        </AuthGuard>
-      ) : needsShopAuth(router.pathname) ? (
-        <ShopAuthGuard>
-          <ShopLayout>
+      <div className={`${inter.variable} ${jakarta.variable} font-sans`}>
+        <Toaster position="top-right" richColors closeButton />
+        {needsAdminAuth(router.pathname) ? (
+          <AuthGuard>
             <Component {...pageProps} />
-          </ShopLayout>
-        </ShopAuthGuard>
-      ) : needsCustomerAuth(router.pathname) ? (
-        <CustomerAuthGuard>
+          </AuthGuard>
+        ) : needsShopAuth(router.pathname) ? (
+          <ShopAuthGuard>
+            <ShopLayout>
+              <Component {...pageProps} />
+            </ShopLayout>
+          </ShopAuthGuard>
+        ) : needsCustomerAuth(router.pathname) ? (
+          <CustomerAuthGuard>
+            <Component {...pageProps} />
+          </CustomerAuthGuard>
+        ) : (
           <Component {...pageProps} />
-        </CustomerAuthGuard>
-      ) : (
-        <Component {...pageProps} />
-      )}
+        )}
+      </div>
     </Provider>
   );
 }

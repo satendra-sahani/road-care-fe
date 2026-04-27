@@ -1,10 +1,57 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+/* Fonts are loaded via next/font in src/pages/_app.tsx — Inter (body) and
+   Plus Jakarta Sans (headings). The CSS variables --font-inter and
+   --font-jakarta are wired into Tailwind's `font-sans` / `font-display`
+   utilities (see tailwind.config.js). */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Typography baseline ──────────────────────────────────────────────
+   Apply Inter to everything by default, Plus Jakarta Sans to headings.
+   Tighten letter-spacing on display text for a premium editorial feel,
+   and keep antialiasing on so font edges stay crisp on Windows + macOS. */
 @layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv11', 'ss01', 'ss03'; /* Inter alt-glyph polish */
+  }
+
+  body {
+    font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+  }
+
+  /* Display family + tighter tracking for all headings. Individual
+     pages can still override via Tailwind utility classes. */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-jakarta), var(--font-inter), Inter, system-ui, sans-serif;
+    letter-spacing: -0.018em;
+    line-height: 1.18;
+  }
+
+  /* Larger headings get a bit more negative tracking for weight balance. */
+  h1, h2 {
+    letter-spacing: -0.025em;
+  }
+
+  /* Inputs and buttons should inherit the body font (some browsers don't
+     by default), so form fields don't fall back to Times / Arial. */
+  input, button, select, textarea {
+    font-family: inherit;
+  }
+
+  /* Numbers can use tabular figures via the .tabular-nums class — keeps
+     prices and ratings vertically aligned across rows. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 228 22% 13%;
