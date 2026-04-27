@@ -15,7 +15,7 @@ import {
   ShoppingCart, Zap, Users, Heart, ArrowRight,
   Smartphone, BadgeCheck, MapPin,
   Quote, Building2, Truck, Plus, Minus,
-  CreditCard, Sparkles,
+  CreditCard, Sparkles, AlertCircle, Grid3x3, DollarSign, Gauge,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Cookies from 'js-cookie'
@@ -53,6 +53,23 @@ export default function HomePage() {
 
   /* ─── FAQ accordion state ─── */
   const [openFaq, setOpenFaq] = useState<number | null>(0)
+
+  /* ─── Promo strip state (new) ─── */
+  const [promoVisible, setPromoVisible] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const dismissed = localStorage.getItem('bm_promo_dismissed')
+      return !dismissed
+    }
+    return true
+  })
+
+  /* ─── Vehicle selector state (new) ─── */
+  const [vehicleSelector, setVehicleSelector] = useState({
+    city: '',
+    brand: '',
+    model: '',
+    fuelType: '',
+  })
 
   // ─── Load user if token exists ───
   useEffect(() => {
@@ -167,6 +184,11 @@ export default function HomePage() {
     }
   }
 
+  const dismissPromo = () => {
+    setPromoVisible(false)
+    localStorage.setItem('bm_promo_dismissed', 'true')
+  }
+
   /* ─── Product helpers ─── */
   const getPrice = (p: any) => p.sellingPrice || p.price?.selling || (typeof p.price === 'number' ? p.price : 0)
   const getMrp = (p: any) => {
@@ -198,6 +220,11 @@ export default function HomePage() {
       />
 
       <div className="bg-[#F7F8FA] min-h-screen">
+
+        {/* ══════════════════════════════════════════════════════════════
+            PROMO STRIP (top — unauthenticated users only)
+           ══════════════════════════════════════════════════════════════ */}
+        {promoVisible && !isAuthenticated && <PromoStrip onDismiss={dismissPromo} />}
 
         {/* ══════════════════════════════════════════════════════════════
             SECTION 1 — Hero Banner (admin banners)
@@ -365,6 +392,11 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
+            SECTION 2.5 — 4-Pillar Guarantees Ribbon (NEW)
+           ══════════════════════════════════════════════════════════════ */}
+        <GuaranteeRibbon />
+
+        {/* ══════════════════════════════════════════════════════════════
             SECTION 3 — Popular Categories
            ══════════════════════════════════════════════════════════════ */}
         {loading && subCategories.length === 0 && categories.length === 0 ? (
@@ -403,7 +435,7 @@ export default function HomePage() {
 
         {!loading && (subCategories.length > 0 || categories.length > 0) && (
           <section className="mt-5 md:mt-8">
-            <SectionHeader title="Popular Categories" subtitle="Shop by part type" viewAllHref="/shop" />
+            <SectionHeader eyebrow="SHOP" title="Popular Categories" subtitle="Shop by part type" viewAllHref="/shop" />
 
             {/* Mobile horizontal scroll */}
             <div className="md:hidden mt-2.5">
@@ -470,6 +502,7 @@ export default function HomePage() {
         {featuredProducts.length > 0 && (
           <section className="mt-5 md:mt-8">
             <SectionHeader
+              eyebrow="TOP RATED"
               title="Best Sellers"
               subtitle="Most loved by our customers"
               viewAllHref="/shop"
@@ -823,6 +856,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
               <TestimonialCard
                 name="Rahul Sharma"
+                profession="HR Manager"
                 location="Delhi"
                 rating={5}
                 quote="Booked a service for my Honda City via the app. The mechanic arrived on time, fixed the AC issue at my doorstep, and pricing was exactly as quoted. Highly recommended."
@@ -831,14 +865,25 @@ export default function HomePage() {
               />
               <TestimonialCard
                 name="Priya Patel"
-                location="Ahmedabad"
+                profession="Product Manager"
+                location="Mumbai"
                 rating={5}
-                quote="Ordered brake pads for my Activa. Genuine Bosch parts arrived next day, packed properly. The app's voice booking feature in Hindi is a game changer for my dad."
+                quote="I was worried about finding genuine parts online. Bharat Mechanics came through with original Bosch spares and a certified mechanic for free doorstep installation. Brilliant experience!"
                 initials="PP"
                 bgColor="#FF6B35"
               />
               <TestimonialCard
+                name="Rajesh Kumar"
+                profession="Business Owner"
+                location="Delhi"
+                rating={4}
+                quote="The app is super intuitive. I booked a brake pad replacement in less than a minute, and the mechanic completed it in 45 minutes at my office. No nonsense, fair pricing."
+                initials="RK"
+                bgColor="#1B3B6F"
+              />
+              <TestimonialCard
                 name="Karthik Reddy"
+                profession="Software Engineer"
                 location="Bengaluru"
                 rating={5}
                 quote="My car broke down on the highway at 11pm. Used Bharat Mechanics emergency feature, a verified mechanic reached me in 30 minutes. Saved my night, literally."
@@ -944,6 +989,11 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 14.5 — City Selector (NEW)
+           ══════════════════════════════════════════════════════════════ */}
+        <CitySelector />
 
         {/* ══════════════════════════════════════════════════════════════
             SECTION 15 — Final CTA banner
@@ -1119,11 +1169,64 @@ export default function HomePage() {
    Sub-components
    ═════════════════════════════════════════════════════════════════════ */
 
-function SectionHeader({ title, subtitle, viewAllHref }: { title: string; subtitle?: string; viewAllHref?: string }) {
+function PromoStrip({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="bg-[#FF6B35] px-3 md:px-6 lg:px-8 py-2 md:py-3">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        <p className="text-white font-semibold text-xs md:text-sm flex-1">
+          Use code <span className="font-bold">BHARAT50</span> · Up to ₹500 off your first service
+        </p>
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss promo"
+          className="flex-shrink-0 h-6 w-6 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function GuaranteeRibbon() {
+  const guarantees = [
+    { icon: Truck, label: 'Free Pickup' },
+    { icon: DollarSign, label: 'No Hidden Charges' },
+    { icon: ShieldCheck, label: '30 Days Warranty' },
+    { icon: BadgeCheck, label: 'Genuine Parts' },
+  ]
+
+  return (
+    <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-gradient-to-r from-[#0F2545] via-[#1B3B6F] to-[#0F2545] rounded-xl md:rounded-2xl py-4 md:py-5 lg:py-6 px-4 md:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            {guarantees.map((item, idx) => {
+              const Icon = item.icon
+              return (
+                <div key={idx} className="flex items-center gap-2 md:gap-3">
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center shrink-0 ring-1 ring-white/15">
+                    <Icon className="h-5 w-5 md:h-6 md:w-6 text-[#FF6B35]" />
+                  </div>
+                  <p className="text-white font-semibold text-xs md:text-sm">{item.label}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SectionHeader({ eyebrow, title, subtitle, viewAllHref }: { eyebrow?: string; title: string; subtitle?: string; viewAllHref?: string }) {
   return (
     <div className="px-3 md:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto flex items-end justify-between">
         <div>
+          {eyebrow && (
+            <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider mb-1">{eyebrow}</p>
+          )}
           <h2 className="text-base md:text-lg lg:text-xl font-bold text-[#1A1D29] tracking-tight">{title}</h2>
           {subtitle && (
             <p className="text-[11px] md:text-xs lg:text-sm text-gray-500 mt-0.5">{subtitle}</p>
@@ -1508,7 +1611,7 @@ function AppFeatureItem({ text }: { text: string }) {
   )
 }
 
-function TestimonialCard({ name, location, rating, quote, initials, bgColor }: { name: string; location: string; rating: number; quote: string; initials: string; bgColor: string }) {
+function TestimonialCard({ name, profession, location, rating, quote, initials, bgColor }: { name: string; profession?: string; location: string; rating: number; quote: string; initials: string; bgColor: string }) {
   return (
     <div className="relative bg-white rounded-2xl p-4 md:p-5 border border-[#EEF0F3] hover:shadow-md transition-all duration-200">
       <Quote className="absolute top-3 right-3 h-6 w-6 text-[#FF6B35]/15" />
@@ -1521,6 +1624,9 @@ function TestimonialCard({ name, location, rating, quote, initials, bgColor }: {
         </div>
         <div className="min-w-0">
           <p className="text-sm font-bold text-[#1A1D29] truncate">{name}</p>
+          {profession && (
+            <p className="text-[10px] font-semibold text-[#FF6B35] uppercase tracking-wider truncate">{profession}</p>
+          )}
           <p className="text-[11px] text-gray-500 truncate">{location}</p>
         </div>
       </div>
@@ -1615,5 +1721,37 @@ function ProductSkeleton({ variant }: { variant: 'mobile' | 'desktop' }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function CitySelector() {
+  const cities = [
+    'Mumbai', 'Delhi', 'Bengaluru', 'Pune', 'Ahmedabad', 'Chennai', 'Kolkata', 
+    'Hyderabad', 'Jaipur', 'Lucknow', 'Kochi', 'Chandigarh', 'Indore', 'Thane',
+    'Nagpur', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad', 'Patna', 'Vadodara',
+    'Ghaziabad', 'Ludhiana', 'Aurangabad', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot',
+    'Varanasi', 'Srinagar', 'Aurangabad', 'Dhanbad', 'Amritsar'
+  ]
+
+  return (
+    <section className="px-3 md:px-6 lg:px-8 mt-8 md:mt-12">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-5 md:mb-6">
+          <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Service Locations</p>
+          <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-[#1A1D29] tracking-tight mt-1">Available in 30+ cities</h3>
+        </div>
+        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
+          {cities.map((city, idx) => (
+            <Link
+              key={idx}
+              href={`/shop?city=${city.toLowerCase().replace(/\s+/g, '-')}`}
+              className="bg-white rounded-lg md:rounded-xl py-2.5 md:py-3 px-2 md:px-3 text-center border border-[#EEF0F3] hover:border-[#FF6B35] hover:text-[#FF6B35] hover:shadow-sm transition-all duration-200 group"
+            >
+              <p className="text-xs md:text-sm font-semibold text-[#1A1D29] group-hover:text-[#FF6B35] transition-colors">{city}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
