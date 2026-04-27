@@ -133,7 +133,17 @@ export function BannerManagement() {
 
   const handleOpenCreate = () => {
     setEditingBanner(null)
-    setFormData(emptyBanner)
+    // Pre-fill the new-banner form with the platform that's currently being
+    // filtered. So when the admin clicks "Add Banner" while looking at the
+    // Web tab, the new banner defaults to platform='web' (not 'all'), and
+    // doesn't accidentally end up showing on mobile too. Picking 'all' from
+    // the form dropdown is still possible — this just sets the right default.
+    setFormData({
+      ...emptyBanner,
+      platform: filterPlatform === 'all'
+        ? 'all'
+        : (filterPlatform as 'web' | 'android'),
+    })
     setImageFile(null)
     setImagePreview('')
     setDialogOpen(true)
