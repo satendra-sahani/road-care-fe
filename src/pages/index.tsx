@@ -210,7 +210,7 @@ export default function HomePage() {
               <div className="relative group/banner">
                 <div
                   ref={bannerRef}
-                  className="overflow-hidden rounded-xl md:rounded-2xl shadow-sm ring-1 ring-black/5"
+                  className="overflow-hidden rounded-xl md:rounded-2xl shadow-sm ring-1 ring-black/5 bg-[#0F2545]"
                 >
                   <div
                     className="flex transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)]"
@@ -218,13 +218,14 @@ export default function HomePage() {
                   >
                     {bannerSlides.map((slide, idx) => {
                       const content = (
-                        // On mobile: h-auto so the image renders at its natural aspect ratio (no letterbox,
-                        // no crop, container height equals image display height exactly).
-                        // On md+: fixed height + object-cover, which is the sizing the user confirmed looks good.
+                        // Mobile: h-auto so the image renders at its natural aspect (no letterbox, no crop).
+                        // Desktop: fixed height + object-contain so the FULL banner design is always visible,
+                        // even when the source image is wider than the slot. Any tiny letterbox bars are
+                        // masked by the carousel's brand-navy background so they look intentional.
                         <img
                           src={slide.imageUrl}
                           alt={slide.title || `Promo banner ${idx + 1}`}
-                          className="w-full h-auto md:h-[210px] lg:h-[260px] xl:h-[300px] md:object-cover select-none block"
+                          className="w-full h-auto md:h-[210px] lg:h-[260px] xl:h-[300px] md:object-contain select-none block"
                           draggable={false}
                           onError={(e) => {
                             e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" fill="%23e5e7eb"/>'
