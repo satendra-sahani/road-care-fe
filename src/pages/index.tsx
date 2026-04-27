@@ -15,13 +15,81 @@ import {
   ShoppingCart, Zap, Users, Heart, ArrowRight,
   Smartphone, BadgeCheck, MapPin,
   Quote, Building2, Truck, Plus, Minus,
-  CreditCard, Sparkles,
+  CreditCard, Sparkles, Tag, Car, Fuel, Settings,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Cookies from 'js-cookie'
 
 /* ─── Filter brands list (same as Android) ─── */
 const filterBrands = ['Bosch', 'Denso', 'NGK', 'Mann', 'Mobil', 'Shell', 'Castrol', 'Monroe']
+
+/* ─── Vehicle-selector data (hardcoded for the hero quick-find form) ─── */
+const TOP_CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow']
+const CAR_BRANDS = ['Maruti Suzuki', 'Hyundai', 'Tata', 'Mahindra', 'Toyota', 'Honda', 'Kia', 'Renault', 'Volkswagen', 'Skoda', 'MG', 'Nissan']
+const FUEL_TYPES = ['Petrol', 'Diesel', 'CNG', 'Electric']
+
+/* ─── 30 cities for the SEO + trust footer block ─── */
+const ALL_CITIES = [
+  'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad',
+  'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Patna',
+  'Surat', 'Vadodara', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot',
+  'Varanasi', 'Aurangabad', 'Amritsar', 'Allahabad', 'Ranchi', 'Howrah',
+]
+
+/* ─── Popular service prices for the transparency table ─── */
+const POPULAR_SERVICES = [
+  { service: 'Periodic Service', price: 2499, savings: 35, icon: Wrench },
+  { service: 'AC Service & Gas Refill', price: 1799, savings: 30, icon: Settings },
+  { service: 'Brake Service', price: 999, savings: 25, icon: ShieldCheck },
+  { service: 'Battery Replacement', price: 4499, savings: 20, icon: Zap },
+  { service: 'Oil Change', price: 599, savings: 40, icon: Heart },
+  { service: 'Denting & Painting', price: 1499, savings: 30, icon: Award },
+  { service: 'Roadside Assistance', price: 499, savings: 50, icon: Truck },
+  { service: 'Bike Service @ Home', price: 799, savings: 40, icon: Bike },
+]
+
+/* ─── Premium testimonials with profession + verified tick ─── */
+const TESTIMONIALS = [
+  {
+    name: 'Rahul Sharma', profession: 'Software Engineer', city: 'Bengaluru',
+    rating: 5, initials: 'RS', bg: '#1B3B6F', verified: true,
+    quote: 'Booked a service for my Honda City via the app. The mechanic arrived on time, fixed the AC issue at my doorstep, and pricing was exactly as quoted. Highly recommended.',
+  },
+  {
+    name: 'Priya Patel', profession: 'Architect', city: 'Ahmedabad',
+    rating: 5, initials: 'PP', bg: '#FF6B35', verified: true,
+    quote: 'Ordered brake pads for my Activa. Genuine Bosch parts arrived next day, packed properly. The voice booking feature in Hindi is a game changer for my dad.',
+  },
+  {
+    name: 'Karthik Reddy', profession: 'Account Manager', city: 'Hyderabad',
+    rating: 5, initials: 'KR', bg: '#059669', verified: true,
+    quote: 'My car broke down on the highway at 11pm. Used the emergency feature, a verified mechanic reached me in 30 minutes. Saved my night, literally.',
+  },
+  {
+    name: 'Anjali Mehra', profession: 'Lawyer', city: 'Mumbai',
+    rating: 5, initials: 'AM', bg: '#6366F1', verified: true,
+    quote: 'The transparent pricing is what kept me. I compared the same brake-pad replacement at three garages and Bharat Mechanics was 18% cheaper with genuine parts.',
+  },
+  {
+    name: 'Suresh Iyer', profession: 'Teacher', city: 'Chennai',
+    rating: 5, initials: 'SI', bg: '#BE185D', verified: true,
+    quote: 'I refer everyone in my colony now. The Refer & Earn rewards have paid for two of my services already. Plus the live tracking is just like Uber.',
+  },
+]
+
+/* ─── Brand partners (insurance + oil + EV — stylised as cards) ─── */
+const BRAND_PARTNERS = [
+  { name: 'Bosch', tag: 'OEM Parts' },
+  { name: 'Castrol', tag: 'Engine Oil' },
+  { name: 'Shell', tag: 'Lubricants' },
+  { name: 'Motul', tag: 'Premium Oil' },
+  { name: 'NGK', tag: 'Spark Plugs' },
+  { name: 'Denso', tag: 'Electricals' },
+  { name: 'Mann', tag: 'Filters' },
+  { name: 'Bajaj Allianz', tag: 'Insurance' },
+  { name: 'Mobil', tag: 'Oils' },
+  { name: 'Monroe', tag: 'Suspension' },
+]
 
 export default function HomePage() {
   const router = useRouter()
@@ -53,6 +121,45 @@ export default function HomePage() {
 
   /* ─── FAQ accordion state ─── */
   const [openFaq, setOpenFaq] = useState<number | null>(0)
+
+  /* ─── Premium-pass state: promo strip, vehicle selector, testimonial carousel ─── */
+  const [showPromo, setShowPromo] = useState(true)
+  const [vehicleCity, setVehicleCity] = useState('')
+  const [vehicleBrand, setVehicleBrand] = useState('')
+  const [vehicleFuel, setVehicleFuel] = useState('')
+  const [activeTestimonial, setActiveTestimonial] = useState(0)
+
+  /* ─── Restore promo dismissal across visits ─── */
+  useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('bm_promo_dismissed') === '1') {
+      setShowPromo(false)
+    }
+  }, [])
+
+  const dismissPromo = () => {
+    setShowPromo(false)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bm_promo_dismissed', '1')
+    }
+  }
+
+  /* ─── Auto-rotate testimonials (5s per card, pauses if user interacts) ─── */
+  useEffect(() => {
+    const t = setInterval(() => {
+      setActiveTestimonial(prev => (prev + 1) % TESTIMONIALS.length)
+    }, 5000)
+    return () => clearInterval(t)
+  }, [])
+
+  /* ─── Vehicle-selector submit ─── */
+  const handleFindService = () => {
+    const params = new URLSearchParams()
+    if (vehicleCity) params.set('city', vehicleCity)
+    if (vehicleBrand) params.set('brand', vehicleBrand)
+    if (vehicleFuel) params.set('fuel', vehicleFuel)
+    const qs = params.toString()
+    router.push(`/service${qs ? `?${qs}` : ''}`)
+  }
 
   // ─── Load user if token exists ───
   useEffect(() => {
@@ -197,7 +304,40 @@ export default function HomePage() {
         keywords="auto parts online, car parts, bike parts, mechanic near me, vehicle repair, Bharat Mechanics, genuine auto parts, doorstep mechanic, car service, bike service, engine oil, brake pads, air filter, spark plug, car battery, tyre"
       />
 
-      <div className="bg-[#F7F8FA] min-h-screen">
+      <div className="bg-[#F7F8FA] min-h-screen pb-20 md:pb-0">
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 0 — Promo strip (dismissable, persists in localStorage)
+           ══════════════════════════════════════════════════════════════ */}
+        {showPromo && (
+          <div className="relative bg-gradient-to-r from-[#FF6B35] via-[#F25C2A] to-[#E94E20] text-white">
+            <div className="px-3 md:px-6 lg:px-8">
+              <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 py-2 md:py-2.5">
+                <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                  <Tag className="h-3.5 w-3.5 md:h-4 md:w-4 shrink-0 hidden sm:block" />
+                  <p className="text-[11px] md:text-xs lg:text-sm font-medium truncate">
+                    <span className="font-bold">BHARAT50</span>
+                    <span className="opacity-90"> · Up to ₹500 off your first service · Free doorstep pickup across India</span>
+                  </p>
+                </div>
+                <Link
+                  href="/service"
+                  className="hidden md:inline-flex items-center gap-1 bg-white/20 backdrop-blur hover:bg-white/30 px-3 py-1 rounded-full text-[11px] md:text-xs font-bold transition-colors shrink-0"
+                >
+                  Claim now <ArrowRight className="h-3 w-3" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={dismissPromo}
+                  aria-label="Dismiss promo"
+                  className="h-6 w-6 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
+                >
+                  <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ══════════════════════════════════════════════════════════════
             SECTION 1 — Hero Banner (admin banners)
@@ -317,6 +457,88 @@ export default function HomePage() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 1B — Vehicle Selector (book-by-vehicle hero strip)
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-[auto,1fr,auto] items-stretch">
+                {/* Left badge */}
+                <div className="hidden md:flex items-center gap-3 bg-gradient-to-br from-[#0F2545] to-[#1B3B6F] text-white px-5 py-4 lg:px-6 lg:py-5">
+                  <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-full bg-white/15 backdrop-blur flex items-center justify-center ring-1 ring-white/20 shrink-0">
+                    <Car className="h-5 w-5 lg:h-[22px] lg:w-[22px] text-[#FF6B35]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-[#FF6B35]">Find Service</p>
+                    <p className="text-sm lg:text-base font-extrabold tracking-tight leading-tight">Book in 60 seconds</p>
+                  </div>
+                </div>
+
+                {/* Mobile mini-header */}
+                <div className="md:hidden flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-[#EFF6FF] to-[#DBEAFE] border-b border-[#DBEAFE]">
+                  <div className="flex items-center gap-2">
+                    <Car className="h-4 w-4 text-[#1B3B6F]" />
+                    <p className="text-[11px] font-bold text-[#1B3B6F] tracking-tight">Find service for your vehicle</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">60 sec</span>
+                </div>
+
+                {/* Dropdown row */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-0 p-3 md:p-0 md:divide-x md:divide-gray-100">
+                  <VehicleSelect
+                    icon={MapPin}
+                    placeholder="Select City"
+                    value={vehicleCity}
+                    onChange={setVehicleCity}
+                    options={TOP_CITIES}
+                  />
+                  <VehicleSelect
+                    icon={Car}
+                    placeholder="Select Brand"
+                    value={vehicleBrand}
+                    onChange={setVehicleBrand}
+                    options={CAR_BRANDS}
+                  />
+                  <VehicleSelect
+                    icon={Fuel}
+                    placeholder="Fuel Type"
+                    value={vehicleFuel}
+                    onChange={setVehicleFuel}
+                    options={FUEL_TYPES}
+                  />
+                </div>
+
+                {/* CTA */}
+                <button
+                  type="button"
+                  onClick={handleFindService}
+                  className="bg-[#FF6B35] hover:bg-[#e55a2a] text-white font-bold flex items-center justify-center gap-2 px-5 py-3.5 md:px-6 md:py-0 md:rounded-none mx-3 mb-3 md:mx-0 md:mb-0 rounded-lg text-sm transition-all md:min-w-[180px]"
+                >
+                  Find Service
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 1C — 4-Pillar Guarantees Ribbon
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 px-3 py-3 md:px-6 md:py-4 lg:px-8 lg:py-5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+                <Pillar icon={BadgeCheck} title="Genuine Parts" subtitle="100% OEM Original" color="#1B3B6F" bg="#DBEAFE" />
+                <Pillar icon={ShieldCheck} title="30-Day Warranty" subtitle="On every service" color="#059669" bg="#D1FAE5" />
+                <Pillar icon={HomeIcon} title="Doorstep Service" subtitle="At home or office" color="#FF6B35" bg="#FFE4D6" />
+                <Pillar icon={CreditCard} title="Transparent Pricing" subtitle="No hidden fees" color="#6366F1" bg="#E0E7FF" />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -558,6 +780,66 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
+            SECTION 5B — Pricing Transparency Table
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-5 md:mt-10">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-4 md:mb-6">
+              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">No Hidden Fees</p>
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
+                Popular services, transparent prices
+              </h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1.5 max-w-xl mx-auto">
+                Up to 50% cheaper than authorised garages. Pay only after the job is done.
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 overflow-hidden">
+              {/* Desktop: 4-column grid */}
+              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4">
+                {POPULAR_SERVICES.map((s, i) => (
+                  <PricingCell key={i} service={s.service} price={s.price} savings={s.savings} icon={s.icon} idx={i} />
+                ))}
+              </div>
+              {/* Mobile: compact list */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {POPULAR_SERVICES.slice(0, 6).map((s, i) => (
+                  <Link
+                    key={i}
+                    href="/service"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-[#DBEAFE] to-[#BFDBFE] flex items-center justify-center shrink-0">
+                      <s.icon className="h-4 w-4 text-[#1B3B6F]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-bold text-[#1A1D29] truncate">{s.service}</p>
+                      <p className="text-[10.5px] text-gray-500">Starts from <span className="font-bold text-[#1B3B6F]">₹{s.price.toLocaleString('en-IN')}</span></p>
+                    </div>
+                    <div className="flex flex-col items-end shrink-0">
+                      <span className="text-[10px] font-bold text-[#059669] bg-[#D1FAE5] px-1.5 py-0.5 rounded">Save {s.savings}%</span>
+                      <ChevronRight className="h-3.5 w-3.5 text-gray-300 mt-1" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              {/* CTA bar */}
+              <div className="border-t border-gray-100 bg-gradient-to-r from-[#FFF7F2] to-[#FFE4D6] px-4 py-3 md:px-6 md:py-4 flex items-center justify-between gap-3">
+                <p className="text-[12px] md:text-sm font-semibold text-[#1A1D29]">
+                  <Sparkles className="inline h-3.5 w-3.5 md:h-4 md:w-4 text-[#FF6B35] mr-1" />
+                  All services include free pickup &amp; drop-off
+                </p>
+                <Link
+                  href="/service"
+                  className="inline-flex items-center gap-1 bg-[#FF6B35] hover:bg-[#e55a2a] text-white text-[11px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg shrink-0 transition-colors"
+                >
+                  View all <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
             SECTION 6 — How it works (4 steps)
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-4 md:mt-6">
@@ -590,22 +872,6 @@ export default function HomePage() {
                   <HowStep num="3" icon={ShieldCheck} title="Confirm & Relax" desc="We'll take it from here" variant="desktop" />
                   <HowStep num="4" icon={HomeIcon} title="We come to you" desc="Doorstep service, on-time" variant="desktop" />
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════
-            SECTION 7 — Trust Badges
-           ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-gradient-to-r from-[#1B3B6F] via-[#0F2545] to-[#1B3B6F] rounded-xl md:rounded-2xl shadow-sm py-3 px-3 md:py-4 md:px-6 lg:py-5 lg:px-8 overflow-hidden relative">
-              <div className="absolute -top-6 right-8 w-32 h-32 bg-[#FF6B35]/10 rounded-full blur-3xl" />
-              <div className="relative grid grid-cols-3 gap-2 md:gap-5">
-                <TrustItem icon={ShieldCheck} title="Genuine Parts" subtitle="100% Original" />
-                <TrustItem icon={Award} title="Best Price" subtitle="Guaranteed" />
-                <TrustItem icon={Clock} title="On-time Service" subtitle="At your doorstep" />
               </div>
             </div>
           </div>
@@ -774,27 +1040,36 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 11 — Trusted Brands strip
+            SECTION 11 — Brand Partners strip (premium logo grid)
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-4 md:mb-6">
-              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Trusted Brands</p>
+              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Trusted Partners</p>
               <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
-                500+ brands you already know
+                Genuine parts from 500+ global brands
               </h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-1.5">
+                Sourced directly from authorised distributors. Verifiable invoice on every order.
+              </p>
             </div>
-            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 px-4 py-5 md:px-8 md:py-8">
-              <div className="grid grid-cols-4 md:grid-cols-8 gap-3 md:gap-6">
-                {filterBrands.map((brand) => (
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-4 md:p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 md:gap-3">
+                {BRAND_PARTNERS.map((b) => (
                   <Link
-                    key={brand}
-                    href={`/shop?brands=${encodeURIComponent(brand)}`}
-                    className="group/br flex items-center justify-center h-12 md:h-14 rounded-xl bg-gray-50 hover:bg-[#1B3B6F] transition-colors"
+                    key={b.name}
+                    href={`/shop?brands=${encodeURIComponent(b.name)}`}
+                    className="group/bp flex items-center gap-2.5 px-3 py-2.5 md:px-4 md:py-3 rounded-xl bg-gray-50 hover:bg-white hover:ring-1 hover:ring-[#1B3B6F]/20 hover:shadow-sm transition-all"
                   >
-                    <span className="text-xs md:text-sm font-bold text-gray-500 group-hover/br:text-white tracking-wide transition-colors">
-                      {brand}
-                    </span>
+                    <div className="h-8 w-8 md:h-9 md:w-9 rounded-lg bg-white ring-1 ring-gray-200 flex items-center justify-center shrink-0 group-hover/bp:ring-[#1B3B6F]/30 transition-all">
+                      <span className="text-[10px] md:text-[11px] font-extrabold text-[#1B3B6F] tracking-tight">
+                        {b.name.split(' ').map(w => w[0]).slice(0, 2).join('')}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[12px] md:text-[13px] font-bold text-[#1A1D29] truncate group-hover/bp:text-[#1B3B6F] transition-colors">{b.name}</p>
+                      <p className="text-[9px] md:text-[10px] text-gray-500 truncate">{b.tag}</p>
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -803,7 +1078,7 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 12 — Customer Testimonials
+            SECTION 12 — Customer Testimonials (rotating carousel)
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
           <div className="max-w-7xl mx-auto">
@@ -817,34 +1092,54 @@ export default function HomePage() {
                   {[1,2,3,4,5].map(i => <Star key={i} className="h-4 w-4 md:h-5 md:w-5 fill-[#F59E0B] text-[#F59E0B]" />)}
                 </div>
                 <span className="text-sm md:text-base font-bold text-[#1A1D29]">4.8</span>
-                <span className="text-xs md:text-sm text-gray-500">· based on 10,000+ reviews</span>
+                <span className="text-xs md:text-sm text-gray-500">· based on 10,000+ verified reviews</span>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
-              <TestimonialCard
-                name="Rahul Sharma"
-                location="Delhi"
-                rating={5}
-                quote="Booked a service for my Honda City via the app. The mechanic arrived on time, fixed the AC issue at my doorstep, and pricing was exactly as quoted. Highly recommended."
-                initials="RS"
-                bgColor="#1B3B6F"
-              />
-              <TestimonialCard
-                name="Priya Patel"
-                location="Ahmedabad"
-                rating={5}
-                quote="Ordered brake pads for my Activa. Genuine Bosch parts arrived next day, packed properly. The app's voice booking feature in Hindi is a game changer for my dad."
-                initials="PP"
-                bgColor="#FF6B35"
-              />
-              <TestimonialCard
-                name="Karthik Reddy"
-                location="Bengaluru"
-                rating={5}
-                quote="My car broke down on the highway at 11pm. Used Bharat Mechanics emergency feature, a verified mechanic reached me in 30 minutes. Saved my night, literally."
-                initials="KR"
-                bgColor="#059669"
-              />
+
+            {/* Mobile: single rotating card */}
+            <div className="md:hidden">
+              <PremiumTestimonialCard t={TESTIMONIALS[activeTestimonial]} />
+            </div>
+
+            {/* Desktop: 3-card window with active emphasized */}
+            <div className="hidden md:grid md:grid-cols-3 gap-4 lg:gap-5">
+              {[0, 1, 2].map((offset) => {
+                const idx = (activeTestimonial + offset) % TESTIMONIALS.length
+                return <PremiumTestimonialCard key={idx} t={TESTIMONIALS[idx]} emphasised={offset === 1} />
+              })}
+            </div>
+
+            {/* Carousel controls */}
+            <div className="flex items-center justify-center gap-2 md:gap-3 mt-4 md:mt-6">
+              <button
+                type="button"
+                onClick={() => setActiveTestimonial(prev => prev === 0 ? TESTIMONIALS.length - 1 : prev - 1)}
+                aria-label="Previous testimonial"
+                className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-white border border-gray-200 hover:border-[#1B3B6F] hover:bg-[#1B3B6F] hover:text-white text-[#1B3B6F] flex items-center justify-center transition-all shadow-sm"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="flex gap-1.5">
+                {TESTIMONIALS.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setActiveTestimonial(i)}
+                    aria-label={`Go to testimonial ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === activeTestimonial ? 'w-7 bg-[#FF6B35]' : 'w-1.5 bg-gray-300 hover:bg-gray-400'
+                    }`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTestimonial(prev => (prev + 1) % TESTIMONIALS.length)}
+                aria-label="Next testimonial"
+                className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-white border border-gray-200 hover:border-[#1B3B6F] hover:bg-[#1B3B6F] hover:text-white text-[#1B3B6F] flex items-center justify-center transition-all shadow-sm"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </section>
@@ -946,6 +1241,42 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
+            SECTION 14B — Available in 30+ cities (SEO + trust block)
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-5 md:p-8">
+              <div className="flex items-start md:items-center justify-between flex-col md:flex-row gap-3 mb-4 md:mb-6">
+                <div>
+                  <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Pan-India Reach</p>
+                  <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
+                    Available in 30+ cities across India
+                  </h2>
+                  <p className="text-xs md:text-sm text-gray-500 mt-1">
+                    Doorstep service and same-day parts delivery in metro and tier-2 cities.
+                  </p>
+                </div>
+                <div className="hidden md:flex items-center gap-2 bg-[#F0F9FF] border border-[#BAE6FD] rounded-full px-3 py-1.5 shrink-0">
+                  <MapPin className="h-3.5 w-3.5 text-[#1B3B6F]" />
+                  <span className="text-[11px] font-bold text-[#1B3B6F]">Adding 5+ cities every month</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 md:gap-2">
+                {ALL_CITIES.map((city) => (
+                  <Link
+                    key={city}
+                    href={`/service?city=${encodeURIComponent(city)}`}
+                    className="px-2.5 py-2 md:px-3 md:py-2.5 rounded-lg text-[11.5px] md:text-[13px] font-medium text-[#1A1D29] bg-gray-50 hover:bg-[#1B3B6F] hover:text-white transition-colors text-center truncate"
+                  >
+                    {city}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
             SECTION 15 — Final CTA banner
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
@@ -984,6 +1315,29 @@ export default function HomePage() {
 
         {/* Bottom spacer */}
         <div className="h-6 md:h-10 lg:h-12" />
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          STICKY MOBILE BOOKING CTA (above the mobile bottom nav at h-16)
+         ══════════════════════════════════════════════════════════════ */}
+      <div className="md:hidden fixed bottom-16 left-0 right-0 z-40 px-3 pb-2 pointer-events-none">
+        <Link
+          href="/service"
+          className="pointer-events-auto flex items-center justify-between gap-2 bg-gradient-to-r from-[#FF6B35] via-[#F25C2A] to-[#E94E20] text-white px-4 py-3 rounded-2xl shadow-lg shadow-[#FF6B35]/30 ring-1 ring-white/20 backdrop-blur active:scale-[0.98] transition-transform"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-9 w-9 rounded-full bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+              <Wrench className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium opacity-85 leading-none">Book in 60 sec</p>
+              <p className="text-[13px] font-extrabold tracking-tight leading-tight truncate">Service from ₹499</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 bg-white text-[#FF6B35] px-2.5 py-1 rounded-full font-bold text-[11px] shrink-0">
+            Book now <ArrowRight className="h-3 w-3" />
+          </div>
+        </Link>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
@@ -1556,6 +1910,133 @@ function PartnerCard({ icon: Icon, title, desc, cta, href, gradient, accent }: {
         </div>
       </div>
     </Link>
+  )
+}
+
+function Pillar({ icon: Icon, title, subtitle, color, bg }: { icon: any; title: string; subtitle: string; color: string; bg: string }) {
+  return (
+    <div className="flex items-center gap-2.5 md:gap-3">
+      <div
+        className="h-9 w-9 md:h-10 md:w-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0"
+        style={{ backgroundColor: bg }}
+      >
+        <Icon className="h-4 w-4 md:h-[18px] md:w-[18px]" style={{ color }} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[12px] md:text-[13.5px] font-bold text-[#1A1D29] tracking-tight truncate">{title}</p>
+        <p className="text-[10px] md:text-[11.5px] text-gray-500 truncate">{subtitle}</p>
+      </div>
+    </div>
+  )
+}
+
+function VehicleSelect({ icon: Icon, placeholder, value, onChange, options }: { icon: any; placeholder: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  return (
+    <div className="relative md:px-5 md:py-3.5 lg:py-4">
+      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 md:left-5 md:top-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-[#1B3B6F] pointer-events-none" />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none w-full pl-8 pr-7 py-2.5 md:pl-7 md:pr-7 md:py-0 md:h-full bg-transparent border border-gray-200 md:border-0 rounded-lg md:rounded-none text-[12px] md:text-[13px] font-semibold text-[#1A1D29] outline-none focus:border-[#1B3B6F] md:focus:bg-[#F0F9FF] cursor-pointer transition-colors"
+      >
+        <option value="">{placeholder}</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+      <ChevronRight className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 rotate-90 pointer-events-none" />
+    </div>
+  )
+}
+
+function PricingCell({ service, price, savings, icon: Icon, idx }: { service: string; price: number; savings: number; icon: any; idx: number }) {
+  // Soft pastel gradients cycle so cells feel distinct without being noisy
+  const gradients = [
+    'from-[#DBEAFE] to-[#BFDBFE]',
+    'from-[#FFE4D6] to-[#FED7AA]',
+    'from-[#D1FAE5] to-[#A7F3D0]',
+    'from-[#FCE7F3] to-[#FBCFE8]',
+    'from-[#E0E7FF] to-[#C7D2FE]',
+    'from-[#FEF3C7] to-[#FDE68A]',
+  ]
+  const gradient = gradients[idx % gradients.length]
+  return (
+    <Link
+      href="/service"
+      className="group/pc flex flex-col gap-3 px-5 py-5 lg:px-6 lg:py-6 hover:bg-gray-50 transition-colors border-r border-b border-gray-100 last:border-r-0"
+    >
+      <div className="flex items-center justify-between">
+        <div className={`h-10 w-10 lg:h-11 lg:w-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 group-hover/pc:scale-105 transition-transform`}>
+          <Icon className="h-5 w-5 lg:h-[22px] lg:w-[22px] text-[#1B3B6F]" />
+        </div>
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#059669] bg-[#D1FAE5] px-2 py-0.5 rounded-full">
+          Save {savings}%
+        </span>
+      </div>
+      <div>
+        <p className="text-sm font-bold text-[#1A1D29] tracking-tight">{service}</p>
+        <p className="text-xs text-gray-500 mt-0.5">
+          Starts from <span className="text-base font-extrabold text-[#1B3B6F]">₹{price.toLocaleString('en-IN')}</span>
+        </p>
+      </div>
+    </Link>
+  )
+}
+
+function PremiumTestimonialCard({ t, emphasised = false }: { t: typeof TESTIMONIALS[number]; emphasised?: boolean }) {
+  return (
+    <div className={`relative overflow-hidden rounded-2xl p-5 md:p-6 transition-all duration-300 ${
+      emphasised
+        ? 'bg-gradient-to-br from-[#0F2545] via-[#1B3B6F] to-[#0F2545] shadow-lg shadow-[#0F2545]/20 ring-1 ring-white/10'
+        : 'bg-white border border-[#EEF0F3] hover:shadow-md'
+    }`}>
+      {emphasised && (
+        <>
+          <div className="absolute -top-12 -right-12 w-40 h-40 bg-[#FF6B35]/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[#FF6B35]/10 rounded-full blur-2xl pointer-events-none" />
+        </>
+      )}
+      <Quote className={`absolute top-3 right-3 h-7 w-7 ${emphasised ? 'text-[#FF6B35]/30' : 'text-[#FF6B35]/15'}`} />
+
+      <div className="relative">
+        <div className="flex items-center gap-3 mb-3.5">
+          <div
+            className="h-11 w-11 md:h-12 md:w-12 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0 ring-2 ring-white/20"
+            style={{ backgroundColor: t.bg }}
+          >
+            {t.initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1">
+              <p className={`text-sm font-bold truncate ${emphasised ? 'text-white' : 'text-[#1A1D29]'}`}>{t.name}</p>
+              {t.verified && (
+                <BadgeCheck className={`h-3.5 w-3.5 ${emphasised ? 'text-[#FF6B35]' : 'text-[#1B3B6F]'} fill-current`} />
+              )}
+            </div>
+            <p className={`text-[11px] truncate ${emphasised ? 'text-white/70' : 'text-gray-500'}`}>
+              {t.profession} · {t.city}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex mb-2">
+          {Array.from({ length: t.rating }).map((_, i) => (
+            <Star key={i} className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />
+          ))}
+        </div>
+
+        <p className={`text-[13px] md:text-[13.5px] leading-relaxed ${emphasised ? 'text-white/90' : 'text-gray-600'}`}>
+          &ldquo;{t.quote}&rdquo;
+        </p>
+
+        {emphasised && (
+          <div className="mt-4 inline-flex items-center gap-1.5 bg-white/10 backdrop-blur px-2.5 py-1 rounded-full ring-1 ring-white/20">
+            <BadgeCheck className="h-3 w-3 text-[#FF6B35]" />
+            <span className="text-[10px] font-bold text-white uppercase tracking-wider">Verified Customer</span>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
