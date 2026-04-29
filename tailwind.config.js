@@ -112,13 +112,13 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        // `font-sans` (default) → Inter for body and UI.
-        // `font-display` → Plus Jakarta Sans for headings / hero copy.
-        // Fallback chain runs Inter → system → platform defaults so we
-        // never get an invisible flash if next/font fails to load.
+        // `font-sans` (default) → Manrope for body and UI.
+        // `font-display` → Bricolage Grotesque for headings / hero copy.
+        // Fallback chain runs through system fonts so we never get an
+        // invisible flash if next/font fails to load.
         sans: [
-          'var(--font-inter)',
-          'Inter',
+          'var(--font-body)',
+          'Manrope',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
@@ -129,16 +129,38 @@ module.exports = {
           'sans-serif',
         ],
         display: [
-          'var(--font-jakarta)',
-          'var(--font-inter)',
-          'Inter',
+          'var(--font-display)',
+          'var(--font-body)',
+          'Manrope',
           'system-ui',
           'sans-serif',
         ],
       },
       letterSpacing: {
-        tightest: '-0.04em',
-        tighter: '-0.025em',
+        tightest: '-0.045em',
+        tighter: '-0.028em',
+        snug: '-0.015em',
+      },
+      keyframes: {
+        'fade-up': {
+          '0%': { opacity: '0', transform: 'translateY(14px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'shimmer': {
+          '100%': { transform: 'translateX(100%)' },
+        },
+        'marquee-x': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+      },
+      animation: {
+        'fade-up': 'fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both',
+        'fade-up-delay-1': 'fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both',
+        'fade-up-delay-2': 'fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both',
+        'fade-up-delay-3': 'fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both',
+        'shimmer': 'shimmer 2.4s ease-in-out infinite',
+        'marquee-x': 'marquee-x 40s linear infinite',
       },
     },
   },

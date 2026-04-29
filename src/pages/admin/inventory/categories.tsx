@@ -163,13 +163,17 @@ export default function CategoriesPage() {
     }
     if (formData.parentCategory) payload.parentCategory = formData.parentCategory
     else payload.parentCategory = null
-    if (formData.image) payload.image = formData.image
-    if (formData.icon) payload.icon = formData.icon
 
     if (editingCategory) {
+      // On edit, always send image/icon (even when empty) so the server can clear them.
+      payload.image = formData.image || ''
+      payload.icon = formData.icon || ''
       dispatch(updateCategoryRequest({ id: editingCategory._id, data: payload }))
       toast.success('Category updated successfully')
     } else {
+      // On create, only include if the user provided a value.
+      if (formData.image) payload.image = formData.image
+      if (formData.icon) payload.icon = formData.icon
       dispatch(createCategoryRequest(payload))
       toast.success('Category created successfully')
     }
@@ -186,17 +190,22 @@ export default function CategoriesPage() {
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const input = e.target
+    const file = input.files?.[0]
     if (!file) return
     try {
       setUploading(true)
       const res = await uploadAPI.uploadImage(file, 'categories')
-      setFormData((prev) => ({ ...prev, image: res.data.data.url }))
+      const url = res.data?.data?.url
+      if (!url) throw new Error('No URL returned from upload')
+      setFormData((prev) => ({ ...prev, image: url }))
       toast.success('Image uploaded')
-    } catch {
-      toast.error('Image upload failed')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Image upload failed')
     } finally {
       setUploading(false)
+      // Reset so re-uploading the same file fires onChange again
+      if (input) input.value = ''
     }
   }
 
@@ -458,23 +467,57 @@ export default function CategoriesPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Image</Label>
-                  {formData.image ? (
-                    <div className="relative inline-block w-20 h-20">
-                      <img
-                        src={formData.image}
-                        alt="Category"
-                        className="w-20 h-20 rounded-lg object-cover border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, image: '' })}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"
-                      >
-                        <XIcon className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    {formData.image ? (
+                      <>
+                        {/* Click the preview itself to replace the image */}
+                        <label
+                          className="relative inline-block w-20 h-20 cursor-pointer group"
+                          title="Click to replace image"
+                        >
+                          <img
+                            src={formData.image}
+                            alt="Category"
+                            className="w-20 h-20 rounded-lg object-cover border"
+                          />
+                          {/* Hover overlay so the affordance is unmistakable */}
+                          <div className="absolute inset-0 rounded-lg bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white pointer-events-none">
+                            {uploading ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4" />
+                                <span className="text-[10px] font-semibold mt-0.5">Replace</span>
+                              </>
+                            )}
+                          </div>
+                          {uploading && (
+                            <div className="absolute inset-0 rounded-lg bg-black/55 flex items-center justify-center">
+                              <Loader2 className="h-5 w-5 animate-spin text-white" />
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            disabled={uploading}
+                          />
+                        </label>
+                        {/* Separate Remove button so X != Replace */}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, image: '' })}
+                          className="inline-flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium"
+                        >
+                          <XIcon className="h-3.5 w-3.5" />
+                          Remove
+                        </button>
+                        <span className="text-xs text-gray-500">
+                          Click the image to replace it
+                        </span>
+                      </>
+                    ) : (
                       <label className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50">
                         {uploading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -492,8 +535,8 @@ export default function CategoriesPage() {
                           disabled={uploading}
                         />
                       </label>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">

@@ -54,11 +54,11 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
             <Image
-              src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
+              src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2"
               alt="Bharat Mechanics"
-              width={64}
-              height={64}
-              className="w-16 h-16 object-contain"
+              width={220}
+              height={56}
+              className="h-14 w-auto object-contain"
               priority
             />
           </div>

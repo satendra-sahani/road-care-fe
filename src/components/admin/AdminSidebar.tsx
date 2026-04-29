@@ -254,22 +254,19 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
       {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#2E5090]">
           {!collapsed ? (
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col">
               <NextImage
-                src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
+                src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2"
                 alt="Bharat Mechanics"
-                width={32}
-                height={32}
-                className="w-8 h-8 object-contain rounded-lg"
+                width={170}
+                height={40}
+                className="h-9 w-auto object-contain brightness-0 invert"
               />
-              <div>
-                <h1 className="text-lg font-bold text-white">Bharat Mechanics</h1>
-                <p className="text-[10px] text-gray-400">Admin Panel</p>
-              </div>
+              <p className="text-[10px] text-gray-400 mt-1">Admin Panel</p>
             </div>
           ) : (
             <NextImage
-              src="https://ik.imagekit.io/aiwats/roadcare/fav.png"
+              src="https://ik.imagekit.io/aiwats/roadcare/fav.png?v=2"
               alt="Bharat Mechanics"
               width={32}
               height={32}

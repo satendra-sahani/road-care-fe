@@ -15,26 +15,13 @@ import {
   ShoppingCart, Zap, Users, Heart, ArrowRight,
   Smartphone, BadgeCheck, MapPin,
   Quote, Building2, Truck, Plus, Minus,
-  CreditCard, Sparkles, Tag, Car, Fuel, Settings,
+  CreditCard, Sparkles, Tag, Settings,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Cookies from 'js-cookie'
 
 /* ─── Filter brands list (same as Android) ─── */
 const filterBrands = ['Bosch', 'Denso', 'NGK', 'Mann', 'Mobil', 'Shell', 'Castrol', 'Monroe']
-
-/* ─── Vehicle-selector data (hardcoded for the hero quick-find form) ─── */
-const TOP_CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow']
-const CAR_BRANDS = ['Maruti Suzuki', 'Hyundai', 'Tata', 'Mahindra', 'Toyota', 'Honda', 'Kia', 'Renault', 'Volkswagen', 'Skoda', 'MG', 'Nissan']
-const FUEL_TYPES = ['Petrol', 'Diesel', 'CNG', 'Electric']
-
-/* ─── 30 cities for the SEO + trust footer block ─── */
-const ALL_CITIES = [
-  'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad',
-  'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Patna',
-  'Surat', 'Vadodara', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot',
-  'Varanasi', 'Aurangabad', 'Amritsar', 'Allahabad', 'Ranchi', 'Howrah',
-]
 
 /* ─── Popular service prices for the transparency table ─── */
 const POPULAR_SERVICES = [
@@ -77,20 +64,6 @@ const TESTIMONIALS = [
   },
 ]
 
-/* ─── Brand partners (insurance + oil + EV — stylised as cards) ─── */
-const BRAND_PARTNERS = [
-  { name: 'Bosch', tag: 'OEM Parts' },
-  { name: 'Castrol', tag: 'Engine Oil' },
-  { name: 'Shell', tag: 'Lubricants' },
-  { name: 'Motul', tag: 'Premium Oil' },
-  { name: 'NGK', tag: 'Spark Plugs' },
-  { name: 'Denso', tag: 'Electricals' },
-  { name: 'Mann', tag: 'Filters' },
-  { name: 'Bajaj Allianz', tag: 'Insurance' },
-  { name: 'Mobil', tag: 'Oils' },
-  { name: 'Monroe', tag: 'Suspension' },
-]
-
 export default function HomePage() {
   const router = useRouter()
   const dispatch = useDispatch()
@@ -122,11 +95,8 @@ export default function HomePage() {
   /* ─── FAQ accordion state ─── */
   const [openFaq, setOpenFaq] = useState<number | null>(0)
 
-  /* ─── Premium-pass state: promo strip, vehicle selector, testimonial carousel ─── */
+  /* ─── Premium-pass state: promo strip, testimonial carousel ─── */
   const [showPromo, setShowPromo] = useState(true)
-  const [vehicleCity, setVehicleCity] = useState('')
-  const [vehicleBrand, setVehicleBrand] = useState('')
-  const [vehicleFuel, setVehicleFuel] = useState('')
   const [activeTestimonial, setActiveTestimonial] = useState(0)
 
   /* ─── Restore promo dismissal across visits ─── */
@@ -150,16 +120,6 @@ export default function HomePage() {
     }, 5000)
     return () => clearInterval(t)
   }, [])
-
-  /* ─── Vehicle-selector submit ─── */
-  const handleFindService = () => {
-    const params = new URLSearchParams()
-    if (vehicleCity) params.set('city', vehicleCity)
-    if (vehicleBrand) params.set('brand', vehicleBrand)
-    if (vehicleFuel) params.set('fuel', vehicleFuel)
-    const qs = params.toString()
-    router.push(`/service${qs ? `?${qs}` : ''}`)
-  }
 
   // ─── Load user if token exists ───
   useEffect(() => {
@@ -304,7 +264,7 @@ export default function HomePage() {
         keywords="auto parts online, car parts, bike parts, mechanic near me, vehicle repair, Bharat Mechanics, genuine auto parts, doorstep mechanic, car service, bike service, engine oil, brake pads, air filter, spark plug, car battery, tyre"
       />
 
-      <div className="bg-[#F7F8FA] min-h-screen pb-20 md:pb-0">
+      <div className="bg-mesh-soft min-h-screen pb-20 md:pb-0">
 
         {/* ══════════════════════════════════════════════════════════════
             SECTION 0 — Promo strip (dismissable, persists in localStorage)
@@ -347,10 +307,10 @@ export default function HomePage() {
             {loading && bannerSlides.length === 0 ? (
               <BannerSkeleton />
             ) : bannerSlides.length > 0 ? (
-              <div className="relative group/banner">
+              <div className="relative group/banner anim-fade-up">
                 <div
                   ref={bannerRef}
-                  className="overflow-hidden rounded-xl md:rounded-2xl shadow-sm ring-1 ring-black/5 bg-[#0F2545]"
+                  className="overflow-hidden rounded-2xl md:rounded-3xl shadow-elevated ring-1 ring-black/[0.06] bg-mesh-navy bg-noise"
                 >
                   <div
                     className="flex transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)]"
@@ -383,38 +343,38 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Nav arrows (desktop) */}
+                {/* Nav arrows (desktop) — glassmorphic, hover-revealed */}
                 {bannerSlides.length > 1 && (
                   <>
                     <button
                       onClick={() => setCurrentBanner(prev => prev === 0 ? bannerSlides.length - 1 : prev - 1)}
                       aria-label="Previous slide"
-                      className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 lg:h-10 lg:w-10 rounded-full bg-white/95 backdrop-blur-sm shadow-md items-center justify-center opacity-0 group-hover/banner:opacity-100 hover:bg-white hover:scale-105 transition-all duration-200 z-10"
+                      className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 lg:h-11 lg:w-11 rounded-full bg-white/15 ring-glass backdrop-blur-md items-center justify-center opacity-0 group-hover/banner:opacity-100 hover:bg-white/25 hover:scale-105 transition-all duration-300 z-10"
                     >
-                      <ChevronLeft className="h-4 w-4 lg:h-5 lg:w-5 text-[#1A1D29]" />
+                      <ChevronLeft className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
                     </button>
                     <button
                       onClick={() => setCurrentBanner(prev => (prev + 1) % bannerSlides.length)}
                       aria-label="Next slide"
-                      className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 lg:h-10 lg:w-10 rounded-full bg-white/95 backdrop-blur-sm shadow-md items-center justify-center opacity-0 group-hover/banner:opacity-100 hover:bg-white hover:scale-105 transition-all duration-200 z-10"
+                      className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 lg:h-11 lg:w-11 rounded-full bg-white/15 ring-glass backdrop-blur-md items-center justify-center opacity-0 group-hover/banner:opacity-100 hover:bg-white/25 hover:scale-105 transition-all duration-300 z-10"
                     >
-                      <ChevronRight className="h-4 w-4 lg:h-5 lg:w-5 text-[#1A1D29]" />
+                      <ChevronRight className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
                     </button>
                   </>
                 )}
 
-                {/* Pagination dots */}
+                {/* Pagination dots — track-style with active rail */}
                 {bannerSlides.length > 1 && (
-                  <div className="absolute bottom-2.5 md:bottom-3.5 left-0 right-0 flex items-center justify-center gap-1 z-10">
+                  <div className="absolute bottom-3 md:bottom-4 left-0 right-0 flex items-center justify-center gap-1.5 z-10">
                     {bannerSlides.map((_, idx) => (
                       <button
                         key={idx}
                         onClick={() => setCurrentBanner(idx)}
                         aria-label={`Go to slide ${idx + 1}`}
-                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                        className={`h-1.5 rounded-full transition-[width,background-color] duration-500 ease-out ${
                           idx === currentBanner
-                            ? 'w-6 md:w-7 bg-white shadow-sm'
-                            : 'w-1.5 bg-white/60 hover:bg-white/80'
+                            ? 'w-8 md:w-10 bg-[#FF6B35] shadow-[0_0_12px_-2px_rgba(255,107,53,0.8)]'
+                            : 'w-1.5 bg-white/45 hover:bg-white/75'
                         }`}
                       />
                     ))}
@@ -423,35 +383,60 @@ export default function HomePage() {
               </div>
             ) : (
               // Fallback hero when no admin banners set
-              <div className="relative overflow-hidden rounded-xl md:rounded-2xl shadow-sm">
-                <div className="bg-gradient-to-br from-[#0F2545] via-[#1B3B6F] to-[#0F2545] px-5 py-6 md:px-9 md:py-10 lg:px-12 lg:py-12 relative">
-                  <div className="absolute -top-8 -right-8 w-48 h-48 bg-[#FF6B35]/20 rounded-full blur-3xl" />
-                  <div className="absolute -bottom-10 -left-8 w-56 h-56 bg-[#FF6B35]/10 rounded-full blur-3xl" />
-                  <div className="relative z-10 max-w-xl">
-                    <span className="inline-flex items-center gap-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-2.5 py-0.5 text-[11px] md:text-xs font-semibold text-white mb-2.5">
+              <div className="relative overflow-hidden rounded-2xl md:rounded-3xl shadow-elevated ring-1 ring-black/[0.06] anim-fade-up">
+                <div className="bg-mesh-navy bg-noise px-6 py-9 md:px-12 md:py-14 lg:px-16 lg:py-16 relative">
+                  {/* Soft horizon line for editorial depth */}
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                  {/* Hairline accent strip on the left edge */}
+                  <div className="pointer-events-none absolute left-0 top-8 bottom-8 w-px bg-gradient-to-b from-transparent via-[#FF6B35]/60 to-transparent" />
+
+                  <div className="relative z-10 max-w-2xl font-display">
+                    <span className="anim-fade-up inline-flex items-center gap-1.5 bg-white/[0.08] ring-glass backdrop-blur-sm rounded-full px-3 py-1 text-[10px] md:text-[11px] font-semibold tracking-[0.14em] uppercase text-white/90 mb-4">
                       <Zap className="h-3 w-3 text-[#FF6B35]" />
                       India's Smartest AutoCare Platform
                     </span>
-                    <h1 className="text-xl md:text-3xl lg:text-4xl font-extrabold text-white leading-tight tracking-tight">
-                      Car care,<br className="md:hidden" /> now at your doorstep
+                    <h1 className="anim-fade-up anim-delay-1 text-display-xl text-white">
+                      Car care,
+                      <span className="block bg-gradient-to-r from-white via-[#FFE6D6] to-[#FF8A5C] bg-clip-text text-transparent">
+                        now at your doorstep.
+                      </span>
                     </h1>
-                    <p className="mt-2 md:mt-3 text-xs md:text-sm lg:text-base text-white/80 max-w-lg">
-                      Trusted mechanics · Genuine parts · On-time service · Best prices.
+                    <p className="anim-fade-up anim-delay-2 mt-4 md:mt-5 text-sm md:text-base lg:text-lg text-white/75 max-w-lg leading-relaxed font-sans text-balance">
+                      Trusted mechanics, genuine OEM parts, on-time service and prices you can verify upfront — across 30+ Indian cities.
                     </p>
-                    <div className="mt-3.5 md:mt-5 flex flex-wrap gap-2.5">
+                    <div className="anim-fade-up anim-delay-3 mt-6 md:mt-8 flex flex-wrap gap-3">
                       <Link
                         href="/service"
-                        className="inline-flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#e55a2a] text-white font-semibold px-4 py-2 md:px-5 md:py-2.5 text-xs md:text-sm rounded-lg shadow-md hover:shadow-lg transition-all"
+                        className="shimmer-sweep group/cta inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#FF7C49] text-white font-semibold px-5 py-2.5 md:px-6 md:py-3 text-sm md:text-[15px] rounded-full shadow-glow-accent hover:scale-[1.02] transition-all duration-300 font-sans"
                       >
                         Book a Service
-                        <ArrowRight className="h-3.5 w-3.5" />
+                        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/cta:translate-x-0.5" />
                       </Link>
                       <Link
                         href="/shop"
-                        className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-white font-semibold px-4 py-2 md:px-5 md:py-2.5 text-xs md:text-sm rounded-lg transition-all"
+                        className="inline-flex items-center gap-2 bg-white/[0.08] hover:bg-white/15 ring-glass backdrop-blur text-white font-semibold px-5 py-2.5 md:px-6 md:py-3 text-sm md:text-[15px] rounded-full transition-all duration-300 font-sans"
                       >
                         Shop Parts
+                        <ArrowRight className="h-4 w-4 opacity-60" />
                       </Link>
+                    </div>
+
+                    {/* Quiet trust row — reinforces credibility under the CTAs */}
+                    <div className="anim-fade-up anim-delay-4 mt-7 md:mt-9 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] md:text-xs text-white/65 font-sans">
+                      <span className="flex items-center gap-1.5">
+                        <ShieldCheck className="h-3.5 w-3.5 text-[#FF8A5C]" />
+                        100% Genuine Parts
+                      </span>
+                      <span className="h-1 w-1 rounded-full bg-white/25" />
+                      <span className="flex items-center gap-1.5">
+                        <BadgeCheck className="h-3.5 w-3.5 text-[#FF8A5C]" />
+                        Verified Mechanics
+                      </span>
+                      <span className="h-1 w-1 rounded-full bg-white/25" />
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-[#FF8A5C]" />
+                        On-time, every time
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -461,78 +446,80 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 1B — Vehicle Selector (book-by-vehicle hero strip)
+            SECTION 1B — AI Voice Booking (highlighted feature, top-of-page)
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-[auto,1fr,auto] items-stretch">
-                {/* Left badge */}
-                <div className="hidden md:flex items-center gap-3 bg-gradient-to-br from-[#0F2545] to-[#1B3B6F] text-white px-5 py-4 lg:px-6 lg:py-5">
-                  <div className="h-10 w-10 lg:h-11 lg:w-11 rounded-full bg-white/15 backdrop-blur flex items-center justify-center ring-1 ring-white/20 shrink-0">
-                    <Car className="h-5 w-5 lg:h-[22px] lg:w-[22px] text-[#FF6B35]" />
+            <Link
+              href="/ai-booking"
+              className="group/ai relative block overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-r from-[#0F2545] via-[#1B3B6F] to-[#1B3B6F] shadow-elevated ring-1 ring-white/[0.08] transition-all duration-300 hover:shadow-glow-navy"
+            >
+              {/* Soft accent halos */}
+              <div className="pointer-events-none absolute -right-16 -top-16 w-64 h-64 bg-[#FF6B35]/25 rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute -left-12 -bottom-16 w-56 h-56 bg-[#FF6B35]/10 rounded-full blur-3xl" />
+              {/* Top hairline */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+
+              <div className="relative flex items-center gap-3 md:gap-5 px-4 py-4 md:px-7 md:py-5 lg:px-9 lg:py-6">
+                {/* Mic with live pulse */}
+                <div className="relative shrink-0">
+                  <span className="absolute inset-0 rounded-full bg-[#FF6B35]/40 blur-xl animate-pulse" aria-hidden />
+                  <div className="relative h-11 w-11 md:h-14 md:w-14 lg:h-16 lg:w-16 rounded-full bg-gradient-to-br from-[#FF8A5C] to-[#FF6B35] flex items-center justify-center ring-2 ring-white/20 shadow-glow-accent">
+                    <Mic className="h-5 w-5 md:h-6 md:w-6 lg:h-7 lg:w-7 text-white" strokeWidth={2.4} />
                   </div>
-                  <div>
-                    <p className="text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-[#FF6B35]">Find Service</p>
-                    <p className="text-sm lg:text-base font-extrabold tracking-tight leading-tight">Book in 60 seconds</p>
-                  </div>
+                  {/* Live dot */}
+                  <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400 ring-2 ring-[#0F2545]" />
+                  </span>
                 </div>
 
-                {/* Mobile mini-header */}
-                <div className="md:hidden flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-[#EFF6FF] to-[#DBEAFE] border-b border-[#DBEAFE]">
-                  <div className="flex items-center gap-2">
-                    <Car className="h-4 w-4 text-[#1B3B6F]" />
-                    <p className="text-[11px] font-bold text-[#1B3B6F] tracking-tight">Find service for your vehicle</p>
-                  </div>
-                  <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">60 sec</span>
+                {/* Copy */}
+                <div className="flex-1 min-w-0 font-display">
+                  <p className="inline-flex items-center gap-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF8A5C] mb-0.5 md:mb-1 font-sans">
+                    <Sparkles className="h-3 w-3 text-[#FF6B35]" />
+                    New · AI Powered · हिंदी में बोलें
+                  </p>
+                  <p className="text-base md:text-xl lg:text-2xl font-bold tracking-[-0.025em] text-white leading-tight">
+                    Try AI Voice Booking
+                  </p>
+                  <p className="text-[11px] md:text-sm lg:text-[15px] text-white/70 font-medium mt-1 truncate font-sans">
+                    Baat karein, booking ho jayegi! · Service in Hindi or English.
+                  </p>
                 </div>
 
-                {/* Dropdown row */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-0 p-3 md:p-0 md:divide-x md:divide-gray-100">
-                  <VehicleSelect
-                    icon={MapPin}
-                    placeholder="Select City"
-                    value={vehicleCity}
-                    onChange={setVehicleCity}
-                    options={TOP_CITIES}
-                  />
-                  <VehicleSelect
-                    icon={Car}
-                    placeholder="Select Brand"
-                    value={vehicleBrand}
-                    onChange={setVehicleBrand}
-                    options={CAR_BRANDS}
-                  />
-                  <VehicleSelect
-                    icon={Fuel}
-                    placeholder="Fuel Type"
-                    value={vehicleFuel}
-                    onChange={setVehicleFuel}
-                    options={FUEL_TYPES}
-                  />
+                {/* Animated voice waveform (desktop only) — CSS-only */}
+                <div className="hidden lg:flex items-end gap-[3px] h-10 mr-2" aria-hidden>
+                  {[0.45, 0.85, 0.6, 1, 0.55, 0.9, 0.5, 0.75].map((h, i) => (
+                    <span
+                      key={i}
+                      className="w-[3px] rounded-full bg-gradient-to-t from-[#FF6B35] to-[#FFB199]"
+                      style={{
+                        height: `${h * 100}%`,
+                        animation: 'fadeUp 1.2s ease-in-out infinite alternate',
+                        animationDelay: `${i * 0.12}s`,
+                      }}
+                    />
+                  ))}
                 </div>
 
                 {/* CTA */}
-                <button
-                  type="button"
-                  onClick={handleFindService}
-                  className="bg-[#FF6B35] hover:bg-[#e55a2a] text-white font-bold flex items-center justify-center gap-2 px-5 py-3.5 md:px-6 md:py-0 md:rounded-none mx-3 mb-3 md:mx-0 md:mb-0 rounded-lg text-sm transition-all md:min-w-[180px]"
-                >
-                  Find Service
-                  <ArrowRight className="h-4 w-4" />
-                </button>
+                <span className="shimmer-sweep relative inline-flex items-center gap-1.5 bg-white text-[#0F2545] hover:bg-[#FF6B35] hover:text-white font-bold px-3.5 py-2 md:px-5 md:py-2.5 lg:px-6 lg:py-3 rounded-full text-[12px] md:text-[14px] shrink-0 shadow-md transition-colors duration-300">
+                  Try Now
+                  <ArrowRight className="h-3.5 w-3.5 md:h-4 md:w-4 transition-transform duration-300 group-hover/ai:translate-x-1" />
+                </span>
               </div>
-            </div>
+            </Link>
           </div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 1C — 4-Pillar Guarantees Ribbon
+            SECTION 1C — Trust ribbon (lightweight)
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 px-3 py-3 md:px-6 md:py-4 lg:px-8 lg:py-5">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+            <div className="bg-white rounded-2xl ring-1 ring-black/[0.06] shadow-sm px-3 py-3 md:px-5 md:py-3.5">
+              <div className="grid grid-cols-2 md:grid-cols-4 md:divide-x divide-gray-100">
                 <Pillar icon={BadgeCheck} title="Genuine Parts" subtitle="100% OEM Original" color="#1B3B6F" bg="#DBEAFE" />
                 <Pillar icon={ShieldCheck} title="30-Day Warranty" subtitle="On every service" color="#059669" bg="#D1FAE5" />
                 <Pillar icon={HomeIcon} title="Doorstep Service" subtitle="At home or office" color="#FF6B35" bg="#FFE4D6" />
@@ -543,45 +530,75 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 2 — 4 Quick Action Circles
+            SECTION 2 — Premium Quick Actions (the page's primary CTA hub)
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+        <section className="px-3 md:px-6 lg:px-8 mt-5 md:mt-7">
           <div className="max-w-7xl mx-auto">
-            <div className="relative bg-white rounded-xl md:rounded-2xl shadow-sm ring-1 ring-black/5 py-3.5 px-2 md:py-4 md:px-4 lg:py-5 lg:px-6">
-              <div className="grid grid-cols-4 gap-1 md:gap-3">
-                <QuickAction
-                  icon={Wrench}
-                  iconColor="#1B3B6F"
-                  bg="#DBEAFE"
-                  title="Book Service"
-                  sub="At your doorstep"
-                  href="/service"
-                />
-                <QuickAction
-                  icon={ShoppingBag}
-                  iconColor="#059669"
-                  bg="#D1FAE5"
-                  title="Buy Parts"
-                  sub="Genuine Parts"
-                  href="/shop"
-                />
-                <QuickAction
-                  icon={Bike}
-                  iconColor="#B45309"
-                  bg="#FED7AA"
-                  title="Bikes Service"
-                  sub="Two Wheeler"
-                  onClick={goToBikesService}
-                />
-                <QuickAction
-                  icon={Headphones}
-                  iconColor="#BE185D"
-                  bg="#FCE7F3"
-                  title="Emergency"
-                  sub="24/7 Support"
-                  href="/emergency"
-                />
+            {/* Editorial section header */}
+            <div className="flex items-end justify-between mb-3 md:mb-4 px-1">
+              <div>
+                <p className="text-[10px] md:text-[11px] font-bold tracking-[0.18em] uppercase text-[#FF6B35] mb-1">
+                  What do you need today?
+                </p>
+                <h2 className="font-display text-xl md:text-2xl lg:text-[26px] font-bold tracking-[-0.025em] text-[#0F2545]">
+                  Pick an action, we&apos;ll take it from there
+                </h2>
               </div>
+              <Link
+                href="/service"
+                className="hidden md:inline-flex items-center gap-1 text-xs font-semibold text-[#1B3B6F] hover:text-[#FF6B35] transition-colors"
+              >
+                See all services
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <QuickAction
+                icon={Wrench}
+                accent="#1B3B6F"
+                accentSoft="#DBEAFE"
+                title="Book Service"
+                sub="At your doorstep"
+                meta="Free pickup"
+                cta="Book Now"
+                href="/service"
+                index={0}
+              />
+              <QuickAction
+                icon={ShoppingBag}
+                accent="#059669"
+                accentSoft="#D1FAE5"
+                title="Buy Parts"
+                sub="100% genuine OEM"
+                meta="1000+ brands"
+                cta="Shop Now"
+                href="/shop"
+                index={1}
+              />
+              <QuickAction
+                icon={Bike}
+                accent="#B45309"
+                accentSoft="#FED7AA"
+                title="Bikes Service"
+                sub="Two-wheeler care"
+                meta="Bike & scooter"
+                cta="View Bikes"
+                onClick={goToBikesService}
+                index={2}
+              />
+              <QuickAction
+                icon={Headphones}
+                accent="#BE185D"
+                accentSoft="#FCE7F3"
+                title="Emergency"
+                sub="24/7 roadside help"
+                meta="< 30 min ETA"
+                cta="Get Help"
+                href="/emergency"
+                index={3}
+                urgent
+              />
             </div>
           </div>
         </section>
@@ -625,7 +642,25 @@ export default function HomePage() {
 
         {!loading && (subCategories.length > 0 || categories.length > 0) && (
           <section className="mt-5 md:mt-8">
-            <SectionHeader title="Popular Categories" subtitle="Shop by part type" viewAllHref="/shop" />
+            <div className="px-3 md:px-6 lg:px-8">
+              <div className="max-w-7xl mx-auto flex items-end justify-between mb-3 md:mb-4">
+                <div>
+                  <p className="text-[10px] md:text-[11px] font-bold tracking-[0.18em] uppercase text-[#FF6B35] mb-1">
+                    Shop by part type
+                  </p>
+                  <h2 className="font-display text-xl md:text-2xl lg:text-[26px] font-bold tracking-[-0.025em] text-[#0F2545]">
+                    Popular Categories
+                  </h2>
+                </div>
+                <Link
+                  href="/shop"
+                  className="hidden md:inline-flex items-center gap-1 text-xs font-semibold text-[#1B3B6F] hover:text-[#FF6B35] transition-colors group/va"
+                >
+                  View all
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover/va:translate-x-0.5" />
+                </Link>
+              </div>
+            </div>
 
             {/* Mobile horizontal scroll */}
             <div className="md:hidden mt-2.5">
@@ -743,43 +778,6 @@ export default function HomePage() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 5 — AI Voice Booking (accent card)
-           ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-5 md:mt-8">
-          <div className="max-w-7xl mx-auto">
-            <Link
-              href="/ai-booking"
-              className="group/ai relative block overflow-hidden rounded-xl md:rounded-2xl bg-gradient-to-br from-[#EFF6FF] via-[#E0E9FB] to-[#DBEAFE] border border-[#CFE0FA] hover:shadow-md transition-all duration-300"
-            >
-              <div className="absolute -right-8 -top-8 w-32 h-32 md:w-40 md:h-40 bg-[#1B3B6F]/8 rounded-full blur-3xl" />
-              <div className="absolute -left-4 -bottom-4 w-20 h-20 md:w-28 md:h-28 bg-[#FF6B35]/10 rounded-full blur-2xl" />
-
-              <div className="relative flex items-center gap-2.5 md:gap-4 py-3 px-3 md:py-4 md:px-5 lg:py-5 lg:px-6">
-                <div className="h-10 w-10 md:h-11 md:w-11 lg:h-12 lg:w-12 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 ring-1 ring-[#1B3B6F]/10">
-                  <Mic className="h-5 w-5 md:h-[22px] md:w-[22px] text-[#1B3B6F]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-[#1B3B6F] uppercase tracking-wider mb-0.5">
-                    <Zap className="h-2.5 w-2.5 md:h-3 md:w-3 text-[#FF6B35]" />
-                    New · AI Powered
-                  </p>
-                  <p className="text-sm md:text-base lg:text-lg font-bold text-[#1A1D29] tracking-tight leading-tight">
-                    Try AI Voice Booking
-                  </p>
-                  <p className="text-[11px] md:text-xs lg:text-sm text-[#1B3B6F]/80 font-medium mt-0.5">
-                    Baat karein, booking ho jayegi!
-                  </p>
-                </div>
-                <div className="inline-flex items-center gap-0.5 bg-[#1B3B6F] hover:bg-[#0F2545] text-white px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-lg md:rounded-xl shrink-0 shadow-sm group-hover/ai:shadow transition-all">
-                  <span className="text-[11px] md:text-xs lg:text-sm font-bold">Try Now</span>
-                  <ArrowRight className="h-3 w-3 md:h-3.5 md:w-3.5 group-hover/ai:translate-x-0.5 transition-transform" />
-                </div>
-              </div>
-            </Link>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════
             SECTION 5B — Pricing Transparency Table
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-5 md:mt-10">
@@ -894,18 +892,20 @@ export default function HomePage() {
         {/* ══════════════════════════════════════════════════════════════
             SECTION 9 — Why Choose Bharat Mechanics (6 differentiators)
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+        <section className="px-3 md:px-6 lg:px-8 mt-8 md:mt-14">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-5 md:mb-8">
-              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Why Bharat Mechanics</p>
-              <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
-                Built for India's drivers
+            <div className="text-center mb-7 md:mb-10 max-w-2xl mx-auto">
+              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-[0.22em]">
+                Why Bharat Mechanics
+              </p>
+              <h2 className="font-display text-2xl md:text-3xl lg:text-[40px] font-bold text-[#0F2545] tracking-[-0.035em] mt-3 leading-[1.08] text-balance">
+                Built for India&apos;s drivers.
               </h2>
-              <p className="text-xs md:text-sm text-gray-500 mt-1.5 md:mt-2 max-w-xl mx-auto">
-                Every order, every service, every interaction is designed to be transparent, safe and on-time.
+              <p className="text-[13px] md:text-[15px] text-gray-500 mt-3 md:mt-4 leading-relaxed text-pretty">
+                Every order, every service, every interaction — designed to be transparent, safe, and on time.
               </p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               <FeatureCard icon={BadgeCheck} title="100% Genuine Parts" desc="OEM-grade components sourced directly from authorised brand distributors." color="#1B3B6F" bg="#DBEAFE" />
               <FeatureCard icon={Wrench} title="Certified Mechanics" desc="Background-verified, ID-checked technicians with hands-on training." color="#059669" bg="#D1FAE5" />
               <FeatureCard icon={HomeIcon} title="Doorstep Service" desc="We come to your home, office or wherever your vehicle is parked." color="#FF6B35" bg="#FFE4D6" />
@@ -917,161 +917,298 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 10 — Get the App (download promotion)
+            SECTION 10 — Get the App (download promotion, premium build)
            ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
+        <section className="px-3 md:px-6 lg:px-8 mt-8 md:mt-14">
           <div className="max-w-7xl mx-auto">
-            <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-[#0F2545] via-[#1B3B6F] to-[#0F2545] shadow-lg">
-              {/* Glow blobs */}
-              <div className="absolute -top-16 -right-16 w-72 h-72 bg-[#FF6B35]/25 rounded-full blur-3xl" />
-              <div className="absolute -bottom-20 -left-12 w-80 h-80 bg-[#FF6B35]/12 rounded-full blur-3xl" />
-              <div className="absolute top-1/2 left-1/3 w-56 h-56 bg-blue-400/10 rounded-full blur-3xl" />
+            <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-mesh-navy bg-noise shadow-elevated ring-1 ring-white/[0.06]">
+              {/* Decorative grid pattern (CSS, no asset request) — adds tech texture */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 opacity-[0.06]"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)',
+                  backgroundSize: '44px 44px',
+                  maskImage: 'radial-gradient(ellipse at 70% 50%, black 30%, transparent 80%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse at 70% 50%, black 30%, transparent 80%)',
+                }}
+              />
+              {/* Top hairline + accent left rail */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="pointer-events-none absolute left-0 top-12 bottom-12 w-px bg-gradient-to-b from-transparent via-[#FF6B35]/60 to-transparent" />
 
-              <div className="relative grid md:grid-cols-2 gap-6 md:gap-8 px-5 py-7 md:px-10 md:py-12 lg:px-14 lg:py-14">
-                {/* Left — copy + CTAs */}
-                <div className="flex flex-col justify-center">
-                  <span className="inline-flex w-fit items-center gap-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-2.5 py-1 text-[10px] md:text-[11px] font-bold text-white">
+              <div className="relative grid md:grid-cols-[1.1fr,0.9fr] gap-8 md:gap-10 px-6 py-9 md:px-12 md:py-14 lg:px-16 lg:py-16">
+                {/* ─── Left column — copy + CTAs ─────────────────────── */}
+                <div className="flex flex-col justify-center font-display">
+                  <span className="anim-fade-up inline-flex w-fit items-center gap-1.5 bg-white/[0.08] ring-glass backdrop-blur-sm rounded-full px-3 py-1 text-[10px] md:text-[11px] font-semibold tracking-[0.14em] uppercase text-white/90 mb-4">
                     <Sparkles className="h-3 w-3 text-[#FF6B35]" />
                     Now on Google Play
                   </span>
-                  <h2 className="mt-3 text-2xl md:text-3xl lg:text-4xl font-extrabold text-white leading-tight tracking-tight">
-                    Get the app —<br className="hidden md:inline" /> book on the go
+                  <h2 className="anim-fade-up anim-delay-1 text-display-lg text-white">
+                    Your garage in your{' '}
+                    <span className="bg-gradient-to-r from-white via-[#FFE6D6] to-[#FF8A5C] bg-clip-text text-transparent">
+                      pocket.
+                    </span>
                   </h2>
-                  <p className="mt-2 md:mt-3 text-xs md:text-sm lg:text-base text-white/75 max-w-md">
-                    Faster checkout, exclusive in-app offers, real-time mechanic tracking and AI Voice Booking.
+                  <p className="anim-fade-up anim-delay-2 mt-4 text-sm md:text-base lg:text-[17px] text-white/75 leading-relaxed max-w-md font-sans text-balance">
+                    Book in 60 seconds, track your mechanic live, and unlock app-only deals you won&apos;t see on the web.
                   </p>
 
-                  <ul className="mt-4 md:mt-5 grid grid-cols-2 gap-x-4 gap-y-2 max-w-md">
+                  {/* Feature chips — refined accent dots, glassy hover */}
+                  <ul className="anim-fade-up anim-delay-2 mt-5 md:mt-6 grid grid-cols-2 gap-x-3 gap-y-2 max-w-md font-sans">
                     <AppFeatureItem text="AI Voice Booking" />
-                    <AppFeatureItem text="Real-time Tracking" />
-                    <AppFeatureItem text="Wallet Rewards" />
-                    <AppFeatureItem text="Push Notifications" />
+                    <AppFeatureItem text="Live Mechanic Tracking" />
+                    <AppFeatureItem text="Wallet Cashback" />
+                    <AppFeatureItem text="App-only Coupons" />
                   </ul>
 
-                  <div className="mt-5 md:mt-7 flex flex-wrap gap-2.5 md:gap-3">
+                  {/* CTAs — store-style buttons with refined hierarchy */}
+                  <div className="anim-fade-up anim-delay-3 mt-6 md:mt-8 flex flex-wrap gap-3 font-sans">
                     <a
                       href="https://play.google.com/store/apps/details?id=com.bharatmechanics.app"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group/dl inline-flex items-center gap-2.5 bg-white text-[#0F2545] hover:bg-[#FF6B35] hover:text-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+                      className="shimmer-sweep group/dl relative inline-flex items-center gap-3 bg-white text-[#0F2545] hover:bg-[#FF6B35] hover:text-white px-5 py-3 md:px-6 md:py-3.5 rounded-2xl shadow-glow-accent transition-all duration-300 hover:scale-[1.02]"
                     >
-                      <div className="h-7 w-7 md:h-8 md:w-8 rounded-lg bg-[#0F2545] group-hover/dl:bg-white flex items-center justify-center transition-colors">
-                        <Smartphone className="h-3.5 w-3.5 md:h-4 md:w-4 text-white group-hover/dl:text-[#FF6B35] transition-colors" />
-                      </div>
+                      {/* Authentic Google Play triangle glyph */}
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-7 w-7 md:h-8 md:w-8 shrink-0 transition-transform duration-300 group-hover/dl:rotate-[8deg]"
+                        aria-hidden
+                      >
+                        <defs>
+                          <linearGradient id="gpA" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stopColor="#00C7FB" />
+                            <stop offset="1" stopColor="#1A73E8" />
+                          </linearGradient>
+                          <linearGradient id="gpB" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stopColor="#FFCE00" />
+                            <stop offset="1" stopColor="#FFA000" />
+                          </linearGradient>
+                          <linearGradient id="gpC" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stopColor="#22C55E" />
+                            <stop offset="1" stopColor="#0EA152" />
+                          </linearGradient>
+                          <linearGradient id="gpD" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stopColor="#FF4757" />
+                            <stop offset="1" stopColor="#E03131" />
+                          </linearGradient>
+                        </defs>
+                        <path d="M3.5 2.3v19.4c0 .6.6 1 1.1.7l11-9.7c.4-.4.4-1 0-1.4l-11-9.7c-.5-.3-1.1.1-1.1.7Z" fill="url(#gpA)" />
+                        <path d="M14.6 12 5.7 3.4l11.5 6.5c.6.4.6 1.2 0 1.6l-2.6 1.5Z" fill="url(#gpB)" />
+                        <path d="M14.6 12l-2.6 1.5L17.2 16l2.6-1.5c.6-.4.6-1.2 0-1.6L17.2 11l-2.6 1Z" fill="url(#gpC)" opacity="0.95" />
+                        <path d="M5.7 20.6 14.6 12l2.6 1.5-11.5 6.5c-.6.4-1.2-.1-1.2-.7v-.7l1.2-2Z" fill="url(#gpD)" />
+                      </svg>
                       <div className="text-left">
-                        <p className="text-[9px] md:text-[10px] font-medium opacity-80 leading-none">GET IT ON</p>
-                        <p className="text-sm md:text-base font-extrabold leading-tight">Google Play</p>
+                        <p className="text-[9px] md:text-[10px] font-bold opacity-70 leading-none tracking-[0.16em]">GET IT ON</p>
+                        <p className="text-base md:text-[17px] font-bold leading-tight font-display tracking-tight mt-0.5">Google Play</p>
                       </div>
                     </a>
                     <button
                       type="button"
                       disabled
-                      className="inline-flex items-center gap-2.5 bg-white/10 backdrop-blur border border-white/20 text-white/70 px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-not-allowed"
+                      aria-label="App Store coming soon"
+                      className="group/dl2 inline-flex items-center gap-3 bg-white/[0.06] ring-glass backdrop-blur text-white/70 px-5 py-3 md:px-6 md:py-3.5 rounded-2xl cursor-not-allowed transition-colors"
                     >
-                      <div className="h-7 w-7 md:h-8 md:w-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <Smartphone className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                      </div>
+                      <svg viewBox="0 0 24 24" className="h-7 w-7 md:h-8 md:w-8 fill-current shrink-0" aria-hidden>
+                        <path d="M16.5 12.3c0-2.7 2.2-4 2.3-4-1.3-1.8-3.2-2.1-3.9-2.1-1.7-.2-3.2 1-4 1-.9 0-2.2-1-3.6-1-1.8 0-3.5 1.1-4.4 2.7C.9 12.4 2.2 17.5 4 20.3c.9 1.4 2 2.9 3.4 2.9 1.4 0 1.9-.9 3.6-.9 1.7 0 2.1.9 3.6.9 1.5 0 2.4-1.4 3.3-2.8 1-1.6 1.4-3.1 1.5-3.2-.1-.1-2.9-1.1-2.9-4.4ZM13.7 4.5c.7-.9 1.2-2.1 1.1-3.4-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.2 1.1.1 2.3-.5 3-1.4Z" />
+                      </svg>
                       <div className="text-left">
-                        <p className="text-[9px] md:text-[10px] font-medium opacity-80 leading-none">COMING SOON</p>
-                        <p className="text-sm md:text-base font-extrabold leading-tight">App Store</p>
+                        <p className="text-[9px] md:text-[10px] font-bold opacity-70 leading-none tracking-[0.16em]">COMING SOON</p>
+                        <p className="text-base md:text-[17px] font-bold leading-tight font-display tracking-tight mt-0.5">App Store</p>
                       </div>
+                      <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-md bg-white/10 text-[9px] font-bold tracking-wider text-white/80">
+                        SOON
+                      </span>
                     </button>
+                  </div>
+
+                  {/* Trust micro-strip — credibility for the ask */}
+                  <div className="anim-fade-up anim-delay-4 mt-7 md:mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] md:text-xs text-white/65 font-sans">
+                    <span className="flex items-center gap-1.5">
+                      <Star className="h-3.5 w-3.5 fill-[#FF6B35] text-[#FF6B35]" />
+                      <span><b className="text-white">4.7</b> on Play Store</span>
+                    </span>
+                    <span className="h-1 w-1 rounded-full bg-white/25" />
+                    <span className="flex items-center gap-1.5">
+                      <Smartphone className="h-3.5 w-3.5 text-[#FF8A5C]" />
+                      <b className="text-white">50K+</b> downloads
+                    </span>
+                    <span className="h-1 w-1 rounded-full bg-white/25" />
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-[#FF8A5C]" />
+                      Free, no ads
+                    </span>
                   </div>
                 </div>
 
-                {/* Right — phone mockup */}
-                <div className="relative hidden md:flex items-center justify-center">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-[#FF6B35]/30 blur-3xl rounded-full" />
-                    <div className="relative w-[230px] lg:w-[260px] aspect-[9/19] rounded-[36px] bg-[#0F2545] border-[10px] border-[#0F2545] shadow-2xl shadow-black/40 ring-1 ring-white/10">
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-[#0F2545] rounded-b-2xl z-20" />
-                      <div className="h-full w-full rounded-[26px] bg-gradient-to-br from-white via-[#F7F8FA] to-[#DBEAFE] overflow-hidden flex flex-col">
-                        {/* Mock app header */}
-                        <div className="px-4 pt-7 pb-3">
-                          <p className="text-[10px] font-medium text-gray-500">Deliver to</p>
-                          <p className="text-sm font-bold text-[#1A1D29]">Mumbai · 400001 ▾</p>
-                        </div>
-                        <div className="px-4">
-                          <div className="h-9 rounded-xl bg-white border border-gray-200 flex items-center px-3 text-[10px] text-gray-400 shadow-sm">
-                            🔍 Search parts, brands, services…
+                {/* ─── Right column — phone mockup with ambient detail ── */}
+                <div className="relative hidden md:flex items-center justify-center min-h-[440px] lg:min-h-[520px]">
+                  {/* Concentric orbital ring — adds depth around the phone */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="w-[360px] h-[360px] lg:w-[420px] lg:h-[420px] rounded-full border border-white/[0.08]" />
+                    <div className="absolute w-[280px] h-[280px] lg:w-[330px] lg:h-[330px] rounded-full border border-white/[0.06]" />
+                  </div>
+
+                  {/* Soft accent halo behind phone */}
+                  <div className="pointer-events-none absolute h-[300px] w-[260px] bg-[#FF6B35]/20 blur-[80px] rounded-full" />
+
+                  {/* Floating badge — top-left of phone (rating credibility) */}
+                  <div className="anim-fade-up anim-delay-2 absolute top-4 left-2 lg:left-4 z-30 flex items-center gap-2 bg-white/[0.08] ring-glass backdrop-blur-md rounded-2xl px-3 py-2 shadow-glow-navy">
+                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#FFB199] flex items-center justify-center shrink-0">
+                      <Star className="h-4 w-4 fill-white text-white" />
+                    </div>
+                    <div className="leading-tight font-sans">
+                      <p className="text-[10px] text-white/60 font-medium">Rated</p>
+                      <p className="text-[13px] font-bold text-white tabular-nums">4.7 / 5</p>
+                    </div>
+                  </div>
+
+                  {/* Floating badge — bottom-right (live order pulse) */}
+                  <div className="anim-fade-up anim-delay-3 absolute bottom-6 right-0 lg:right-2 z-30 flex items-center gap-2 bg-white/[0.08] ring-glass backdrop-blur-md rounded-2xl px-3 py-2 shadow-glow-navy">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
+                    </span>
+                    <div className="leading-tight font-sans">
+                      <p className="text-[10px] text-white/60 font-medium">Mechanic on the way</p>
+                      <p className="text-[12px] font-bold text-white">ETA 8 min</p>
+                    </div>
+                  </div>
+
+                  {/* The phone */}
+                  <div className="anim-fade-up anim-delay-1 relative z-10">
+                    <div className="relative w-[240px] lg:w-[270px] aspect-[9/19] rounded-[40px] bg-gradient-to-b from-[#1A2C4D] to-[#0A1A33] border-[10px] border-[#0A1A33] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.6)] ring-1 ring-white/15">
+                      {/* Notch */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-[#0A1A33] rounded-b-2xl z-20" />
+                      {/* Side speaker hint */}
+                      <div className="absolute top-16 -left-[12px] w-1 h-10 bg-[#0A1A33] rounded-r-md" />
+                      <div className="absolute top-32 -left-[12px] w-1 h-14 bg-[#0A1A33] rounded-r-md" />
+
+                      {/* Screen */}
+                      <div className="h-full w-full rounded-[28px] bg-gradient-to-b from-white via-[#F7F8FA] to-[#EFF4FB] overflow-hidden flex flex-col">
+                        {/* Status bar */}
+                        <div className="px-4 pt-2 flex items-center justify-between text-[8px] font-bold text-[#1A1D29]">
+                          <span className="tabular-nums">9:41</span>
+                          <div className="flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1A1D29]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1A1D29]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#1A1D29]/40" />
                           </div>
                         </div>
-                        {/* Mock banner */}
-                        <div className="mx-4 mt-3 h-20 rounded-xl bg-gradient-to-br from-[#0F2545] via-[#1B3B6F] to-[#FF6B35] flex items-center justify-center">
-                          <p className="text-white font-extrabold text-sm tracking-tight">SPIN &amp; EARN</p>
+
+                        {/* App header */}
+                        <div className="px-4 pt-2 pb-2 flex items-center justify-between">
+                          <div>
+                            <p className="text-[8px] font-medium text-gray-500">Deliver to</p>
+                            <p className="text-[11px] font-bold text-[#1A1D29] flex items-center gap-1">
+                              Mumbai <span className="text-gray-400">· 400001</span>
+                              <ChevronRight className="h-2.5 w-2.5 rotate-90 text-gray-400" />
+                            </p>
+                          </div>
+                          <div className="relative">
+                            <ShoppingCart className="h-4 w-4 text-[#1A1D29]" />
+                            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-[#FF6B35] text-white text-[7px] font-bold flex items-center justify-center">3</span>
+                          </div>
                         </div>
-                        {/* Mock quick actions */}
-                        <div className="grid grid-cols-4 gap-1 mx-4 mt-3 bg-white rounded-xl p-2 border border-gray-100">
+
+                        {/* Search */}
+                        <div className="px-3">
+                          <div className="h-7 rounded-lg bg-white border border-gray-200 flex items-center gap-1.5 px-2 text-[8px] text-gray-400 shadow-sm">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                            <span>Search parts, brands…</span>
+                          </div>
+                        </div>
+
+                        {/* SPIN & EARN — animated, with coin glints */}
+                        <div className="mx-3 mt-2 relative h-[58px] rounded-xl overflow-hidden bg-gradient-to-br from-[#1B3B6F] via-[#2A5298] to-[#FF6B35] shadow-md">
+                          <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0, transparent 30%)' }} />
+                          <div className="relative h-full flex items-center justify-between px-3">
+                            <div className="text-white">
+                              <p className="text-[8px] font-bold tracking-wider opacity-80">DAILY REWARD</p>
+                              <p className="text-[12px] font-extrabold tracking-tight font-display">Spin & Earn ₹100</p>
+                            </div>
+                            {/* Mini spin wheel */}
+                            <div className="relative h-9 w-9 rounded-full bg-white/20 ring-1 ring-white/40 flex items-center justify-center backdrop-blur">
+                              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#FFCE00] via-[#FFA000] to-[#FF6B35] flex items-center justify-center text-[10px] font-extrabold text-white shadow-inner">
+                                ₹
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick actions WITH labels */}
+                        <div className="grid grid-cols-4 gap-1 mx-3 mt-2 bg-white rounded-xl px-1.5 py-2 border border-gray-100 shadow-sm">
                           {[
-                            { bg: '#DBEAFE', color: '#1B3B6F', Icon: Wrench },
-                            { bg: '#D1FAE5', color: '#059669', Icon: ShoppingBag },
-                            { bg: '#FED7AA', color: '#B45309', Icon: Bike },
-                            { bg: '#FCE7F3', color: '#BE185D', Icon: Headphones },
+                            { bg: '#DBEAFE', color: '#1B3B6F', Icon: Wrench, label: 'Service' },
+                            { bg: '#D1FAE5', color: '#059669', Icon: ShoppingBag, label: 'Shop' },
+                            { bg: '#FED7AA', color: '#B45309', Icon: Bike, label: 'Bikes' },
+                            { bg: '#FCE7F3', color: '#BE185D', Icon: Headphones, label: 'SOS' },
                           ].map((qa, i) => (
                             <div key={i} className="flex flex-col items-center gap-0.5">
                               <div className="h-7 w-7 rounded-full flex items-center justify-center" style={{ backgroundColor: qa.bg }}>
-                                <qa.Icon className="h-3.5 w-3.5" style={{ color: qa.color }} />
+                                <qa.Icon className="h-3.5 w-3.5" style={{ color: qa.color }} strokeWidth={2.4} />
                               </div>
-                              <span className="text-[6px] font-semibold text-[#1A1D29]">·</span>
+                              <span className="text-[7px] font-semibold text-[#1A1D29]">{qa.label}</span>
                             </div>
                           ))}
                         </div>
-                        {/* Mock product cards */}
-                        <div className="grid grid-cols-2 gap-1.5 mx-4 mt-3">
-                          <div className="h-16 rounded-md bg-white border border-gray-100" />
-                          <div className="h-16 rounded-md bg-white border border-gray-100" />
+
+                        {/* Trending products — actual content, not blank cards */}
+                        <p className="px-3 mt-2 text-[8px] font-bold text-[#1A1D29] flex items-center justify-between">
+                          <span>Trending</span>
+                          <span className="text-[7px] text-[#FF6B35] font-semibold">View all →</span>
+                        </p>
+                        <div className="grid grid-cols-2 gap-1.5 mx-3 mt-1">
+                          {[
+                            { bg: 'from-[#DBEAFE] to-[#BFDBFE]', Icon: Settings, name: 'Brake Pad', price: '₹1,299' },
+                            { bg: 'from-[#FFE4D6] to-[#FED7AA]', Icon: Zap, name: 'Battery', price: '₹4,499' },
+                          ].map((p, i) => (
+                            <div key={i} className="rounded-lg bg-white border border-gray-100 p-1.5 shadow-sm">
+                              <div className={`h-9 rounded-md bg-gradient-to-br ${p.bg} flex items-center justify-center`}>
+                                <p.Icon className="h-4 w-4 text-[#1B3B6F]" strokeWidth={2.2} />
+                              </div>
+                              <p className="text-[7px] font-bold text-[#1A1D29] mt-1 truncate">{p.name}</p>
+                              <div className="flex items-center justify-between mt-0.5">
+                                <span className="text-[7px] font-extrabold text-[#1B3B6F] tabular-nums">{p.price}</span>
+                                <span className="flex items-center gap-0.5 text-[6px] text-gray-500 tabular-nums">
+                                  <Star className="h-1.5 w-1.5 fill-[#FFA000] text-[#FFA000]" />
+                                  4.8
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
+
                         <div className="flex-1" />
-                        {/* Mock bottom nav */}
-                        <div className="grid grid-cols-5 gap-1 mx-2 mb-2 px-2 py-2 rounded-xl bg-white border border-gray-100">
+
+                        {/* Bottom nav with active pill */}
+                        <div className="grid grid-cols-5 gap-1 mx-2 mb-2 px-2 py-1.5 rounded-xl bg-white border border-gray-100 shadow-sm">
                           {[HomeIcon, ShoppingBag, Package, Wrench, Users].map((NavIcon, i) => (
                             <div key={i} className="flex justify-center">
-                              <NavIcon className={`h-3.5 w-3.5 ${i === 0 ? 'text-[#FF6B35]' : 'text-gray-300'}`} />
+                              {i === 0 ? (
+                                <div className="px-1.5 py-0.5 rounded-md bg-[#FF6B35]/10 flex items-center gap-0.5">
+                                  <NavIcon className="h-3 w-3 text-[#FF6B35]" strokeWidth={2.4} />
+                                  <span className="text-[6px] font-bold text-[#FF6B35]">Home</span>
+                                </div>
+                              ) : (
+                                <NavIcon className="h-3 w-3 text-gray-300" />
+                              )}
                             </div>
                           ))}
+                        </div>
+                        {/* iPhone home indicator */}
+                        <div className="flex justify-center pb-1">
+                          <span className="h-0.5 w-10 rounded-full bg-[#1A1D29]/30" />
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════
-            SECTION 11 — Brand Partners strip (premium logo grid)
-           ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-4 md:mb-6">
-              <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Trusted Partners</p>
-              <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
-                Genuine parts from 500+ global brands
-              </h2>
-              <p className="text-xs md:text-sm text-gray-500 mt-1.5">
-                Sourced directly from authorised distributors. Verifiable invoice on every order.
-              </p>
-            </div>
-            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-4 md:p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 md:gap-3">
-                {BRAND_PARTNERS.map((b) => (
-                  <Link
-                    key={b.name}
-                    href={`/shop?brands=${encodeURIComponent(b.name)}`}
-                    className="group/bp flex items-center gap-2.5 px-3 py-2.5 md:px-4 md:py-3 rounded-xl bg-gray-50 hover:bg-white hover:ring-1 hover:ring-[#1B3B6F]/20 hover:shadow-sm transition-all"
-                  >
-                    <div className="h-8 w-8 md:h-9 md:w-9 rounded-lg bg-white ring-1 ring-gray-200 flex items-center justify-center shrink-0 group-hover/bp:ring-[#1B3B6F]/30 transition-all">
-                      <span className="text-[10px] md:text-[11px] font-extrabold text-[#1B3B6F] tracking-tight">
-                        {b.name.split(' ').map(w => w[0]).slice(0, 2).join('')}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[12px] md:text-[13px] font-bold text-[#1A1D29] truncate group-hover/bp:text-[#1B3B6F] transition-colors">{b.name}</p>
-                      <p className="text-[9px] md:text-[10px] text-gray-500 truncate">{b.tag}</p>
-                    </div>
-                  </Link>
-                ))}
               </div>
             </div>
           </div>
@@ -1236,79 +1373,6 @@ export default function HomePage() {
                   onToggle={() => setOpenFaq(openFaq === i ? null : i)}
                 />
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════
-            SECTION 14B — Available in 30+ cities (SEO + trust block)
-           ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-5 md:p-8">
-              <div className="flex items-start md:items-center justify-between flex-col md:flex-row gap-3 mb-4 md:mb-6">
-                <div>
-                  <p className="text-[10px] md:text-[11px] font-bold text-[#FF6B35] uppercase tracking-wider">Pan-India Reach</p>
-                  <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold text-[#1A1D29] tracking-tight mt-1">
-                    Available in 30+ cities across India
-                  </h2>
-                  <p className="text-xs md:text-sm text-gray-500 mt-1">
-                    Doorstep service and same-day parts delivery in metro and tier-2 cities.
-                  </p>
-                </div>
-                <div className="hidden md:flex items-center gap-2 bg-[#F0F9FF] border border-[#BAE6FD] rounded-full px-3 py-1.5 shrink-0">
-                  <MapPin className="h-3.5 w-3.5 text-[#1B3B6F]" />
-                  <span className="text-[11px] font-bold text-[#1B3B6F]">Adding 5+ cities every month</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 md:gap-2">
-                {ALL_CITIES.map((city) => (
-                  <Link
-                    key={city}
-                    href={`/service?city=${encodeURIComponent(city)}`}
-                    className="px-2.5 py-2 md:px-3 md:py-2.5 rounded-lg text-[11.5px] md:text-[13px] font-medium text-[#1A1D29] bg-gray-50 hover:bg-[#1B3B6F] hover:text-white transition-colors text-center truncate"
-                  >
-                    {city}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════
-            SECTION 15 — Final CTA banner
-           ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-12">
-          <div className="max-w-7xl mx-auto">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#FF6B35] via-[#F25C2A] to-[#E94E20] shadow-md">
-              <div className="absolute -top-12 -left-12 w-48 h-48 bg-white/20 rounded-full blur-3xl" />
-              <div className="absolute -bottom-12 -right-12 w-56 h-56 bg-[#0F2545]/30 rounded-full blur-3xl" />
-              <div className="relative px-5 py-7 md:px-10 md:py-10 lg:px-14 lg:py-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6">
-                <div className="max-w-xl">
-                  <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-                    Ready to give your vehicle the care it deserves?
-                  </h2>
-                  <p className="mt-1.5 md:mt-2 text-xs md:text-sm text-white/85">
-                    Book a service in 60 seconds, or shop genuine parts with same-day delivery.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2.5 shrink-0">
-                  <Link
-                    href="/service"
-                    className="inline-flex items-center gap-1.5 bg-white text-[#FF6B35] hover:bg-[#0F2545] hover:text-white font-bold px-4 py-2.5 md:px-5 md:py-3 text-xs md:text-sm rounded-lg shadow-md transition-all"
-                  >
-                    Book a Service
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                  <Link
-                    href="/shop"
-                    className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/30 text-white font-bold px-4 py-2.5 md:px-5 md:py-3 text-xs md:text-sm rounded-lg transition-all"
-                  >
-                    Shop Parts
-                  </Link>
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -1499,75 +1563,187 @@ function SectionHeader({ title, subtitle, viewAllHref }: { title: string; subtit
 
 function QuickAction({
   icon: Icon,
-  iconColor,
-  bg,
+  accent,
+  accentSoft,
   title,
   sub,
+  meta,
+  cta,
   href,
   onClick,
+  index = 0,
+  urgent = false,
 }: {
   icon: any
-  iconColor: string
-  bg: string
+  accent: string         // Strong brand-accent color (icon, ring, CTA)
+  accentSoft: string     // Soft tint for icon halo / corner glow / chips
   title: string
   sub: string
+  meta?: string          // Tiny credibility tag near the CTA
+  cta: string            // Verb-led label that makes the card unambiguously a button
   href?: string
   onClick?: () => void
+  index?: number         // Stagger entrance animation
+  urgent?: boolean       // Pulse dot for emergency-style cards
 }) {
+  // CSS vars feed inline style so Tailwind doesn't need to know each accent.
+  const accentVars = {
+    '--qa-accent': accent,
+    '--qa-accent-soft': accentSoft,
+    animationDelay: `${0.06 * index}s`,
+  } as React.CSSProperties
+
   const content = (
-    <div className="flex flex-col items-center text-center px-0.5 md:px-1 w-full group/qa">
+    <div
+      className="anim-fade-up group/qa relative h-full overflow-hidden rounded-2xl bg-white ring-1 ring-black/[0.07] shadow-elevated transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated-hover hover:ring-[var(--qa-accent)]/50 px-4 pt-4 pb-3 md:px-5 md:pt-5 md:pb-4 lg:px-6 lg:pt-6 lg:pb-5 text-left"
+      style={accentVars}
+    >
+      {/* Atmospheric corner glow in the action's accent — adds depth */}
       <div
-        className="h-11 w-11 md:h-12 md:w-12 lg:h-14 lg:w-14 rounded-full flex items-center justify-center mb-1.5 md:mb-2 transition-transform duration-300 group-hover/qa:scale-105"
-        style={{ backgroundColor: bg }}
-      >
-        <Icon className="h-[22px] w-[22px] md:h-6 md:w-6 lg:h-7 lg:w-7" style={{ color: iconColor }} />
+        className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full opacity-60 blur-2xl transition-opacity duration-500 group-hover/qa:opacity-100"
+        style={{ background: `radial-gradient(circle, var(--qa-accent-soft) 0%, transparent 65%)` }}
+      />
+      {/* Persistent left rail in accent color — quietly signals "tap me" at rest */}
+      <div
+        className="pointer-events-none absolute left-0 top-5 bottom-5 w-[3px] rounded-r-full transition-all duration-300 group-hover/qa:top-3 group-hover/qa:bottom-3"
+        style={{ backgroundColor: 'var(--qa-accent)' }}
+      />
+      {/* Top hairline accent appears on hover for an extra cue */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[2px] origin-left scale-x-0 transition-transform duration-500 group-hover/qa:scale-x-100"
+        style={{ backgroundColor: 'var(--qa-accent)' }}
+      />
+
+      <div className="relative flex flex-col h-full">
+        {/* Icon pill — elevated, ring + soft halo */}
+        <div className="flex items-start justify-between mb-3 md:mb-4">
+          <div
+            className="relative h-11 w-11 md:h-12 md:w-12 lg:h-14 lg:w-14 rounded-2xl flex items-center justify-center ring-1 transition-transform duration-300 group-hover/qa:scale-[1.06] group-hover/qa:rotate-[-3deg]"
+            style={{
+              background: `linear-gradient(140deg, var(--qa-accent-soft) 0%, #ffffff 100%)`,
+              boxShadow: `0 6px 18px -8px ${accent}55, inset 0 1px 0 0 rgba(255,255,255,0.7)`,
+              borderColor: `${accent}22`,
+            }}
+          >
+            <Icon
+              className="h-[22px] w-[22px] md:h-6 md:w-6 lg:h-7 lg:w-7"
+              style={{ color: 'var(--qa-accent)' }}
+              strokeWidth={2.2}
+            />
+          </div>
+
+          {urgent && (
+            <span className="relative flex h-2.5 w-2.5 mt-1" aria-label="Live 24/7">
+              <span
+                className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+                style={{ backgroundColor: 'var(--qa-accent)' }}
+              />
+              <span
+                className="relative inline-flex rounded-full h-2.5 w-2.5"
+                style={{ backgroundColor: 'var(--qa-accent)' }}
+              />
+            </span>
+          )}
+        </div>
+
+        {/* Title — display font, tight tracking */}
+        <p className="font-display text-[15px] md:text-base lg:text-lg font-bold tracking-[-0.02em] text-[#0F2545] leading-tight line-clamp-2">
+          {title}
+        </p>
+        {/* Sub — body font, muted */}
+        <p className="text-[11px] md:text-xs text-gray-500 mt-1 leading-snug line-clamp-1">
+          {sub}
+        </p>
+
+        {/* Meta chip — credibility tag, sits just above the CTA */}
+        {meta && (
+          <span
+            className="self-start mt-2.5 md:mt-3 inline-flex items-center gap-1 text-[10px] md:text-[11px] font-semibold tracking-tight px-2 py-0.5 rounded-full"
+            style={{
+              color: 'var(--qa-accent)',
+              backgroundColor: 'var(--qa-accent-soft)',
+            }}
+          >
+            {meta}
+          </span>
+        )}
+
+        {/* Spacer to push the CTA to the bottom across all card heights */}
+        <div className="flex-1 min-h-[10px] md:min-h-[14px]" />
+
+        {/* CTA pill — verb-led, full width, unmistakably a button.
+            The hover fill is a sibling overlay INSIDE the pill (absolute
+            inset-0) so it stays clipped to the button shape. */}
+        <span
+          className="relative isolate overflow-hidden mt-3 md:mt-4 inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 md:py-2.5 rounded-xl text-[12px] md:text-[13px] font-bold tracking-tight transition-all duration-300 ring-1 ring-[var(--qa-accent)]/15 group-hover/qa:ring-[var(--qa-accent)]/40 group-hover/qa:shadow-md"
+          style={{
+            color: 'var(--qa-accent)',
+            backgroundColor: 'var(--qa-accent-soft)',
+          }}
+        >
+          {/* Solid accent fill — sweeps in on hover, stays clipped to pill */}
+          <span
+            aria-hidden
+            className="absolute inset-0 -z-[1] opacity-0 group-hover/qa:opacity-100 transition-opacity duration-300"
+            style={{ backgroundColor: 'var(--qa-accent)' }}
+          />
+          <span className="relative transition-colors duration-300 group-hover/qa:text-white">
+            {cta}
+          </span>
+          <ArrowRight
+            className="relative h-3.5 w-3.5 transition-all duration-300 group-hover/qa:translate-x-1 group-hover/qa:text-white"
+          />
+        </span>
       </div>
-      <p className="text-[12px] md:text-[13px] lg:text-sm font-semibold text-[#1A1D29] leading-tight line-clamp-2">{title}</p>
-      <p className="text-[10px] md:text-[11px] text-gray-500 mt-0.5 truncate w-full">{sub}</p>
     </div>
   )
 
+  // Shared wrapper class — focus-visible ring for keyboard a11y, cursor cue.
+  const wrapperCls =
+    'block w-full h-full rounded-2xl cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--qa-accent)] transition-shadow'
+
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="flex flex-col items-center">
+      <button
+        type="button"
+        onClick={onClick}
+        className={wrapperCls + ' text-left'}
+        style={accentVars}
+        aria-label={`${cta} — ${title}`}
+      >
         {content}
       </button>
     )
   }
   return (
-    <Link href={href || '#'} className="flex flex-col items-center">
+    <Link
+      href={href || '#'}
+      className={wrapperCls}
+      style={accentVars}
+      aria-label={`${cta} — ${title}`}
+    >
       {content}
     </Link>
   )
 }
 
-function CategoryCard({ cat, idx, variant }: { cat: any; idx: number; variant: 'mobile' | 'desktop' }) {
+function CategoryCard({ cat, variant }: { cat: any; idx?: number; variant: 'mobile' | 'desktop' }) {
   const img = cat.icon?.startsWith?.('http') ? cat.icon : (cat.image?.url || (typeof cat.image === 'string' ? cat.image : null))
-  // Colorful gradient backgrounds for each card (soft)
-  const gradients = [
-    'from-[#DBEAFE] to-[#BFDBFE]', // blue
-    'from-[#FFE4D6] to-[#FED7AA]', // orange
-    'from-[#D1FAE5] to-[#A7F3D0]', // green
-    'from-[#FCE7F3] to-[#FBCFE8]', // pink
-    'from-[#E0E7FF] to-[#C7D2FE]', // indigo
-    'from-[#FEF3C7] to-[#FDE68A]', // amber
-  ]
-  const gradient = gradients[idx % gradients.length]
 
   if (variant === 'mobile') {
     return (
       <Link
         href={`/shop?category=${cat._id || cat.id}`}
-        className="shrink-0 w-[88px] bg-white rounded-xl p-2 flex flex-col items-center border border-[#EEF0F3]"
+        className="shrink-0 w-[100px] bg-white rounded-xl p-2 pt-2.5 flex flex-col items-center ring-1 ring-black/[0.05] hover:ring-[#1B3B6F]/30 hover:shadow-sm transition-all duration-200 group/cc"
       >
-        <div className={`h-[56px] w-[56px] rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-1.5 p-1.5`}>
+        <div className="h-[72px] w-[72px] flex items-center justify-center mb-1.5 transition-transform duration-300 group-hover/cc:scale-[1.05]">
           {img ? (
             <img src={img} alt={cat.name} className="h-full w-full object-contain" />
           ) : (
-            <Package className="h-7 w-7 text-[#1B3B6F]" />
+            <Package className="h-9 w-9 text-[#1B3B6F]" />
           )}
         </div>
-        <p className="text-[11px] font-semibold text-[#1A1D29] text-center line-clamp-2 leading-[13px]">{cat.name}</p>
+        <p className="font-display text-[11.5px] font-bold tracking-[-0.012em] text-[#0F2545] text-center line-clamp-2 leading-[13px]">{cat.name}</p>
       </Link>
     )
   }
@@ -1575,16 +1751,22 @@ function CategoryCard({ cat, idx, variant }: { cat: any; idx: number; variant: '
   return (
     <Link
       href={`/shop?category=${cat._id || cat.id}`}
-      className="bg-white rounded-xl p-3 lg:p-3.5 flex flex-col items-center border border-[#EEF0F3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group/cc"
+      className="relative bg-white rounded-2xl p-3 lg:p-4 flex flex-col items-center ring-1 ring-black/[0.05] hover:ring-[#1B3B6F]/35 hover:-translate-y-0.5 hover:shadow-elevated transition-all duration-300 group/cc"
     >
-      <div className={`h-[62px] w-[62px] lg:h-[68px] lg:w-[68px] rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-2 p-2 group-hover/cc:scale-105 transition-transform`}>
+      <span className="absolute top-2 right-2 inline-flex items-center justify-center h-5 w-5 rounded-full text-[#1B3B6F] opacity-0 -translate-x-1 group-hover/cc:opacity-100 group-hover/cc:translate-x-0 group-hover/cc:bg-[#1B3B6F] group-hover/cc:text-white transition-all duration-300">
+        <ArrowRight className="h-3 w-3" />
+      </span>
+
+      <div className="h-[88px] w-[88px] lg:h-[100px] lg:w-[100px] flex items-center justify-center mb-2 transition-transform duration-300 group-hover/cc:scale-[1.06]">
         {img ? (
           <img src={img} alt={cat.name} className="h-full w-full object-contain" />
         ) : (
-          <Package className="h-7 w-7 lg:h-8 lg:w-8 text-[#1B3B6F]" />
+          <Package className="h-10 w-10 lg:h-12 lg:w-12 text-[#1B3B6F]" />
         )}
       </div>
-      <p className="text-xs lg:text-[13px] font-semibold text-[#1A1D29] text-center line-clamp-2 leading-tight">{cat.name}</p>
+      <p className="font-display text-[12.5px] lg:text-[13.5px] font-bold tracking-[-0.012em] text-[#0F2545] text-center line-clamp-2 leading-tight">
+        {cat.name}
+      </p>
     </Link>
   )
 }
@@ -1840,23 +2022,54 @@ function CategorySkeleton({ variant }: { variant: 'mobile' | 'desktop' }) {
 
 function FeatureCard({ icon: Icon, title, desc, color, bg }: { icon: any; title: string; desc: string; color: string; bg: string }) {
   return (
-    <div className="bg-white rounded-xl md:rounded-2xl p-3.5 md:p-5 border border-[#EEF0F3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+    <div
+      className="group/fc relative bg-white rounded-2xl md:rounded-3xl p-5 md:p-7 ring-1 ring-black/[0.05] transition-all duration-300 hover:-translate-y-0.5 hover:ring-[var(--fc-color)]/30 hover:shadow-elevated"
+      style={{ ['--fc-color' as any]: color }}
+    >
+      {/* Refined icon stamp — accent gradient, inset highlight, accent ring */}
       <div
-        className="h-10 w-10 md:h-11 md:w-11 rounded-lg md:rounded-xl flex items-center justify-center mb-2.5 md:mb-3"
-        style={{ backgroundColor: bg }}
+        className="relative h-12 w-12 md:h-[52px] md:w-[52px] rounded-2xl flex items-center justify-center mb-4 md:mb-5 transition-transform duration-300 group-hover/fc:scale-[1.06] group-hover/fc:rotate-[-3deg]"
+        style={{
+          background: `linear-gradient(140deg, ${bg} 0%, #ffffff 100%)`,
+          boxShadow: `0 6px 18px -8px ${color}55, inset 0 1px 0 0 rgba(255,255,255,0.7)`,
+        }}
       >
-        <Icon className="h-5 w-5 md:h-[22px] md:w-[22px]" style={{ color }} />
+        <span
+          className="absolute inset-0 rounded-2xl ring-1"
+          style={{ borderColor: `${color}25` }}
+          aria-hidden
+        />
+        <Icon
+          className="relative h-[22px] w-[22px] md:h-6 md:w-6"
+          style={{ color }}
+          strokeWidth={2.2}
+        />
       </div>
-      <h3 className="text-sm md:text-base font-bold text-[#1A1D29] tracking-tight">{title}</h3>
-      <p className="text-[11.5px] md:text-[13px] text-gray-500 leading-snug mt-1">{desc}</p>
+
+      {/* Title — display font, tighter tracking */}
+      <h3 className="font-display text-[16px] md:text-[18px] font-bold text-[#0F2545] tracking-[-0.022em] leading-tight">
+        {title}
+      </h3>
+      {/* Animated accent underline reveals on hover */}
+      <span
+        className="block h-[2px] mt-1.5 origin-left scale-x-0 group-hover/fc:scale-x-100 transition-transform duration-500 ease-out"
+        style={{ backgroundColor: color, width: '28px' }}
+      />
+
+      {/* Description — better leading + balance */}
+      <p className="text-[13px] md:text-[14px] text-gray-500 leading-relaxed mt-3 text-pretty">
+        {desc}
+      </p>
     </div>
   )
 }
 
 function AppFeatureItem({ text }: { text: string }) {
   return (
-    <li className="flex items-center gap-1.5 text-white/90 text-xs md:text-sm">
-      <Check className="h-3.5 w-3.5 md:h-4 md:w-4 text-[#FF6B35] shrink-0" />
+    <li className="group/feat flex items-center gap-2 text-white/85 text-xs md:text-[13px] font-medium transition-colors hover:text-white">
+      <span className="inline-flex h-4 w-4 md:h-[18px] md:w-[18px] shrink-0 items-center justify-center rounded-full bg-[#FF6B35]/15 ring-1 ring-[#FF6B35]/40 transition-all duration-300 group-hover/feat:bg-[#FF6B35] group-hover/feat:scale-110">
+        <Check className="h-2.5 w-2.5 md:h-3 md:w-3 text-[#FF6B35] transition-colors duration-300 group-hover/feat:text-white" strokeWidth={3} />
+      </span>
       {text}
     </li>
   )
@@ -1913,38 +2126,35 @@ function PartnerCard({ icon: Icon, title, desc, cta, href, gradient, accent }: {
   )
 }
 
-function Pillar({ icon: Icon, title, subtitle, color, bg }: { icon: any; title: string; subtitle: string; color: string; bg: string }) {
+function Pillar({
+  icon: Icon,
+  title,
+  subtitle,
+  color,
+  bg,
+}: {
+  icon: any
+  title: string
+  subtitle: string
+  color: string
+  bg: string
+}) {
   return (
-    <div className="flex items-center gap-2.5 md:gap-3">
+    <div className="flex items-center gap-2.5 md:gap-3 px-1 md:px-4 py-1 md:py-1.5">
       <div
         className="h-9 w-9 md:h-10 md:w-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0"
         style={{ backgroundColor: bg }}
       >
-        <Icon className="h-4 w-4 md:h-[18px] md:w-[18px]" style={{ color }} />
+        <Icon className="h-4 w-4 md:h-[18px] md:w-[18px]" style={{ color }} strokeWidth={2.2} />
       </div>
       <div className="min-w-0">
-        <p className="text-[12px] md:text-[13.5px] font-bold text-[#1A1D29] tracking-tight truncate">{title}</p>
-        <p className="text-[10px] md:text-[11.5px] text-gray-500 truncate">{subtitle}</p>
+        <p className="font-display text-[13px] md:text-[14px] font-bold tracking-[-0.018em] text-[#0F2545] leading-tight truncate">
+          {title}
+        </p>
+        <p className="text-[10.5px] md:text-[11.5px] text-gray-500 truncate mt-0.5">
+          {subtitle}
+        </p>
       </div>
-    </div>
-  )
-}
-
-function VehicleSelect({ icon: Icon, placeholder, value, onChange, options }: { icon: any; placeholder: string; value: string; onChange: (v: string) => void; options: string[] }) {
-  return (
-    <div className="relative md:px-5 md:py-3.5 lg:py-4">
-      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 md:left-5 md:top-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-[#1B3B6F] pointer-events-none" />
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none w-full pl-8 pr-7 py-2.5 md:pl-7 md:pr-7 md:py-0 md:h-full bg-transparent border border-gray-200 md:border-0 rounded-lg md:rounded-none text-[12px] md:text-[13px] font-semibold text-[#1A1D29] outline-none focus:border-[#1B3B6F] md:focus:bg-[#F0F9FF] cursor-pointer transition-colors"
-      >
-        <option value="">{placeholder}</option>
-        {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
-        ))}
-      </select>
-      <ChevronRight className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 rotate-90 pointer-events-none" />
     </div>
   )
 }
