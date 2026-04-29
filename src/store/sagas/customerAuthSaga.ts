@@ -23,20 +23,27 @@ import {
 //
 // The provider used is recorded in Redux state so handleVerifyOtp branches
 // to the matching verification path.
+// Errors that should be surfaced to the user instead of silently falling
+// back. These are user-input or rate-limit problems where the legacy
+// backend would also fail — letting the user fix and retry.
+const FIREBASE_USER_FACING_CODES = new Set([
+  'auth/invalid-phone-number',
+  'auth/missing-phone-number',
+  'auth/too-many-requests',
+  'auth/quota-exceeded',
+  'auth/missing-verification-code',
+  'auth/invalid-verification-code',
+]);
+
+// Anything OTHER than a known user-facing error → fall back to the legacy
+// backend OTP path. This includes: API_KEY_INVALID (from Android-only
+// restriction), missing config, network errors, configuration-not-found,
+// reCAPTCHA failures, missing Web app, etc. — all environment problems
+// the user can't fix from the login screen.
 const FIREBASE_FALLBACK_TO_LEGACY = (err) => {
   const code = err?.code || '';
-  const msg = err?.message || '';
-  return (
-    code === 'auth/api-key-not-valid' ||
-    code === 'auth/invalid-api-key' ||
-    code === 'auth/configuration-not-found' ||
-    code === 'auth/operation-not-allowed' ||
-    code === 'auth/internal-error' ||
-    code === 'auth/network-request-failed' ||
-    msg.includes('Firebase config is missing') ||
-    msg.includes('TODO_WEB_API_KEY') ||
-    msg.includes('TODO_WEB_APP_ID')
-  );
+  if (code && FIREBASE_USER_FACING_CODES.has(code)) return false;
+  return true;
 };
 
 function* handleSendOtp(action) {
