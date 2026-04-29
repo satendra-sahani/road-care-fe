@@ -52,9 +52,24 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 
+const isPlaceholder = (val: string | undefined): boolean => {
+  if (!val) return true;
+  // Detect the TODO_* placeholders we ship in .env.local until the real
+  // Web app config is registered in Firebase Console. Without this check
+  // the SDK initialises "successfully" with junk values, then hits Google
+  // with the bad key and returns 400 mid-flow — the saga's fallback
+  // never sees a recognised error code, so OTP appears stuck.
+  return /^todo[_-]/i.test(val) || val.includes('placeholder');
+};
+
 const getFirebaseApp = (): FirebaseApp => {
   if (app) return app;
-  if (!firebaseConfig.apiKey) {
+  if (
+    !firebaseConfig.apiKey ||
+    isPlaceholder(firebaseConfig.apiKey) ||
+    !firebaseConfig.appId ||
+    isPlaceholder(firebaseConfig.appId)
+  ) {
     throw new Error(
       'Firebase config is missing. Set NEXT_PUBLIC_FIREBASE_* env vars in .env.local — see src/services/firebaseAuth.ts header for the full list.'
     );
