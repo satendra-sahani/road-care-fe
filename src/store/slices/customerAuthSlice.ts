@@ -25,6 +25,9 @@ interface CustomerAuthState {
   phone: string;
   registering: boolean;
   error: string | null;
+  /** Which OTP path was used to send the code — verifyOtp branches on this
+   *  so the same code can flow through Firebase OR legacy backend. */
+  otpProvider: 'firebase' | 'legacy' | null;
 }
 
 const initialState: CustomerAuthState = {
@@ -41,6 +44,7 @@ const initialState: CustomerAuthState = {
   phone: '',
   registering: false,
   error: null,
+  otpProvider: null,
 };
 
 const customerAuthSlice = createSlice({
@@ -54,10 +58,11 @@ const customerAuthSlice = createSlice({
       state.phone = action.payload;
       state.error = null;
     },
-    sendOtpSuccess(state, action: PayloadAction<{ purpose?: 'login' | 'registration' } | undefined>) {
+    sendOtpSuccess(state, action: PayloadAction<{ purpose?: 'login' | 'registration'; provider?: 'firebase' | 'legacy' } | undefined>) {
       state.otpSending = false;
       state.otpSent = true;
       state.otpPurpose = action.payload?.purpose || 'login';
+      state.otpProvider = action.payload?.provider || null;
     },
     sendOtpFailure(state, action: PayloadAction<string>) {
       state.otpSending = false;
@@ -135,6 +140,7 @@ const customerAuthSlice = createSlice({
       state.isNewUser = false;
       state.phone = '';
       state.error = null;
+      state.otpProvider = null;
     },
 
     clearError(state) {

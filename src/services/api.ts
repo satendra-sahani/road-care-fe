@@ -321,6 +321,8 @@ export const userAPI = {
 
 // ─── OTP Auth APIs (Customer Phone Login) ─────────────────────────────
 export const otpAuthAPI = {
+  // Legacy backend OTP (MSG91) — kept for the registerUser endpoint, which
+  // the Firebase flow also uses to complete signup once the phone is verified.
   sendOtp: (phone: string, purpose?: string) =>
     api.post('/common/auth/send-otp', { phone, purpose: purpose || 'login' }),
   verifyOtp: (phone: string, otp: string, purpose?: string) =>
@@ -329,6 +331,13 @@ export const otpAuthAPI = {
     api.post('/common/auth/register/user', data),
   phoneLogin: (phone: string) =>
     api.post('/common/auth/phone-login', { phone }),
+
+  // Firebase Phone Auth — current default (matches Android). The web
+  // client gets a Firebase ID token via signInWithPhoneNumber + reCAPTCHA,
+  // then posts it here. Backend verifies with firebase-admin and either
+  // logs the user in or returns a verificationToken for registration.
+  firebaseSignIn: (idToken: string, purpose: 'login' | 'registration' | 'auto' = 'auto') =>
+    api.post('/common/auth/firebase-signin', { idToken, purpose }),
 };
 
 // ─── Public Catalog APIs (for user-facing pages) ─────────────────────
