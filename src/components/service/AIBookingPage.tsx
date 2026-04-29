@@ -558,8 +558,21 @@ export default function AIBookingPage() {
         </div>
       </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3.5">
+      {/* Chat Messages — brand-logo watermark in the centre. The 92%-opacity
+          overlay (matching the parent #F8F7FC bg) keeps the logo subtle so
+          chat bubbles remain readable. backgroundAttachment defaults to
+          'scroll' so the watermark stays anchored to the chat area while
+          messages scroll over it. */}
+      <div
+        className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3.5"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(248,247,252,0.92), rgba(248,247,252,0.92)), url(https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2)',
+          backgroundRepeat: 'no-repeat, no-repeat',
+          backgroundPosition: 'center, center',
+          backgroundSize: 'cover, min(280px, 55%) auto',
+        }}
+      >
         {/* Empty state (before first message) */}
         {ai.messages.length === 0 && !ai.isProcessing && (
           <div className="flex flex-col items-center py-12">
