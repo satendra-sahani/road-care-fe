@@ -54,6 +54,7 @@ export function ServicePage() {
   const [serviceType, setServiceType] = useState('home')
   const [pricingData, setPricingData] = useState<any>(null)
   const [selectedIssues, setSelectedIssues] = useState<string[]>([])
+  const [otherIssue, setOtherIssue] = useState('')
   const [loadingPricing, setLoadingPricing] = useState(false)
   const [description, setDescription] = useState('')
   const [preferredDate, setPreferredDate] = useState('')
@@ -61,10 +62,32 @@ export function ServicePage() {
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
   const [landmark, setLandmark] = useState('')
+  const [addrState, setAddrState] = useState('')
+  const [pincode, setPincode] = useState('')
+  const [contactNumber, setContactNumber] = useState('')
+  const [latitude, setLatitude] = useState<number | null>(null)
+  const [longitude, setLongitude] = useState<number | null>(null)
   const [gpsLoading, setGpsLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitProgress, setSubmitProgress] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('cod')
+
+  // Success modal — shown after successful booking, mirrors Android behaviour
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [successRequestId, setSuccessRequestId] = useState('')
+  const [successType, setSuccessType] = useState<'cod' | 'payment'>('cod')
+
+  // Pre-fill contact number from logged-in user profile (Android does the same)
+  useEffect(() => {
+    if (isAuthenticated && user && !contactNumber) {
+      const phone = (user as any)?.phone || (user as any)?.mobile || ''
+      if (phone) {
+        // Strip any leading +91 / 91 / 0 so we always store the bare 10 digits
+        const ten = String(phone).replace(/\D/g, '').slice(-10)
+        if (ten.length === 10) setContactNumber(ten)
+      }
+    }
+  }, [isAuthenticated, user])
 
   // ─── My Requests state ───────────────────────────────────────
   const [requests, setRequests] = useState<any[]>([])
@@ -141,13 +164,27 @@ export function ServicePage() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const { latitude, longitude } = pos.coords
-          const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`)
+          const { latitude: lat, longitude: lng } = pos.coords
+          // Store coords for the create payload (mechanic uses these for routing)
+          setLatitude(lat)
+          setLongitude(lng)
+          const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`)
           const data = await resp.json()
           if (data.address) {
             const a = data.address
-            setAddress([a.road, a.neighbourhood, a.suburb].filter(Boolean).join(', '))
-            setCity(a.city || a.town || a.village || '')
+            // Same parsing as Android's reverseGeocode → fill every available
+            // address part. Each setter only writes if its current value is
+            // empty so we don't overwrite something the user already typed.
+            const addrLine = [a.road, a.neighbourhood, a.suburb].filter(Boolean).join(', ')
+            if (addrLine) setAddress(addrLine)
+            if ((a.city || a.town || a.village || a.state_district) && !city) {
+              setCity(a.city || a.town || a.village || a.state_district || '')
+            }
+            if (a.state && !addrState) setAddrState(a.state)
+            if (a.postcode && !pincode) setPincode(a.postcode)
+            if ((a.suburb || a.neighbourhood) && !landmark) {
+              setLandmark(a.suburb || a.neighbourhood || '')
+            }
           }
         } catch { toast.error('Could not detect address') }
         finally { setGpsLoading(false) }
@@ -158,8 +195,17 @@ export function ServicePage() {
 
   const handleSubmit = async () => {
     if (!isAuthenticated) { router.push('/login?redirect=/service'); return }
-    if (!vehicleType || !serviceType || selectedIssues.length === 0 || !description.trim() || !preferredDate || !address.trim()) {
+    // Mirror Android validation: vehicle, service, issues, address, contact
+    // number all required. Description is optional (Android auto-builds it
+    // from selected issues) so we keep the existing soft requirement.
+    if (!vehicleType || !serviceType || selectedIssues.length === 0 || !preferredDate || !address.trim()) {
       toast.error('Please fill all required fields'); return
+    }
+    if (contactNumber.replace(/\D/g, '').length !== 10) {
+      toast.error('Please enter a valid 10-digit contact number'); return
+    }
+    if (selectedIssues.includes('other') && !otherIssue.trim()) {
+      toast.error('Please describe the "Other" issue you selected'); return
     }
 
     setSubmitting(true)
@@ -167,20 +213,29 @@ export function ServicePage() {
 
     try {
       const issueNames = selectedIssues.map(id => {
+        if (id === 'other') return otherIssue.trim() ? `Other: ${otherIssue.trim()}` : 'Other'
         const issue = pricingData?.issues?.find((i: any) => (i.id || i._id) === id)
         return issue?.label || issue?.name || id
       })
+
+      // Auto-build description if user didn't type one (Android does the same)
+      const finalDescription = description.trim() || `Service requested for ${issueNames.join(', ')}`
 
       const res = await userServiceAPI.create({
         vehicleType, serviceType,
         serviceCategory: issueNames.join(', '),
         issues: issueNames,
-        description: description.trim(),
+        description: finalDescription,
         preferredDate,
         preferredTimeSlot: preferredTime || undefined,
         address: address.trim(),
         city: city.trim() || undefined,
         landmark: landmark.trim() || undefined,
+        state: addrState.trim() || undefined,
+        pincode: pincode.trim() || undefined,
+        contactNumber: contactNumber.replace(/\D/g, ''),
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
         paymentMethod,
         estimatedCost: estimatedTotal,
         priority: serviceType === 'roadside' ? 'high' : 'normal',
@@ -199,9 +254,10 @@ export function ServicePage() {
         setSubmitProgress('Confirming COD booking...')
         try { await userPaymentAPI.createCOD(serviceRequestId, bookingFee) } catch { /* COD record optional */ }
         setSubmitting(false); setSubmitProgress('')
-        toast.success('Service request booked successfully! Payment will be collected after service.')
-        resetForm()
-        setActiveTab('requests')
+        // Show success modal (matches Android UX) — user clicks Track or Close
+        setSuccessRequestId(serviceRequestId)
+        setSuccessType('cod')
+        setShowSuccessModal(true)
       } else {
         // Online payment via Razorpay
         setSubmitProgress('Setting up payment...')
@@ -243,9 +299,10 @@ export function ServicePage() {
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
               })
-              toast.success('Payment successful! Service request confirmed.')
-              resetForm()
-              setActiveTab('requests')
+              // Show success modal (matches Android animated success card)
+              setSuccessRequestId(serviceRequestId)
+              setSuccessType('payment')
+              setShowSuccessModal(true)
             } catch {
               toast.error('Payment verification failed. Contact support.')
             } finally { setSubmitting(false); setSubmitProgress('') }
@@ -270,9 +327,12 @@ export function ServicePage() {
 
   const resetForm = () => {
     setStep(1); setVehicleType(''); setServiceType('home')
-    setSelectedIssues([]); setDescription(''); setPreferredDate('')
-    setPreferredTime(''); setAddress(''); setCity(''); setLandmark('')
+    setSelectedIssues([]); setOtherIssue(''); setDescription('')
+    setPreferredDate(''); setPreferredTime('')
+    setAddress(''); setCity(''); setLandmark(''); setAddrState(''); setPincode('')
+    setLatitude(null); setLongitude(null)
     setPaymentMethod('cod')
+    // Note: contactNumber stays — auto-filled from user profile, no point re-clearing it
   }
 
   const handleCancel = async (id: string) => {
@@ -495,6 +555,50 @@ export function ServicePage() {
                       <p className="text-sm text-muted-foreground py-4">No service pricing available for this vehicle type.</p>
                     )}
 
+                    {/* "Other" issue tile — mirrors Android's free-form issue option.
+                        Toggling it adds the special id 'other' to selectedIssues; if active
+                        the textarea below appears so the user can describe the problem. */}
+                    {pricingData?.issues?.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => toggleIssue('other')}
+                        className={`mt-3 w-full flex items-center justify-between p-3 rounded-lg border-2 transition-all text-left ${
+                          selectedIssues.includes('other')
+                            ? 'border-[#FF6B35] bg-orange-50'
+                            : 'border-dashed border-gray-300 hover:border-[#FF6B35]/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`h-5 w-5 rounded flex items-center justify-center shrink-0 ${
+                            selectedIssues.includes('other') ? 'bg-[#FF6B35]' : 'border border-gray-300'
+                          }`}>
+                            {selectedIssues.includes('other') && <CheckCircle className="h-4 w-4 text-white" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Other issue (not listed)</p>
+                            <p className="text-xs text-muted-foreground">Describe a custom problem we'll quote on inspection</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold text-[#FF6B35] whitespace-nowrap ml-2">
+                          Custom
+                        </span>
+                      </button>
+                    )}
+
+                    {selectedIssues.includes('other') && (
+                      <div className="mt-3">
+                        <Label htmlFor="other-issue" className="text-sm">Describe your specific issue</Label>
+                        <Textarea
+                          id="other-issue"
+                          value={otherIssue}
+                          onChange={e => setOtherIssue(e.target.value)}
+                          placeholder="E.g., car makes a clicking sound when turning left, headlight wiring issue, etc."
+                          rows={3}
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+
                     {estimatedTotal > 0 && (
                       <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <div className="flex items-center justify-between">
@@ -509,7 +613,7 @@ export function ServicePage() {
 
                 <Button
                   onClick={() => setStep(2)}
-                  disabled={!vehicleType || selectedIssues.length === 0}
+                  disabled={!vehicleType || selectedIssues.length === 0 || (selectedIssues.includes('other') && !otherIssue.trim())}
                   className="w-full bg-[#1B3B6F] hover:bg-[#152d55] h-12"
                 >
                   Continue to Details
@@ -554,11 +658,40 @@ export function ServicePage() {
                     <Button type="button" variant="ghost" size="sm" onClick={handleGPS} disabled={gpsLoading}
                       className="text-xs text-[#1B3B6F]">
                       {gpsLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Navigation className="h-3 w-3 mr-1" />}
-                      Use GPS
+                      {gpsLoading ? 'Detecting…' : (latitude ? 'Re-detect' : 'Use GPS')}
                     </Button>
                   </div>
                   <Textarea id="address" value={address} onChange={e => setAddress(e.target.value)}
                     placeholder="Full address where service is needed..." rows={2} className="mt-1" />
+
+                  {/* Detected GPS detail chips — mirrors Android's "City · State · Pincode · India" row */}
+                  {(latitude !== null || city || addrState || pincode) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {city && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-full text-[11px] font-medium text-[#1B3B6F]">
+                          <Building2 className="h-3 w-3" />{city}
+                        </span>
+                      )}
+                      {addrState && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-full text-[11px] font-medium text-[#1B3B6F]">
+                          <MapPin className="h-3 w-3" />{addrState}
+                        </span>
+                      )}
+                      {pincode && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-full text-[11px] font-medium text-[#1B3B6F]">
+                          <MapPinned className="h-3 w-3" />{pincode}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 border border-gray-200 rounded-full text-[11px] font-medium text-gray-600">
+                        🇮🇳 India
+                      </span>
+                      {latitude !== null && longitude !== null && (
+                        <span className="text-[10px] text-muted-foreground ml-1">
+                          {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -572,9 +705,54 @@ export function ServicePage() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="state">State</Label>
+                    <Input id="state" value={addrState} onChange={e => setAddrState(e.target.value)} placeholder="State" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="pincode">Pincode</Label>
+                    <Input
+                      id="pincode"
+                      value={pincode}
+                      onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="6-digit pincode"
+                      inputMode="numeric"
+                      maxLength={6}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                {/* Contact number — required, mirrors Android Step 3.
+                    Pre-filled from profile if logged in, but the user can override
+                    (e.g., dial a different number if they want the mechanic to call
+                    a family member or driver). */}
+                <div>
+                  <Label htmlFor="contact">
+                    Contact Number <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="flex gap-2 mt-1">
+                    <div className="flex items-center px-3 bg-gray-100 rounded-md border text-sm font-medium text-gray-600">
+                      🇮🇳 +91
+                    </div>
+                    <Input
+                      id="contact"
+                      type="tel"
+                      value={contactNumber}
+                      onChange={e => setContactNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="10-digit mobile number"
+                      inputMode="numeric"
+                      maxLength={10}
+                      className="flex-1"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">The mechanic will call you on this number</p>
+                </div>
+
                 <Button
                   onClick={() => setStep(3)}
-                  disabled={!description.trim() || !preferredDate || !address.trim()}
+                  disabled={!preferredDate || !address.trim() || contactNumber.length !== 10}
                   className="w-full bg-[#1B3B6F] hover:bg-[#152d55] h-12"
                 >
                   Continue to Payment
@@ -1009,6 +1187,88 @@ export function ServicePage() {
           </div>
         )}
       </div>
+
+      {/* ─── Success Modal ──────────────────────────────────────────────
+          Shown after a booking succeeds (COD or after Razorpay verifies the
+          payment). Mirrors the animated success card on Android — gives the
+          user a clear "yes it worked" moment + a quick path to either track
+          the new request or go back home. */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => {
+            setShowSuccessModal(false); resetForm(); setActiveTab('requests')
+          }} />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300">
+            {/* Gradient header — colour reflects payment vs COD */}
+            <div className={`px-6 py-8 text-center ${
+              successType === 'payment'
+                ? 'bg-gradient-to-br from-[#0F2545] via-[#1B3B6F] to-[#0F2545]'
+                : 'bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-800'
+            }`}>
+              <div className="mx-auto h-16 w-16 rounded-full bg-white/15 backdrop-blur ring-2 ring-white/30 flex items-center justify-center mb-4">
+                <CheckCircle className="h-9 w-9 text-white" />
+              </div>
+              <h3 className="text-xl font-extrabold text-white tracking-tight">
+                {successType === 'payment' ? 'Payment Successful!' : 'Request Submitted!'}
+              </h3>
+              <p className="text-sm text-white/85 mt-1">
+                {successType === 'payment'
+                  ? 'Your booking is confirmed. A mechanic will be assigned shortly.'
+                  : "We've received your request. Pay in cash when the service is complete."}
+              </p>
+            </div>
+
+            <div className="px-6 py-5 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Request ID</span>
+                <span className="font-mono font-semibold text-[#1B3B6F]">
+                  #{(successRequestId || '').slice(-8).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Service Type</span>
+                <span className="font-medium">
+                  {serviceTypes.find(s => s.value === serviceType)?.label || serviceType}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Payment Method</span>
+                <span className="font-medium flex items-center gap-1">
+                  {successType === 'payment' ? <CreditCard className="h-3.5 w-3.5" /> : <Banknote className="h-3.5 w-3.5" />}
+                  {successType === 'payment' ? 'Online (Paid)' : 'Cash on Delivery'}
+                </span>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2 text-xs text-amber-800 mt-2">
+                <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>A mechanic will be assigned within 15–30 minutes. You'll get an SMS + push notification with their contact details.</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="h-11"
+                  onClick={() => {
+                    setShowSuccessModal(false); resetForm(); router.push('/')
+                  }}
+                >
+                  Back to Home
+                </Button>
+                <Button
+                  className="h-11 bg-[#1B3B6F] hover:bg-[#152d55]"
+                  onClick={() => {
+                    setShowSuccessModal(false); resetForm()
+                    if (successRequestId) router.push(`/service/${successRequestId}`)
+                    else setActiveTab('requests')
+                  }}
+                >
+                  Track Request <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </UserLayout>
   )
 }
