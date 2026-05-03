@@ -120,6 +120,15 @@ export default function CustomerLoginPage() {
     }
   }, [error])
 
+  // Auto-verify the moment a 6-digit OTP arrives (typed, pasted, or
+  // delivered by WebOTP / OS suggestion). Avoids a wasted "press Verify"
+  // tap. Only fires while the OTP step is active and not already verifying.
+  useEffect(() => {
+    if (step === 'otp' && otp.length === 6 && !otpVerifying && !otpVerified) {
+      dispatch(verifyOtpRequest({ phone, otp, purpose: otpPurpose }))
+    }
+  }, [otp, step])
+
   // Reset Firebase pending confirmation when leaving the page so a stale
   // ConfirmationResult doesn't survive into the next visit.
   useEffect(() => {
@@ -127,6 +136,55 @@ export default function CustomerLoginPage() {
       firebaseAuth.reset().catch(() => { /* noop */ })
     }
   }, [])
+
+  // Prefill phone from the last successful sign-in on this device. The
+  // most recently used customer_token may already imply a logged-in user
+  // (handled separately above), but on a fresh install/logout we still
+  // want to surface the number the user typed last time so they don't
+  // re-type their own phone.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = localStorage.getItem('bm_last_phone') || ''
+      const cleaned = saved.replace(/\D/g, '').slice(-10)
+      if (cleaned.length === 10 && !phone) setPhone(cleaned)
+    } catch { /* localStorage unavailable */ }
+  }, [])
+
+  // Save the phone the moment we successfully request an OTP so the next
+  // visit can prefill it.
+  useEffect(() => {
+    if (otpSent && phone && typeof window !== 'undefined') {
+      try { localStorage.setItem('bm_last_phone', phone) } catch { /* noop */ }
+    }
+  }, [otpSent, phone])
+
+  // WebOTP API — Chrome Android can intercept the OTP SMS and auto-fill
+  // the field marked with autoComplete="one-time-code". When supported,
+  // we listen during the OTP step and pre-populate `otp` so the user can
+  // submit without typing. Silent no-op on browsers without WebOTP (iOS
+  // Safari etc.) — the autoComplete attribute alone still triggers the
+  // OS-level "from messages" suggestion above the keyboard.
+  useEffect(() => {
+    if (step !== 'otp') return
+    if (typeof window === 'undefined') return
+    if (!('OTPCredential' in window)) return
+
+    const ac = new AbortController()
+    // WebOTP API isn't typed in lib.dom yet — cast through unknown to keep
+    // both `otp.transport` and the AbortSignal in a single type-safe call.
+    const opts = { otp: { transport: ['sms'] }, signal: ac.signal } as unknown as CredentialRequestOptions
+    navigator.credentials
+      .get(opts)
+      .then((cred: any) => {
+        if (cred?.code && /^\d{4,8}$/.test(cred.code)) {
+          setOtp(cred.code)
+        }
+      })
+      .catch(() => { /* user dismissed / no SMS / unsupported */ })
+
+    return () => ac.abort()
+  }, [step])
 
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault()
@@ -290,6 +348,7 @@ export default function CustomerLoginPage() {
                     </div>
                     <Input
                       id="phone"
+                      name="phone"
                       type="tel"
                       placeholder="Enter 10-digit number"
                       value={phone}
@@ -297,6 +356,9 @@ export default function CustomerLoginPage() {
                       className="flex-1"
                       maxLength={10}
                       autoFocus
+                      autoComplete="tel-national"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                     />
                   </div>
                 </div>
@@ -318,7 +380,13 @@ export default function CustomerLoginPage() {
             {step === 'otp' && (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div className="flex justify-center">
-                  <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                  <InputOTP
+                    maxLength={6}
+                    value={otp}
+                    onChange={setOtp}
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                  >
                     <InputOTPGroup>
                       <InputOTPSlot index={0} />
                       <InputOTPSlot index={1} />
