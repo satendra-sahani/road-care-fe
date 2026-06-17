@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 300" width="1280" height="300" role="img" aria-label="Doorstep mechanic service by certified experts">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f2340"/>
+      <stop offset="0.5" stop-color="#22324d"/>
+      <stop offset="1" stop-color="#3a2417"/>
+    </linearGradient>
+    <radialGradient id="glow2" cx="0.18" cy="0.45" r="0.7">
+      <stop offset="0" stop-color="#FF6B35" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#FF6B35" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="300" fill="url(#bg2)"/>
+  <rect width="1280" height="300" fill="url(#glow2)"/>
+  <!-- decorative gear (right) -->
+  <g transform="translate(1050,150)">
+    <circle r="70" fill="none" stroke="#FF6B35" stroke-opacity="0.85" stroke-width="14"/>
+    <circle r="22" fill="#FF6B35" fill-opacity="0.9"/>
+    <g fill="#e7ecf5">
+      <rect x="-6" y="-104" width="12" height="22" rx="3"/>
+      <rect x="-6" y="82" width="12" height="22" rx="3"/>
+      <rect x="-104" y="-6" width="22" height="12" rx="3"/>
+      <rect x="82" y="-6" width="22" height="12" rx="3"/>
+    </g>
+  </g>
+  <!-- tricolor accent strip -->
+  <rect x="70" y="58" width="170" height="5" rx="2.5" fill="#FF9933"/>
+  <rect x="244" y="58" width="56" height="5" rx="2.5" fill="#ffffff" opacity="0.85"/>
+  <rect x="304" y="58" width="56" height="5" rx="2.5" fill="#138808"/>
+  <!-- copy -->
+  <text x="70" y="118" font-family="Segoe UI, Arial, sans-serif" font-size="50" font-weight="800" fill="#ffffff">Doorstep Mechanic</text>
+  <text x="70" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="50" font-weight="800" fill="#FF6B35">Service at Your Home.</text>
+  <text x="72" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="21" font-weight="500" fill="#c5d0e3">Certified experts · transparent pricing · pay only after the job is done</text>
+  <!-- CTA -->
+  <g transform="translate(72,234)">
+    <rect width="232" height="46" rx="23" fill="#ffffff"/>
+    <text x="30" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="700" fill="#0f2340">Book a Mechanic</text>
+    <path d="M188 23 h18 m0 0 l-7 -7 m7 7 l-7 7" stroke="#0f2340" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

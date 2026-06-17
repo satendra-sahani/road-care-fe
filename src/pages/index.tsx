@@ -8,6 +8,7 @@ import { loadUserRequest } from '@/store/slices/customerAuthSlice'
 import { catalogAPI, userCartAPI, bannerAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
 import Link from 'next/link'
+import Head from 'next/head'
 import {
   Wrench, ShoppingBag, Bike, Headphones, Mic,
   ChevronRight, ChevronLeft, ShieldCheck, Award, Clock,
@@ -22,6 +23,41 @@ import Cookies from 'js-cookie'
 
 /* ─── Filter brands list (same as Android) ─── */
 const filterBrands = ['Bosch', 'Denso', 'NGK', 'Mann', 'Mobil', 'Shell', 'Castrol', 'Monroe']
+
+/* ─── Default hero banners (shown only when admin has set none) ─── */
+const DEFAULT_BANNERS = [
+  { imageUrl: '/banners/banner-1.svg', title: 'Genuine auto parts, delivered fast', link: '/shop' },
+  { imageUrl: '/banners/banner-2.svg', title: 'Doorstep mechanic service at your home', link: '/service' },
+  { imageUrl: '/banners/banner-3.svg', title: 'Verified mechanics, transparent pricing', link: '/service' },
+]
+
+/* ─── Homepage FAQ content (also emitted as FAQPage schema for Google) ─── */
+const HOME_FAQS = [
+  {
+    q: 'Are the auto parts genuine?',
+    a: 'Yes — every part on Bharat Mechanics is sourced directly from authorised brand distributors (Bosch, Denso, NGK, Mann, Mobil, Shell, Castrol, Monroe and 500+ others). Each order ships with a verifiable invoice.',
+  },
+  {
+    q: 'How long does delivery take?',
+    a: 'Standard delivery is 1–3 days across most Indian cities, and 4–7 days for non-metro areas. Same-day delivery is available in select cities for in-stock items ordered before 12 PM.',
+  },
+  {
+    q: 'Are your mechanics verified?',
+    a: 'Every mechanic on the platform is background-verified with Aadhaar / DL checks, has hands-on training, and shows a live photo + ID before starting any service. You can rate and review after every visit.',
+  },
+  {
+    q: 'Do you offer doorstep service?',
+    a: 'Yes — most routine services (oil change, brake pad replacement, AC service, battery, electrical, etc.) can be done at your home, office, or wherever your vehicle is parked, at no extra charge.',
+  },
+  {
+    q: 'What if I\'m not satisfied with the service?',
+    a: 'You only pay after the job is complete. If anything is wrong within 7 days, raise a ticket from the app and we\'ll send a mechanic back free of charge — or refund the service fee.',
+  },
+  {
+    q: 'How do refunds work?',
+    a: 'Refunds for cancelled or returned parts are credited to your wallet instantly, and to the original payment method within 5–7 business days. See our refund policy for full details.',
+  },
+]
 
 /* ─── Popular service prices for the transparency table ─── */
 const POPULAR_SERVICES = [
@@ -151,9 +187,9 @@ export default function HomePage() {
           setFeaturedProducts(prods)
         }
         const apiBanners = bannerRes?.data?.data || bannerRes?.data?.banners || []
-        if (Array.isArray(apiBanners) && apiBanners.length > 0) {
-          setBannerSlides(apiBanners)
-        }
+        setBannerSlides(
+          Array.isArray(apiBanners) && apiBanners.length > 0 ? apiBanners : DEFAULT_BANNERS
+        )
       } catch (err) {
         console.error('Failed to load home data:', err)
       } finally {
@@ -262,7 +298,45 @@ export default function HomePage() {
         title="Home"
         description="Bharat Mechanics – Buy genuine auto parts online, book certified mechanics for doorstep vehicle repair and servicing. Car parts, bike parts, engine oil, brake pads, filters & more. Fast delivery across India."
         keywords="auto parts online, car parts, bike parts, mechanic near me, vehicle repair, Bharat Mechanics, genuine auto parts, doorstep mechanic, car service, bike service, engine oil, brake pads, air filter, spark plug, car battery, tyre"
+        canonicalUrl="https://bharatmechanics.com/"
       />
+
+      {/* Structured data for Google — FAQ rich results + site search box */}
+      <Head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: HOME_FAQS.map((f) => ({
+                '@type': 'Question',
+                name: f.q,
+                acceptedAnswer: { '@type': 'Answer', text: f.a },
+              })),
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'Bharat Mechanics',
+              url: 'https://bharatmechanics.com',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: 'https://bharatmechanics.com/shop?search={search_term_string}',
+                },
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
+      </Head>
 
       <div className="bg-mesh-soft min-h-screen pb-20 md:pb-0">
 
@@ -1339,32 +1413,7 @@ export default function HomePage() {
               </h2>
             </div>
             <div className="space-y-2.5 md:space-y-3">
-              {[
-                {
-                  q: 'Are the auto parts genuine?',
-                  a: 'Yes — every part on Bharat Mechanics is sourced directly from authorised brand distributors (Bosch, Denso, NGK, Mann, Mobil, Shell, Castrol, Monroe and 500+ others). Each order ships with a verifiable invoice.',
-                },
-                {
-                  q: 'How long does delivery take?',
-                  a: 'Standard delivery is 1–3 days across most Indian cities, and 4–7 days for non-metro areas. Same-day delivery is available in select cities for in-stock items ordered before 12 PM.',
-                },
-                {
-                  q: 'Are your mechanics verified?',
-                  a: 'Every mechanic on the platform is background-verified with Aadhaar / DL checks, has hands-on training, and shows a live photo + ID before starting any service. You can rate and review after every visit.',
-                },
-                {
-                  q: 'Do you offer doorstep service?',
-                  a: 'Yes — most routine services (oil change, brake pad replacement, AC service, battery, electrical, etc.) can be done at your home, office, or wherever your vehicle is parked, at no extra charge.',
-                },
-                {
-                  q: 'What if I\'m not satisfied with the service?',
-                  a: 'You only pay after the job is complete. If anything is wrong within 7 days, raise a ticket from the app and we\'ll send a mechanic back free of charge — or refund the service fee.',
-                },
-                {
-                  q: 'How do refunds work?',
-                  a: 'Refunds for cancelled or returned parts are credited to your wallet instantly, and to the original payment method within 5–7 business days. See our refund policy for full details.',
-                },
-              ].map((item, i) => (
+              {HOME_FAQS.map((item, i) => (
                 <FaqItem
                   key={i}
                   question={item.q}

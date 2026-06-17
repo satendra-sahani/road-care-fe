@@ -690,13 +690,15 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
               <div className="mb-4">
-                <Image
-                  src="/brand-logo.png"
-                  alt="Bharat Mechanics"
-                  width={180}
-                  height={48}
-                  className="h-11 w-auto object-contain brightness-0 invert"
-                />
+                <span className="inline-flex bg-white rounded-lg px-3 py-2 shadow-sm">
+                  <Image
+                    src="/brand-logo.png"
+                    alt="Bharat Mechanics"
+                    width={180}
+                    height={48}
+                    className="h-11 w-auto object-contain"
+                  />
+                </span>
                 <span className="block mt-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[#FF6B35]">
                   Auto Parts &amp; Service
                 </span>

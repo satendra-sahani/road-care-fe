@@ -255,13 +255,15 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
         <div className="flex items-center justify-between p-4 border-b border-[#2E5090]">
           {!collapsed ? (
             <div className="flex flex-col">
-              <NextImage
-                src="/brand-logo.png"
-                alt="Bharat Mechanics"
-                width={170}
-                height={40}
-                className="h-9 w-auto object-contain brightness-0 invert"
-              />
+              <span className="inline-flex bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
+                <NextImage
+                  src="/brand-logo.png"
+                  alt="Bharat Mechanics"
+                  width={170}
+                  height={40}
+                  className="h-9 w-auto object-contain"
+                />
+              </span>
               <p className="text-[10px] text-gray-400 mt-1">Admin Panel</p>
             </div>
           ) : (
