@@ -15,7 +15,7 @@ const DEFAULT_DESCRIPTION =
   'Bharat Mechanics – India\'s trusted auto parts and vehicle service platform. Buy genuine car & bike parts, book certified mechanics, and get doorstep repair services. 100% genuine products, fast delivery, 6-month warranty.'
 const DEFAULT_KEYWORDS =
   'auto parts, car parts, bike parts, vehicle service, mechanic booking, Bharat Mechanics, genuine auto parts India, car accessories, two wheeler parts, doorstep mechanic, car repair, bike repair, engine oil, brake pads, filters, spark plugs, battery, tyres'
-const DEFAULT_OG_IMAGE = 'https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2'
+const DEFAULT_OG_IMAGE = 'https://bharatmechanics.com/brand-logo.png'
 const FAVICON_URL = '/favicon.png'
 
 export function SEOHead({
@@ -25,7 +25,7 @@ export function SEOHead({
   ogImage = DEFAULT_OG_IMAGE,
   ogType = 'website',
   canonicalUrl,
-  noIndex = true,
+  noIndex = false,
 }: SEOHeadProps) {
   const pageTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} – Auto Parts & Vehicle Services`
 
@@ -48,8 +48,8 @@ export function SEOHead({
       {/* Theme color */}
       <meta name="theme-color" content="#1B3B6F" />
 
-      {/* Robots – noindex/nofollow as requested */}
-      {noIndex && <meta name="robots" content="noindex, nofollow" />}
+      {/* Robots – indexed by default; pages can opt out via noIndex */}
+      <meta name="robots" content={noIndex ? 'noindex, nofollow' : 'index, follow'} />
 
       {/* Open Graph */}
       <meta property="og:title" content={pageTitle} />

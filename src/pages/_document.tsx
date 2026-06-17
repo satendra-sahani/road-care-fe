@@ -12,8 +12,8 @@ export default function Document() {
         <meta name="theme-color" content="#1B3B6F" />
         <meta name="author" content="Bharat Mechanics" />
 
-        {/* Robots – noindex/nofollow as reference */}
-        <meta name="robots" content="noindex, nofollow" />
+        {/* Robots – allow all pages to be indexed and links followed */}
+        <meta name="robots" content="index, follow" />
 
         {/* Razorpay */}
         <script src="https://checkout.razorpay.com/v1/checkout.js" async />
@@ -27,7 +27,7 @@ export default function Document() {
               "@type": "Organization",
               name: "Bharat Mechanics",
               url: "https://bharatmechanics.com",
-              logo: "https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2",
+              logo: "https://bharatmechanics.com/brand-logo.png",
               description:
                 "India's trusted auto parts and vehicle service platform. Buy genuine car & bike parts, book certified mechanics, and get doorstep repair services.",
               contactPoint: {

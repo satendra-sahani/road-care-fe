@@ -256,7 +256,7 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
           {!collapsed ? (
             <div className="flex flex-col">
               <NextImage
-                src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2"
+                src="/brand-logo.png"
                 alt="Bharat Mechanics"
                 width={170}
                 height={40}

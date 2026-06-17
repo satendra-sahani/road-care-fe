@@ -567,7 +567,7 @@ export default function AIBookingPage() {
         className="flex-1 overflow-y-auto px-3.5 py-4 space-y-3.5"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(248,247,252,0.92), rgba(248,247,252,0.92)), url(https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2)',
+            'linear-gradient(rgba(248,247,252,0.92), rgba(248,247,252,0.92)), url(/brand-logo.png)',
           backgroundRepeat: 'no-repeat, no-repeat',
           backgroundPosition: 'center, center',
           backgroundSize: 'cover, min(280px, 55%) auto',

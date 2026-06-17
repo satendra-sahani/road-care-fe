@@ -228,7 +228,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <Image
-              src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2"
+              src="/brand-logo.png"
               alt="Bharat Mechanics – Auto Parts & Vehicle Services"
               width={180}
               height={48}
@@ -556,7 +556,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           <SheetHeader className="px-5 pt-5 pb-4 border-b border-border bg-gradient-to-r from-[#1B3B6F] to-[#2A5298]">
             <SheetTitle className="flex items-center text-white">
               <Image
-                src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2"
+                src="/brand-logo.png"
                 alt="Bharat Mechanics"
                 width={160}
                 height={40}
@@ -691,7 +691,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             <div className="col-span-2 md:col-span-1">
               <div className="mb-4">
                 <Image
-                  src="https://ik.imagekit.io/aiwats/roadcare/brand-logo.png?v=2"
+                  src="/brand-logo.png"
                   alt="Bharat Mechanics"
                   width={180}
                   height={48}
