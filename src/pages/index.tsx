@@ -393,14 +393,14 @@ export default function HomePage() {
                   >
                     {bannerSlides.map((slide, idx) => {
                       const content = (
-                        // Mobile: h-auto so the image renders at its natural aspect (no letterbox, no crop).
-                        // Desktop: fixed height + object-contain so the FULL banner design is always visible,
-                        // even when the source image is wider than the slot. Any tiny letterbox bars are
-                        // masked by the carousel's brand-navy background so they look intentional.
+                        // Fixed aspect-ratio slot + object-cover => the banner fills the full
+                        // width at EVERY screen size (no letterbox gaps top/bottom or left/right).
+                        // 64/15 == 1280x300, the size web banners are cropped to in admin, so it's
+                        // a pixel match. Mobile keeps natural height (h-auto) for the full-width strip.
                         <img
                           src={slide.imageUrl}
                           alt={slide.title || `Promo banner ${idx + 1}`}
-                          className="w-full h-auto md:h-[210px] lg:h-[260px] xl:h-[300px] md:object-contain select-none block"
+                          className="block w-full h-auto select-none md:aspect-[64/15] md:object-cover"
                           draggable={false}
                           onError={(e) => {
                             e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" fill="%23e5e7eb"/>'
