@@ -136,7 +136,7 @@ export function ProductDetail() {
   if (loading) {
     return (
       <UserLayout>
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
           <div className="animate-pulse grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="h-96 bg-gray-200 rounded-xl" />
             <div className="space-y-4">
@@ -174,7 +174,7 @@ export function ProductDetail() {
 
   return (
     <UserLayout>
-      <div className="container mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
         {/* Back button */}
         <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeft className="h-4 w-4" /> Back

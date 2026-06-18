@@ -257,7 +257,7 @@ export function CheckoutPage() {
   if (loading) {
     return (
       <UserLayout>
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
           <div className="max-w-3xl mx-auto space-y-4 animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/3" />
             <div className="h-64 bg-gray-200 rounded-xl" />
@@ -301,7 +301,7 @@ export function CheckoutPage() {
 
   return (
     <UserLayout>
-      <div className="container mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
         <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeft className="h-4 w-4" /> Back
         </button>

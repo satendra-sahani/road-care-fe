@@ -79,7 +79,7 @@ export function CartPage() {
   if (loading) {
     return (
       <UserLayout>
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
           <h1 className="text-2xl font-bold mb-6">Shopping Cart</h1>
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
@@ -100,7 +100,7 @@ export function CartPage() {
 
   return (
     <UserLayout>
-      <div className="container mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-6">
           <ShoppingCart className="inline h-7 w-7 mr-2" />
           Shopping Cart
