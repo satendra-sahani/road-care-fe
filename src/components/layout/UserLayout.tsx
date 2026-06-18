@@ -230,9 +230,9 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             <Image
               src="/brand-logo.png"
               alt="Bharat Mechanics – Auto Parts & Vehicle Services"
-              width={180}
-              height={48}
-              className="h-10 lg:h-11 w-auto object-contain hidden sm:block"
+              width={260}
+              height={72}
+              className="h-14 lg:h-16 w-auto object-contain hidden sm:block"
               priority
             />
             <Image
