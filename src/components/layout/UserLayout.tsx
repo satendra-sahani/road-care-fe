@@ -687,7 +687,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
       <footer className="bg-[#0f2340] text-white">
         <div className="px-4 md:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto py-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
             <div className="col-span-2 md:col-span-1">
               <div className="mb-4">
                 <span className="inline-flex bg-white rounded-lg px-3 py-2 shadow-sm">
@@ -708,6 +708,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             {[
               { title: 'Quick Links', links: [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Services', href: '/service' }, { label: 'Orders', href: '/orders' }] },
               { title: 'Customer Service', links: [{ label: 'Track Order', href: '/orders' }, { label: 'My Profile', href: '/profile' }, { label: 'Contact Us', href: '#' }] },
+              { title: 'Partners & Training', links: [{ label: 'Certified Mechanics', href: '/mechanics' }, { label: 'Become a Partner', href: '/shop-partner/requirements' }, { label: 'Training & Certification', href: '/training' }] },
               { title: 'Legal', links: [{ label: 'Terms & Conditions', href: '/terms' }, { label: 'Privacy Policy', href: '/privacy' }, { label: 'Refund Policy', href: '/refund-policy' }] },
             ].map((col) => (
               <div key={col.title}>
