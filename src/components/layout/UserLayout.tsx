@@ -555,13 +555,15 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           {/* Drawer Header */}
           <SheetHeader className="px-5 pt-5 pb-4 border-b border-border bg-gradient-to-r from-[#1B3B6F] to-[#2A5298]">
             <SheetTitle className="flex items-center text-white">
-              <Image
-                src="/brand-logo-v3.png"
-                alt="Bharat Mechanics"
-                width={160}
-                height={40}
-                className="h-10 w-auto object-contain brightness-0 invert"
-              />
+              <span className="inline-flex bg-white rounded-lg px-3 py-2 shadow-sm">
+                <Image
+                  src="/brand-logo-v3.png"
+                  alt="Bharat Mechanics"
+                  width={150}
+                  height={48}
+                  className="h-9 w-auto object-contain"
+                />
+              </span>
             </SheetTitle>
           </SheetHeader>
 
