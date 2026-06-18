@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 525" width="1200" height="525" role="img" aria-label="Bharat Mechanics — genuine auto parts and doorstep mechanic service">
+  <title>Bharat Mechanics hero banner</title>
+  <desc>Deep navy banner with orange accents. Headline reads Genuine Auto Parts, Doorstep Mechanics, with a steel gear-and-wheel emblem and a doorstep location badge on the right.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1B3B6F"/>
+      <stop offset="0.55" stop-color="#15315c"/>
+      <stop offset="1" stop-color="#0e2140"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.84" cy="0.46" r="0.62">
+      <stop offset="0" stop-color="#FF6B35" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#FF6B35" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6ecf5"/>
+      <stop offset="1" stop-color="#94a3bd"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#aab6cc"/>
+      <stop offset="1" stop-color="#6f7d97"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="525" fill="url(#bg)"/>
+  <rect width="1200" height="525" fill="url(#glow)"/>
+  <circle cx="1015" cy="250" r="226" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="2"/>
+
+  <g transform="translate(1015,250)">
+    <circle r="178" fill="none" stroke="url(#steel)" stroke-width="30" stroke-dasharray="30 26"/>
+    <circle r="170" fill="none" stroke="#c3cddd" stroke-width="6"/>
+    <circle r="150" fill="#0b1c34"/>
+    <circle r="150" fill="none" stroke="#22467f" stroke-width="4"/>
+    <circle r="138" fill="none" stroke="#1c3a68" stroke-width="14" stroke-dasharray="7 12"/>
+    <circle r="96" fill="url(#rim)"/>
+    <circle r="96" fill="none" stroke="#7f8ca6" stroke-width="3"/>
+    <g stroke="#7d8aa3" stroke-width="12" stroke-linecap="round">
+      <line x1="0" y1="-22" x2="0" y2="-84"/>
+      <line x1="0" y1="22" x2="0" y2="84"/>
+      <line x1="-22" y1="0" x2="-84" y2="0"/>
+      <line x1="22" y1="0" x2="84" y2="0"/>
+      <line x1="-15" y1="-15" x2="-60" y2="-60"/>
+      <line x1="15" y1="15" x2="60" y2="60"/>
+      <line x1="15" y1="-15" x2="60" y2="-60"/>
+      <line x1="-15" y1="15" x2="-60" y2="60"/>
+    </g>
+    <circle r="26" fill="#1B3B6F"/>
+    <circle r="12" fill="#FF6B35"/>
+  </g>
+
+  <g transform="translate(1128,366)">
+    <path d="M0 -30 C 18 -30 30 -17 30 0 C 30 20 8 34 0 48 C -8 34 -30 20 -30 0 C -30 -17 -18 -30 0 -30 Z" fill="#FF6B35"/>
+    <circle cy="-2" r="13" fill="#ffffff"/>
+    <path d="M-6 -2 l4 5 l8 -10" fill="none" stroke="#FF6B35" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <rect x="72" y="84" width="150" height="6" rx="3" fill="#FF9933"/>
+  <rect x="230" y="84" width="50" height="6" rx="3" fill="#ffffff" opacity="0.9"/>
+  <rect x="288" y="84" width="50" height="6" rx="3" fill="#138808"/>
+
+  <text x="72" y="124" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="3" fill="#FF8A5B">BHARAT MECHANICS</text>
+  <text x="70" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="58" font-weight="800" fill="#ffffff">Genuine Auto Parts,</text>
+  <text x="70" y="266" font-family="Segoe UI, Arial, sans-serif" font-size="58" font-weight="800" fill="#FF6B35">Doorstep Mechanics.</text>
+  <text x="72" y="318" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="500" fill="#c5d0e3">500+ trusted brands · Verified mechanics · Transparent pricing</text>
+
+  <g transform="translate(72,346)">
+    <rect width="208" height="58" rx="29" fill="#FF6B35"/>
+    <text x="40" y="37" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Shop Parts</text>
+    <path d="M158 29 h22 m0 0 l-8 -8 m8 8 l-8 8" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g transform="translate(300,346)">
+    <rect width="226" height="58" rx="29" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="2"/>
+    <text x="34" y="37" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Book a Mechanic</text>
+  </g>
+
+  <text x="72" y="470" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="500" fill="#9fb0cb"><tspan fill="#FFC53D">★</tspan> 4.8 rated  ·  100% genuine parts  ·  Same-day doorstep service</text>
+</svg>
