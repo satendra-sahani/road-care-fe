@@ -257,7 +257,7 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
             <div className="flex flex-col">
               <span className="inline-flex bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
                 <NextImage
-                  src="/brand-logo.png"
+                  src="/brand-logo.png?v=2"
                   alt="Bharat Mechanics"
                   width={170}
                   height={40}

@@ -228,10 +228,10 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <Image
-              src="/brand-logo.png"
+              src="/brand-logo.png?v=2"
               alt="Bharat Mechanics – Auto Parts & Vehicle Services"
-              width={260}
-              height={72}
+              width={284}
+              height={90}
               className="h-14 lg:h-16 w-auto object-contain hidden sm:block"
               priority
             />
@@ -556,7 +556,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           <SheetHeader className="px-5 pt-5 pb-4 border-b border-border bg-gradient-to-r from-[#1B3B6F] to-[#2A5298]">
             <SheetTitle className="flex items-center text-white">
               <Image
-                src="/brand-logo.png"
+                src="/brand-logo.png?v=2"
                 alt="Bharat Mechanics"
                 width={160}
                 height={40}
@@ -692,7 +692,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               <div className="mb-4">
                 <span className="inline-flex bg-white rounded-lg px-3 py-2 shadow-sm">
                   <Image
-                    src="/brand-logo.png"
+                    src="/brand-logo.png?v=2"
                     alt="Bharat Mechanics"
                     width={180}
                     height={48}

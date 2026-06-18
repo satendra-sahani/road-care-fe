@@ -307,7 +307,7 @@ export default function CustomerLoginPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
             <Image
-              src="/brand-logo.png"
+              src="/brand-logo.png?v=2"
               alt="Bharat Mechanics"
               width={200}
               height={56}
