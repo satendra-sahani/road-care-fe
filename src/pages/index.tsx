@@ -26,7 +26,7 @@ const filterBrands = ['Bosch', 'Denso', 'NGK', 'Mann', 'Mobil', 'Shell', 'Castro
 
 /* ─── Default hero banners (shown only when admin has set none) ─── */
 const DEFAULT_BANNERS = [
-  { imageUrl: '/banners/banner-hero.svg', title: 'Genuine auto parts & doorstep mechanics', link: '/shop' },
+  { imageUrl: '/banners/banner-hero.svg?v=2', title: 'Genuine auto parts & doorstep mechanics', link: '/shop' },
   { imageUrl: '/banners/banner-1.svg', title: 'Genuine auto parts, delivered fast', link: '/shop' },
   { imageUrl: '/banners/banner-2.svg', title: 'Doorstep mechanic service at your home', link: '/service' },
   { imageUrl: '/banners/banner-3.svg', title: 'Verified mechanics, transparent pricing', link: '/service' },
