@@ -27,7 +27,7 @@ export default function Document() {
               "@type": "Organization",
               name: "Bharat Mechanics",
               url: "https://bharatmechanics.com",
-              logo: "https://bharatmechanics.com/brand-logo-v2.png",
+              logo: "https://bharatmechanics.com/brand-logo-v3.png",
               description:
                 "India's trusted auto parts and vehicle service platform. Buy genuine car & bike parts, book certified mechanics, and get doorstep repair services.",
               contactPoint: {

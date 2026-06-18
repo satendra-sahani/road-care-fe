@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
             <Image
-              src="/brand-logo-v2.png"
+              src="/brand-logo-v3.png"
               alt="Bharat Mechanics"
               width={220}
               height={56}

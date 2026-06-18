@@ -15,7 +15,7 @@ const DEFAULT_DESCRIPTION =
   'Bharat Mechanics – India\'s trusted auto parts and vehicle service platform. Buy genuine car & bike parts, book certified mechanics, and get doorstep repair services. 100% genuine products, fast delivery, 6-month warranty.'
 const DEFAULT_KEYWORDS =
   'auto parts, car parts, bike parts, vehicle service, mechanic booking, Bharat Mechanics, genuine auto parts India, car accessories, two wheeler parts, doorstep mechanic, car repair, bike repair, engine oil, brake pads, filters, spark plugs, battery, tyres'
-const DEFAULT_OG_IMAGE = 'https://bharatmechanics.com/brand-logo-v2.png'
+const DEFAULT_OG_IMAGE = 'https://bharatmechanics.com/brand-logo-v3.png'
 const FAVICON_URL = '/favicon.png'
 
 export function SEOHead({
