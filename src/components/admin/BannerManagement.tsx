@@ -10,6 +10,9 @@ import {
   EyeOff,
   GripVertical,
   Upload,
+  Crop,
+  ZoomIn,
+  ZoomOut,
   X,
   Save,
   Loader2,
@@ -44,6 +47,8 @@ import {
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
 import { bannerAPI, uploadAPI } from '@/services/api'
+import Cropper, { type Area } from 'react-easy-crop'
+import { getCroppedImg } from '@/lib/cropImage'
 
 interface Banner {
   _id: string
@@ -82,6 +87,15 @@ const emptyBanner: BannerFormData = {
   platform: 'all',
 }
 
+/* Target output size per platform so the crop always fills the slot with no
+   side gaps: web/all use the wide desktop hero ratio (~4.27:1); android matches
+   the mobile app's 16:7 banner. */
+const BANNER_PRESETS: Record<BannerFormData['platform'], { w: number; h: number; label: string }> = {
+  web: { w: 1280, h: 300, label: '1280 × 300 px' },
+  all: { w: 1280, h: 300, label: '1280 × 300 px' },
+  android: { w: 1200, h: 525, label: '1200 × 525 px' },
+}
+
 export function BannerManagement() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
@@ -95,6 +109,14 @@ export function BannerManagement() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [uploading, setUploading] = useState(false)
+
+  // Cropper state
+  const [rawSrc, setRawSrc] = useState<string | null>(null)
+  const [cropOpen, setCropOpen] = useState(false)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
+  const [cropping, setCropping] = useState(false)
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -120,6 +142,8 @@ export function BannerManagement() {
     fetchBanners()
   }, [fetchBanners])
 
+  const cropPreset = BANNER_PRESETS[formData.platform]
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -127,8 +151,34 @@ export function BannerManagement() {
       setError('Image must be under 5MB')
       return
     }
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
+    setError('')
+    if (rawSrc) URL.revokeObjectURL(rawSrc)
+    setRawSrc(URL.createObjectURL(file))
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    setCropOpen(true)
+    e.target.value = ''
+  }
+
+  const onCropComplete = useCallback((_area: Area, areaPixels: Area) => {
+    setCroppedAreaPixels(areaPixels)
+  }, [])
+
+  const handleApplyCrop = async () => {
+    if (!rawSrc || !croppedAreaPixels) return
+    try {
+      setCropping(true)
+      const blob = await getCroppedImg(rawSrc, croppedAreaPixels, cropPreset.w, cropPreset.h)
+      const file = new File([blob], `banner-${cropPreset.w}x${cropPreset.h}.jpg`, { type: 'image/jpeg' })
+      if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview)
+      setImageFile(file)
+      setImagePreview(URL.createObjectURL(blob))
+      setCropOpen(false)
+    } catch {
+      setError('Could not crop the image. Please try a different file.')
+    } finally {
+      setCropping(false)
+    }
   }
 
   const handleOpenCreate = () => {
@@ -431,8 +481,11 @@ export function BannerManagement() {
                   !banner.isActive && 'opacity-60'
                 )}
               >
-                {/* Image Preview */}
-                <div className="relative aspect-[16/7] bg-gray-100 overflow-hidden">
+                {/* Image Preview — shown in the banner's true platform ratio */}
+                <div
+                  className="relative bg-gray-100 overflow-hidden"
+                  style={{ aspectRatio: `${BANNER_PRESETS[banner.platform].w} / ${BANNER_PRESETS[banner.platform].h}` }}
+                >
                   {banner.imageUrl ? (
                     <img
                       src={banner.imageUrl}
@@ -586,30 +639,48 @@ export function BannerManagement() {
               </Label>
               <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden">
                 {imagePreview ? (
-                  <div className="relative aspect-[16/7]">
+                  <div className="relative bg-gray-100" style={{ aspectRatio: `${cropPreset.w} / ${cropPreset.h}` }}>
                     <img
                       src={imagePreview}
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="absolute top-2 right-2 h-7 text-xs"
-                      onClick={() => {
-                        setImageFile(null)
-                        setImagePreview('')
-                        setFormData(prev => ({ ...prev, imageUrl: '', imageId: '' }))
-                      }}
-                    >
-                      <X className="h-3 w-3 mr-1" /> Remove
-                    </Button>
+                    <div className="absolute top-2 right-2 flex gap-2">
+                      {rawSrc && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => { setCrop({ x: 0, y: 0 }); setZoom(1); setCropOpen(true) }}
+                        >
+                          <Crop className="h-3 w-3 mr-1" /> Re-crop
+                        </Button>
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview)
+                          if (rawSrc) URL.revokeObjectURL(rawSrc)
+                          setRawSrc(null)
+                          setImageFile(null)
+                          setImagePreview('')
+                          setFormData(prev => ({ ...prev, imageUrl: '', imageId: '' }))
+                        }}
+                      >
+                        <X className="h-3 w-3 mr-1" /> Remove
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <label className="flex flex-col items-center justify-center py-10 cursor-pointer hover:bg-gray-50 transition-colors">
                     <Upload className="h-8 w-8 text-gray-400 mb-2" />
                     <p className="text-sm font-medium text-[#1A1D29]">Click to upload</p>
-                    <p className="text-xs text-[#6B7280] mt-1">PNG, JPG up to 5MB. Recommended: 1200x525px</p>
+                    <p className="text-xs text-[#6B7280] mt-1">
+                      PNG, JPG up to 5MB · zoom &amp; crop to {cropPreset.label} for{' '}
+                      {formData.platform === 'android' ? 'the app' : formData.platform === 'web' ? 'web' : 'all platforms'}
+                    </p>
                     <input
                       type="file"
                       className="hidden"
@@ -726,6 +797,70 @@ export function BannerManagement() {
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {uploading ? 'Uploading...' : 'Saving...'}</>
               ) : (
                 <><Save className="h-4 w-4 mr-2" /> {editingBanner ? 'Update Banner' : 'Create Banner'}</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Image Cropper Dialog ── */}
+      <Dialog open={cropOpen} onOpenChange={(o) => { if (!cropping) setCropOpen(o) }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crop className="h-4 w-4" /> Crop banner — {cropPreset.label}
+            </DialogTitle>
+            <DialogDescription>
+              Drag to reposition and use the slider to zoom. The image is cropped to the exact{' '}
+              {formData.platform === 'android' ? 'app' : formData.platform === 'web' ? 'web' : 'all-platform'} banner size, so it fills the slot with no side gaps.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative w-full h-[320px] bg-neutral-900 rounded-md overflow-hidden">
+            {rawSrc && (
+              <Cropper
+                image={rawSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={cropPreset.w / cropPreset.h}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                objectFit="contain"
+                showGrid
+                restrictPosition
+              />
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 px-1">
+            <ZoomOut className="h-4 w-4 text-gray-400 shrink-0" />
+            <input
+              type="range"
+              min={1}
+              max={3}
+              step={0.01}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-full accent-[#FF6B35]"
+              aria-label="Zoom"
+            />
+            <ZoomIn className="h-4 w-4 text-gray-400 shrink-0" />
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCropOpen(false)} disabled={cropping}>
+              <X className="h-4 w-4 mr-2" /> Cancel
+            </Button>
+            <Button
+              className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+              onClick={handleApplyCrop}
+              disabled={cropping || !croppedAreaPixels}
+            >
+              {cropping ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Cropping...</>
+              ) : (
+                <><Crop className="h-4 w-4 mr-2" /> Apply crop</>
               )}
             </Button>
           </DialogFooter>
