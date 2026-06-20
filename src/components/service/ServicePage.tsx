@@ -8,18 +8,16 @@ import { userServiceAPI, servicePricingAPI, userPaymentAPI, userAddressAPI } fro
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import CallScreen from '@/components/service/CallScreen'
 import RatingFlow from '@/components/service/RatingFlow'
 import { toast } from 'sonner'
 import {
   Wrench, Calendar, Clock, MapPin, Car, Bike, Truck as TruckIcon,
-  CheckCircle, AlertCircle, Loader2, ChevronRight, Phone, Star, Building2,
-  Navigation, Plus, ArrowLeft, CreditCard, Banknote, Shield, ChevronDown,
-  MapPinned, User, Eye, XCircle, RefreshCw,
+  CheckCircle, AlertCircle, Loader2, ChevronRight, ChevronLeft, Phone, Star, Building2,
+  Navigation, Plus, ArrowLeft, CreditCard, Banknote, Shield,
+  User, XCircle, RefreshCw,
 } from 'lucide-react'
 
 declare global {
@@ -40,9 +38,75 @@ const serviceTypes = [
 ]
 
 const timeSlots = [
-  '09:00 AM - 11:00 AM', '10:00 AM - 12:00 PM', '12:00 PM - 02:00 PM',
-  '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM', '06:00 PM - 08:00 PM',
+  { label: '9 – 11 AM', sub: 'Morning' },
+  { label: '11 – 1 PM', sub: 'Late morning' },
+  { label: '1 – 3 PM', sub: 'Afternoon' },
+  { label: '3 – 5 PM', sub: 'Late afternoon' },
+  { label: '5 – 7 PM', sub: 'Evening' },
+  { label: '7 – 9 PM', sub: 'Night' },
 ]
+
+// Vehicle sub-labels — small text under each vehicle tile (claude-design)
+const vehicleSubs: Record<string, string> = {
+  car: 'Hatch / Sedan / SUV', bike: 'Motorcycle', scooter: 'Scooter / Moped', auto: '3-wheeler',
+}
+
+const pad2 = (n: number) => (n < 10 ? '0' : '') + n
+const isoOf = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+
+/** Compact month calendar — faithful to claude-design `.cal` / renderCal(). */
+function MonthCalendar({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const maxD = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60)
+  const sel = value ? new Date(value + 'T00:00:00') : today
+  const [view, setView] = useState(new Date(sel.getFullYear(), sel.getMonth(), 1))
+  const mons = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const dows = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const startDow = new Date(view.getFullYear(), view.getMonth(), 1).getDay()
+  const dim = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate()
+  const viewFirst = +new Date(view.getFullYear(), view.getMonth(), 1)
+  const prevDis = viewFirst <= +new Date(today.getFullYear(), today.getMonth(), 1)
+  const nextDis = viewFirst >= +new Date(maxD.getFullYear(), maxD.getMonth(), 1)
+  const cells: (Date | null)[] = []
+  for (let i = 0; i < startDow; i++) cells.push(null)
+  for (let dn = 1; dn <= dim; dn++) cells.push(new Date(view.getFullYear(), view.getMonth(), dn))
+  const selFull = sel.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return (
+    <div className="border-[1.5px] border-[#E7ECF3] rounded-2xl p-3.5 pb-1.5 bg-white">
+      <div className="flex items-center justify-between mb-3">
+        <button type="button" disabled={prevDis} onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))} className="h-8 w-8 rounded-lg border border-[#E7ECF3] flex items-center justify-center text-[#475569] disabled:opacity-30 hover:bg-gray-50"><ChevronLeft className="h-4 w-4" /></button>
+        <div className="text-sm font-bold text-[#13203A]">{mons[view.getMonth()]} {view.getFullYear()}</div>
+        <button type="button" disabled={nextDis} onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))} className="h-8 w-8 rounded-lg border border-[#E7ECF3] flex items-center justify-center text-[#475569] disabled:opacity-30 hover:bg-gray-50"><ChevronRight className="h-4 w-4" /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-1 text-center text-[11px] font-bold text-[#7B8AA3]">{dows.map((d, i) => <span key={i}>{d}</span>)}</div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((d, i) => {
+          if (!d) return <span key={i} />
+          const iso = isoOf(d)
+          const dis = +d < +today || +d > +maxD
+          const on = iso === value
+          const isToday = +d === +today
+          return (
+            <button key={i} type="button" disabled={dis} onClick={() => onChange(iso)}
+              className={`h-9 rounded-lg text-[13px] font-semibold transition disabled:opacity-25 disabled:cursor-not-allowed ${on ? 'bg-[#1B3B6F] text-white' : isToday ? 'text-[#1B3B6F] bg-[#EEF3FB]' : 'text-[#475569] hover:bg-gray-50'}`}>
+              {d.getDate()}
+            </button>
+          )
+        })}
+      </div>
+      <div className="flex items-center gap-2 text-[12.5px] text-[#475569] py-2.5 mt-1 border-t border-[#EEF1F6]"><Calendar className="h-3.5 w-3.5 text-[#1B3B6F]" />{selFull}</div>
+    </div>
+  )
+}
+
+function RevLine({ icon, label, value, last }: { icon: React.ReactNode; label: string; value: string; last?: boolean }) {
+  return (
+    <div className={`flex items-start justify-between gap-3.5 py-3 text-[13.5px] ${last ? '' : 'border-b border-[#EEF1F6]'}`}>
+      <span className="flex items-center gap-2 text-[#475569] shrink-0 [&>svg]:text-[#1B3B6F]">{icon} {label}</span>
+      <b className="font-bold text-[#13203A] text-right max-w-[62%]">{value || '—'}</b>
+    </div>
+  )
+}
 
 export function ServicePage() {
   const router = useRouter()
@@ -392,6 +456,11 @@ export function ServicePage() {
 
   const todayStr = new Date().toISOString().split('T')[0]
 
+  // Auto-select today's date when reaching the schedule step (matches claude-design)
+  useEffect(() => {
+    if (step === 2 && !preferredDate) setPreferredDate(todayStr)
+  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredRequests = requestFilter === 'all'
     ? requests
     : requests.filter(r => r.status?.toLowerCase() === requestFilter)
@@ -459,463 +528,289 @@ export function ServicePage() {
               })}
             </div>
 
-            {/* Step 1: Vehicle type, service type, issues */}
+            {/* Step 1: Vehicle + service + issues (claude-design) */}
             {step === 1 && (
-              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm p-5 md:p-6 space-y-5">
-                <div><h3 className="text-lg font-extrabold text-[#13203A]">What do you need help with?</h3><p className="text-[13px] text-[#7B8AA3] mt-0.5">Pick your vehicle, service type and issues &mdash; we&rsquo;ll estimate the cost instantly.</p></div>
-                {/* Vehicle Type */}
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-[0_8px_30px_rgba(19,32,58,0.06)] p-5 md:p-7 space-y-6">
+                <div><h3 className="text-xl font-extrabold text-[#13203A]">What do you need help with?</h3><p className="text-[13.5px] text-[#7B8AA3] mt-1">Pick your vehicle, service type and the issues you&rsquo;re facing &mdash; we&rsquo;ll estimate the cost instantly.</p></div>
+
+                {/* Vehicle type — opt-grid */}
                 <div>
-                  <Label className="text-base font-semibold mb-3 block">Select Vehicle Type</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {vehicleTypes.map(v => (
-                      <button
-                        key={v.value}
-                        onClick={() => { setVehicleType(v.value); setSelectedIssues([]) }}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                          vehicleType === v.value
-                            ? 'border-[#1B3B6F] bg-blue-50 shadow-sm'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <span className="text-2xl">{v.emoji}</span>
-                        <span className={`text-sm font-medium ${vehicleType === v.value ? 'text-[#1B3B6F]' : 'text-gray-600'}`}>
+                  <label className="block text-[13px] font-bold text-[#475569] mb-2.5">Select vehicle type</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {vehicleTypes.map(v => {
+                      const on = vehicleType === v.value
+                      return (
+                        <button key={v.value} onClick={() => { setVehicleType(v.value); setSelectedIssues([]) }}
+                          className={`flex flex-col items-center gap-1.5 py-3.5 px-2 rounded-[13px] border-[1.5px] transition text-[13px] font-bold ${on ? 'border-[#1B3B6F] bg-[#EEF3FB] text-[#1B3B6F]' : 'border-[#E7ECF3] text-[#475569] hover:border-[#c7d6ed]'}`}>
+                          <span className="text-2xl leading-none">{v.emoji}</span>
                           {v.label}
-                        </span>
-                      </button>
-                    ))}
+                          <small className={`text-[10.5px] font-semibold ${on ? 'text-[#2A5298]' : 'text-[#7B8AA3]'}`}>{vehicleSubs[v.value] || ''}</small>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
-                {/* Service Type */}
+                {/* Service type — opt-grid (left aligned) */}
                 <div>
-                  <Label className="text-base font-semibold mb-3 block">Service Type</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {serviceTypes.map(st => (
-                      <button
-                        key={st.value}
-                        onClick={() => setServiceType(st.value)}
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
-                          serviceType === st.value
-                            ? 'border-[#1B3B6F] bg-blue-50 shadow-sm'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                          serviceType === st.value ? 'bg-[#1B3B6F] text-white' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          <st.icon className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm">{st.label}</p>
-                          <p className="text-xs text-muted-foreground">{st.desc}</p>
-                        </div>
-                      </button>
-                    ))}
+                  <label className="block text-[13px] font-bold text-[#475569] mb-2.5">Service type</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {serviceTypes.map(st => {
+                      const on = serviceType === st.value
+                      return (
+                        <button key={st.value} onClick={() => setServiceType(st.value)}
+                          className={`flex flex-col items-start gap-1.5 p-3.5 rounded-[13px] border-[1.5px] text-left transition ${on ? 'border-[#1B3B6F] bg-[#EEF3FB]' : 'border-[#E7ECF3] hover:border-[#c7d6ed]'}`}>
+                          <div className="flex items-center gap-2.5 w-full">
+                            <st.icon className={`h-5 w-5 shrink-0 ${on ? 'text-[#1B3B6F]' : 'text-[#475569]'}`} />
+                            <b className={`text-[13.5px] ${on ? 'text-[#1B3B6F]' : 'text-[#13203A]'}`}>{st.label}</b>
+                          </div>
+                          <small className="text-[11.5px] text-[#7B8AA3] leading-snug">{st.desc}</small>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
-                {/* Issues */}
+                {/* Issues — iss-rows */}
                 {vehicleType && (
                   <div>
-                    <Label className="text-base font-semibold mb-3 block">Select Issues</Label>
+                    <label className="block text-[13px] font-bold text-[#475569] mb-2.5">Select issues <span className="text-[#7B8AA3] font-semibold">(choose all that apply)</span></label>
                     {loadingPricing ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-[#1B3B6F]" />
-                      </div>
+                      <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-[#1B3B6F]" /></div>
                     ) : pricingData?.issues?.filter((i: any) => i.isActive !== false).length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         {pricingData.issues.filter((i: any) => i.isActive !== false).map((issue: any) => {
                           const id = issue.id || issue._id
-                          const selected = selectedIssues.includes(id)
+                          const on = selectedIssues.includes(id)
+                          const price = issue.estimatedPrice || issue.estimatedCost || issue.price
                           return (
-                            <button
-                              key={id}
-                              onClick={() => toggleIssue(id)}
-                              className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all text-left ${
-                                selected ? 'border-[#1B3B6F] bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className={`h-5 w-5 rounded flex items-center justify-center shrink-0 ${
-                                  selected ? 'bg-[#1B3B6F]' : 'border border-gray-300'
-                                }`}>
-                                  {selected && <CheckCircle className="h-4 w-4 text-white" />}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium">{issue.label || issue.name}</p>
-                                  {issue.description && <p className="text-xs text-muted-foreground">{issue.description}</p>}
-                                </div>
-                              </div>
-                              {(issue.estimatedPrice || issue.estimatedCost || issue.price) > 0 && (
-                                <span className="text-sm font-semibold text-[#1B3B6F] whitespace-nowrap ml-2">
-                                  ₹{issue.estimatedPrice || issue.estimatedCost || issue.price}
-                                </span>
-                              )}
+                            <button key={id} onClick={() => toggleIssue(id)}
+                              className={`flex items-center gap-3 px-3.5 py-3 rounded-xl border-[1.5px] text-left transition ${on ? 'border-[#1B3B6F] bg-[#EEF3FB]' : 'border-[#E7ECF3] bg-white hover:border-[#c7d6ed]'}`}>
+                              <span className={`h-[38px] w-[38px] rounded-[10px] flex items-center justify-center shrink-0 transition ${on ? 'bg-[#1B3B6F] text-white' : 'bg-[#EEF3FB] text-[#1B3B6F]'}`}><Wrench className="h-5 w-5" /></span>
+                              <span className="flex-1 min-w-0">
+                                <span className="block text-[13.5px] font-bold text-[#13203A] leading-tight">{issue.label || issue.name}</span>
+                                {issue.description && <span className="block text-[11.5px] text-[#7B8AA3] mt-0.5 truncate">{issue.description}</span>}
+                              </span>
+                              {price > 0 && <span className="text-[13px] font-bold text-[#475569] shrink-0">~₹{price}</span>}
+                              <span className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 ${on ? 'bg-[#1B3B6F] border-[#1B3B6F] text-white' : 'border-[#E7ECF3] text-transparent'}`}>{on && <CheckCircle className="h-3 w-3" />}</span>
                             </button>
                           )
                         })}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground py-4">No service pricing available for this vehicle type.</p>
+                      <p className="text-sm text-[#7B8AA3] py-4">No service pricing available for this vehicle type.</p>
                     )}
 
-                    {/* "Other" issue tile — mirrors Android's free-form issue option.
-                        Toggling it adds the special id 'other' to selectedIssues; if active
-                        the textarea below appears so the user can describe the problem. */}
-                    {pricingData?.issues?.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => toggleIssue('other')}
-                        className={`mt-3 w-full flex items-center justify-between p-3 rounded-lg border-2 transition-all text-left ${
-                          selectedIssues.includes('other')
-                            ? 'border-[#FF6B35] bg-orange-50'
-                            : 'border-dashed border-gray-300 hover:border-[#FF6B35]/60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`h-5 w-5 rounded flex items-center justify-center shrink-0 ${
-                            selectedIssues.includes('other') ? 'bg-[#FF6B35]' : 'border border-gray-300'
-                          }`}>
-                            {selectedIssues.includes('other') && <CheckCircle className="h-4 w-4 text-white" />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">Other issue (not listed)</p>
-                            <p className="text-xs text-muted-foreground">Describe a custom problem we'll quote on inspection</p>
-                          </div>
-                        </div>
-                        <span className="text-xs font-semibold text-[#FF6B35] whitespace-nowrap ml-2">
-                          Custom
+                    {/* Other issue — dashed iss-row */}
+                    {pricingData?.issues?.length > 0 && (() => { const on = selectedIssues.includes('other'); return (
+                      <button type="button" onClick={() => toggleIssue('other')}
+                        className={`mt-2.5 w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border-[1.5px] border-dashed text-left transition ${on ? 'border-[#FF6B35] bg-[#FFF1EB]' : 'border-[#E7ECF3] hover:border-[#FF6B35]/60'}`}>
+                        <span className="h-[38px] w-[38px] rounded-[10px] flex items-center justify-center shrink-0 bg-[#FF6B35]/10 text-[#FF6B35]"><AlertCircle className="h-5 w-5" /></span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[13.5px] font-bold text-[#13203A]">Other issue (not listed)</span>
+                          <span className="block text-[11.5px] text-[#7B8AA3] mt-0.5">Describe it &mdash; we&rsquo;ll quote on inspection</span>
                         </span>
+                        <span className="text-[12.5px] font-bold text-[#FF6B35] shrink-0">Custom</span>
+                        <span className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 ${on ? 'bg-[#FF6B35] border-[#FF6B35] text-white' : 'border-[#E7ECF3] text-transparent'}`}>{on && <CheckCircle className="h-3 w-3" />}</span>
                       </button>
-                    )}
+                    )})()}
 
                     {selectedIssues.includes('other') && (
                       <div className="mt-3">
-                        <Label htmlFor="other-issue" className="text-sm">Describe your specific issue</Label>
-                        <Textarea
-                          id="other-issue"
-                          value={otherIssue}
-                          onChange={e => setOtherIssue(e.target.value)}
-                          placeholder="E.g., car makes a clicking sound when turning left, headlight wiring issue, etc."
-                          rows={3}
-                          className="mt-1"
-                        />
+                        <Textarea value={otherIssue} onChange={e => setOtherIssue(e.target.value)} placeholder="E.g., car makes a clicking sound when turning left, headlight wiring issue, etc." rows={3} />
                       </div>
                     )}
 
+                    {/* est-band — green */}
                     {estimatedTotal > 0 && (
-                      <div className="mt-4 flex items-center justify-between gap-3 p-4 rounded-xl bg-gradient-to-r from-[#1B3B6F] to-[#2A5298] text-white">
-                        <div><b className="block text-sm">Estimated service cost</b><span className="text-[11.5px] text-white/75">Booking fee ₹{bookingFee} paid now &middot; rest after service</span></div>
-                        <div className="text-2xl font-extrabold">₹{estimatedTotal.toLocaleString('en-IN')}</div>
+                      <div className="mt-5 flex items-center justify-between gap-3.5 px-[18px] py-4 rounded-2xl bg-[#E7F6EF] border border-[#bfe6d3]">
+                        <div><b className="block text-sm text-[#13203A]">Estimated service cost</b><span className="text-[12px] text-[#475569]">Booking fee ₹{bookingFee} paid now &middot; rest after service</span></div>
+                        <div className="text-[26px] font-extrabold text-[#15936B] leading-none">₹{estimatedTotal.toLocaleString('en-IN')}</div>
                       </div>
                     )}
                   </div>
                 )}
 
-                <Button
-                  onClick={() => setStep(2)}
-                  disabled={!vehicleType || selectedIssues.length === 0 || (selectedIssues.includes('other') && !otherIssue.trim())}
-                  className="w-full bg-[#1B3B6F] hover:bg-[#152d55] h-12"
-                >
-                  Continue to Details
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
+                {/* wnav */}
+                <div className="flex justify-end pt-1">
+                  <button onClick={() => setStep(2)} disabled={!vehicleType || selectedIssues.length === 0 || (selectedIssues.includes('other') && !otherIssue.trim())}
+                    className="inline-flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152d55] disabled:opacity-40 text-white font-bold text-[15px] px-6 h-12 rounded-xl transition-colors">
+                    Continue to details <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* Step 2: Description, date, address */}
+            {/* Step 2: details + schedule (claude-design) */}
             {step === 2 && (
-              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm p-5 md:p-6 space-y-5">
-                <button onClick={() => setStep(1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </button>
-                <div><h3 className="text-lg font-extrabold text-[#13203A]">Details &amp; schedule</h3><p className="text-[13px] text-[#7B8AA3] mt-0.5">Tell us a little more and pick a convenient time.</p></div>
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-[0_8px_30px_rgba(19,32,58,0.06)] p-5 md:p-7">
+                <div className="mb-1"><h3 className="text-xl font-extrabold text-[#13203A]">Details &amp; schedule</h3><p className="text-[13.5px] text-[#7B8AA3] mt-1">Tell us a little more and pick a convenient time.</p></div>
 
-                <div>
-                  <Label htmlFor="desc">Describe the Problem *</Label>
-                  <Textarea id="desc" value={description} onChange={e => setDescription(e.target.value)}
-                    placeholder="Explain the issue in detail..." rows={3} className="mt-1" />
+                {/* fsec 1 — the problem */}
+                <div className="pt-2 pb-5">
+                  <div className="flex items-center gap-2.5 mb-3.5">
+                    <span className="h-[27px] w-[27px] rounded-lg bg-[#1B3B6F] text-white flex items-center justify-center font-extrabold text-[13.5px]">1</span>
+                    <span className="font-extrabold text-base text-[#13203A]">The problem</span>
+                  </div>
+                  <label className="block text-[13px] font-semibold text-[#475569] mb-1.5">Describe the problem <span className="text-[#FF6B35]">*</span></label>
+                  <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Explain the issue in detail…" rows={3} />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="date">Preferred Date *</Label>
-                    <Input id="date" type="date" value={preferredDate}
-                      onChange={e => setPreferredDate(e.target.value)} min={todayStr} className="mt-1" />
+                {/* fsec 2 — schedule */}
+                <div className="py-5 border-t border-[#E7ECF3]">
+                  <div className="flex items-center gap-2.5 mb-3.5">
+                    <span className="h-[27px] w-[27px] rounded-lg bg-[#1B3B6F] text-white flex items-center justify-center font-extrabold text-[13.5px]">2</span>
+                    <span className="font-extrabold text-base text-[#13203A]">Schedule</span>
                   </div>
-                  <div>
-                    <Label>Preferred Time</Label>
-                    <Select value={preferredTime} onValueChange={setPreferredTime}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select time slot" /></SelectTrigger>
-                      <SelectContent>
-                        {timeSlots.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                  <label className="block text-[13px] font-semibold text-[#475569] mb-2">Preferred date <span className="text-[#FF6B35]">*</span></label>
+                  <MonthCalendar value={preferredDate} onChange={setPreferredDate} />
+                  <label className="block text-[13px] font-semibold text-[#475569] mt-4 mb-2">Preferred time</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {timeSlots.map(s => { const on = preferredTime === s.label; return (
+                      <button key={s.label} type="button" onClick={() => setPreferredTime(s.label)}
+                        className={`py-3 px-2 rounded-xl border-[1.5px] text-center text-[13px] font-bold transition ${on ? 'border-[#1B3B6F] bg-[#EEF3FB] text-[#1B3B6F]' : 'border-[#E7ECF3] text-[#475569] bg-white hover:border-[#c7d6ed]'}`}>
+                        {s.label}<small className="block text-[10.5px] font-semibold text-[#7B8AA3] mt-0.5">{s.sub}</small>
+                      </button>
+                    )})}
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <Label htmlFor="address">Service Address *</Label>
-                    <Button type="button" variant="ghost" size="sm" onClick={handleGPS} disabled={gpsLoading}
-                      className="text-xs text-[#1B3B6F]">
-                      {gpsLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Navigation className="h-3 w-3 mr-1" />}
+                {/* fsec 3 — address & contact */}
+                <div className="py-5 border-t border-[#E7ECF3]">
+                  <div className="flex items-center gap-2.5 mb-3.5">
+                    <span className="h-[27px] w-[27px] rounded-lg bg-[#1B3B6F] text-white flex items-center justify-center font-extrabold text-[13.5px]">3</span>
+                    <span className="font-extrabold text-base text-[#13203A]">Address &amp; contact</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[13px] font-semibold text-[#475569]">Service address <span className="text-[#FF6B35]">*</span></label>
+                    <button type="button" onClick={handleGPS} disabled={gpsLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-[1.5px] border-[#cdd9ee] bg-[#EEF3FB] text-[#1B3B6F] text-[12.5px] font-extrabold hover:bg-[#1B3B6F] hover:text-white transition disabled:opacity-50">
+                      {gpsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MapPin className="h-3.5 w-3.5" />}
                       {gpsLoading ? 'Detecting…' : (latitude ? 'Re-detect' : 'Use GPS')}
-                    </Button>
+                    </button>
                   </div>
-                  <Textarea id="address" value={address} onChange={e => setAddress(e.target.value)}
-                    placeholder="Full address where service is needed..." rows={2} className="mt-1" />
-
-                  {/* Detected GPS detail chips — mirrors Android's "City · State · Pincode · India" row */}
-                  {(latitude !== null || city || addrState || pincode) && (
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      {city && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-full text-[11px] font-medium text-[#1B3B6F]">
-                          <Building2 className="h-3 w-3" />{city}
-                        </span>
-                      )}
-                      {addrState && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-full text-[11px] font-medium text-[#1B3B6F]">
-                          <MapPin className="h-3 w-3" />{addrState}
-                        </span>
-                      )}
-                      {pincode && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-full text-[11px] font-medium text-[#1B3B6F]">
-                          <MapPinned className="h-3 w-3" />{pincode}
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 border border-gray-200 rounded-full text-[11px] font-medium text-gray-600">
-                        🇮🇳 India
-                      </span>
-                      {latitude !== null && longitude !== null && (
-                        <span className="text-[10px] text-muted-foreground ml-1">
-                          {latitude.toFixed(6)}, {longitude.toFixed(6)}
-                        </span>
-                      )}
+                  <Textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="House / flat no., street, area" rows={2} className="mb-3" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[11.5px] font-extrabold text-[#7B8AA3] uppercase tracking-wide">Country</span>
+                      <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-[#E7ECF3] bg-[#F6F8FB] text-sm font-medium text-[#475569]">🇮🇳 India</div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[11.5px] font-extrabold text-[#7B8AA3] uppercase tracking-wide">City</span>
+                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="City" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[11.5px] font-extrabold text-[#7B8AA3] uppercase tracking-wide">Landmark</span>
+                      <Input value={landmark} onChange={e => setLandmark(e.target.value)} placeholder="Nearby landmark" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[11.5px] font-extrabold text-[#7B8AA3] uppercase tracking-wide">State</span>
+                      <Input value={addrState} onChange={e => setAddrState(e.target.value)} placeholder="State" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[11.5px] font-extrabold text-[#7B8AA3] uppercase tracking-wide">Pincode</span>
+                      <Input value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit pincode" inputMode="numeric" maxLength={6} />
+                    </div>
+                  </div>
+                  {(latitude !== null && longitude !== null) && (
+                    <div className="flex items-center gap-2 mt-3 px-3.5 py-2.5 rounded-[10px] bg-[#EEF3FB] text-[12.5px] text-[#475569]">
+                      <Navigation className="h-3.5 w-3.5 text-[#1B3B6F]" /> Location detected · <b className="text-[#1B3B6F] font-bold">{latitude.toFixed(5)}, {longitude.toFixed(5)}</b>
                     </div>
                   )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="city">City</Label>
-                    <Input id="city" value={city} onChange={e => setCity(e.target.value)} placeholder="City" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="landmark">Landmark</Label>
-                    <Input id="landmark" value={landmark} onChange={e => setLandmark(e.target.value)} placeholder="Nearby landmark" className="mt-1" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="state">State</Label>
-                    <Input id="state" value={addrState} onChange={e => setAddrState(e.target.value)} placeholder="State" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="pincode">Pincode</Label>
-                    <Input
-                      id="pincode"
-                      value={pincode}
-                      onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      placeholder="6-digit pincode"
-                      inputMode="numeric"
-                      maxLength={6}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Contact number — required, mirrors Android Step 3.
-                    Pre-filled from profile if logged in, but the user can override
-                    (e.g., dial a different number if they want the mechanic to call
-                    a family member or driver). */}
-                <div>
-                  <Label htmlFor="contact">
-                    Contact Number <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="flex gap-2 mt-1">
-                    <div className="flex items-center px-3 bg-gray-100 rounded-md border text-sm font-medium text-gray-600">
-                      🇮🇳 +91
+                  <div className="mt-3.5">
+                    <label className="block text-[13px] font-semibold text-[#475569] mb-1.5">Contact number <span className="text-[#FF6B35]">*</span></label>
+                    <div className="flex gap-2">
+                      <div className="flex items-center px-3 bg-[#F6F8FB] rounded-md border border-[#E7ECF3] text-sm font-medium text-[#475569]">🇮🇳 +91</div>
+                      <Input type="tel" value={contactNumber} onChange={e => setContactNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="00000 00000" inputMode="numeric" maxLength={10} className="flex-1" />
                     </div>
-                    <Input
-                      id="contact"
-                      type="tel"
-                      value={contactNumber}
-                      onChange={e => setContactNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="10-digit mobile number"
-                      inputMode="numeric"
-                      maxLength={10}
-                      className="flex-1"
-                    />
+                    <p className="text-[11.5px] text-[#7B8AA3] mt-1.5">The mechanic will call you on this number</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">The mechanic will call you on this number</p>
                 </div>
 
-                <Button
-                  onClick={() => setStep(3)}
-                  disabled={!preferredDate || !address.trim() || contactNumber.length !== 10}
-                  className="w-full bg-[#1B3B6F] hover:bg-[#152d55] h-12"
-                >
-                  Continue to Payment
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
+                {/* wnav */}
+                <div className="flex justify-between gap-3 pt-1">
+                  <button onClick={() => setStep(1)} className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-[#475569] font-bold text-[15px] px-5 h-12 rounded-xl transition-colors"><ArrowLeft className="h-4 w-4" /> Back</button>
+                  <button onClick={() => setStep(3)} disabled={!preferredDate || !description.trim() || !address.trim() || contactNumber.length !== 10}
+                    className="inline-flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152d55] disabled:opacity-40 text-white font-bold text-[15px] px-6 h-12 rounded-xl transition-colors">Continue to payment <ChevronRight className="h-4 w-4" /></button>
+                </div>
               </div>
             )}
 
-            {/* Step 3: Payment & Confirm */}
+            {/* Step 3: payment + confirm (claude-design) */}
             {step === 3 && (
-              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm p-5 md:p-6 space-y-5">
-                <button onClick={() => setStep(2)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </button>
-                <div><h3 className="text-lg font-extrabold text-[#13203A]">Payment &amp; confirm</h3><p className="text-[13px] text-[#7B8AA3] mt-0.5">Pay just the &#8377;{bookingFee} booking fee now. The rest is payable after the job is done.</p></div>
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-[0_8px_30px_rgba(19,32,58,0.06)] p-5 md:p-7">
+                <div className="mb-1"><h3 className="text-xl font-extrabold text-[#13203A]">Payment &amp; confirm</h3><p className="text-[13.5px] text-[#7B8AA3] mt-1">Pay just the ₹{bookingFee} booking fee now. The rest is payable after the job is done.</p></div>
 
-                {/* Payment Method Selection */}
-                <div>
-                  <Label className="text-base font-semibold mb-3 block">Choose Payment Method</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setPaymentMethod('online')}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
-                        paymentMethod === 'online'
-                          ? 'border-[#1B3B6F] bg-blue-50 shadow-sm'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
-                        paymentMethod === 'online' ? 'bg-[#1B3B6F] text-white' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        <CreditCard className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">Pay Online</p>
-                        <p className="text-xs text-muted-foreground">UPI, Card, Net Banking via Razorpay</p>
-                      </div>
-                      {paymentMethod === 'online' && (
-                        <CheckCircle className="h-5 w-5 text-[#1B3B6F] ml-auto shrink-0" />
-                      )}
+                {/* fsec 1 — payment method (pay-list) */}
+                <div className="pt-2 pb-5">
+                  <div className="flex items-center gap-2.5 mb-3.5">
+                    <span className="h-[27px] w-[27px] rounded-lg bg-[#1B3B6F] text-white flex items-center justify-center font-extrabold text-[13.5px]">1</span>
+                    <span className="font-extrabold text-base text-[#13203A]">Choose payment method</span>
+                  </div>
+                  {([
+                    { id: 'online' as const, icon: CreditCard, label: 'Pay Online', sub: 'UPI, Card, Net Banking via Razorpay' },
+                    { id: 'cod' as const, icon: Banknote, label: 'Cash on Delivery', sub: 'Pay the booking fee after the mechanic arrives' },
+                  ]).map(p => { const on = paymentMethod === p.id; return (
+                    <button key={p.id} onClick={() => setPaymentMethod(p.id)}
+                      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[13px] border-[1.5px] mb-2.5 text-left transition ${on ? 'border-[#1B3B6F] bg-[#EEF3FB]' : 'border-[#E7ECF3] hover:border-[#c7d6ed]'}`}>
+                      <div className="h-10 w-10 rounded-[10px] bg-[#F6F8FB] flex items-center justify-center shrink-0"><p.icon className="h-5 w-5 text-[#1B3B6F]" /></div>
+                      <div className="flex-1 min-w-0"><b className="block text-sm text-[#13203A]">{p.label}</b><span className="text-[12px] text-[#7B8AA3]">{p.sub}</span></div>
+                      <div className={`h-5 w-5 rounded-full border-2 shrink-0 ${on ? 'border-[#1B3B6F] bg-[#1B3B6F] ring-2 ring-inset ring-white' : 'border-[#E7ECF3]'}`} />
                     </button>
+                  )})}
+                </div>
 
-                    <button
-                      onClick={() => setPaymentMethod('cod')}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
-                        paymentMethod === 'cod'
-                          ? 'border-[#1B3B6F] bg-blue-50 shadow-sm'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
-                        paymentMethod === 'cod' ? 'bg-[#1B3B6F] text-white' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        <Banknote className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">Cash on Delivery</p>
-                        <p className="text-xs text-muted-foreground">Pay after service is completed</p>
-                      </div>
-                      {paymentMethod === 'cod' && (
-                        <CheckCircle className="h-5 w-5 text-[#1B3B6F] ml-auto shrink-0" />
-                      )}
-                    </button>
+                {/* fsec 2 — booking summary (rev-box) */}
+                <div className="py-5 border-t border-[#E7ECF3]">
+                  <div className="flex items-center gap-2.5 mb-3.5">
+                    <span className="h-[27px] w-[27px] rounded-lg bg-[#1B3B6F] text-white flex items-center justify-center font-extrabold text-[13.5px]">2</span>
+                    <span className="font-extrabold text-base text-[#13203A]">Booking summary</span>
+                  </div>
+                  <div className="bg-[#F6F8FB] border border-[#EEF1F6] rounded-2xl px-4">
+                    <RevLine icon={<Car className="h-4 w-4" />} label="Vehicle" value={vehicleTypes.find(v => v.value === vehicleType)?.label || ''} />
+                    <RevLine icon={<Wrench className="h-4 w-4" />} label="Service type" value={`${serviceTypes.find(s => s.value === serviceType)?.label || ''}${selectedIssues.length ? ' · ' + selectedIssues.map(id => { const i = pricingData?.issues?.find((x: any) => (x.id || x._id) === id); return i?.label || i?.name || (id === 'other' ? 'Other issue' : id) }).join(', ') : ''}`} />
+                    <RevLine icon={<Calendar className="h-4 w-4" />} label="Date" value={`${preferredDate}${preferredTime ? ' · ' + preferredTime : ''}`} />
+                    <RevLine icon={<MapPin className="h-4 w-4" />} label="Address" value={[address, city, addrState, pincode].filter(Boolean).join(', ')} />
+                    <RevLine icon={<Banknote className="h-4 w-4" />} label="Payment" value={paymentMethod === 'online' ? 'Pay Online' : 'Cash on Delivery'} last />
                   </div>
                 </div>
 
-                {/* Request Summary */}
-                <div className="bg-white border rounded-xl overflow-hidden">
-                  <div className="bg-gradient-to-r from-[#1B3B6F] to-[#152d55] px-4 py-3">
-                    <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-                      <Shield className="h-4 w-4" /> Booking Summary
-                    </h3>
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Vehicle</span>
-                      <span className="font-medium">{vehicleTypes.find(v => v.value === vehicleType)?.emoji} {vehicleTypes.find(v => v.value === vehicleType)?.label}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Service Type</span>
-                      <span className="font-medium">{serviceTypes.find(s => s.value === serviceType)?.label}</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Issues: </span>
-                      <span className="font-medium">{selectedIssues.map(id => {
-                        const issue = pricingData?.issues?.find((i: any) => (i.id || i._id) === id)
-                        return issue?.label || issue?.name || id
-                      }).join(', ')}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Date</span>
-                      <span className="font-medium">{preferredDate} {preferredTime && `• ${preferredTime}`}</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Address: </span>
-                      <span className="font-medium">{address}{city ? `, ${city}` : ''}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Payment</span>
-                      <span className="font-medium flex items-center gap-1">
-                        {paymentMethod === 'online' ? <CreditCard className="h-3.5 w-3.5" /> : <Banknote className="h-3.5 w-3.5" />}
-                        {paymentMethod === 'online' ? 'Online' : 'Cash on Delivery'}
-                      </span>
-                    </div>
-                    <div className="border-t pt-3 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Booking Fee ({serviceType === 'roadside' ? 'Emergency' : 'Visiting Charge'})</span>
-                        <span className="font-semibold">₹{bookingFee}</span>
-                      </div>
-                      {estimatedTotal > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Estimated Service Cost</span>
-                          <span className="font-medium">₹{estimatedTotal.toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between pt-1 border-t border-dashed">
-                        <span className="font-semibold text-sm">Pay Now</span>
-                        <span className="text-lg font-bold text-green-700">₹{bookingFee}</span>
-                      </div>
-                      {estimatedTotal > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Remaining ₹{(estimatedTotal - bookingFee > 0 ? estimatedTotal - bookingFee : 0).toLocaleString('en-IN')} to be paid after service completion
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                {/* pay-box */}
+                <div className="border-[1.5px] border-[#E7ECF3] rounded-2xl px-[18px] py-4 bg-white">
+                  <div className="flex items-center justify-between py-2.5 border-b border-dashed border-[#EEF1F6] text-sm text-[#475569]"><span>Booking Fee ({serviceType === 'roadside' ? 'Emergency' : 'Visiting Charge'})</span><b className="text-[15px] font-extrabold text-[#13203A]">₹{bookingFee}</b></div>
+                  {estimatedTotal > 0 && <div className="flex items-center justify-between py-2.5 border-b border-dashed border-[#EEF1F6] text-sm text-[#475569]"><span>Estimated Service Cost</span><b className="text-[15px] font-extrabold text-[#13203A]">₹{estimatedTotal.toLocaleString('en-IN')}</b></div>}
+                  <div className="flex items-center justify-between mt-2 px-4 py-3.5 rounded-xl bg-[#EEF3FB]"><span className="text-[15px] font-extrabold text-[#1B3B6F]">Pay Now</span><b className="text-xl font-extrabold text-[#1B3B6F]">₹{bookingFee}</b></div>
+                  {estimatedTotal > 0 && <div className="text-center text-[12.5px] font-semibold text-[#7B8AA3] mt-2.5">Remaining ₹{Math.max(0, estimatedTotal - bookingFee).toLocaleString('en-IN')} to be paid after service completion</div>}
                 </div>
 
-                {/* Info banners */}
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="text-sm text-amber-800 space-y-1">
-                    <p className="font-medium">Before you book:</p>
-                    <p>A mechanic will be assigned and will contact you.</p>
-                    {paymentMethod === 'cod' && <p>Booking fee of ₹{bookingFee} will be collected by mechanic. Remaining payment after service.</p>}
-                    {paymentMethod === 'online' && <p>Booking fee of ₹{bookingFee} will be charged via Razorpay. Remaining payment after service.</p>}
-                    <p>Free cancellation up to 2 hours before appointment.</p>
-                  </div>
+                {/* prebook checklist */}
+                <div className="mt-4 border border-[#EEF1F6] bg-[#F6F8FB] rounded-2xl px-[18px] py-4">
+                  <div className="font-extrabold text-sm text-[#13203A] mb-3">Before you book</div>
+                  <ul className="space-y-2.5">
+                    {[
+                      'A mechanic will be assigned and will contact you.',
+                      `Booking fee of ₹${bookingFee} ${paymentMethod === 'online' ? 'will be charged via Razorpay' : 'will be collected by the mechanic'}. Remaining payment after service.`,
+                      'Free cancellation up to 2 hours before appointment.',
+                    ].map((t, i) => <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#475569] leading-relaxed"><CheckCircle className="h-4 w-4 text-[#15936B] shrink-0 mt-0.5" /><span>{t}</span></li>)}
+                  </ul>
                 </div>
 
                 {submitProgress && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-600 shrink-0" />
-                    <span className="text-sm text-blue-800 font-medium">{submitProgress}</span>
+                  <div className="mt-4 bg-[#EEF3FB] border border-[#cdd9ee] rounded-xl p-3 flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-[#1B3B6F] shrink-0" />
+                    <span className="text-sm text-[#1B3B6F] font-medium">{submitProgress}</span>
                   </div>
                 )}
 
-                <Button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="w-full bg-[#1B3B6F] hover:bg-[#152d55] h-12 text-base"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : paymentMethod === 'online' ? (
-                    <CreditCard className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Wrench className="h-4 w-4 mr-2" />
-                  )}
-                  {paymentMethod === 'online' ? `Pay ₹${bookingFee} & Book Service` : 'Confirm Booking (COD)'}
-                </Button>
+                {/* wnav */}
+                <div className="flex justify-between gap-3 mt-6">
+                  <button onClick={() => setStep(2)} className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-[#475569] font-bold text-[15px] px-5 h-12 rounded-xl transition-colors"><ArrowLeft className="h-4 w-4" /> Back</button>
+                  <button onClick={handleSubmit} disabled={submitting}
+                    className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#e85a28] disabled:opacity-50 text-white font-bold text-[15px] px-6 h-12 rounded-xl transition-colors">
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : paymentMethod === 'online' ? <CreditCard className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
+                    {paymentMethod === 'online' ? `Pay ₹${bookingFee} & confirm` : 'Confirm booking (COD)'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
