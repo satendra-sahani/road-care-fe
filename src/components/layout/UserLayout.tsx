@@ -459,7 +459,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           <nav className="hidden lg:flex items-center gap-5 text-sm font-medium text-foreground">
             <Link href="/" className={router.pathname === '/' ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Home</Link>
             <Link href="/shop" className={router.pathname.startsWith('/shop') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Shop</Link>
-            <Link href="/service" className={router.pathname.startsWith('/service') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Services</Link>
+            <Link href="/services" className={router.pathname.startsWith('/service') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Services</Link>
             <Link href="/orders" className={router.pathname.startsWith('/orders') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Orders</Link>
             <Link href="/wallet" className={router.pathname.startsWith('/wallet') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Wallet</Link>
           </nav>
