@@ -341,6 +341,14 @@ export default function HomePage() {
 
       <div className="bg-mesh-soft min-h-screen pb-20 md:pb-0">
 
+        {/* Primary page heading — always rendered for SEO + accessibility.
+            The visual hero is an image carousel (no text headline), so this
+            single h1 carries the keyword-rich page title for crawlers and
+            screen readers. */}
+        <h1 className="sr-only">
+          Bharat Mechanics &mdash; genuine auto parts &amp; doorstep car and bike mechanic service across India
+        </h1>
+
         {/* ══════════════════════════════════════════════════════════════
             SECTION 0 — Promo strip (dismissable, persists in localStorage)
            ══════════════════════════════════════════════════════════════ */}
@@ -470,12 +478,12 @@ export default function HomePage() {
                       <Zap className="h-3 w-3 text-[#FF6B35]" />
                       India's Smartest AutoCare Platform
                     </span>
-                    <h1 className="anim-fade-up anim-delay-1 text-display-xl text-white">
+                    <h2 className="anim-fade-up anim-delay-1 text-display-xl text-white">
                       Car care,
                       <span className="block bg-gradient-to-r from-white via-[#FFE6D6] to-[#FF8A5C] bg-clip-text text-transparent">
                         now at your doorstep.
                       </span>
-                    </h1>
+                    </h2>
                     <p className="anim-fade-up anim-delay-2 mt-4 md:mt-5 text-sm md:text-base lg:text-lg text-white/75 max-w-lg leading-relaxed font-sans text-balance">
                       Trusted mechanics, genuine OEM parts, on-time service and prices you can verify upfront — across 30+ Indian cities.
                     </p>
