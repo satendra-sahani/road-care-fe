@@ -245,6 +245,8 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
+          <span className="hidden lg:block h-8 w-px bg-[#E7ECF3] shrink-0" />
+
           {/* Search with Autocomplete */}
           <div ref={searchContainerRef} className="flex-1 max-w-xl relative">
             <form onSubmit={handleSearch} className="relative">
@@ -455,13 +457,21 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-5 text-sm font-medium text-foreground">
-            <Link href="/" className={router.pathname === '/' ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Home</Link>
-            <Link href="/shop" className={router.pathname.startsWith('/shop') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Shop</Link>
-            <Link href="/services" className={router.pathname.startsWith('/service') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Services</Link>
-            <Link href="/orders" className={router.pathname.startsWith('/orders') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Orders</Link>
-            <Link href="/wallet" className={router.pathname.startsWith('/wallet') ? 'text-[#FF6B35] font-semibold' : 'hover:text-[#FF6B35] transition-colors'}>Wallet</Link>
+          {/* Desktop Nav — handoff style (orange underline) */}
+          <nav className="hidden lg:flex items-stretch gap-0.5 text-sm self-stretch">
+            {[
+              { label: 'Home', href: '/', active: router.pathname === '/' },
+              { label: 'Shop', href: '/shop', active: router.pathname.startsWith('/shop') && !router.pathname.startsWith('/shop-partner') },
+              { label: 'Services', href: '/services', active: router.pathname.startsWith('/service') },
+              { label: 'Mechanics', href: '/mechanics', active: router.pathname.startsWith('/mechanics') },
+              { label: 'For Shops', href: '/list-your-shop', active: router.pathname.startsWith('/list-your-shop') || router.pathname.startsWith('/shop-partner') },
+              { label: 'Training', href: '/training', active: router.pathname.startsWith('/training') },
+            ].map((n) => (
+              <Link key={n.href} href={n.href} className={`group relative flex items-center px-3.5 font-semibold whitespace-nowrap transition-colors ${n.active ? 'text-[#1B3B6F]' : 'text-[#475569] hover:text-[#1B3B6F]'}`}>
+                {n.label}
+                <span className={`absolute left-3.5 right-3.5 bottom-0 h-[3px] rounded-t-full bg-[#FF6B35] origin-left transition-transform ${n.active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+              </Link>
+            ))}
           </nav>
 
           {/* Actions */}
@@ -483,6 +493,10 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                   {cartCount}
                 </span>
               )}
+            </Link>
+
+            <Link href="/service" className="hidden lg:inline-flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors shrink-0">
+              <Wrench className="h-4 w-4" /> Book Service
             </Link>
 
             {isAuthenticated ? (
