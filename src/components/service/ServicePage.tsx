@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/router'
+import Link from 'next/link'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import { userServiceAPI, servicePricingAPI, userPaymentAPI, userAddressAPI } from '@/services/api'
@@ -16,7 +17,7 @@ import { toast } from 'sonner'
 import {
   Wrench, Calendar, Clock, MapPin, Car, Bike, Truck as TruckIcon,
   CheckCircle, AlertCircle, Loader2, ChevronRight, ChevronLeft, Phone, Star, Building2,
-  Navigation, Plus, ArrowLeft, CreditCard, Banknote, Shield,
+  Navigation, ArrowLeft, CreditCard, Banknote, Shield,
   User, XCircle, RefreshCw,
 } from 'lucide-react'
 
@@ -478,28 +479,37 @@ export function ServicePage() {
 
   return (
     <UserLayout>
-      <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8 py-6">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#13203A] mb-1">Book a service</h1>
-        <p className="text-[#7B8AA3] mb-6">Certified mechanics at your doorstep &mdash; transparent pricing, pay after service.</p>
+      {/* Navy gradient hero — matches book-service.html .bk-hero */}
+      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(120deg,#0F2547,#1B3B6F 60%,#2A5298)' }}>
+        <div className="absolute inset-0 opacity-70 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,.05) 1.2px,transparent 1.2px)', backgroundSize: '24px 24px' }} />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-10 pb-11">
+          <div className="flex items-center gap-2 text-[13px] text-[#aebfd9] mb-3.5">
+            <Link href="/" className="hover:text-white">Home</Link> › <span>Book a Mechanic</span>
+          </div>
+          <h1 className="text-white font-extrabold text-[26px] sm:text-[34px] lg:text-[40px] leading-tight">Book a trusted mechanic</h1>
+          <p className="text-[#c8d4e8] text-base mt-3 max-w-xl">Doorstep car &amp; bike service with certified mechanics, genuine parts and transparent, issue-based pricing. Track your mechanic live.</p>
+        </div>
+      </section>
 
-        {/* Tab Switcher */}
-        <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-16">
+        {/* Centered pill tab bar — matches .bk-tabs */}
+        <div className="flex gap-2 bg-white border border-[#E7ECF3] rounded-2xl p-1.5 max-w-[520px] mx-auto mb-7 shadow-[0_2px_10px_rgba(19,32,58,0.05)]">
           {[
-            { key: 'book' as const, label: 'Book Service', icon: Plus },
-            { key: 'requests' as const, label: 'My Requests', icon: Wrench, count: requests.length },
+            { key: 'book' as const, label: 'Book Service', icon: Wrench },
+            { key: 'requests' as const, label: 'My Requests', icon: Clock, count: requests.length },
           ].map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab.key ? 'bg-white shadow text-foreground' : 'text-muted-foreground'
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-colors ${
+                activeTab === tab.key ? 'bg-[#1B3B6F] text-white' : 'text-[#475569] hover:bg-gray-50'
               }`}
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
               {tab.count !== undefined && tab.count > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                  activeTab === tab.key ? 'bg-[#1B3B6F] text-white' : 'bg-gray-200 text-gray-600'
+                <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                  activeTab === tab.key ? 'bg-white/25 text-white' : 'bg-[#FF6B35] text-white'
                 }`}>{tab.count}</span>
               )}
             </button>
@@ -508,7 +518,7 @@ export function ServicePage() {
 
         {/* ─── Book Service Tab ─── */}
         {activeTab === 'book' && (
-          <div>
+          <div className="max-w-3xl mx-auto">
             {/* Step indicator — book-service.html connected stepper */}
             <div className="flex items-start mb-6">
               {stepLabels.map((label, i) => {
@@ -818,7 +828,7 @@ export function ServicePage() {
 
         {/* ─── My Requests Tab ─── */}
         {activeTab === 'requests' && (
-          <div>
+          <div className="max-w-3xl mx-auto">
             {!isAuthenticated ? (
               <div className="text-center py-12">
                 <Wrench className="h-16 w-16 text-gray-300 mx-auto mb-4" />
