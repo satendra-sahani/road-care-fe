@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
+import dynamic from 'next/dynamic'
 import { userServiceAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
@@ -52,6 +53,11 @@ import {
 } from 'lucide-react'
 import DiagnosisCard from './DiagnosisCard'
 import CallScreen from './CallScreen'
+
+const InlineLiveMap = dynamic(() => import('./InlineLiveMap'), {
+  ssr: false,
+  loading: () => <div className="h-[280px] rounded-2xl bg-gray-100 animate-pulse border border-[#E7ECF3]" />,
+})
 
 // ---- Constants ----
 
@@ -439,6 +445,11 @@ export function ServiceDetailPage() {
         <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
           {/* LEFT */}
           <div className="space-y-4">
+            {/* inline live map (active jobs) */}
+            {(status === 'on_way' || status === 'in_progress') && request._id && (
+              <InlineLiveMap requestId={request._id} mechFirst={mechFirst} />
+            )}
+
             {/* mech-card */}
             {mechanicName && (
               <div className="bg-white border border-[#E7ECF3] rounded-2xl p-4 flex items-center gap-3.5 shadow-sm">
