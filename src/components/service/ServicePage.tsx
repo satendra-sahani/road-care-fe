@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import CallScreen from '@/components/service/CallScreen'
 import RatingFlow from '@/components/service/RatingFlow'
+import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import { toast } from 'sonner'
 import {
   Wrench, Calendar, Clock, MapPin, Car, Bike, Truck as TruckIcon,
@@ -117,6 +118,7 @@ function RevLine({ icon, label, value, last }: { icon: React.ReactNode; label: s
 
 export function ServicePage() {
   const router = useRouter()
+  const { openLogin } = useLoginModal()
   const { isAuthenticated, user } = useSelector((state: RootState) => state.customerAuth)
 
   const [activeTab, setActiveTab] = useState<'book' | 'requests'>('book')
@@ -271,7 +273,7 @@ export function ServicePage() {
   }
 
   const handleSubmit = async () => {
-    if (!isAuthenticated) { router.push('/login?redirect=/service'); return }
+    if (!isAuthenticated) { openLogin(); return }
     // Mirror Android validation: vehicle, service, issues, address, contact
     // number all required. Description is optional (Android auto-builds it
     // from selected issues) so we keep the existing soft requirement.
@@ -863,7 +865,7 @@ export function ServicePage() {
                 <Wrench className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">Login to view requests</h3>
                 <p className="text-muted-foreground mb-4">You need to be logged in to see your service requests.</p>
-                <Button onClick={() => router.push('/login?redirect=/service')} className="bg-[#1B3B6F]">Login</Button>
+                <Button onClick={() => openLogin()} className="bg-[#1B3B6F]">Login</Button>
               </div>
             ) : (
               <>
