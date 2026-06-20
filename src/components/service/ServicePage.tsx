@@ -287,7 +287,7 @@ export function ServicePage() {
           key: orderResult.keyId,
           amount: orderResult.amount,
           currency: orderResult.currency || 'INR',
-          name: 'Bharat Machenics',
+          name: 'Bharat Mechanics',
           description: `${serviceType === 'roadside' ? 'Emergency' : serviceType === 'walkin' ? 'Walk-in' : 'Home'} Service`,
           order_id: orderResult.orderId,
           handler: async (response: any) => {
@@ -403,9 +403,9 @@ export function ServicePage() {
 
   return (
     <UserLayout>
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Auto Services</h1>
-        <p className="text-muted-foreground mb-6">Professional mechanic service at your doorstep</p>
+      <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8 py-6">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#13203A] mb-1">Book a service</h1>
+        <p className="text-[#7B8AA3] mb-6">Certified mechanics at your doorstep &mdash; transparent pricing, pay after service.</p>
 
         {/* Tab Switcher */}
         <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
@@ -434,23 +434,20 @@ export function ServicePage() {
         {/* ─── Book Service Tab ─── */}
         {activeTab === 'book' && (
           <div>
-            {/* Step indicator */}
-            <div className="flex items-center gap-1 mb-6 overflow-x-auto">
+            {/* Step indicator — book-service.html connected stepper */}
+            <div className="flex items-start mb-6">
               {stepLabels.map((label, i) => {
                 const s = i + 1
+                const done = step > s, on = step === s
                 return (
-                  <div key={s} className="flex items-center gap-1.5 shrink-0">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                      step > s ? 'bg-green-500 text-white'
-                      : step === s ? 'bg-[#1B3B6F] text-white'
-                      : 'bg-gray-200 text-gray-500'
-                    }`}>
-                      {step > s ? <CheckCircle className="h-4 w-4" /> : s}
+                  <div key={s} className={`flex items-center ${s < 3 ? 'flex-1' : ''}`}>
+                    <div className="flex flex-col items-center gap-1.5 shrink-0">
+                      <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${done ? 'bg-[#15936B] text-white' : on ? 'bg-[#1B3B6F] text-white ring-4 ring-[#1B3B6F]/15' : 'bg-gray-200 text-gray-500'}`}>
+                        {done ? <CheckCircle className="h-4 w-4" /> : s}
+                      </div>
+                      <span className={`text-[11px] sm:text-xs text-center whitespace-nowrap font-semibold ${step >= s ? 'text-[#13203A]' : 'text-gray-400'}`}>{label}</span>
                     </div>
-                    <span className={`text-xs sm:text-sm whitespace-nowrap ${step >= s ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                      {label}
-                    </span>
-                    {s < 3 && <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />}
+                    {s < 3 && <div className="flex-1 h-1 mx-1.5 -mt-5 rounded-full bg-gray-200 overflow-hidden"><div className={`h-full rounded-full bg-[#15936B] transition-all duration-300 ${done ? 'w-full' : 'w-0'}`} /></div>}
                   </div>
                 )
               })}
@@ -458,7 +455,8 @@ export function ServicePage() {
 
             {/* Step 1: Vehicle type, service type, issues */}
             {step === 1 && (
-              <div className="space-y-6">
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm p-5 md:p-6 space-y-5">
+                <div><h3 className="text-lg font-extrabold text-[#13203A]">What do you need help with?</h3><p className="text-[13px] text-[#7B8AA3] mt-0.5">Pick your vehicle, service type and issues &mdash; we&rsquo;ll estimate the cost instantly.</p></div>
                 {/* Vehicle Type */}
                 <div>
                   <Label className="text-base font-semibold mb-3 block">Select Vehicle Type</Label>
@@ -600,12 +598,9 @@ export function ServicePage() {
                     )}
 
                     {estimatedTotal > 0 && (
-                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-green-800">Estimated Service Cost</span>
-                          <span className="text-lg font-bold text-green-800">₹{estimatedTotal.toLocaleString('en-IN')}</span>
-                        </div>
-                        <p className="text-xs text-green-700 mt-1">Booking fee: ₹{bookingFee} (paid at booking) • Rest after service</p>
+                      <div className="mt-4 flex items-center justify-between gap-3 p-4 rounded-xl bg-gradient-to-r from-[#1B3B6F] to-[#2A5298] text-white">
+                        <div><b className="block text-sm">Estimated service cost</b><span className="text-[11.5px] text-white/75">Booking fee ₹{bookingFee} paid now &middot; rest after service</span></div>
+                        <div className="text-2xl font-extrabold">₹{estimatedTotal.toLocaleString('en-IN')}</div>
                       </div>
                     )}
                   </div>
@@ -624,10 +619,11 @@ export function ServicePage() {
 
             {/* Step 2: Description, date, address */}
             {step === 2 && (
-              <div className="space-y-6">
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm p-5 md:p-6 space-y-5">
                 <button onClick={() => setStep(1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                  <ArrowLeft className="h-4 w-4" /> Back to Vehicle & Issues
+                  <ArrowLeft className="h-4 w-4" /> Back
                 </button>
+                <div><h3 className="text-lg font-extrabold text-[#13203A]">Details &amp; schedule</h3><p className="text-[13px] text-[#7B8AA3] mt-0.5">Tell us a little more and pick a convenient time.</p></div>
 
                 <div>
                   <Label htmlFor="desc">Describe the Problem *</Label>
@@ -763,10 +759,11 @@ export function ServicePage() {
 
             {/* Step 3: Payment & Confirm */}
             {step === 3 && (
-              <div className="space-y-6">
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm p-5 md:p-6 space-y-5">
                 <button onClick={() => setStep(2)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                  <ArrowLeft className="h-4 w-4" /> Back to Details
+                  <ArrowLeft className="h-4 w-4" /> Back
                 </button>
+                <div><h3 className="text-lg font-extrabold text-[#13203A]">Payment &amp; confirm</h3><p className="text-[13px] text-[#7B8AA3] mt-0.5">Pay just the &#8377;{bookingFee} booking fee now. The rest is payable after the job is done.</p></div>
 
                 {/* Payment Method Selection */}
                 <div>
