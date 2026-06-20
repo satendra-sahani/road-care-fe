@@ -228,7 +228,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
         <div className="px-4 md:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto py-2 flex items-center gap-4">
+          <div className="max-w-7xl mx-auto h-16 lg:h-[72px] flex items-center gap-3 lg:gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <Image
@@ -286,8 +286,24 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="text-sm">Searching...</span>
                   </div>
-                ) : searchQuery.trim().length < 2 && defaultProducts.length > 0 ? (
-                  /* ── Default / Popular products when search is empty ── */
+                ) : searchQuery.trim().length < 2 ? (
+                  /* ── Empty query: popular search chips, or popular products ── */
+                  defaultProducts.length === 0 ? (
+                    <div className="p-5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Popular searches</p>
+                      <div className="flex flex-wrap gap-2">
+                        {['Brake pads', 'Engine oil', 'AC service', 'Battery', 'Headlight', 'Periodic service'].map((term) => (
+                          <button key={term} type="button" onClick={() => handleSearchChange(term)} className="px-3 py-1.5 rounded-full text-[13px] font-medium bg-[#F2F6FC] text-[#475569] hover:bg-[#E8EEF7] transition-colors">{term}</button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-4 mb-2.5">Browse</p>
+                      <div className="flex flex-wrap gap-2">
+                        {([['Spare Parts', '/shop'], ['Book a Service', '/service'], ['Training', '/training'], ['Mechanics', '/mechanics']] as [string, string][]).map(([label, href]) => (
+                          <button key={label} type="button" onClick={() => router.push(href)} className="px-3 py-1.5 rounded-full text-[13px] font-medium bg-[#FFF1EB] text-[#FF6B35] hover:bg-[#FFE4D6] transition-colors">{label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
                   <div className="py-2">
                     <div className="px-4 py-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Popular Products</span>
@@ -338,6 +354,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                       )
                     })}
                   </div>
+                  )
                 ) : !hasAnySuggestions ? (
                   <div className="px-4 py-6 text-center">
                     <Search className="h-8 w-8 text-gray-300 mx-auto mb-2" />
@@ -495,8 +512,8 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               <Search className="h-[19px] w-[19px]" />
             </button>
             {isAuthenticated && (
-              <Link href="/notifications" className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Bell className="h-5 w-5 text-foreground" />
+              <Link href="/notifications" className="relative h-10 w-10 flex items-center justify-center rounded-lg border border-[#E7ECF3] bg-white text-[#475569] hover:border-[#2A5298] hover:text-[#1B3B6F] transition-colors shrink-0">
+                <Bell className="h-[19px] w-[19px]" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -504,8 +521,8 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                 )}
               </Link>
             )}
-            <Link href="/cart" className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <ShoppingCart className="h-5 w-5 text-foreground" />
+            <Link href="/cart" className="relative h-10 w-10 flex items-center justify-center rounded-lg border border-[#E7ECF3] bg-white text-[#475569] hover:border-[#2A5298] hover:text-[#1B3B6F] transition-colors shrink-0">
+              <ShoppingCart className="h-[19px] w-[19px]" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#FF6B35] text-white text-xs flex items-center justify-center font-bold">
                   {cartCount}
@@ -513,7 +530,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               )}
             </Link>
 
-            <Link href="/service" className="hidden lg:inline-flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors shrink-0">
+            <Link href="/service" className="hidden lg:inline-flex items-center gap-1.5 h-10 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-4 rounded-lg text-sm transition-colors shrink-0">
               <Wrench className="h-4 w-4" /> Book Service
             </Link>
 
@@ -521,7 +538,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium transition-colors"
+                  className="hidden md:flex items-center gap-2 h-10 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium transition-colors"
                 >
                   <div className="h-7 w-7 rounded-full bg-[#1B3B6F] text-white flex items-center justify-center text-xs font-bold">
                     {(user?.fullName || 'U')[0].toUpperCase()}
@@ -562,7 +579,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             ) : (
               <Link
                 href={`/login?redirect=${encodeURIComponent(router.asPath)}`}
-                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1B3B6F] text-white text-sm font-medium hover:bg-[#152d55] transition-colors"
+                className="hidden md:flex items-center gap-2 h-10 px-4 rounded-lg bg-[#1B3B6F] text-white text-sm font-medium hover:bg-[#152d55] transition-colors"
               >
                 <User className="h-4 w-4" />
                 Login
@@ -570,8 +587,9 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             )}
 
             <button
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="lg:hidden h-10 w-10 flex items-center justify-center rounded-lg border border-[#E7ECF3] text-[#475569] hover:border-[#2A5298] hover:text-[#1B3B6F] transition-colors shrink-0"
               onClick={() => setMobileMenuOpen(true)}
+              aria-label="Menu"
             >
               <Menu className="h-5 w-5" />
             </button>
