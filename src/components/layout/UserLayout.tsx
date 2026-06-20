@@ -14,6 +14,7 @@ import {
   Search, ShoppingCart, User, Menu, X, Car, Home, Grid3X3, Receipt, Bell,
   Phone, MapPin, Truck, LogOut, ChevronDown, Wallet, MapPinned, Star, Wrench,
   Tag, Loader2, Package, ArrowRight, HelpCircle, Heart, Headphones,
+  Store, GraduationCap, BadgeCheck,
 } from 'lucide-react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -503,7 +504,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto lg:ml-0">
             <button
               onClick={() => { setSearchOpen(true); setShowSuggestions(true) }}
               aria-label="Search"
@@ -640,7 +641,10 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               {[
                 { icon: Home, label: 'Home', href: '/' },
                 { icon: Grid3X3, label: 'Shop', href: '/shop' },
-                { icon: Wrench, label: 'Services', href: '/service' },
+                { icon: Wrench, label: 'Services', href: '/services' },
+                { icon: BadgeCheck, label: 'Mechanics', href: '/mechanics' },
+                { icon: Store, label: 'For Shops', href: '/list-your-shop' },
+                { icon: GraduationCap, label: 'Training', href: '/training' },
               ].map((item) => {
                 const isActive = item.href === '/'
                   ? router.pathname === '/'
