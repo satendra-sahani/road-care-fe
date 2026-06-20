@@ -237,15 +237,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               alt="Bharat Mechanics – Auto Parts & Vehicle Services"
               width={284}
               height={90}
-              className="h-12 lg:h-14 w-auto object-contain hidden sm:block"
-              priority
-            />
-            <Image
-              src="https://ik.imagekit.io/aiwats/roadcare/fav.png?v=2"
-              alt="Bharat Mechanics"
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain sm:hidden"
+              className="h-9 sm:h-12 lg:h-14 w-auto object-contain"
               priority
             />
           </Link>
