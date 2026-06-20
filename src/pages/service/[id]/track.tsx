@@ -59,7 +59,7 @@ export default function ServiceTrackPage() {
   return (
     <>
       <Head>
-        <title>Track Mechanic - Road Care</title>
+        <title>Track Mechanic - Bharat Mechanics</title>
       </Head>
 
       <div className="h-screen w-full relative flex flex-col">
