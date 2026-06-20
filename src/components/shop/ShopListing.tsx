@@ -7,14 +7,13 @@ import { RootState } from '@/store'
 import { catalogAPI, userCartAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
-  Search, Star, ShoppingCart, Package, ChevronLeft, ChevronRight, X,
+  Star, ShoppingCart, Package, ChevronLeft, ChevronRight, X, Grid3X3,
   SlidersHorizontal, Heart, Truck, ShieldCheck, RotateCcw, CreditCard, Plus,
 } from 'lucide-react'
 
@@ -103,11 +102,6 @@ export function ShopListing() {
     }
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    fetchProducts(1)
-  }
-
   const handleAddToCart = async (productId: string) => {
     if (!isAuthenticated) {
       router.push('/login?redirect=' + encodeURIComponent(router.asPath))
@@ -174,13 +168,27 @@ export function ShopListing() {
         </div>
       </div>
 
-      {/* CATEGORY SCROLLER */}
-      <div className="bg-white border-b border-[#E7ECF3] sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-hide">
-          <button onClick={() => setSelectedCategory('')} className={`shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-colors ${!selectedCategory ? 'bg-[#1B3B6F] text-white' : 'bg-[#F2F6FC] text-[#475569] hover:bg-[#E8EEF7]'}`}>All</button>
-          {categories.map((cat) => (
-            <button key={cat._id} onClick={() => setSelectedCategory(cat._id)} className={`shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-colors ${selectedCategory === cat._id ? 'bg-[#1B3B6F] text-white' : 'bg-[#F2F6FC] text-[#475569] hover:bg-[#E8EEF7]'}`}>{cat.name}</button>
-          ))}
+      {/* CATEGORY SCROLLER — icon tiles (matches shop.html) */}
+      <div className="bg-white border-b border-[#E7ECF3]">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-4 flex gap-2.5 overflow-x-auto scrollbar-hide">
+          <button onClick={() => setSelectedCategory('')} className="shrink-0 w-[84px] flex flex-col items-center gap-2 text-center group">
+            <span className={`w-[62px] h-[62px] rounded-[18px] flex items-center justify-center border transition-all ${!selectedCategory ? 'bg-[#1B3B6F] border-[#1B3B6F]' : 'bg-[#F6F8FB] border-[#E7ECF3] group-hover:border-[#1B3B6F] group-hover:-translate-y-0.5'}`}>
+              <Grid3X3 className={`h-[26px] w-[26px] ${!selectedCategory ? 'text-white' : 'text-[#1B3B6F]'}`} />
+            </span>
+            <b className={`text-[11.5px] font-semibold leading-tight ${!selectedCategory ? 'text-[#1B3B6F]' : 'text-[#475569]'}`}>All</b>
+          </button>
+          {categories.map((cat) => {
+            const on = selectedCategory === cat._id
+            const img = cat.image || cat.icon
+            return (
+              <button key={cat._id} onClick={() => setSelectedCategory(cat._id)} className="shrink-0 w-[84px] flex flex-col items-center gap-2 text-center group">
+                <span className={`w-[62px] h-[62px] rounded-[18px] flex items-center justify-center border overflow-hidden transition-all ${on ? 'bg-[#1B3B6F] border-[#1B3B6F]' : 'bg-[#F6F8FB] border-[#E7ECF3] group-hover:border-[#1B3B6F] group-hover:-translate-y-0.5'}`}>
+                  {img ? <img src={img} alt="" className={`h-8 w-8 object-contain ${on ? 'brightness-0 invert' : ''}`} /> : <Package className={`h-[26px] w-[26px] ${on ? 'text-white' : 'text-[#1B3B6F]'}`} />}
+                </span>
+                <b className={`text-[11.5px] font-semibold leading-tight line-clamp-2 ${on ? 'text-[#1B3B6F]' : 'text-[#475569]'}`}>{cat.name}</b>
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -198,13 +206,9 @@ export function ShopListing() {
         {/* Toolbar */}
         <div className="flex items-center justify-between gap-3 mb-5">
           <p className="text-sm text-[#475569]"><b className="text-[#13203A]">{pagination.total}</b> products found</p>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <form onSubmit={handleSearch} className="flex-1 sm:w-64 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search products..." className="pl-10" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            </form>
-            <Button variant="outline" className="lg:hidden" onClick={() => setShowFilters(!showFilters)}>
-              <SlidersHorizontal className="h-4 w-4" />
+          <div className="flex items-center gap-3">
+            <Button variant="outline" className="lg:hidden gap-1.5" onClick={() => setShowFilters(!showFilters)}>
+              <SlidersHorizontal className="h-4 w-4" /> Filters
             </Button>
             <Select value={`${sortBy}-${sortOrder}`} onValueChange={(v) => { const [sb, so] = v.split('-'); setSortBy(sb); setSortOrder(so) }}>
               <SelectTrigger className="w-[160px] hidden sm:flex"><SelectValue placeholder="Sort by" /></SelectTrigger>
