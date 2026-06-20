@@ -54,6 +54,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.customerAuth)
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [cartCount, setCartCount] = useState(0)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -111,6 +112,9 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Close the search modal whenever the route changes
+  useEffect(() => { setSearchOpen(false) }, [router.asPath])
 
   // Debounced search handler
   const handleSearchChange = useCallback((text: string) => {
@@ -247,31 +251,36 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
           <span className="hidden lg:block h-8 w-px bg-[#E7ECF3] shrink-0" />
 
-          {/* Search with Autocomplete */}
-          <div ref={searchContainerRef} className="flex-1 max-w-xl relative">
+          {/* Search modal (icon-triggered, matches index.html) */}
+          {searchOpen && (
+          <div className="fixed inset-0 z-[70] bg-[#0F2547]/50 backdrop-blur-sm flex items-start justify-center px-4 pt-16 md:pt-20" onClick={() => { setSearchOpen(false); setShowSuggestions(false) }}>
+          <div ref={searchContainerRef} className="w-full max-w-[620px] bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
-                placeholder="Search parts, accessories..."
-                className="pl-10 pr-10 bg-surface border-border"
+                autoFocus
+                placeholder="Search parts, services, courses…"
+                className="pl-11 pr-20 h-14 text-base rounded-none border-0 border-b border-border focus-visible:ring-0"
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setSearchOpen(false); setShowSuggestions(false) } }}
                 onFocus={() => { if (searchQuery.trim().length >= 2 || defaultProducts.length > 0) setShowSuggestions(true) }}
               />
+              <button type="button" onClick={() => { setSearchOpen(false); setShowSuggestions(false) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#7B8AA3] bg-[#F2F6FC] px-2 py-1 rounded">ESC</button>
               {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => { setSearchQuery(''); setShowSuggestions(false); setSearchResults({ products: [], brands: [], categories: [] }) }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => { setSearchQuery(''); setSearchResults({ products: [], brands: [], categories: [] }) }}
+                  className="absolute right-14 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
               )}
             </form>
 
-            {/* Autocomplete Dropdown — full-width on mobile, contained on desktop */}
+            {/* Results */}
             {showSuggestions && (
-              <div className="fixed left-0 right-0 top-[60px] mx-2 sm:mx-0 sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 bg-white rounded-xl border border-gray-200 shadow-xl z-[60] max-h-[70vh] sm:max-h-[420px] overflow-y-auto scrollbar-ultra-narrow">
+              <div className="max-h-[60vh] overflow-y-auto scrollbar-ultra-narrow">
                 {searchLoading ? (
                   <div className="flex items-center gap-2 px-4 py-6 justify-center text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -456,9 +465,11 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
+          </div>
+          )}
 
           {/* Desktop Nav — handoff style (orange underline) */}
-          <nav className="hidden lg:flex items-stretch gap-0.5 text-sm self-stretch">
+          <nav className="hidden lg:flex items-stretch gap-0.5 text-sm self-stretch lg:ml-auto">
             {[
               { label: 'Home', href: '/', active: router.pathname === '/' },
               { label: 'Shop', href: '/shop', active: router.pathname.startsWith('/shop') && !router.pathname.startsWith('/shop-partner') },
@@ -476,6 +487,13 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
           {/* Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => { setSearchOpen(true); setShowSuggestions(true) }}
+              aria-label="Search"
+              className="h-10 w-10 flex items-center justify-center rounded-lg border border-[#E7ECF3] bg-white text-[#475569] hover:border-[#2A5298] hover:text-[#1B3B6F] transition-colors shrink-0"
+            >
+              <Search className="h-[19px] w-[19px]" />
+            </button>
             {isAuthenticated && (
               <Link href="/notifications" className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <Bell className="h-5 w-5 text-foreground" />
