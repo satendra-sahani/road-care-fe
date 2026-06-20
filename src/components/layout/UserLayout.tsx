@@ -210,7 +210,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   })?.href || '/'
 
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="min-h-screen bg-background font-sans [overflow-x:clip]">
       {/* Top Bar (Desktop) */}
       <div className="hidden md:block gradient-primary">
         <div className="px-4 md:px-6 lg:px-8">
