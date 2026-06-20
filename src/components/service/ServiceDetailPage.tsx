@@ -46,15 +46,10 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  User,
-  IndianRupee,
-  FileText,
   CalendarClock,
-  Locate,
   ChevronRight,
   MessageCircle,
 } from 'lucide-react'
-import Link from 'next/link'
 import DiagnosisCard from './DiagnosisCard'
 import CallScreen from './CallScreen'
 
@@ -70,6 +65,15 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   in_progress: { label: 'In Progress',      color: 'text-orange-700', bg: 'bg-orange-100', dot: 'bg-[#FF6B35]' },
   completed:   { label: 'Completed',        color: 'text-green-700',  bg: 'bg-green-100',  dot: 'bg-green-500' },
   cancelled:   { label: 'Cancelled',        color: 'text-red-700',    bg: 'bg-red-100',    dot: 'bg-red-500' },
+}
+
+// Vertical-timeline labels (claude-design FLOWLBL). {m} → mechanic first name.
+const TL_LABELS: Record<string, { t: string; s: string }> = {
+  pending:     { t: 'Requested',           s: 'We received your service request' },
+  assigned:    { t: 'Mechanic assigned',   s: '{m} will handle your job' },
+  on_way:      { t: 'On the way',          s: '{m} is heading to your location' },
+  in_progress: { t: 'Service in progress', s: 'Work is underway' },
+  completed:   { t: 'Completed',           s: 'Service finished' },
 }
 
 const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -98,26 +102,11 @@ function formatRelativeDate(dateStr: string): string {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-    const diffMs = today.getTime() - target.getTime()
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
-
+    const diffDays = Math.round((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24))
     if (diffDays === 0) return 'Today'
     if (diffDays === 1) return 'Yesterday'
     if (diffDays > 1 && diffDays <= 6) return `${diffDays} days ago`
     return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-  } catch {
-    return dateStr
-  }
-}
-
-function formatFullDate(dateStr: string): string {
-  if (!dateStr) return 'N/A'
-  try {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'long', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
   } catch {
     return dateStr
   }
@@ -142,15 +131,14 @@ function getVehicleIcon(vehicleType: string) {
   }
 }
 
-function getPriorityBadge(priority: string) {
-  const p = priority?.toLowerCase() || 'normal'
-  if (p === 'high' || p === 'urgent' || p === 'critical') {
-    return { color: 'text-red-700', bg: 'bg-red-100' }
-  }
-  if (p === 'medium') {
-    return { color: 'text-amber-700', bg: 'bg-amber-100' }
-  }
-  return { color: 'text-blue-700', bg: 'bg-blue-100' }
+// One line in a summary card — icon + label on the left, value on the right.
+function RevLine({ icon, label, value, last }: { icon: React.ReactNode; label: string; value: React.ReactNode; last?: boolean }) {
+  return (
+    <div className={`flex items-start justify-between gap-3.5 py-3 text-[13.5px] ${last ? '' : 'border-b border-[#EEF1F6]'}`}>
+      <span className="flex items-center gap-2 text-[#475569] shrink-0 [&>svg]:text-[#1B3B6F] [&>svg]:h-4 [&>svg]:w-4">{icon} {label}</span>
+      <b className="font-bold text-[#13203A] text-right max-w-[62%]">{value || '—'}</b>
+    </div>
+  )
 }
 
 // ---- Component ----
@@ -183,6 +171,7 @@ export function ServiceDetailPage() {
   useEffect(() => {
     if (!id) return
     fetchRequest()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const fetchRequest = async () => {
@@ -190,11 +179,8 @@ export function ServiceDetailPage() {
     setError(false)
     try {
       const res = await userServiceAPI.getById(id as string)
-      if (res.data.success) {
-        setRequest(res.data.data)
-      } else {
-        setError(true)
-      }
+      if (res.data.success) setRequest(res.data.data)
+      else setError(true)
     } catch {
       setError(true)
       toast.error('Failed to load service request')
@@ -277,16 +263,19 @@ export function ServiceDetailPage() {
   if (loading) {
     return (
       <UserLayout>
-        <div className="container mx-auto px-4 py-6 max-w-3xl">
-          <div className="flex items-center gap-2 mb-6">
-            <Skeleton className="h-8 w-8 rounded-lg" />
-            <Skeleton className="h-6 w-48" />
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
+          <Skeleton className="h-6 w-40 mb-6" />
+          <Skeleton className="h-14 w-full rounded-xl mb-5" />
+          <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full rounded-2xl" />
+              <Skeleton className="h-72 w-full rounded-2xl" />
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-52 w-full rounded-2xl" />
+              <Skeleton className="h-40 w-full rounded-2xl" />
+            </div>
           </div>
-          <Skeleton className="h-20 w-full rounded-xl mb-4" />
-          <Skeleton className="h-40 w-full rounded-xl mb-4" />
-          <Skeleton className="h-32 w-full rounded-xl mb-4" />
-          <Skeleton className="h-28 w-full rounded-xl mb-4" />
-          <Skeleton className="h-24 w-full rounded-xl" />
         </div>
       </UserLayout>
     )
@@ -296,7 +285,7 @@ export function ServiceDetailPage() {
   if (error || !request) {
     return (
       <UserLayout>
-        <div className="container mx-auto px-4 py-16 text-center max-w-3xl">
+        <div className="max-w-3xl mx-auto px-4 py-16 text-center">
           <Wrench className="h-16 w-16 text-gray-300 mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Service request not found</h2>
           <p className="text-muted-foreground mb-4">The request may have been removed or the link is invalid.</p>
@@ -304,9 +293,7 @@ export function ServiceDetailPage() {
             <Button variant="outline" onClick={() => router.push('/service')}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Back to Services
             </Button>
-            <Button onClick={fetchRequest} className="bg-[#1B3B6F] hover:bg-[#152d55]">
-              Retry
-            </Button>
+            <Button onClick={fetchRequest} className="bg-[#1B3B6F] hover:bg-[#152d55]">Retry</Button>
           </div>
         </div>
       </UserLayout>
@@ -325,20 +312,19 @@ export function ServiceDetailPage() {
   const mechanic = request.assignedMechanic || request.mechanic
   const mechanicName = mechanic?.fullName || mechanic?.user?.fullName || mechanic?.name || null
   const mechanicPhone = mechanic?.phone || mechanic?.user?.phone || null
+  const mechFirst = mechanicName ? mechanicName.split(' ')[0] : 'Your mechanic'
 
   const location = request.location || {}
   const vehicleType = request.vehicle?.type || request.vehicleType || 'bike'
   const VehicleIcon = getVehicleIcon(vehicleType)
   const serviceTypeInfo = getServiceTypeInfo(request.serviceType)
-  const ServiceTypeIcon = serviceTypeInfo.icon
-  const priorityCfg = getPriorityBadge(request.priority)
 
   const estimatedCost = request.estimatedCost || 0
   const totalCost = request.totalCost || 0
   const laborCost = request.laborCost || 0
   const partsCost = request.partsCost || 0
   const emergencyCharges = request.emergencyCharges || 0
-  const hasPricing = estimatedCost > 0 || totalCost > 0
+  const grandTotal = totalCost || estimatedCost
 
   const paymentMethod = request.paymentMethod
   const paymentStatus = request.paymentStatus || request.payment?.status || 'pending'
@@ -348,55 +334,61 @@ export function ServiceDetailPage() {
   const hasFeedback = !!request.feedback || hasLegacyReview
 
   const currentStepIdx = STATUS_STEPS.indexOf(status as any)
-
   const todayStr = new Date().toISOString().split('T')[0]
+
+  const addressText = location.address || request.address || 'Location not available'
+  const issuesText = Array.isArray(request.issues) && request.issues.length ? request.issues.join(', ') : ''
+
+  // time stamp for a given step from the request timeline
+  const timeAt = (step: string): string => {
+    const e = (request.timeline || []).find((x: any) => x.status === step || (step === 'pending' && x.status === 'requested'))
+    if (!e) return ''
+    try {
+      return new Date(e.timestamp || e.changedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    } catch { return '' }
+  }
+
+  // status bar config
+  const sb = isCancelled
+    ? { cls: 'bg-[#fde8e8] text-[#b91c1c]', Icon: XCircle, text: 'This booking was cancelled' }
+    : isCompleted
+      ? { cls: 'bg-[#E7F6EF] text-[#15936B]', Icon: CheckCircle, text: hasFeedback ? 'Service complete' : 'Service complete · rate your experience below' }
+      : status === 'on_way'
+        ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Navigation, text: `${mechFirst} is on the way` }
+        : status === 'in_progress'
+          ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Wrench, text: 'Service in progress · work underway' }
+          : (status === 'assigned' || status === 'accepted')
+            ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: CheckCircle, text: `${mechFirst} will handle your job` }
+            : { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Clock, text: 'Finding a mechanic for you…' }
 
   return (
     <UserLayout>
-      <div className="container mx-auto px-4 py-6 max-w-3xl pb-32 md:pb-6">
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/service')}
-              className="h-9 w-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground">
-                {request.requestId || `#${(request._id || '').slice(-8).toUpperCase()}`}
-              </h1>
-              <p className="text-xs text-muted-foreground">{formatRelativeDate(request.createdAt)}</p>
-            </div>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8 py-6 pb-28 md:pb-10">
+        {/* backlink */}
+        <button
+          onClick={() => router.push('/service')}
+          className="inline-flex items-center gap-1.5 text-[13.5px] font-bold text-[#475569] hover:text-[#1B3B6F] mb-4 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> My requests
+        </button>
+
+        {/* header: id + date + badge */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h1 className="text-lg sm:text-xl font-extrabold text-[#13203A]">
+              {request.requestId || `Service #${(request._id || '').slice(-8).toUpperCase()}`}
+            </h1>
+            <p className="text-xs text-[#7B8AA3] mt-0.5">{formatRelativeDate(request.createdAt)}</p>
           </div>
-          <Badge className={`${statusCfg.bg} ${statusCfg.color} border-none text-xs`}>
-            {statusCfg.label}
-          </Badge>
+          <Badge className={`${statusCfg.bg} ${statusCfg.color} border-none text-xs`}>{statusCfg.label}</Badge>
         </div>
 
-        {/* ── Status bar (claude-design .statbar) ── */}
-        {(() => {
-          const fn = mechanicName ? mechanicName.split(' ')[0] : 'Your mechanic'
-          const sb = isCancelled
-            ? { cls: 'bg-[#fde8e8] text-[#b91c1c]', Icon: XCircle, text: 'This booking was cancelled' }
-            : isCompleted
-              ? { cls: 'bg-[#E7F6EF] text-[#15936B]', Icon: CheckCircle, text: hasFeedback ? 'Service complete' : 'Service complete · rate your experience below' }
-              : status === 'on_way'
-                ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Navigation, text: `${fn} is on the way` }
-                : status === 'in_progress'
-                  ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Wrench, text: 'Service in progress · work underway' }
-                  : (status === 'assigned' || status === 'accepted')
-                    ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: CheckCircle, text: `${fn} will handle your job` }
-                    : { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Clock, text: 'Finding a mechanic for you…' }
-          return (
-            <div className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl font-bold text-sm mb-5 ${sb.cls}`}>
-              <sb.Icon className="h-5 w-5 shrink-0" /> <span>{sb.text}</span>
-            </div>
-          )
-        })()}
+        {/* statbar */}
+        <div className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl font-bold text-sm mb-5 ${sb.cls}`}>
+          <sb.Icon className="h-5 w-5 shrink-0" /> <span>{sb.text}</span>
+        </div>
 
-        {/* ── Track live location CTA (claude-design .track-cta) ── */}
+        {/* track live location CTA */}
         {(status === 'on_way' || status === 'assigned' || status === 'accepted') && request._id && (
           <button
             onClick={() => router.push(`/service/${request._id}/track`)}
@@ -406,647 +398,275 @@ export function ServiceDetailPage() {
             <span className="h-[42px] w-[42px] rounded-xl bg-white/[0.16] flex items-center justify-center shrink-0"><Navigation className="h-5 w-5" /></span>
             <span className="flex-1 text-left flex flex-col gap-0.5">
               <b className="text-[15px] font-bold">Track live location</b>
-              <span className="text-[12.5px] text-white/70">{mechanicName ? `${mechanicName.split(' ')[0]} is on the way` : 'See your mechanic on the map'}</span>
+              <span className="text-[12.5px] text-white/70">{mechanicName ? `${mechFirst} is on the way` : 'See your mechanic on the map'}</span>
             </span>
             <ChevronRight className="h-5 w-5 opacity-80 shrink-0" />
           </button>
         )}
 
-        {/* ── Status Timeline ── */}
-        {!isCancelled && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-[#1B3B6F]" /> Status Timeline
-            </h3>
-            <div className="flex items-start justify-between relative">
-              {STATUS_STEPS.map((step, idx) => {
-                const isActive = currentStepIdx >= idx
-                const isCurrent = currentStepIdx === idx
-                const stepCfg = STATUS_CONFIG[step] || STATUS_CONFIG.pending
-                return (
-                  <div key={step} className="flex flex-col items-center flex-1 relative z-10">
-                    <div
-                      className={`h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                        isCurrent
-                          ? `${stepCfg.dot} border-[#FF6B35] ring-2 ring-[#FF6B35]/30 text-white`
-                          : isActive
-                            ? `${stepCfg.dot} border-transparent text-white`
-                            : 'bg-gray-100 border-gray-200 text-gray-400'
-                      }`}
-                    >
-                      {isActive && idx <= currentStepIdx ? (
-                        <CheckCircle className="h-4 w-4" />
-                      ) : (
-                        <span className="text-xs font-bold">{idx + 1}</span>
-                      )}
-                    </div>
-                    <p className={`text-[10px] sm:text-xs mt-1.5 text-center leading-tight ${
-                      isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
-                    }`}>
-                      {stepCfg.label.split(' ').slice(0, 2).join(' ')}
-                    </p>
-                    {/* Connecting line */}
-                    {idx < STATUS_STEPS.length - 1 && (
-                      <div
-                        className={`absolute top-4 left-[calc(50%+16px)] h-0.5 transition-colors ${
-                          currentStepIdx > idx ? 'bg-green-400' : 'bg-gray-200'
-                        }`}
-                        style={{ width: 'calc(100% - 32px)' }}
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Cancelled banner */}
-        {isCancelled && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 flex items-start gap-3">
-            <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-red-700">Request Cancelled</p>
-              {request.cancellationReason && (
-                <p className="text-sm text-red-600 mt-1">Reason: {request.cancellationReason}</p>
-              )}
-              {request.cancelledBy && (
-                <p className="text-xs text-red-500 mt-1">Cancelled by: {request.cancelledBy}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Completion OTP Banner ── */}
+        {/* completion OTP banner */}
         {isInProgress && request.completionOtp && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
             <div className="flex items-start gap-3 mb-3">
-              <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <Shield className="h-5 w-5 text-amber-600" />
-              </div>
+              <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0"><Shield className="h-5 w-5 text-amber-600" /></div>
               <div>
                 <h4 className="text-sm font-bold text-amber-800">Completion OTP</h4>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  Share this code with the mechanic to confirm service completion
-                </p>
+                <p className="text-xs text-amber-600 mt-0.5">Share this code with the mechanic to confirm service completion</p>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              {request.completionOtp.split('').map((digit: string, idx: number) => (
-                <div
-                  key={idx}
-                  className="h-12 w-12 rounded-lg bg-white border-2 border-amber-300 flex items-center justify-center"
-                >
+            <div className="flex items-center justify-center gap-2">
+              {String(request.completionOtp).split('').map((digit: string, idx: number) => (
+                <div key={idx} className="h-12 w-12 rounded-lg bg-white border-2 border-amber-300 flex items-center justify-center">
                   <span className="text-xl font-bold text-amber-800">{digit}</span>
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-2 bg-amber-100 rounded-lg px-3 py-2">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-700 shrink-0" />
-              <p className="text-xs text-amber-700">
-                Only share this OTP when you are satisfied with the service
-              </p>
+          </div>
+        )}
+
+        {/* cancelled banner */}
+        {isCancelled && request.cancellationReason && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 flex items-start gap-3">
+            <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-700">Request cancelled</p>
+              <p className="text-sm text-red-600 mt-1">Reason: {request.cancellationReason}</p>
             </div>
           </div>
         )}
 
-        {/* ── Service Info Card ── */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-          <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-            <Wrench className="h-4 w-4 text-[#1B3B6F]" /> Service Information
-          </h3>
-
-          <div className="space-y-3">
-            {/* Service type */}
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <div className="h-10 w-10 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center">
-                <ServiceTypeIcon className="h-5 w-5 text-[#1B3B6F]" />
+        {/* ── det-grid ── */}
+        <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
+          {/* LEFT */}
+          <div className="space-y-4">
+            {/* mech-card */}
+            {mechanicName && (
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl p-4 flex items-center gap-3.5 shadow-sm">
+                <div className="h-[54px] w-[54px] rounded-[14px] bg-[#1B3B6F] flex items-center justify-center text-white font-extrabold text-lg shrink-0">
+                  {mechanicName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <b className="text-[15px] font-extrabold text-[#13203A] flex items-center gap-1.5">
+                    <span className="truncate">{mechanicName}</span>
+                    <Shield className="h-3.5 w-3.5 text-[#15936B] shrink-0" />
+                  </b>
+                  <span className="text-[12.5px] text-[#475569]">
+                    {mechanic?.specialization || mechanic?.user?.specialization || 'Verified mechanic'}
+                    {(mechanic?.rating || mechanic?.user?.rating) ? ` · ★ ${mechanic.rating || mechanic.user?.rating}` : ''}
+                  </span>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => toast('Chat opens in the app · your number stays private')} className="h-[42px] w-[42px] rounded-xl border-[1.5px] border-[#E7ECF3] bg-white text-[#1B3B6F] flex items-center justify-center hover:bg-gray-50 transition-colors"><MessageCircle className="h-[19px] w-[19px]" /></button>
+                  <button onClick={() => setShowCall(true)} className="h-[42px] w-[42px] rounded-xl bg-[#15936B] hover:bg-[#127a59] text-white flex items-center justify-center transition-colors"><Phone className="h-[19px] w-[19px]" /></button>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">{serviceTypeInfo.label}</p>
-                {serviceTypeInfo.desc && (
-                  <p className="text-xs text-muted-foreground">{serviceTypeInfo.desc}</p>
+            )}
+
+            {/* Service timeline (vertical tl) */}
+            {!isCancelled && (
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm p-5">
+                <div className="font-extrabold text-[15px] text-[#13203A] mb-4">Service timeline</div>
+                <div className="pl-1">
+                  {STATUS_STEPS.map((step, idx) => {
+                    const done = currentStepIdx > idx
+                    const now = currentStepIdx === idx
+                    const lbl = TL_LABELS[step]
+                    const time = timeAt(step)
+                    return (
+                      <div key={step} className={`relative pl-9 ${idx < STATUS_STEPS.length - 1 ? 'pb-6' : ''}`}>
+                        {idx < STATUS_STEPS.length - 1 && (
+                          <span className={`absolute left-[9px] top-[22px] -bottom-1 w-0.5 ${done ? 'bg-[#15936B]' : 'bg-[#E7ECF3]'}`} />
+                        )}
+                        <span className={`absolute left-0 top-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center ${done ? 'bg-[#15936B] border-[#15936B]' : now ? 'bg-[#1B3B6F] border-[#1B3B6F] ring-4 ring-[#F2F6FC]' : 'bg-white border-[#E7ECF3]'}`}>
+                          {done && <CheckCircle className="h-3 w-3 text-white" />}
+                        </span>
+                        <div className="flex items-center justify-between gap-2.5">
+                          <b className={`text-[14.5px] font-bold ${done || now ? 'text-[#13203A]' : 'text-[#7B8AA3]'}`}>{lbl.t}</b>
+                          {time && <time className={`text-[12px] font-bold tabular-nums ${done || now ? 'text-[#1B3B6F]' : 'text-[#7B8AA3]'}`}>{time}</time>}
+                        </div>
+                        <span className="text-[12.5px] text-[#7B8AA3]">{lbl.s.replace('{m}', mechFirst)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Mechanic diagnosis (live) */}
+            {(status === 'in_progress' || status === 'diagnosed' || status === 'quote_pending') && request._id && (
+              <DiagnosisCard requestId={request._id} onStatusChange={fetchRequest} />
+            )}
+          </div>
+
+          {/* RIGHT — aside */}
+          <div className="lg:sticky lg:top-24 space-y-4">
+            {/* summary sumcard */}
+            <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3.5 border-b border-[#EEF1F6] font-extrabold text-[15px] text-[#13203A]">
+                {serviceTypeInfo.label} · <span className="capitalize">{vehicleType}</span>
+              </div>
+              <div className="px-4">
+                <RevLine icon={<VehicleIcon />} label="Vehicle" value={[request.vehicle?.brand, request.vehicle?.model].filter(Boolean).join(' ') || vehicleType} />
+                {issuesText && <RevLine icon={<Wrench />} label="Issues" value={issuesText} />}
+                {request.description && <RevLine icon={<MessageCircle />} label="Notes" value={<span className="font-medium text-[#475569]">{request.description}</span>} />}
+                {(request.preferredDate || request.preferredTimeSlot) && (
+                  <RevLine icon={<Calendar />} label="Schedule" value={`${request.preferredDate ? formatRelativeDate(request.preferredDate) : ''}${request.preferredTimeSlot ? ` · ${request.preferredTimeSlot}` : ''}`} />
+                )}
+                <RevLine icon={<MapPin />} label="Address" value={addressText} last />
+              </div>
+            </div>
+
+            {/* fare sumcard */}
+            <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3.5 border-b border-[#EEF1F6] font-extrabold text-[15px] text-[#13203A]">Fare</div>
+              <div className="px-4 py-4">
+                {estimatedCost > 0 && (
+                  <div className="flex items-center justify-between text-[13.5px] text-[#475569] mb-2.5"><span>Estimated cost</span><b className="font-bold text-[#13203A]">₹{estimatedCost.toLocaleString('en-IN')}</b></div>
+                )}
+                {laborCost > 0 && (
+                  <div className="flex items-center justify-between text-[13.5px] text-[#475569] mb-2.5"><span>Labour</span><b className="font-bold text-[#13203A]">₹{laborCost.toLocaleString('en-IN')}</b></div>
+                )}
+                {partsCost > 0 && (
+                  <div className="flex items-center justify-between text-[13.5px] text-[#475569] mb-2.5"><span>Parts</span><b className="font-bold text-[#13203A]">₹{partsCost.toLocaleString('en-IN')}</b></div>
+                )}
+                {emergencyCharges > 0 && (
+                  <div className="flex items-center justify-between text-[13.5px] text-[#475569] mb-2.5"><span>Emergency surcharge</span><b className="font-bold text-[#13203A]">₹{emergencyCharges.toLocaleString('en-IN')}</b></div>
+                )}
+                {grandTotal > 0 ? (
+                  <div className="flex items-center justify-between border-t border-dashed border-[#E7ECF3] mt-1.5 pt-3 text-[17px] font-extrabold text-[#13203A]">
+                    <span>Total</span><b className="text-[22px] text-[#1B3B6F]">₹{grandTotal.toLocaleString('en-IN')}</b>
+                  </div>
+                ) : (
+                  <p className="text-[13px] text-[#7B8AA3]">Cost is confirmed by the mechanic after on-site inspection.</p>
+                )}
+                {paymentMethod && (
+                  <div className="mt-3 pt-3 border-t border-[#EEF1F6] space-y-2">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-[#7B8AA3]">Payment</span>
+                      <span className="font-semibold text-[#13203A] inline-flex items-center gap-1">
+                        {paymentMethod === 'online' ? <CreditCard className="h-3.5 w-3.5" /> : <Banknote className="h-3.5 w-3.5" />}
+                        {paymentMethod === 'online' ? 'Online' : 'Cash on Delivery'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-[#7B8AA3]">Status</span>
+                      <Badge className={`${paymentStatusCfg.bg} ${paymentStatusCfg.color} border-none text-[11px]`}>{paymentStatusCfg.label}</Badge>
+                    </div>
+                  </div>
+                )}
+                {paymentMethod === 'cod' && !isCompleted && !isCancelled && (
+                  <div className="mt-3 flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-700">Keep cash ready to pay the mechanic when service is done</p>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Vehicle */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Vehicle Type</span>
-              <div className="flex items-center gap-2">
-                <VehicleIcon className="h-4 w-4 text-[#1B3B6F]" />
-                <span className="text-sm font-medium capitalize">{vehicleType}</span>
-              </div>
-            </div>
-
-            {/* Vehicle brand / model */}
-            {(request.vehicle?.brand || request.vehicle?.model) && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Vehicle</span>
-                <span className="text-sm font-medium">
-                  {[request.vehicle?.brand, request.vehicle?.model, request.vehicle?.year]
-                    .filter(Boolean)
-                    .join(' ')}
-                </span>
-              </div>
-            )}
-
-            {/* Registration */}
-            {request.vehicle?.registrationNumber && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Reg. Number</span>
-                <span className="text-sm font-medium">{request.vehicle.registrationNumber}</span>
-              </div>
-            )}
-
-            {/* Category */}
-            {request.serviceCategory && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Category</span>
-                <span className="text-sm font-medium">{request.serviceCategory}</span>
-              </div>
-            )}
-
-            {/* Description */}
-            {request.description && (
-              <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs text-muted-foreground mb-1">Description</p>
-                <p className="text-sm text-foreground">{request.description}</p>
-              </div>
-            )}
-
-            {/* Issues */}
-            {request.issues && request.issues.length > 0 && (
-              <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs text-muted-foreground mb-2">Reported Issues</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {request.issues.map((issue: string, idx: number) => (
-                    <Badge key={idx} variant="secondary" className="text-xs bg-gray-100 text-gray-700">
-                      {issue}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Schedule */}
-            <div className="pt-2 border-t border-gray-100 space-y-2">
-              {request.preferredDate && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" /> Preferred Date
-                  </span>
-                  <span className="text-sm font-medium">{formatRelativeDate(request.preferredDate)}</span>
-                </div>
-              )}
-              {request.preferredTimeSlot && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5" /> Preferred Time
-                  </span>
-                  <span className="text-sm font-medium">{request.preferredTimeSlot}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Priority */}
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-              <span className="text-sm text-muted-foreground">Priority</span>
-              <Badge className={`${priorityCfg.bg} ${priorityCfg.color} border-none text-xs`}>
-                {(request.priority || 'normal').toUpperCase()}
-              </Badge>
-            </div>
-
-            {/* Emergency */}
-            {request.isEmergency && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Emergency</span>
-                <Badge className="bg-red-100 text-red-700 border-none text-xs">
-                  <AlertTriangle className="h-3 w-3 mr-1" /> YES
-                </Badge>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Location Card ── */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-[#1B3B6F]" /> Service Location
-          </h3>
-          <p className="text-sm text-foreground font-medium">
-            {location.address || request.address || 'Location not available'}
-          </p>
-          {location.landmark && (
-            <div className="flex items-center gap-1.5 mt-2">
-              <Navigation className="h-3.5 w-3.5 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Landmark: {location.landmark}</p>
-            </div>
-          )}
-          {(location.city || location.state || location.pincode) && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {[location.city, location.state, location.pincode].filter(Boolean).join(', ')}
-            </p>
-          )}
-        </div>
-
-        {/* ── Pricing Card ── */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-            <IndianRupee className="h-4 w-4 text-[#1B3B6F]" /> Pricing & Payment
-          </h3>
-
-          {hasPricing ? (
-            <div className="space-y-2">
-              {estimatedCost > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Estimated Cost</span>
-                  <span className="font-medium">
-                    {'\u20B9'}{estimatedCost.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              )}
-              {laborCost > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Labor Cost</span>
-                  <span className="font-medium">
-                    {'\u20B9'}{laborCost.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              )}
-              {partsCost > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Parts Cost</span>
-                  <span className="font-medium">
-                    {'\u20B9'}{partsCost.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              )}
-              {emergencyCharges > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Emergency Charges</span>
-                  <span className="font-medium text-red-600">
-                    {'\u20B9'}{emergencyCharges.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              )}
-              {totalCost > 0 && (
-                <>
-                  <hr className="my-2 border-gray-100" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-foreground">Total Cost</span>
-                    <span className="text-base font-bold text-[#1B3B6F]">
-                      {'\u20B9'}{totalCost.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Cost will be updated by the mechanic after inspection
-            </p>
-          )}
-
-          {/* Payment method & status */}
-          {paymentMethod && (
-            <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Payment Method</span>
-                <Badge className={`border-none text-xs ${
-                  paymentMethod === 'online'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {paymentMethod === 'online' ? (
-                    <><CreditCard className="h-3 w-3 mr-1" /> Online</>
-                  ) : (
-                    <><Banknote className="h-3 w-3 mr-1" /> Cash on Delivery</>
-                  )}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Payment Status</span>
-                <Badge className={`${paymentStatusCfg.bg} ${paymentStatusCfg.color} border-none text-xs`}>
-                  {paymentStatusCfg.label}
-                </Badge>
-              </div>
-            </div>
-          )}
-
-          {/* COD reminder */}
-          {paymentMethod === 'cod' && !isCompleted && !isCancelled && (
-            <div className="mt-3 flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-              <p className="text-xs text-amber-700">
-                Keep cash ready to pay the mechanic when service is done
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Mechanic Card (claude-design .mech-card) ── */}
-        {mechanicName && (
-          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex items-center gap-3.5 shadow-sm">
-            <div className="h-[54px] w-[54px] rounded-[14px] bg-[#1B3B6F] flex items-center justify-center text-white font-extrabold text-lg shrink-0">
-              {mechanicName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <b className="text-[15px] font-extrabold text-[#13203A] flex items-center gap-1.5">
-                <span className="truncate">{mechanicName}</span>
-                <Shield className="h-3.5 w-3.5 text-[#15936B] shrink-0" />
-              </b>
-              <span className="text-[12.5px] text-[#475569]">
-                {mechanic?.specialization || mechanic?.user?.specialization || 'Verified mechanic'}
-                {(mechanic?.rating || mechanic?.user?.rating) ? ` · ★ ${(mechanic.rating || mechanic.user?.rating).toFixed?.(1) || mechanic.rating}` : ''}
-              </span>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => toast('Chat opens in the app · your number stays private')}
-                className="h-[42px] w-[42px] rounded-xl border-[1.5px] border-[#E7ECF3] bg-white text-[#1B3B6F] flex items-center justify-center hover:bg-gray-50 transition-colors"
-              >
-                <MessageCircle className="h-[19px] w-[19px]" />
-              </button>
-              <button
-                onClick={() => setShowCall(true)}
-                className="h-[42px] w-[42px] rounded-xl bg-[#15936B] hover:bg-[#127a59] text-white flex items-center justify-center transition-colors"
-              >
-                <Phone className="h-[19px] w-[19px]" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Status History / Timeline ── */}
-        {request.timeline && request.timeline.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-[#1B3B6F]" /> Status History
-            </h3>
-            <div className="space-y-0">
-              {request.timeline.map((entry: any, idx: number) => {
-                const entryCfg = STATUS_CONFIG[entry.status] || STATUS_CONFIG.pending
-                const isLast = idx === request.timeline.length - 1
-                return (
-                  <div key={idx} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`h-3 w-3 rounded-full ${entryCfg.dot} shrink-0 mt-1`} />
-                      {!isLast && <div className="w-0.5 flex-1 bg-gray-200 mt-1" />}
+            {/* feedback (completed) OR actions */}
+            {isCompleted ? (
+              <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm p-5">
+                <h3 className="text-sm font-extrabold text-[#13203A] mb-3 flex items-center gap-2"><Star className="h-4 w-4 text-[#F5A623]" /> Service feedback</h3>
+                {hasFeedback ? (
+                  <div>
+                    <div className="flex items-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} className={`h-5 w-5 ${star <= (request.customerRating || request.feedback?.rating || 0) ? 'text-[#F5A623] fill-[#F5A623]' : 'text-gray-300'}`} />
+                      ))}
                     </div>
-                    <div className={`pb-4 ${isLast ? 'pb-0' : ''}`}>
-                      <p className="text-sm font-medium text-foreground">{entryCfg.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFullDate(entry.timestamp || entry.changedAt)}
-                      </p>
-                      {entry.note && (
-                        <p className="text-xs text-muted-foreground mt-0.5 italic">{entry.note}</p>
-                      )}
-                    </div>
+                    {(request.customerReview || request.feedback?.review) && (
+                      <p className="text-sm text-[#475569] bg-[#F6F8FB] rounded-lg p-3 mt-2 italic">“{request.customerReview || request.feedback?.review}”</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2"><CheckCircle className="h-4 w-4 text-[#15936B]" /><p className="text-xs text-[#15936B] font-medium">Thanks for your feedback!</p></div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── Feedback Section (Completed only) ── */}
-        {isCompleted && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-            <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <Star className="h-4 w-4 text-amber-500" /> Service Feedback
-            </h3>
-
-            {hasFeedback ? (
-              <div>
-                {/* Show existing rating */}
-                <div className="flex items-center gap-1 mb-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`h-5 w-5 ${
-                        star <= (request.customerRating || request.feedback?.rating || 0)
-                          ? 'text-amber-400 fill-amber-400'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                  <span className="text-sm font-medium text-muted-foreground ml-2">
-                    {request.customerRating || request.feedback?.rating || 0}/5
-                  </span>
-                </div>
-                {(request.customerReview || request.feedback?.review) && (
-                  <p className="text-sm text-foreground bg-gray-50 rounded-lg p-3 mt-2">
-                    {request.customerReview || request.feedback?.review}
-                  </p>
+                ) : (
+                  <div>
+                    <p className="text-sm text-[#7B8AA3] mb-3">How was your experience?</p>
+                    <div className="flex items-center gap-1 mb-3">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button key={star} onClick={() => setFeedbackRating(star)} className="p-0.5 transition-transform hover:scale-110">
+                          <Star className={`h-8 w-8 transition-colors ${star <= feedbackRating ? 'text-[#F5A623] fill-[#F5A623]' : 'text-gray-300 hover:text-amber-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+                    <Textarea value={feedbackReview} onChange={(e) => setFeedbackReview(e.target.value)} placeholder="Share your experience (optional)…" rows={3} className="mb-3" />
+                    <Button onClick={handleSubmitFeedback} disabled={feedbackRating === 0 || submittingFeedback} className="w-full bg-[#1B3B6F] hover:bg-[#152d55]">
+                      {submittingFeedback ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Star className="h-4 w-4 mr-2" />} Submit feedback
+                    </Button>
+                  </div>
                 )}
-                <div className="flex items-center gap-2 mt-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <p className="text-xs text-green-600 font-medium">Feedback submitted</p>
-                </div>
               </div>
             ) : (
-              <div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  How was your experience? Rate the service below.
-                </p>
-
-                {/* Star rating input */}
-                <div className="flex items-center gap-1 mb-3">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      onClick={() => setFeedbackRating(star)}
-                      className="p-0.5 transition-transform hover:scale-110"
-                    >
-                      <Star
-                        className={`h-8 w-8 transition-colors ${
-                          star <= feedbackRating
-                            ? 'text-amber-400 fill-amber-400'
-                            : 'text-gray-300 hover:text-amber-300'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                  {feedbackRating > 0 && (
-                    <span className="text-sm font-medium text-amber-600 ml-2">
-                      {feedbackRating}/5
-                    </span>
+              (canReschedule || canCancel || mechanicName) && (
+                <div className="flex flex-col gap-2.5">
+                  {mechanicName && (
+                    <Button variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 justify-center h-11" onClick={() => setShowCall(true)}>
+                      <Phone className="h-4 w-4 mr-2" /> Call mechanic
+                    </Button>
+                  )}
+                  {canReschedule && (
+                    <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50 justify-center h-11"><CalendarClock className="h-4 w-4 mr-2" /> Reschedule</Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader><DialogTitle>Reschedule service</DialogTitle></DialogHeader>
+                        <div className="space-y-4 pt-2">
+                          <div>
+                            <Label htmlFor="reschedule-date">New date *</Label>
+                            <Input id="reschedule-date" type="date" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)} min={todayStr} className="mt-1" />
+                          </div>
+                          <div>
+                            <Label>Preferred time</Label>
+                            <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
+                              <SelectTrigger className="mt-1"><SelectValue placeholder="Select time slot" /></SelectTrigger>
+                              <SelectContent>{TIME_SLOTS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <Button variant="outline" onClick={() => setRescheduleOpen(false)} className="flex-1">Cancel</Button>
+                            <Button onClick={handleReschedule} disabled={!rescheduleDate || rescheduling} className="flex-1 bg-[#1B3B6F] hover:bg-[#152d55]">
+                              {rescheduling ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CalendarClock className="h-4 w-4 mr-2" />} Reschedule
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                  {canCancel && (
+                    <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 justify-center h-11"><XCircle className="h-4 w-4 mr-2" /> Cancel booking</Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader><DialogTitle>Cancel service request</DialogTitle></DialogHeader>
+                        <div className="space-y-4 pt-2">
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                            <p className="text-sm text-red-700">Are you sure you want to cancel this service request? This action cannot be undone.</p>
+                          </div>
+                          <div>
+                            <Label htmlFor="cancel-reason">Reason (optional)</Label>
+                            <Textarea id="cancel-reason" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Tell us why you want to cancel…" rows={3} className="mt-1" />
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <Button variant="outline" onClick={() => setCancelOpen(false)} className="flex-1">Keep request</Button>
+                            <Button onClick={handleCancel} disabled={cancelling} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+                              {cancelling ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />} Yes, cancel
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </div>
-
-                {/* Review text */}
-                <Textarea
-                  value={feedbackReview}
-                  onChange={(e) => setFeedbackReview(e.target.value)}
-                  placeholder="Share your experience (optional)..."
-                  rows={3}
-                  className="mb-3"
-                />
-
-                <Button
-                  onClick={handleSubmitFeedback}
-                  disabled={feedbackRating === 0 || submittingFeedback}
-                  className="w-full bg-[#1B3B6F] hover:bg-[#152d55]"
-                >
-                  {submittingFeedback ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Star className="h-4 w-4 mr-2" />
-                  )}
-                  Submit Feedback
-                </Button>
-              </div>
+              )
             )}
           </div>
-        )}
-
-        {/* Live tracking is now surfaced via the navy "Track live location" CTA near the top */}
-
-        {/* ── Mechanic Diagnosis ── */}
-        {(status === 'in_progress' || status === 'diagnosed' || status === 'quote_pending') && request._id && (
-          <div className="mb-4">
-            <DiagnosisCard requestId={request._id} onStatusChange={fetchRequest} />
-          </div>
-        )}
-
-        {/* ── Action Buttons ── */}
-        {(canCancel || canReschedule || mechanicPhone) && (
-          <div className="flex flex-wrap gap-3 mb-4">
-            {/* Call Mechanic — opens the full-screen call screen */}
-            {mechanicName && (
-              <Button
-                variant="outline"
-                className="border-green-300 text-green-700 hover:bg-green-50"
-                onClick={() => setShowCall(true)}
-              >
-                <Phone className="h-4 w-4 mr-2" /> Call Mechanic
-              </Button>
-            )}
-
-            {/* Reschedule */}
-            {canReschedule && (
-              <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                    <CalendarClock className="h-4 w-4 mr-2" /> Reschedule
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Reschedule Service</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 pt-2">
-                    <div>
-                      <Label htmlFor="reschedule-date">New Date *</Label>
-                      <Input
-                        id="reschedule-date"
-                        type="date"
-                        value={rescheduleDate}
-                        onChange={(e) => setRescheduleDate(e.target.value)}
-                        min={todayStr}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label>Preferred Time</Label>
-                      <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select time slot" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIME_SLOTS.map((t) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setRescheduleOpen(false)}
-                        className="flex-1"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleReschedule}
-                        disabled={!rescheduleDate || rescheduling}
-                        className="flex-1 bg-[#1B3B6F] hover:bg-[#152d55]"
-                      >
-                        {rescheduling ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <CalendarClock className="h-4 w-4 mr-2" />
-                        )}
-                        Reschedule
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Cancel */}
-            {canCancel && (
-              <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
-                    <XCircle className="h-4 w-4 mr-2" /> Cancel Request
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Cancel Service Request</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 pt-2">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                      <p className="text-sm text-red-700">
-                        Are you sure you want to cancel this service request? This action cannot be undone.
-                      </p>
-                    </div>
-                    <div>
-                      <Label htmlFor="cancel-reason">Reason (optional)</Label>
-                      <Textarea
-                        id="cancel-reason"
-                        value={cancelReason}
-                        onChange={(e) => setCancelReason(e.target.value)}
-                        placeholder="Tell us why you want to cancel..."
-                        rows={3}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setCancelOpen(false)}
-                        className="flex-1"
-                      >
-                        Keep Request
-                      </Button>
-                      <Button
-                        onClick={handleCancel}
-                        disabled={cancelling}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        {cancelling ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <XCircle className="h-4 w-4 mr-2" />
-                        )}
-                        Yes, Cancel
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* ── Full-screen call screen (claude-design openCall) ── */}
+      {/* Full-screen call screen */}
       {showCall && mechanicName && (
         <CallScreen
           name={mechanicName}
