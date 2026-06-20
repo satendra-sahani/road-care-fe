@@ -75,7 +75,7 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
   const inp = 'w-full h-11 border border-[#E7ECF3] rounded-xl px-3.5 text-sm bg-[#F6F8FB] focus:outline-none focus:border-[#1B3B6F] focus:bg-white'
 
   return (
-    <div className="fixed inset-0 z-[90] bg-[#0F2547]/55 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[90] bg-[#0F2547]/30 backdrop-blur-md flex items-center justify-center p-4" onClick={onClose}>
       <div id="firebase-recaptcha-container" />
       <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="relative px-6 pt-6 pb-4 text-center border-b border-[#EFF2F7]">
