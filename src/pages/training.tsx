@@ -15,12 +15,12 @@ interface Course {
 }
 
 const COURSES: Course[] = [
-  { name: 'Two-Wheeler Basics', level: 'Beginner', desc: 'Learn bike servicing from scratch — engine, brakes, chain & electricals.', weeks: '4 weeks', lessons: '24 lessons', price: 1999, mrp: 2999, icon: Wrench, grad: 'from-[#1B3B6F] to-[#2A5298]', rating: '4.8', enrolled: '3.2k', tag: 'best' },
-  { name: 'Advanced Car Diagnostics', level: 'Advanced', desc: 'Master OBD scanners, ECU diagnostics, and modern car repair techniques.', weeks: '8 weeks', lessons: '42 lessons', price: 4999, mrp: 7499, icon: Cpu, grad: 'from-[#7C3AED] to-[#9F67F0]', rating: '4.9', enrolled: '1.8k', tag: 'best' },
-  { name: 'AC & Electrical Specialist', level: 'Intermediate', desc: 'Become an AC and auto-electrical expert with hands-on practicals.', weeks: '6 weeks', lessons: '32 lessons', price: 3499, mrp: 4999, icon: Snowflake, grad: 'from-[#2563EB] to-[#5B8DEF]', rating: '4.7', enrolled: '2.4k', tag: '' },
-  { name: 'Denting & Painting Pro', level: 'Intermediate', desc: 'Showroom-finish dent removal, painting, and panel-beating skills.', weeks: '5 weeks', lessons: '28 lessons', price: 3999, mrp: 5499, icon: Paintbrush, grad: 'from-[#D97706] to-[#F4B860]', rating: '4.6', enrolled: '1.5k', tag: '' },
-  { name: 'EV Maintenance', level: 'Advanced', desc: 'Future-ready training on electric vehicle batteries, motors & safety.', weeks: '7 weeks', lessons: '36 lessons', price: 5499, mrp: 7999, icon: Zap, grad: 'from-[#15936B] to-[#34C796]', rating: '4.9', enrolled: '940', tag: 'new' },
-  { name: 'Customer Service & Soft Skills', level: 'Beginner', desc: 'Professional conduct, communication, and building lasting trust.', weeks: '2 weeks', lessons: '12 lessons', price: 999, mrp: 1499, icon: Star, grad: 'from-[#FF6B35] to-[#F2541B]', rating: '4.8', enrolled: '4.1k', tag: '' },
+  { name: 'Two-Wheeler Basics', level: 'Beginner', desc: 'Learn bike servicing from scratch — engine, brakes, chain & electricals.', weeks: '4 weeks', lessons: '24 lessons', price: 6999, mrp: 10999, icon: Wrench, grad: 'from-[#1B3B6F] to-[#2A5298]', rating: '4.8', enrolled: '3.2k', tag: 'best' },
+  { name: 'Advanced Car Diagnostics', level: 'Advanced', desc: 'Master OBD scanners, ECU diagnostics, and modern car repair techniques.', weeks: '8 weeks', lessons: '42 lessons', price: 18999, mrp: 27999, icon: Cpu, grad: 'from-[#7C3AED] to-[#9F67F0]', rating: '4.9', enrolled: '1.8k', tag: 'best' },
+  { name: 'AC & Electrical Specialist', level: 'Intermediate', desc: 'Become an AC and auto-electrical expert with hands-on practicals.', weeks: '6 weeks', lessons: '32 lessons', price: 12999, mrp: 18999, icon: Snowflake, grad: 'from-[#2563EB] to-[#5B8DEF]', rating: '4.7', enrolled: '2.4k', tag: '' },
+  { name: 'Denting & Painting Pro', level: 'Intermediate', desc: 'Showroom-finish dent removal, painting, and panel-beating skills.', weeks: '5 weeks', lessons: '28 lessons', price: 13999, mrp: 20999, icon: Paintbrush, grad: 'from-[#D97706] to-[#F4B860]', rating: '4.6', enrolled: '1.5k', tag: '' },
+  { name: 'EV Maintenance', level: 'Advanced', desc: 'Future-ready training on electric vehicle batteries, motors & safety.', weeks: '7 weeks', lessons: '36 lessons', price: 21999, mrp: 31999, icon: Zap, grad: 'from-[#15936B] to-[#34C796]', rating: '4.9', enrolled: '940', tag: 'new' },
+  { name: 'Customer Service & Soft Skills', level: 'Beginner', desc: 'Professional conduct, communication, and building lasting trust.', weeks: '2 weeks', lessons: '12 lessons', price: 4999, mrp: 7499, icon: Star, grad: 'from-[#FF6B35] to-[#F2541B]', rating: '4.8', enrolled: '4.1k', tag: '' },
 ]
 
 const LEVELS = ['all', 'Beginner', 'Intermediate', 'Advanced']
@@ -63,7 +63,7 @@ export default function TrainingPage() {
 
   return (
     <>
-      <SEOHead title="Training & Certification" description="Bharat Mechanics Academy — industry-recognised mechanic training and certification, online and hands-on." noIndex />
+      <SEOHead title="Training & Certification" description="Bharat Mechanics Academy — official Bharat Mechanics mechanic training and certification, online and hands-on. Certified by Bharat Mechanics." noIndex />
       <UserLayout>
         <div className="bg-white">
           {/* HERO + CERTIFICATE */}
@@ -73,7 +73,7 @@ export default function TrainingPage() {
               <div>
                 <span className="inline-flex items-center gap-1.5 bg-[#7C3AED]/25 text-[#C4B5FD] ring-1 ring-[#7C3AED]/40 rounded-full px-3 py-1 text-xs font-bold mb-4">🎓 Bharat Mechanics Academy</span>
                 <h1 className="text-3xl md:text-5xl font-extrabold leading-[1.08]">Learn the skills. Earn the <span className="text-[#FF6B35]">certificate.</span></h1>
-                <p className="mt-4 text-[#c8d4e8] text-base md:text-lg max-w-lg">Industry-recognised mechanic training — online and hands-on. Get certified, get verified, and earn more on the platform.</p>
+                <p className="mt-4 text-[#c8d4e8] text-base md:text-lg max-w-lg">Official Bharat Mechanics training &mdash; online and hands-on. Earn a <b className="text-white">Bharat Mechanics certificate</b>, get verified, and earn more on the platform.</p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <a href="#courses" className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors">Explore courses <ArrowRight className="h-4 w-4" /></a>
                   <Link href="/become-mechanic" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors">Become a partner</Link>
