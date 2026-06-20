@@ -1376,7 +1376,7 @@ export default function HomePage() {
                 title="Become a Mechanic"
                 desc="Get verified service requests, fixed payouts, and grow your customer base."
                 cta="Apply now"
-                href="/login?role=mechanic"
+                href="/become-mechanic"
                 gradient="from-[#1B3B6F] via-[#1B3B6F] to-[#0F2545]"
                 accent="#FF6B35"
               />
@@ -1385,7 +1385,7 @@ export default function HomePage() {
                 title="List Your Shop"
                 desc="Sell genuine parts to thousands of customers across India with zero setup fees."
                 cta="Partner with us"
-                href="/shop-partner"
+                href="/list-your-shop"
                 gradient="from-[#FF6B35] via-[#F25C2A] to-[#E94E20]"
                 accent="#FFFFFF"
               />
