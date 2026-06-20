@@ -529,42 +529,40 @@ export default function HomePage() {
               href="/ai-booking"
               className="group/ai relative block overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-r from-[#0F2545] via-[#1B3B6F] to-[#1B3B6F] shadow-elevated ring-1 ring-white/[0.08] transition-all duration-300 hover:shadow-glow-navy"
             >
-              {/* Soft accent halos */}
-              <div className="pointer-events-none absolute -right-16 -top-16 w-64 h-64 bg-[#FF6B35]/25 rounded-full blur-3xl" />
-              <div className="pointer-events-none absolute -left-12 -bottom-16 w-56 h-56 bg-[#FF6B35]/10 rounded-full blur-3xl" />
+              {/* Soft accent halo — single, subtle */}
+              <div className="pointer-events-none absolute -right-10 -top-14 w-44 h-44 bg-[#FF6B35]/15 rounded-full blur-3xl" />
               {/* Top hairline */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-              <div className="relative flex items-center gap-3 md:gap-5 px-4 py-4 md:px-7 md:py-5 lg:px-9 lg:py-6">
+              <div className="relative flex items-center gap-3 md:gap-4 px-4 py-2.5 md:px-6 md:py-3 lg:px-7">
                 {/* Mic with live pulse */}
                 <div className="relative shrink-0">
-                  <span className="absolute inset-0 rounded-full bg-[#FF6B35]/40 blur-xl animate-pulse" aria-hidden />
-                  <div className="relative h-11 w-11 md:h-14 md:w-14 lg:h-16 lg:w-16 rounded-full bg-gradient-to-br from-[#FF8A5C] to-[#FF6B35] flex items-center justify-center ring-2 ring-white/20 shadow-glow-accent">
-                    <Mic className="h-5 w-5 md:h-6 md:w-6 lg:h-7 lg:w-7 text-white" strokeWidth={2.4} />
+                  <span className="absolute inset-0 rounded-full bg-[#FF6B35]/30 blur-lg animate-pulse" aria-hidden />
+                  <div className="relative h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-[#FF8A5C] to-[#FF6B35] flex items-center justify-center ring-2 ring-white/20">
+                    <Mic className="h-4 w-4 md:h-[18px] md:w-[18px] text-white" strokeWidth={2.4} />
                   </div>
                   {/* Live dot */}
-                  <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400 ring-2 ring-[#0F2545]" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0F2545]" />
                   </span>
                 </div>
 
-                {/* Copy */}
+                {/* Copy — single tight line + inline eyebrow */}
                 <div className="flex-1 min-w-0 font-display">
-                  <p className="inline-flex items-center gap-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF8A5C] mb-0.5 md:mb-1 font-sans">
-                    <Sparkles className="h-3 w-3 text-[#FF6B35]" />
-                    New · AI Powered · हिंदी में बोलें
-                  </p>
-                  <p className="text-base md:text-xl lg:text-2xl font-bold tracking-[-0.025em] text-white leading-tight">
+                  <p className="text-[14px] md:text-[17px] font-bold tracking-[-0.02em] text-white leading-tight flex items-center gap-2">
                     Try AI Voice Booking
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[8.5px] md:text-[9px] font-bold uppercase tracking-[0.14em] text-[#FF8A5C] bg-[#FF6B35]/10 rounded-full px-2 py-0.5 font-sans">
+                      <Sparkles className="h-2.5 w-2.5" /> New
+                    </span>
                   </p>
-                  <p className="text-[11px] md:text-sm lg:text-[15px] text-white/70 font-medium mt-1 truncate font-sans">
-                    Baat karein, booking ho jayegi! · Service in Hindi or English.
+                  <p className="text-[11px] md:text-[12.5px] text-white/60 font-medium mt-0.5 truncate font-sans">
+                    Baat karein, booking ho jayegi! · Hindi or English.
                   </p>
                 </div>
 
                 {/* Animated voice waveform (desktop only) — CSS-only */}
-                <div className="hidden lg:flex items-end gap-[3px] h-10 mr-2" aria-hidden>
+                <div className="hidden lg:flex items-end gap-[3px] h-6 mr-1" aria-hidden>
                   {[0.45, 0.85, 0.6, 1, 0.55, 0.9, 0.5, 0.75].map((h, i) => (
                     <span
                       key={i}
@@ -579,9 +577,9 @@ export default function HomePage() {
                 </div>
 
                 {/* CTA */}
-                <span className="shimmer-sweep relative inline-flex items-center gap-1.5 bg-white text-[#0F2545] hover:bg-[#FF6B35] hover:text-white font-bold px-3.5 py-2 md:px-5 md:py-2.5 lg:px-6 lg:py-3 rounded-full text-[12px] md:text-[14px] shrink-0 shadow-md transition-colors duration-300">
+                <span className="shimmer-sweep relative inline-flex items-center gap-1.5 bg-white text-[#0F2545] hover:bg-[#FF6B35] hover:text-white font-bold px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[12px] md:text-[13px] shrink-0 shadow-md transition-colors duration-300">
                   Try Now
-                  <ArrowRight className="h-3.5 w-3.5 md:h-4 md:w-4 transition-transform duration-300 group-hover/ai:translate-x-1" />
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover/ai:translate-x-1" />
                 </span>
               </div>
             </Link>
