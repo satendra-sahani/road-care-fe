@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSelector } from 'react-redux'
+import { RootState } from '@/store'
 import Link from 'next/link'
 import Image from 'next/image'
 import { SEOHead } from '@/components/SEOHead'
+import { useLoginModal } from '@/components/auth/LoginModalProvider'
+import { Lock } from 'lucide-react'
 import {
   LayoutDashboard, BarChart3, ShoppingBag, Truck, Boxes, Wrench, Users,
   CreditCard, FileText, Settings, Menu, Search, Bell, Check, X,
@@ -81,6 +85,13 @@ const Card = ({ title, link, onLink, children, action }: any) => (
 )
 
 export default function DistributorDashboard() {
+  // Partner access via the same simple phone+OTP login customers use.
+  const { isAuthenticated } = useSelector((s: RootState) => s.customerAuth)
+  const { openLogin } = useLoginModal()
+  useEffect(() => {
+    if (!isAuthenticated) openLogin()
+  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const [view, setView] = useState('dashboard')
   const [orders, setOrders] = useState<Order[]>(INIT_ORDERS)
   const [drawerId, setDrawerId] = useState<string | null>(null)
@@ -308,7 +319,20 @@ export default function DistributorDashboard() {
   return (
     <>
       <SEOHead title="Distributor Dashboard" description="Bharat Mechanics distributor console." noIndex />
-      <div className="min-h-screen bg-[#F6F8FB] flex">
+
+      {/* Login wall — the formatted dashboard shows blurred behind the phone+OTP modal */}
+      {!isAuthenticated && (
+        <div className="fixed inset-0 z-[55] bg-[#0F2547]/20 backdrop-blur-[2px] flex items-center justify-center px-6">
+          <div className="text-center">
+            <div className="h-14 w-14 rounded-2xl bg-white text-[#0D9488] shadow-lg flex items-center justify-center mx-auto mb-4"><Lock className="h-7 w-7" /></div>
+            <h2 className="text-xl font-extrabold text-white drop-shadow">Partner login</h2>
+            <p className="text-sm text-white/85 mt-1.5 max-w-xs mx-auto drop-shadow">Sign in with your registered mobile number to access the distributor dashboard.</p>
+            <button onClick={() => openLogin()} className="mt-5 inline-flex items-center justify-center h-11 px-6 rounded-xl bg-[#0D9488] hover:bg-[#0b7d72] text-white font-bold shadow-lg">Login with mobile number</button>
+          </div>
+        </div>
+      )}
+
+      <div className={`min-h-screen bg-[#F6F8FB] flex ${isAuthenticated ? '' : 'blur-[3px] pointer-events-none select-none'}`}>
         {/* Sidebar */}
         {sbOpen && <div className="lg:hidden fixed inset-0 bg-black/40 z-40" onClick={() => setSbOpen(false)} />}
         <aside className={`fixed lg:sticky top-0 z-50 h-screen w-64 bg-white border-r border-[#E7ECF3] flex flex-col transition-transform ${sbOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
