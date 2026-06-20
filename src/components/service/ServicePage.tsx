@@ -15,6 +15,7 @@ import CallScreen from '@/components/service/CallScreen'
 import RatingFlow from '@/components/service/RatingFlow'
 import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import { toast } from 'sonner'
+import Cookies from 'js-cookie'
 import {
   Wrench, Calendar, Clock, MapPin, Car, Bike, Truck as TruckIcon,
   CheckCircle, AlertCircle, Loader2, ChevronRight, ChevronLeft, Phone, Star, Building2,
@@ -119,7 +120,13 @@ function RevLine({ icon, label, value, last }: { icon: React.ReactNode; label: s
 export function ServicePage() {
   const router = useRouter()
   const { openLogin } = useLoginModal()
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.customerAuth)
+  const { isAuthenticated, user, loading: authLoading } = useSelector((state: RootState) => state.customerAuth)
+
+  // Prompt login automatically when a logged-out user lands on the booking page —
+  // the modal opens over the (blurred) booking page; closing it lets them browse.
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && !Cookies.get('customer_token')) openLogin()
+  }, [authLoading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [activeTab, setActiveTab] = useState<'book' | 'requests'>('book')
 
