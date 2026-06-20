@@ -51,9 +51,12 @@ import {
   FileText,
   CalendarClock,
   Locate,
+  ChevronRight,
+  MessageCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import DiagnosisCard from './DiagnosisCard'
+import CallScreen from './CallScreen'
 
 // ---- Constants ----
 
@@ -159,6 +162,7 @@ export function ServiceDetailPage() {
   const [request, setRequest] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [showCall, setShowCall] = useState(false)
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -370,6 +374,43 @@ export function ServiceDetailPage() {
             {statusCfg.label}
           </Badge>
         </div>
+
+        {/* ── Status bar (claude-design .statbar) ── */}
+        {(() => {
+          const fn = mechanicName ? mechanicName.split(' ')[0] : 'Your mechanic'
+          const sb = isCancelled
+            ? { cls: 'bg-[#fde8e8] text-[#b91c1c]', Icon: XCircle, text: 'This booking was cancelled' }
+            : isCompleted
+              ? { cls: 'bg-[#E7F6EF] text-[#15936B]', Icon: CheckCircle, text: hasFeedback ? 'Service complete' : 'Service complete · rate your experience below' }
+              : status === 'on_way'
+                ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Navigation, text: `${fn} is on the way` }
+                : status === 'in_progress'
+                  ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Wrench, text: 'Service in progress · work underway' }
+                  : (status === 'assigned' || status === 'accepted')
+                    ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: CheckCircle, text: `${fn} will handle your job` }
+                    : { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', Icon: Clock, text: 'Finding a mechanic for you…' }
+          return (
+            <div className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl font-bold text-sm mb-5 ${sb.cls}`}>
+              <sb.Icon className="h-5 w-5 shrink-0" /> <span>{sb.text}</span>
+            </div>
+          )
+        })()}
+
+        {/* ── Track live location CTA (claude-design .track-cta) ── */}
+        {(status === 'on_way' || status === 'assigned' || status === 'accepted') && request._id && (
+          <button
+            onClick={() => router.push(`/service/${request._id}/track`)}
+            className="w-full flex items-center gap-3 rounded-2xl p-4 mb-5 text-white transition hover:-translate-y-0.5"
+            style={{ background: 'linear-gradient(120deg,#1B3B6F,#2A5298)', boxShadow: '0 10px 26px rgba(27,59,111,.28)' }}
+          >
+            <span className="h-[42px] w-[42px] rounded-xl bg-white/[0.16] flex items-center justify-center shrink-0"><Navigation className="h-5 w-5" /></span>
+            <span className="flex-1 text-left flex flex-col gap-0.5">
+              <b className="text-[15px] font-bold">Track live location</b>
+              <span className="text-[12.5px] text-white/70">{mechanicName ? `${mechanicName.split(' ')[0]} is on the way` : 'See your mechanic on the map'}</span>
+            </span>
+            <ChevronRight className="h-5 w-5 opacity-80 shrink-0" />
+          </button>
+        )}
 
         {/* ── Status Timeline ── */}
         {!isCancelled && (
@@ -704,30 +745,35 @@ export function ServiceDetailPage() {
           )}
         </div>
 
-        {/* ── Mechanic Card ── */}
+        {/* ── Mechanic Card (claude-design .mech-card) ── */}
         {mechanicName && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-            <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <User className="h-4 w-4 text-[#1B3B6F]" /> Assigned Mechanic
-            </h3>
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-[#1B3B6F] flex items-center justify-center text-white font-bold text-lg shrink-0">
-                {mechanicName.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">{mechanicName}</p>
-                {mechanicPhone && (
-                  <p className="text-xs text-muted-foreground">{mechanicPhone}</p>
-                )}
-              </div>
-              {mechanicPhone && (
-                <button
-                  onClick={() => window.open(`tel:${mechanicPhone}`, '_self')}
-                  className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center text-white transition-colors shrink-0"
-                >
-                  <Phone className="h-4 w-4" />
-                </button>
-              )}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex items-center gap-3.5 shadow-sm">
+            <div className="h-[54px] w-[54px] rounded-[14px] bg-[#1B3B6F] flex items-center justify-center text-white font-extrabold text-lg shrink-0">
+              {mechanicName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <b className="text-[15px] font-extrabold text-[#13203A] flex items-center gap-1.5">
+                <span className="truncate">{mechanicName}</span>
+                <Shield className="h-3.5 w-3.5 text-[#15936B] shrink-0" />
+              </b>
+              <span className="text-[12.5px] text-[#475569]">
+                {mechanic?.specialization || mechanic?.user?.specialization || 'Verified mechanic'}
+                {(mechanic?.rating || mechanic?.user?.rating) ? ` · ★ ${(mechanic.rating || mechanic.user?.rating).toFixed?.(1) || mechanic.rating}` : ''}
+              </span>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => toast('Chat opens in the app · your number stays private')}
+                className="h-[42px] w-[42px] rounded-xl border-[1.5px] border-[#E7ECF3] bg-white text-[#1B3B6F] flex items-center justify-center hover:bg-gray-50 transition-colors"
+              >
+                <MessageCircle className="h-[19px] w-[19px]" />
+              </button>
+              <button
+                onClick={() => setShowCall(true)}
+                className="h-[42px] w-[42px] rounded-xl bg-[#15936B] hover:bg-[#127a59] text-white flex items-center justify-center transition-colors"
+              >
+                <Phone className="h-[19px] w-[19px]" />
+              </button>
             </div>
           </div>
         )}
@@ -855,18 +901,7 @@ export function ServiceDetailPage() {
           </div>
         )}
 
-        {/* ── Live Mechanic Tracking ── */}
-        {(status === 'assigned' || status === 'on_way') && request._id && (
-          <div className="mb-4">
-            <Link
-              href={`/service/${request._id}/track`}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF6B35] to-[#E8521A] text-white font-bold py-3.5 rounded-xl hover:shadow-lg transition"
-            >
-              <Locate className="h-5 w-5" />
-              Track Mechanic Live
-            </Link>
-          </div>
-        )}
+        {/* Live tracking is now surfaced via the navy "Track live location" CTA near the top */}
 
         {/* ── Mechanic Diagnosis ── */}
         {(status === 'in_progress' || status === 'diagnosed' || status === 'quote_pending') && request._id && (
@@ -878,12 +913,12 @@ export function ServiceDetailPage() {
         {/* ── Action Buttons ── */}
         {(canCancel || canReschedule || mechanicPhone) && (
           <div className="flex flex-wrap gap-3 mb-4">
-            {/* Call Mechanic */}
-            {mechanicPhone && (
+            {/* Call Mechanic — opens the full-screen call screen */}
+            {mechanicName && (
               <Button
                 variant="outline"
                 className="border-green-300 text-green-700 hover:bg-green-50"
-                onClick={() => window.open(`tel:${mechanicPhone}`, '_self')}
+                onClick={() => setShowCall(true)}
               >
                 <Phone className="h-4 w-4 mr-2" /> Call Mechanic
               </Button>
@@ -1010,6 +1045,19 @@ export function ServiceDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Full-screen call screen (claude-design openCall) ── */}
+      {showCall && mechanicName && (
+        <CallScreen
+          name={mechanicName}
+          role={mechanic?.specialization || mechanic?.user?.specialization || 'Verified mechanic'}
+          rating={mechanic?.rating || mechanic?.user?.rating}
+          color="#1B3B6F"
+          phone={mechanicPhone || undefined}
+          address={location.address || request.address}
+          onClose={() => setShowCall(false)}
+        />
+      )}
     </UserLayout>
   )
 }
