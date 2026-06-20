@@ -40,8 +40,13 @@ const adminPublicPaths = ['/admin/login'];
 // Shop partner pages that don't need shop auth
 const shopPublicPaths = ['/shop-partner/login'];
 
-// Customer pages that need customer auth
-const customerProtectedPaths = ['/cart', '/checkout', '/orders', '/profile', '/service', '/addresses', '/wallet', '/notifications', '/reviews', '/ai-booking', '/emergency'];
+// Customer pages that need customer auth.
+// NOTE: '/service' (the booking wizard) is intentionally NOT here — it should be
+// browsable while logged out, with the login modal overlaying the (blurred) page
+// only when the user actually books. The specific booking detail/track pages
+// ('/service/[id]', '/service/[id]/track') stay protected since they load a
+// user-specific request.
+const customerProtectedPaths = ['/cart', '/checkout', '/orders', '/profile', '/service/[id]', '/addresses', '/wallet', '/notifications', '/reviews', '/ai-booking', '/emergency'];
 
 function needsAdminAuth(pathname: string) {
   return pathname.startsWith('/admin') && !adminPublicPaths.includes(pathname);
