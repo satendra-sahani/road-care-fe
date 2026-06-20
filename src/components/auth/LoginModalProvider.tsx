@@ -2,43 +2,55 @@
 
 import { createContext, useContext, useCallback, useRef, useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
+import { useRouter } from 'next/router'
 import { RootState } from '@/store'
 import { LoginModal } from './LoginModal'
 
+interface OpenLoginOpts { mandatory?: boolean }
 interface LoginModalCtx {
-  openLogin: (onSuccess?: () => void) => void
+  openLogin: (onSuccess?: () => void, opts?: OpenLoginOpts) => void
   closeLogin: () => void
 }
 const Ctx = createContext<LoginModalCtx>({ openLogin: () => {}, closeLogin: () => {} })
 export const useLoginModal = () => useContext(Ctx)
 
 export function LoginModalProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [mandatory, setMandatory] = useState(false)
   const cbRef = useRef<(() => void) | null>(null)
-  const { isAuthenticated } = useSelector((s: RootState) => s.customerAuth)
+  const { isAuthenticated, user } = useSelector((s: RootState) => s.customerAuth)
 
-  const openLogin = useCallback((onSuccess?: () => void) => {
+  const openLogin = useCallback((onSuccess?: () => void, opts?: OpenLoginOpts) => {
     if (isAuthenticated) { onSuccess?.(); return }
     cbRef.current = onSuccess || null
+    setMandatory(!!opts?.mandatory)
     setOpen(true)
   }, [isAuthenticated])
 
-  const closeLogin = useCallback(() => { setOpen(false); cbRef.current = null }, [])
+  const closeLogin = useCallback(() => { setOpen(false); setMandatory(false); cbRef.current = null }, [])
 
-  // When auth succeeds while the modal is open → close it and run the pending action.
+  // When auth succeeds while the modal is open → close it, route partners to their
+  // dashboard, otherwise run the pending action.
   useEffect(() => {
     if (open && isAuthenticated) {
       setOpen(false)
+      setMandatory(false)
       const cb = cbRef.current
       cbRef.current = null
-      if (cb) window.setTimeout(cb, 60)
+      // Distributor / shop-partner accounts land on the distributor dashboard.
+      if ((user as any)?.role === 'shop') {
+        if (router.pathname !== '/distributor-dashboard') router.push('/distributor-dashboard')
+      } else if (cb) {
+        window.setTimeout(cb, 60)
+      }
     }
-  }, [isAuthenticated, open])
+  }, [isAuthenticated, open, user, router])
 
   return (
     <Ctx.Provider value={{ openLogin, closeLogin }}>
       {children}
-      {open && <LoginModal onClose={closeLogin} />}
+      {open && <LoginModal onClose={closeLogin} dismissable={!mandatory} />}
     </Ctx.Provider>
   )
 }

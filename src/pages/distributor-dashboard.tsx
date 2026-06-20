@@ -89,7 +89,7 @@ export default function DistributorDashboard() {
   const { isAuthenticated } = useSelector((s: RootState) => s.customerAuth)
   const { openLogin } = useLoginModal()
   useEffect(() => {
-    if (!isAuthenticated) openLogin()
+    if (!isAuthenticated) openLogin(undefined, { mandatory: true })
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [view, setView] = useState('dashboard')

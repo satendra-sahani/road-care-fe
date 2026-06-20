@@ -125,7 +125,7 @@ export function ServicePage() {
   // Prompt login automatically when a logged-out user lands on the booking page —
   // the modal opens over the (blurred) booking page; closing it lets them browse.
   useEffect(() => {
-    if (!authLoading && !isAuthenticated && !Cookies.get('customer_token')) openLogin()
+    if (!authLoading && !isAuthenticated && !Cookies.get('customer_token')) openLogin(undefined, { mandatory: true })
   }, [authLoading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [activeTab, setActiveTab] = useState<'book' | 'requests'>('book')
