@@ -527,57 +527,61 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto">
             <Link
               href="/ai-booking"
-              className="group/ai relative block overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-r from-[#0F2545] via-[#1B3B6F] to-[#1B3B6F] shadow-elevated ring-1 ring-white/[0.08] transition-all duration-300 hover:shadow-glow-navy"
+              className="group/ai relative block overflow-hidden rounded-2xl md:rounded-[22px] ring-1 ring-white/10 shadow-[0_12px_44px_-14px_rgba(15,37,71,0.55)] transition-all duration-300 hover:ring-white/[0.18] hover:shadow-[0_18px_54px_-14px_rgba(15,37,71,0.65)] hover:-translate-y-0.5"
+              style={{ background: 'linear-gradient(115deg,#0E2042 0%,#1B3B6F 54%,#173461 100%)' }}
             >
-              {/* Soft accent halo — single, subtle */}
-              <div className="pointer-events-none absolute -right-10 -top-14 w-44 h-44 bg-[#FF6B35]/15 rounded-full blur-3xl" />
-              {/* Top hairline */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              {/* Material: top inner highlight, brand glow, right sheen, fine grain */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+              <div className="pointer-events-none absolute -left-10 top-1/2 -translate-y-1/2 w-48 h-48 bg-[#FF6B35]/[0.18] rounded-full blur-3xl" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-[#FF6B35]/[0.07] to-transparent" />
+              <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,.9) 0.8px,transparent 0.8px)', backgroundSize: '14px 14px' }} />
 
-              <div className="relative flex items-center gap-3 md:gap-4 px-4 py-2.5 md:px-6 md:py-3 lg:px-7">
-                {/* Mic with live pulse */}
-                <div className="relative shrink-0">
-                  <span className="absolute inset-0 rounded-full bg-[#FF6B35]/30 blur-lg animate-pulse" aria-hidden />
-                  <div className="relative h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-[#FF8A5C] to-[#FF6B35] flex items-center justify-center ring-2 ring-white/20">
+              <div className="relative flex items-center gap-3.5 md:gap-4 px-4 py-3 md:px-6 md:py-3.5 lg:px-7">
+                {/* Mic orb with listening sonar */}
+                <div className="relative shrink-0 grid place-items-center">
+                  <span className="absolute h-9 w-9 md:h-10 md:w-10 rounded-full ring-1 ring-[#FF6B35]/50 animate-ping" aria-hidden />
+                  <span className="absolute inset-0 m-auto h-9 w-9 md:h-10 md:w-10 rounded-full bg-[#FF6B35]/25 blur-md" aria-hidden />
+                  <div className="relative h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-[#FF8A5C] to-[#FF5A1F] flex items-center justify-center ring-2 ring-white/25 shadow-[0_4px_14px_-2px_rgba(255,107,53,0.65)]">
                     <Mic className="h-4 w-4 md:h-[18px] md:w-[18px] text-white" strokeWidth={2.4} />
                   </div>
                   {/* Live dot */}
                   <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0F2545]" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0E2042]" />
                   </span>
                 </div>
 
-                {/* Copy — single tight line + inline eyebrow */}
+                {/* Copy */}
                 <div className="flex-1 min-w-0 font-display">
-                  <p className="text-[14px] md:text-[17px] font-bold tracking-[-0.02em] text-white leading-tight flex items-center gap-2">
-                    Try AI Voice Booking
-                    <span className="hidden sm:inline-flex items-center gap-1 text-[8.5px] md:text-[9px] font-bold uppercase tracking-[0.14em] text-[#FF8A5C] bg-[#FF6B35]/10 rounded-full px-2 py-0.5 font-sans">
-                      <Sparkles className="h-2.5 w-2.5" /> New
-                    </span>
+                  <span className="inline-flex items-center gap-1 text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] text-[#FFC2A6] bg-white/[0.08] ring-1 ring-white/10 rounded-full px-2 py-[3px] font-sans backdrop-blur-sm mb-1">
+                    <Sparkles className="h-2.5 w-2.5 text-[#FF8A5C]" /> AI Powered · हिंदी में
+                  </span>
+                  <p className="text-[15px] md:text-[18px] font-extrabold tracking-[-0.02em] text-white leading-[1.15]">
+                    Book a service just by{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF8A5C] to-[#FFC2A6]">speaking</span>
                   </p>
-                  <p className="text-[11px] md:text-[12.5px] text-white/60 font-medium mt-0.5 truncate font-sans">
-                    Baat karein, booking ho jayegi! · Hindi or English.
+                  <p className="hidden sm:block text-[11px] md:text-[12.5px] text-white/55 font-medium mt-0.5 truncate font-sans">
+                    Baat karein, booking ho jayegi — in Hindi or English, hands-free.
                   </p>
                 </div>
 
-                {/* Animated voice waveform (desktop only) — CSS-only */}
-                <div className="hidden lg:flex items-end gap-[3px] h-6 mr-1" aria-hidden>
-                  {[0.45, 0.85, 0.6, 1, 0.55, 0.9, 0.5, 0.75].map((h, i) => (
+                {/* Live equalizer (md+) */}
+                <div className="hidden md:flex items-center gap-[3px] h-7 mr-0.5" aria-hidden>
+                  {[0.4, 0.78, 1, 0.55, 0.9, 0.5, 0.82, 0.62, 0.95, 0.45].map((h, i) => (
                     <span
                       key={i}
-                      className="w-[3px] rounded-full bg-gradient-to-t from-[#FF6B35] to-[#FFB199]"
+                      className="w-[3px] rounded-full bg-gradient-to-t from-[#FF6B35] to-[#FFD0B8]"
                       style={{
                         height: `${h * 100}%`,
-                        animation: 'fadeUp 1.2s ease-in-out infinite alternate',
-                        animationDelay: `${i * 0.12}s`,
+                        animation: 'fadeUp 1.1s ease-in-out infinite alternate',
+                        animationDelay: `${i * 0.09}s`,
                       }}
                     />
                   ))}
                 </div>
 
                 {/* CTA */}
-                <span className="shimmer-sweep relative inline-flex items-center gap-1.5 bg-white text-[#0F2545] hover:bg-[#FF6B35] hover:text-white font-bold px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[12px] md:text-[13px] shrink-0 shadow-md transition-colors duration-300">
+                <span className="relative inline-flex items-center gap-1.5 bg-white text-[#0F2547] group-hover/ai:bg-[#FF6B35] group-hover/ai:text-white font-bold px-4 py-2 md:px-5 rounded-full text-[12px] md:text-[13px] shrink-0 shadow-[0_4px_14px_-3px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.04] transition-colors duration-300">
                   Try Now
                   <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover/ai:translate-x-1" />
                 </span>
