@@ -11,8 +11,20 @@ Disallow: /addresses
 Disallow: /wallet
 Disallow: /notifications
 Disallow: /reviews
+Disallow: /ai-booking
+Disallow: /emergency
 Disallow: /distributor-dashboard
 Disallow: /shop-dashboard
 Disallow: /shop-partner
+Disallow: /service/
+
+# Account & utility pages (no search value)
+Disallow: /login
+Disallow: /delete-account
+
+# Legal pages
+Disallow: /privacy
+Disallow: /terms
+Disallow: /refund-policy
 
 Sitemap: https://bharatmechanics.com/sitemap.xml
