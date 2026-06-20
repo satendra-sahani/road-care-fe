@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import CallScreen from '@/components/service/CallScreen'
+import RatingFlow from '@/components/service/RatingFlow'
 import { toast } from 'sonner'
 import {
   Wrench, Calendar, Clock, MapPin, Car, Bike, Truck as TruckIcon,
@@ -47,6 +49,10 @@ export function ServicePage() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.customerAuth)
 
   const [activeTab, setActiveTab] = useState<'book' | 'requests'>('book')
+
+  // ─── Call screen + rating overlays (claude-design) ────────────
+  const [callTarget, setCallTarget] = useState<{ name: string; phone?: string } | null>(null)
+  const [ratingReq, setRatingReq] = useState<any>(null)
 
   // ─── Book Service state ───────────────────────────────────────
   const [step, setStep] = useState(1) // 1: Vehicle & Issues, 2: Details & Schedule, 3: Payment & Confirm
@@ -1077,13 +1083,18 @@ export function ServicePage() {
                                   {req.mechanic?.user?.fullName || req.mechanic?.fullName || req.assignedMechanic?.fullName || 'Mechanic'}
                                 </span>
                                 {(req.mechanic?.user?.phone || req.mechanic?.phone || req.assignedMechanic?.phone) && (
-                                  <a
-                                    href={`tel:${req.mechanic?.user?.phone || req.mechanic?.phone || req.assignedMechanic?.phone}`}
-                                    className="ml-auto text-[#1B3B6F]"
-                                    onClick={e => e.stopPropagation()}
+                                  <button
+                                    className="ml-auto h-8 w-8 rounded-full bg-green-50 border border-green-200 flex items-center justify-center text-green-600 hover:bg-green-100"
+                                    onClick={e => {
+                                      e.stopPropagation()
+                                      setCallTarget({
+                                        name: req.mechanic?.user?.fullName || req.mechanic?.fullName || req.assignedMechanic?.fullName || 'Mechanic',
+                                        phone: req.mechanic?.user?.phone || req.mechanic?.phone || req.assignedMechanic?.phone,
+                                      })
+                                    }}
                                   >
                                     <Phone className="h-4 w-4" />
-                                  </a>
+                                  </button>
                                 )}
                               </div>
                             )}
@@ -1134,7 +1145,7 @@ export function ServicePage() {
                                 {req.status === 'completed' && !req.feedback && (
                                   <button
                                     className="text-xs bg-[#1B3B6F] text-white px-3 py-1.5 rounded-lg font-medium hover:bg-[#152d55]"
-                                    onClick={e => { e.stopPropagation(); router.push(`/service/${req._id || req.id}`) }}
+                                    onClick={e => { e.stopPropagation(); setRatingReq(req) }}
                                   >
                                     <Star className="h-3 w-3 inline mr-1" /> Rate
                                   </button>
@@ -1265,6 +1276,28 @@ export function ServicePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── Full-screen call screen (claude-design) ─── */}
+      {callTarget && (
+        <CallScreen
+          name={callTarget.name}
+          role="Verified mechanic"
+          color="#1B3B6F"
+          phone={callTarget.phone}
+          onClose={() => setCallTarget(null)}
+        />
+      )}
+
+      {/* ─── 3-step rate & review flow (claude-design) ─── */}
+      {ratingReq && (
+        <RatingFlow
+          requestId={ratingReq._id || ratingReq.id}
+          mechName={ratingReq.mechanic?.user?.fullName || ratingReq.mechanic?.fullName || ratingReq.assignedMechanic?.fullName || 'Your mechanic'}
+          mechRating={ratingReq.mechanic?.rating || ratingReq.mechanic?.user?.rating}
+          onClose={() => setRatingReq(null)}
+          onSubmitted={() => { fetchRequests() }}
+        />
       )}
     </UserLayout>
   )

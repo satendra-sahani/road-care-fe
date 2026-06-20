@@ -3,8 +3,10 @@
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Head from 'next/head';
+import { useState } from 'react';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { ArrowLeft, Phone, Navigation, Clock, MapPin, Loader2, Package } from 'lucide-react';
+import CallScreen from '@/components/service/CallScreen';
 
 const LiveTrackingMap = dynamic(
   () => import('@/components/service/LiveTrackingMap'),
@@ -15,6 +17,7 @@ export default function OrderTrackPage() {
   const router = useRouter();
   const { id } = router.query;
   const orderId = id as string;
+  const [showCall, setShowCall] = useState(false);
 
   const {
     workerLocation,
@@ -169,9 +172,8 @@ export default function OrderTrackPage() {
               </div>
             </div>
             <button
-              onClick={() => { if (workerInfo.phone) window.location.href = `tel:${workerInfo.phone}` }}
-              disabled={!workerInfo.phone}
-              className="h-11 w-11 rounded-full bg-green-50 border border-green-200 flex items-center justify-center hover:bg-green-100 transition disabled:opacity-50"
+              onClick={() => setShowCall(true)}
+              className="h-11 w-11 rounded-full bg-green-50 border border-green-200 flex items-center justify-center hover:bg-green-100 transition"
             >
               <Phone className="h-5 w-5 text-green-600" />
             </button>
@@ -180,12 +182,11 @@ export default function OrderTrackPage() {
           {/* Action buttons */}
           <div className="flex gap-3">
             <button
-              onClick={() => { if (workerInfo.phone) window.location.href = `tel:${workerInfo.phone}` }}
-              disabled={!workerInfo.phone}
-              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition disabled:opacity-50"
+              onClick={() => setShowCall(true)}
+              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition"
             >
               <Phone className="h-4 w-4" />
-              {workerInfo.phone ? 'Call Delivery' : 'No phone available'}
+              Call Delivery
             </button>
             <button
               onClick={() => {
@@ -205,6 +206,18 @@ export default function OrderTrackPage() {
           </div>
         </div>
       </div>
+
+      {showCall && (
+        <CallScreen
+          name={workerInfo.name || 'Delivery partner'}
+          role="Delivery partner"
+          rating={workerInfo.rating > 0 ? workerInfo.rating : undefined}
+          color="#2A5298"
+          address={trackingStatus === 'arrived' ? 'At your location' : 'On the way to you'}
+          phone={workerInfo.phone}
+          onClose={() => setShowCall(false)}
+        />
+      )}
     </>
   );
 }
