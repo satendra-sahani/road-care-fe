@@ -926,189 +926,70 @@ export function ServicePage() {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="flex flex-col gap-3">
                     {filteredRequests.map((req: any) => {
-                      const StatusIcon = getStatusIcon(req.status)
-                      const svcType = serviceTypes.find(s => s.value === req.serviceType)
+                      const id = req._id || req.id
+                      const s = (req.status || 'pending').toLowerCase()
+                      const pill =
+                        s === 'completed' ? { cls: 'bg-[#E7F6EF] text-[#15936B]', label: 'Completed' }
+                          : s === 'cancelled' ? { cls: 'bg-[#fde8e8] text-[#b91c1c]', label: 'Cancelled' }
+                            : s === 'on_way' ? { cls: 'bg-[#FFF1EB] text-[#FF6B35]', label: 'On the way' }
+                              : s === 'in_progress' ? { cls: 'bg-[#FFF1EB] text-[#FF6B35]', label: 'In progress' }
+                                : (s === 'assigned' || s === 'accepted') ? { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', label: 'Mechanic assigned' }
+                                  : { cls: 'bg-[#F2F6FC] text-[#1B3B6F]', label: 'Requested' }
+                      const VIcon = req.vehicleType === 'car' ? Car : req.vehicleType === 'auto' ? TruckIcon : Bike
+                      const addr = typeof req.address === 'string' ? req.address : req.address?.address || req.location?.address || ''
+                      const cost = req.totalCost || req.estimatedCost || 0
+                      const title = req.description?.trim()
+                        ? req.description.trim().slice(0, 42)
+                        : (serviceTypes.find(x => x.value === req.serviceType)?.label || 'Service')
                       return (
                         <div
-                          key={req._id || req.id}
-                          className="bg-white border rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => router.push(`/service/${req._id || req.id}`)}
+                          key={id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => router.push(`/service/${id}`)}
+                          onKeyDown={e => { if (e.key === 'Enter') router.push(`/service/${id}`) }}
+                          className="w-full cursor-pointer flex items-center gap-4 bg-white border border-[#E7ECF3] rounded-2xl px-4 py-4 shadow-sm hover:shadow-md hover:border-[#c7d6ed] hover:-translate-y-px transition"
                         >
-                          {/* Colored top strip */}
-                          <div className={`h-1 ${
-                            req.status === 'completed' ? 'bg-green-500' :
-                            req.status === 'in_progress' ? 'bg-purple-500' :
-                            req.status === 'on_way' ? 'bg-orange-500' :
-                            req.status === 'cancelled' ? 'bg-red-500' :
-                            ['assigned', 'accepted'].includes(req.status) ? 'bg-blue-500' :
-                            'bg-yellow-500'
-                          }`} />
+                          {/* reqc-ic */}
+                          <div className="h-[50px] w-[50px] rounded-[14px] bg-[#F2F6FC] text-[#1B3B6F] flex items-center justify-center shrink-0">
+                            <VIcon className="h-6 w-6" />
+                          </div>
 
-                          <div className="p-4 sm:p-5">
-                            {/* Header: icon + ID + status */}
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                                  req.serviceType === 'roadside' ? 'bg-red-100 text-red-600' :
-                                  req.serviceType === 'walkin' ? 'bg-green-100 text-green-600' :
-                                  'bg-blue-100 text-[#1B3B6F]'
-                                }`}>
-                                  {svcType ? <svcType.icon className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-sm">#{req.requestId || (req._id || '').slice(-8).toUpperCase()}</p>
-                                  <p className="text-xs text-muted-foreground">{formatDate(req.createdAt || req.preferredDate)}</p>
-                                </div>
-                              </div>
-                              <Badge className={getStatusColor(req.status)}>
-                                <StatusIcon className="h-3 w-3 mr-1" />
-                                {req.status?.replace(/_/g, ' ')}
-                              </Badge>
+                          {/* reqc-mid */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <b className="text-[15px] font-extrabold text-[#13203A] truncate max-w-[58%]">{title}</b>
+                              <span className={`text-[11px] font-extrabold px-2.5 py-[3px] rounded-full ${pill.cls}`}>{pill.label}</span>
                             </div>
-
-                            {/* Service info */}
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm font-medium">
-                                {req.serviceType === 'walkin' ? '🏢 Walk-in' : req.serviceType === 'roadside' ? '🚨 Roadside' : '🏠 Home Service'}
-                              </span>
-                              {(req.priority === 'high' || req.priority === 'urgent') && (
-                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-semibold">
-                                  {req.priority.toUpperCase()}
-                                </span>
-                              )}
+                            <div className="text-[12.5px] text-[#475569] mt-1 truncate">
+                              <span className="capitalize">{req.vehicleType || 'Vehicle'}</span> · #{req.requestId || String(id).slice(-6).toUpperCase()}
+                              {req.preferredDate ? ` · ${formatDate(req.preferredDate)}` : ''}
+                              {req.preferredTimeSlot ? ` · ${req.preferredTimeSlot}` : ''}
                             </div>
-
-                            {req.description && (
-                              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{req.description}</p>
-                            )}
-
-                            {/* Details row */}
-                            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-3">
-                              <span className="flex items-center gap-1">
-                                <Car className="h-3.5 w-3.5" /> {req.vehicleType || 'N/A'}
-                              </span>
-                              {req.preferredDate && (
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3.5 w-3.5" /> {formatDate(req.preferredDate)}
-                                </span>
-                              )}
-                              {req.preferredTimeSlot && (
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3.5 w-3.5" /> {req.preferredTimeSlot}
-                                </span>
-                              )}
-                              {(req.address || req.location?.address) && (
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="h-3.5 w-3.5" />
-                                  <span className="truncate max-w-[200px]">
-                                    {typeof req.address === 'string' ? req.address : req.address?.address || req.location?.address || ''}
-                                  </span>
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Mechanic row */}
-                            {(req.mechanic || req.assignedMechanic) && (
-                              <div className="flex items-center gap-2 text-sm mb-3 bg-blue-50 rounded-lg px-3 py-2">
-                                <User className="h-4 w-4 text-[#1B3B6F]" />
-                                <span className="font-medium">
-                                  {req.mechanic?.user?.fullName || req.mechanic?.fullName || req.assignedMechanic?.fullName || 'Mechanic'}
-                                </span>
-                                {(req.mechanic?.user?.phone || req.mechanic?.phone || req.assignedMechanic?.phone) && (
-                                  <button
-                                    className="ml-auto h-8 w-8 rounded-full bg-green-50 border border-green-200 flex items-center justify-center text-green-600 hover:bg-green-100"
-                                    onClick={e => {
-                                      e.stopPropagation()
-                                      setCallTarget({
-                                        name: req.mechanic?.user?.fullName || req.mechanic?.fullName || req.assignedMechanic?.fullName || 'Mechanic',
-                                        phone: req.mechanic?.user?.phone || req.mechanic?.phone || req.assignedMechanic?.phone,
-                                      })
-                                    }}
-                                  >
-                                    <Phone className="h-4 w-4" />
-                                  </button>
-                                )}
+                            {addr && (
+                              <div className="flex items-center gap-1.5 text-[12.5px] text-[#475569] mt-0.5">
+                                <MapPin className="h-3 w-3 text-[#7B8AA3] shrink-0" /> <span className="truncate">{addr}</span>
                               </div>
                             )}
+                          </div>
 
-                            {/* Completion OTP Banner */}
-                            {req.completionOtp && req.status === 'in_progress' && (
-                              <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-3">
-                                <div className="flex items-center gap-2">
-                                  <Shield className="h-5 w-5 text-amber-600" />
-                                  <div>
-                                    <p className="text-xs font-bold text-amber-900">Completion OTP</p>
-                                    <p className="text-xs text-amber-700">Share with mechanic</p>
-                                  </div>
-                                </div>
-                                <div className="flex gap-1">
-                                  {String(req.completionOtp).split('').map((d: string, i: number) => (
-                                    <div key={i} className="w-7 h-8 rounded border-2 border-amber-400 bg-white flex items-center justify-center">
-                                      <span className="text-sm font-bold text-amber-900">{d}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                          {/* reqc-rt */}
+                          <div className="flex flex-col items-end gap-1.5 shrink-0">
+                            {cost > 0 && <b className="text-[17px] font-extrabold text-[#1B3B6F]">₹{cost.toLocaleString('en-IN')}</b>}
+                            {s === 'completed' && !req.feedback ? (
+                              <button
+                                onClick={e => { e.stopPropagation(); setRatingReq(req) }}
+                                className="text-[11px] font-bold text-[#FF6B35] bg-[#FFF1EB] px-2.5 py-1 rounded-full inline-flex items-center gap-1 hover:bg-[#ffe4d6]"
+                              >
+                                <Star className="h-3 w-3" /> Rate
+                              </button>
+                            ) : s === 'completed' && req.feedback ? (
+                              <span className="text-[11px] font-bold text-[#15936B] inline-flex items-center gap-1"><Star className="h-3 w-3 fill-[#15936B]" /> Rated</span>
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-[#7B8AA3]" />
                             )}
-
-                            {/* Footer: cost + payment + actions */}
-                            <div className="flex items-center justify-between pt-3 border-t">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-[#1B3B6F]">
-                                  {req.totalCost ? `₹${req.totalCost}` :
-                                   req.estimatedCost ? `Est: ₹${req.estimatedCost}` : ''}
-                                </span>
-                                {req.paymentMethod && (
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${
-                                    req.paymentMethod === 'online'
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : 'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    {req.paymentMethod === 'online' ? <CreditCard className="h-3 w-3" /> : <Banknote className="h-3 w-3" />}
-                                    {req.paymentMethod === 'online'
-                                      ? (req.paymentStatus === 'paid' || req.paymentStatus === 'verified') ? 'Paid' : 'Online'
-                                      : req.paymentStatus === 'cod_collected' ? 'Cash Paid' : 'COD'}
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                {/* Feedback prompt for completed */}
-                                {req.status === 'completed' && !req.feedback && (
-                                  <button
-                                    className="text-xs bg-[#1B3B6F] text-white px-3 py-1.5 rounded-lg font-medium hover:bg-[#152d55]"
-                                    onClick={e => { e.stopPropagation(); setRatingReq(req) }}
-                                  >
-                                    <Star className="h-3 w-3 inline mr-1" /> Rate
-                                  </button>
-                                )}
-                                {req.status === 'completed' && req.feedback && (
-                                  <span className="text-xs text-green-600 flex items-center gap-1">
-                                    <Star className="h-3 w-3 fill-green-600" /> Rated
-                                  </span>
-                                )}
-
-                                {/* Cancel button */}
-                                {['pending', 'confirmed', 'assigned'].includes(req.status?.toLowerCase()) && (
-                                  <Button
-                                    variant="outline" size="sm"
-                                    className="text-red-600 border-red-200 hover:bg-red-50 h-8"
-                                    onClick={e => { e.stopPropagation(); handleCancel(req._id || req.id) }}
-                                    disabled={cancellingId === (req._id || req.id)}
-                                  >
-                                    {cancellingId === (req._id || req.id) ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
-                                    Cancel
-                                  </Button>
-                                )}
-
-                                {/* View details */}
-                                <span className="text-xs text-[#1B3B6F] font-medium flex items-center gap-0.5">
-                                  View <ChevronRight className="h-3 w-3" />
-                                </span>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       )
