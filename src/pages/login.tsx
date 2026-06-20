@@ -325,7 +325,7 @@ export default function CustomerLoginPage() {
               </button>
             )}
             <CardTitle className="text-xl font-bold">
-              {step === 'phone' && 'Welcome to RoadCare'}
+              {step === 'phone' && 'Welcome to Bharat Mechanics'}
               {step === 'otp' && 'Verify OTP'}
               {step === 'register' && 'Complete Profile'}
             </CardTitle>

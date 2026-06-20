@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import {
   Star, ShoppingCart, Minus, Plus, Package, Truck, ShieldCheck, RotateCcw,
   Check, Loader2, ChevronRight, Heart,
@@ -19,6 +20,7 @@ export function ProductDetail() {
   const router = useRouter()
   const { id } = router.query
   const { isAuthenticated } = useSelector((state: RootState) => state.customerAuth)
+  const { openLogin } = useLoginModal()
 
   const [product, setProduct] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -75,7 +77,7 @@ export function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
-      router.push('/login?redirect=' + encodeURIComponent(router.asPath))
+      openLogin()
       return
     }
     setAddingToCart(true)
@@ -92,7 +94,7 @@ export function ProductDetail() {
 
   const handleBuyNow = async () => {
     if (!isAuthenticated) {
-      router.push('/login?redirect=' + encodeURIComponent(router.asPath))
+      openLogin()
       return
     }
     setAddingToCart(true)
@@ -108,7 +110,7 @@ export function ProductDetail() {
 
   const handleSubmitReview = async () => {
     if (!isAuthenticated) {
-      router.push('/login?redirect=' + encodeURIComponent(router.asPath))
+      openLogin()
       return
     }
     setSubmittingReview(true)

@@ -20,6 +20,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet'
 import Cookies from 'js-cookie'
+import { useLoginModal } from '@/components/auth/LoginModalProvider'
 
 /* ─── Search suggestion types ─────────────────────────────────────── */
 interface SearchProduct {
@@ -53,6 +54,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const dispatch = useDispatch()
   const { isAuthenticated, user } = useSelector((state: RootState) => state.customerAuth)
+  const { openLogin } = useLoginModal()
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -570,13 +572,13 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                 )}
               </div>
             ) : (
-              <Link
-                href={`/login?redirect=${encodeURIComponent(router.asPath)}`}
+              <button
+                onClick={() => openLogin()}
                 className="hidden md:flex items-center gap-2 h-10 px-4 rounded-lg bg-[#1B3B6F] text-white text-sm font-medium hover:bg-[#152d55] transition-colors"
               >
                 <User className="h-4 w-4" />
                 Login
-              </Link>
+              </button>
             )}
 
             <button
@@ -715,14 +717,13 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                 Logout
               </button>
             ) : (
-              <Link
-                href={`/login?redirect=${encodeURIComponent(router.asPath)}`}
-                onClick={() => setMobileMenuOpen(false)}
+              <button
+                onClick={() => { setMobileMenuOpen(false); openLogin() }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#1B3B6F] text-white text-sm font-medium hover:bg-[#152d55] transition-colors"
               >
                 <User className="h-4 w-4" />
                 Login / Register
-              </Link>
+              </button>
             )}
           </div>
         </SheetContent>

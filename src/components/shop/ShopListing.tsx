@@ -8,6 +8,7 @@ import { catalogAPI, userCartAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import {
   Star, Package, Grid3X3, X, SlidersHorizontal, Heart, Truck, ShieldCheck,
   RotateCcw, CreditCard, Plus, Check, ChevronRight, ArrowUpDown, Search,
@@ -39,6 +40,7 @@ const qtyOf = (p: any) => p.inventory?.quantity ?? p.quantity ?? 0
 export function ShopListing() {
   const router = useRouter()
   const { isAuthenticated } = useSelector((state: RootState) => state.customerAuth)
+  const { openLogin } = useLoginModal()
 
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -361,10 +363,11 @@ export function ShopListing() {
 
   function handleAddToCart(productId: string, inStock: boolean) {
     if (!inStock) return
-    if (!isAuthenticated) { router.push('/login?redirect=' + encodeURIComponent(router.asPath)); return }
-    userCartAPI.add(productId).then((res) => {
+    const add = () => userCartAPI.add(productId).then((res) => {
       if (res.data.success) toast.success('Added to cart!')
       else toast.error(res.data.message || 'Failed')
     }).catch((err: any) => toast.error(err.response?.data?.message || 'Failed to add to cart'))
+    if (!isAuthenticated) { openLogin(add); return }
+    add()
   }
 }
