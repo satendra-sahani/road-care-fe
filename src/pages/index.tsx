@@ -1430,6 +1430,65 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 15 — SEO content (crawlable prose + internal links)
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-6 md:mt-10">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-2xl md:rounded-3xl ring-1 ring-black/[0.06] shadow-sm p-5 md:p-8 lg:p-10">
+              <p className="text-[10px] md:text-[11px] font-bold tracking-[0.18em] uppercase text-[#FF6B35] mb-2">
+                About Bharat Mechanics
+              </p>
+              <h2 className="text-xl md:text-2xl lg:text-[28px] font-extrabold text-[#13203A] tracking-[-0.02em] leading-tight max-w-3xl">
+                India&rsquo;s trusted platform for genuine auto parts &amp; doorstep vehicle service
+              </h2>
+
+              <div className="mt-3 md:mt-4 space-y-3 text-[14px] md:text-[15px] leading-relaxed text-[#475569] max-w-4xl">
+                <p>
+                  <strong className="text-[#13203A] font-semibold">Bharat Mechanics</strong> brings your car and bike service
+                  home. Book a{' '}
+                  <Link href="/service" className="text-[#1B3B6F] font-semibold hover:text-[#FF6B35] transition-colors">certified doorstep mechanic</Link>{' '}
+                  for periodic servicing, breakdown and roadside assistance, AC repair, battery replacement, denting &amp;
+                  painting and more &mdash; with transparent, issue-based pricing and a 30-day service warranty. You pay only
+                  after the job is done, and you can track your mechanic live on the way to your location.
+                </p>
+                <p>
+                  Need parts? Our{' '}
+                  <Link href="/shop" className="text-[#1B3B6F] font-semibold hover:text-[#FF6B35] transition-colors">online auto parts store</Link>{' '}
+                  stocks 100% genuine OEM spares &mdash; engine oil, brake pads, air &amp; oil filters, spark plugs, batteries,
+                  tyres, wipers and accessories for every major car and two-wheeler brand, delivered fast across India with a
+                  6-month warranty on eligible products.
+                </p>
+              </div>
+
+              {/* Quick links — crawlable internal links to key sections */}
+              <div className="mt-5 md:mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { t: 'Buy genuine spare parts', d: 'Car & bike parts, delivered', href: '/shop' },
+                  { t: 'Book a doorstep mechanic', d: 'Service at home or office', href: '/service' },
+                  { t: 'Find certified mechanics', d: 'Verified, rated professionals', href: '/mechanics' },
+                  { t: 'Mechanic training', d: 'Get certified & earn more', href: '/training' },
+                ].map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    className="group block rounded-xl ring-1 ring-black/[0.06] p-3.5 hover:ring-[#1B3B6F]/30 hover:shadow-sm transition-all"
+                  >
+                    <p className="text-[13.5px] font-bold text-[#13203A] group-hover:text-[#1B3B6F] transition-colors">{l.t}</p>
+                    <p className="text-[12px] text-[#7B8AA3] mt-0.5 leading-snug">{l.d}</p>
+                  </Link>
+                ))}
+              </div>
+
+              <p className="mt-5 text-[12.5px] text-[#7B8AA3] leading-relaxed max-w-4xl">
+                Serving Delhi NCR, Mumbai, Bengaluru, Hyderabad, Chennai, Pune, Ahmedabad, Kolkata, Jaipur, Indore and 100+
+                cities across India &mdash; doorstep car service, two-wheeler repair, genuine spare parts and verified
+                mechanics, all in one place.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Bottom spacer */}
         <div className="h-6 md:h-10 lg:h-12" />
       </div>
