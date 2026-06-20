@@ -52,6 +52,12 @@ const vehicleSubs: Record<string, string> = {
   car: 'Hatch / Sedan / SUV', bike: 'Motorcycle', scooter: 'Scooter / Moped', auto: '3-wheeler',
 }
 
+// Quick problem suggestions — tap to add to the description (saves typing)
+const problemChips = [
+  "Won't start", 'Battery dead', 'Flat / puncture tyre', 'Brake problem', 'Engine noise',
+  'AC not cooling', 'Overheating', 'Oil / service due', 'Clutch / gear issue', 'Electrical / lights',
+]
+
 const pad2 = (n: number) => (n < 10 ? '0' : '') + n
 const isoOf = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 
@@ -662,8 +668,31 @@ export function ServicePage() {
                     <span className="h-[27px] w-[27px] rounded-lg bg-[#1B3B6F] text-white flex items-center justify-center font-extrabold text-[13.5px]">1</span>
                     <span className="font-extrabold text-base text-[#13203A]">The problem</span>
                   </div>
-                  <label className="block text-[13px] font-semibold text-[#475569] mb-1.5">Describe the problem <span className="text-[#FF6B35]">*</span></label>
-                  <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Explain the issue in detail…" rows={3} />
+                  <label className="block text-[13px] font-semibold text-[#475569] mb-2">Describe the problem <span className="text-[#FF6B35]">*</span></label>
+                  {/* Quick-pick chips — tap a common problem to add it to your description */}
+                  <div className="flex flex-wrap gap-2 mb-2.5">
+                    {problemChips.map(c => {
+                      const on = description.toLowerCase().includes(c.toLowerCase())
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setDescription(prev => {
+                            if (prev.toLowerCase().includes(c.toLowerCase())) {
+                              const idx = prev.toLowerCase().indexOf(c.toLowerCase())
+                              return (prev.slice(0, idx) + prev.slice(idx + c.length))
+                                .replace(/\s*\.\s*\./g, '.').replace(/\s{2,}/g, ' ').replace(/^[.\s]+/, '').trim()
+                            }
+                            return (prev.trim() ? prev.trim().replace(/\.?$/, '. ') : '') + c
+                          })}
+                          className={`text-[12.5px] font-medium rounded-full px-3 py-1.5 border transition ${on ? 'border-[#1B3B6F] bg-[#EEF3FB] text-[#1B3B6F]' : 'border-[#E7ECF3] text-[#475569] hover:border-[#c7d6ed]'}`}
+                        >
+                          {on ? '✓ ' : '+ '}{c}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Explain the issue in detail… or tap the suggestions above" rows={3} />
                 </div>
 
                 {/* fsec 2 — schedule */}

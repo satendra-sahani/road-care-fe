@@ -10,12 +10,26 @@ const api = axios.create({
   },
 });
 
-// Request interceptor — attach JWT token (admin or customer)
+// Request interceptor — attach JWT token, chosen by the area of the app we're in.
+// IMPORTANT: don't blindly prefer the admin `token` cookie. If a user logged into
+// /admin earlier, that cookie lingers — and on the customer site it would make every
+// request authenticate as the admin (header shows the admin, profile/phone are the
+// admin's, bookings get created as admin). So: admin/shop-partner/dashboard routes use
+// the admin `token`; everywhere else (the customer storefront) uses `customer_token`.
 api.interceptors.request.use(
   (config) => {
     const adminToken = Cookies.get('token');
     const customerToken = Cookies.get('customer_token');
-    const token = adminToken || customerToken;
+    let token: string | undefined;
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const isAdminArea = path.startsWith('/admin') || path.startsWith('/shop-partner')
+        || path.startsWith('/shop-dashboard') || path.startsWith('/distributor-dashboard');
+      token = isAdminArea ? adminToken : customerToken;
+    } else {
+      // SSR / non-browser: prefer customer token (storefront is the default surface)
+      token = customerToken || adminToken;
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
