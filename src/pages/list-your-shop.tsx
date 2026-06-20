@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
+import { partnerAPI } from '@/services/api'
 import {
   Globe, LayoutDashboard, Truck, Banknote, TrendingUp, ShieldCheck,
   Receipt, CheckCircle2, ArrowRight,
@@ -154,7 +155,7 @@ export default function ListYourShopPage() {
                     <p className="text-sm text-[#475569] mt-2 max-w-sm mx-auto">Thanks {form.owner || 'partner'} — our seller team will call you on {form.phone || 'your number'} to verify {form.shop || 'your shop'} and get you live.</p>
                   </div>
                 ) : (
-                  <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true) }}>
+                  <form onSubmit={async (e) => { e.preventDefault(); try { await partnerAPI.apply({ type: 'shop', shopName: form.shop, ownerName: form.owner, name: form.owner, phone: form.phone, city: form.city, gstNumber: form.gst, shopCategory: form.cat, bankAccount: form.bank }) } catch {} setSubmitted(true) }}>
                     <h3 className="text-2xl font-extrabold text-[#13203A] mb-1">Register your shop</h3>
                     <p className="text-[#7B8AA3] text-sm mb-5">अपनी दुकान रजिस्टर करें — Free, no setup cost.</p>
                     <div className="grid sm:grid-cols-2 gap-3.5">

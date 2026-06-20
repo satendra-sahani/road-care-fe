@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
+import { partnerAPI } from '@/services/api'
 import {
   Banknote, MapPin, ShieldCheck, GraduationCap, Package, Headphones,
   CheckCircle2, ArrowRight,
@@ -167,7 +168,7 @@ export default function BecomeMechanicPage() {
                     <p className="text-sm text-[#475569] mt-2 max-w-sm mx-auto">Thanks {form.name || 'partner'} — our team will call you on {form.phone || 'your number'} within 48 hours to verify and onboard you.</p>
                   </div>
                 ) : (
-                  <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true) }}>
+                  <form onSubmit={async (e) => { e.preventDefault(); try { await partnerAPI.apply({ type: 'mechanic', name: form.name, phone: form.phone, city: form.city, experience: form.exp, specialisation: form.spec, idNumber: form.id }) } catch {} setSubmitted(true) }}>
                     <h3 className="text-2xl font-extrabold text-[#13203A] mb-1">Apply to become a partner</h3>
                     <p className="text-[#7B8AA3] text-sm mb-5">पार्टनर बनें — Free registration, no joining fee.</p>
                     <div className="grid sm:grid-cols-2 gap-3.5">

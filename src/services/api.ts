@@ -355,6 +355,11 @@ export const catalogAPI = {
   search: (q: string, params?: Record<string, any>) => api.get('/common/search', { params: { q, ...params } }),
 };
 
+// ─── Partner applications (public lead capture) ──────────────────────
+export const partnerAPI = {
+  apply: (data: any) => api.post('/common/partner-applications', data),
+};
+
 // ─── User Profile APIs (Customer-facing) ──────────────────────────────
 export const userProfileAPI = {
   get: () => api.get('/common/auth/profile'),
