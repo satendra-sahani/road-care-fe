@@ -231,7 +231,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
         <div className="px-4 md:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto h-16 lg:h-[72px] flex items-center gap-3 lg:gap-4">
+          <div className="max-w-7xl mx-auto h-16 lg:h-[72px] flex items-center gap-2 lg:gap-2.5 xl:gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <Image
@@ -239,7 +239,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               alt="Bharat Mechanics – Auto Parts & Vehicle Services"
               width={284}
               height={90}
-              className="h-9 sm:h-12 lg:h-14 w-auto object-contain"
+              className="h-9 sm:h-12 lg:h-11 xl:h-14 w-auto object-contain"
               priority
             />
           </Link>
@@ -490,9 +490,9 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               { label: 'For Shops', href: '/list-your-shop', active: router.pathname.startsWith('/list-your-shop') || router.pathname.startsWith('/shop-partner') },
               { label: 'Training', href: '/training', active: router.pathname.startsWith('/training') },
             ].map((n) => (
-              <Link key={n.href} href={n.href} className={`group relative flex items-center px-3.5 font-semibold whitespace-nowrap transition-colors ${n.active ? 'text-[#1B3B6F]' : 'text-[#475569] hover:text-[#1B3B6F]'}`}>
+              <Link key={n.href} href={n.href} className={`group relative flex items-center px-2.5 xl:px-3.5 font-semibold whitespace-nowrap transition-colors ${n.active ? 'text-[#1B3B6F]' : 'text-[#475569] hover:text-[#1B3B6F]'}`}>
                 {n.label}
-                <span className={`absolute left-3.5 right-3.5 bottom-0 h-[3px] rounded-t-full bg-[#FF6B35] origin-left transition-transform ${n.active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+                <span className={`absolute left-2.5 right-2.5 xl:left-3.5 xl:right-3.5 bottom-0 h-[3px] rounded-t-full bg-[#FF6B35] origin-left transition-transform ${n.active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
               </Link>
             ))}
           </nav>
@@ -525,7 +525,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               )}
             </Link>
 
-            <Link href="/service" className="hidden lg:inline-flex items-center gap-1.5 h-10 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-4 rounded-lg text-sm transition-colors shrink-0">
+            <Link href="/service" className="hidden xl:inline-flex items-center gap-1.5 h-10 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-4 rounded-lg text-sm transition-colors shrink-0">
               <Wrench className="h-4 w-4" /> Book Service
             </Link>
 
