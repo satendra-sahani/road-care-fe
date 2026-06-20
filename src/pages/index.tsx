@@ -296,7 +296,7 @@ export default function HomePage() {
   return (
     <UserLayout>
       <SEOHead
-        title="Home"
+        title="Auto Parts & Doorstep Mechanic Service"
         description="Bharat Mechanics – Buy genuine auto parts online, book certified mechanics for doorstep vehicle repair and servicing. Car parts, bike parts, engine oil, brake pads, filters & more. Fast delivery across India."
         keywords="auto parts online, car parts, bike parts, mechanic near me, vehicle repair, Bharat Mechanics, genuine auto parts, doorstep mechanic, car service, bike service, engine oil, brake pads, air filter, spark plug, car battery, tyre"
         canonicalUrl="https://bharatmechanics.com/"
