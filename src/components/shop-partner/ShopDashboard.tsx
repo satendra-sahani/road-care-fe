@@ -5,6 +5,7 @@ import { shopAPI } from '@/services/api'
 import {
   ClipboardList, CheckCircle, AlertCircle, Users, Star, Loader2,
   Wrench, IndianRupee, ChevronRight, ShieldCheck, Clock,
+  Wallet as WalletIcon, AlertTriangle, Plus,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -25,15 +26,20 @@ const inr = (n: number) => '₹' + Number(n || 0).toLocaleString('en-IN', { maxi
 
 export function ShopDashboard() {
   const [data, setData] = useState<any>(null)
+  const [wallet, setWallet] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await shopAPI.getDashboard()
+        const [res, w] = await Promise.all([
+          shopAPI.getDashboard(),
+          shopAPI.getWallet().catch(() => null),
+        ])
         if (res.data?.success) setData(res.data.data)
         else setError(true)
+        if (w?.data?.success) setWallet(w.data.data)
       } catch {
         setError(true)
       } finally {
@@ -96,6 +102,23 @@ export function ShopDashboard() {
           </span>
         </div>
       </div>
+
+      {/* Wallet strip — balance + ₹2000 minimum status */}
+      {wallet && (
+        <Link href="/shop-partner/wallet" className="flex items-center gap-3.5 rounded-2xl px-4 md:px-5 py-3.5 text-white shadow-sm transition hover:-translate-y-0.5"
+          style={{ background: wallet.belowMinimum ? 'linear-gradient(135deg,#b91c1c,#dc2626)' : `linear-gradient(135deg, ${DIST}, #0b7d72)` }}>
+          <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+            {wallet.belowMinimum ? <AlertTriangle className="h-5 w-5" /> : <WalletIcon className="h-5 w-5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <b className="block text-[18px] font-extrabold leading-tight">{inr(wallet.balance || 0)}</b>
+            <span className="text-[12px] text-white/80">
+              {wallet.belowMinimum ? `Below ₹${(wallet.minBalance ?? 2000).toLocaleString('en-IN')} minimum · add ${inr(wallet.shortfall || 0)} to accept jobs` : `Wallet balance · minimum ${inr(wallet.minBalance ?? 2000)} maintained`}
+            </span>
+          </div>
+          <span className="shrink-0 inline-flex items-center gap-1 bg-white/20 rounded-full px-3 py-1.5 text-[12.5px] font-bold"><Plus className="h-3.5 w-3.5" /> Add money</span>
+        </Link>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">

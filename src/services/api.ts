@@ -515,6 +515,13 @@ export const shopAPI = {
 
   // Settlements
   getSettlements: (params?: Record<string, any>) => api.get('/shop/settlements', { params }),
+
+  // Wallet (balance + ₹2000 minimum + Razorpay top-up)
+  getWallet: () => api.get('/shop/wallet'),
+  getWalletTransactions: (params?: Record<string, any>) => api.get('/shop/wallet/transactions', { params }),
+  createTopupOrder: (amount: number) => api.post('/shop/wallet/topup/order', { amount }),
+  verifyTopup: (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) =>
+    api.post('/shop/wallet/topup/verify', data),
 };
 
 // ─── Admin Shop Management APIs ─────────────────────────────────────

@@ -5,7 +5,7 @@ import { useRouter } from 'next/router'
 import { useState, useEffect } from 'react'
 import {
   Home, ClipboardList, DollarSign, Users, Store,
-  Menu, X, LogOut
+  Menu, X, LogOut, Wallet
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Cookies from 'js-cookie'
@@ -25,6 +25,7 @@ const sidebarItems: SidebarItem[] = [
   { id: 'orders', title: 'Orders', icon: ClipboardList, href: '/shop-partner/orders', separator: true },
   { id: 'mechanics', title: 'My Mechanics', icon: Users, href: '/shop-partner/mechanics', separator: true },
   { id: 'earnings', title: 'Earnings', icon: DollarSign, href: '/shop-partner/earnings' },
+  { id: 'wallet', title: 'Wallet', icon: Wallet, href: '/shop-partner/wallet', separator: true },
   { id: 'profile', title: 'Shop Profile', icon: Store, href: '/shop-partner/profile', separator: true },
 ]
 
