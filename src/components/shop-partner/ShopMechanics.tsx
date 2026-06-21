@@ -2,375 +2,172 @@
 
 import { useEffect, useState } from 'react'
 import { shopAPI } from '@/services/api'
+import { toast } from 'sonner'
 import {
-  Users, Plus, Edit, Trash2, Phone, Wrench, Loader2, UserCheck, UserX,
-  Star, CheckCircle, Shield, Briefcase
+  Loader2, Plus, Phone, MapPin, Trash2, Star, ShieldCheck, AlertTriangle,
+  Users, X, Check,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+
+const DIST = '#D97706', DIST_50 = '#FEF3E2', DIST_2 = '#B45309', NAVY = '#1B3B6F', GREEN = '#15936B', STAR = '#F5A623'
+
+interface Mech {
+  _id?: string; name?: string; fullName?: string; phone?: string; specialization?: string
+  isActive?: boolean; rating?: number; jobsDone?: number; isVerified?: boolean
+  user?: { fullName?: string; phone?: string }
+  kind?: 'own' | 'platform'
+}
+
+function Kpi({ bg, fg, path, val, label }: { bg: string; fg: string; path: string; val: string; label: string }) {
+  return (
+    <div className="bg-white border border-[#E7ECF3] rounded-2xl p-[18px] shadow-sm">
+      <div className="h-[42px] w-[42px] rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color: fg }}>
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={path} /></svg>
+      </div>
+      <div className="text-[27px] font-extrabold tracking-tight text-[#13203A] leading-none">{val}</div>
+      <div className="text-[13px] text-[#7B8AA3] mt-1.5">{label}</div>
+    </div>
+  )
+}
 
 export function ShopMechanics() {
-  const [mechanics, setMechanics] = useState<any[]>([])
-  const [assignedMechanics, setAssignedMechanics] = useState<any[]>([])
+  const [mechs, setMechs] = useState<Mech[]>([])
   const [loading, setLoading] = useState(true)
-  const [showDialog, setShowDialog] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [specialization, setSpecialization] = useState('')
-  const [actionLoading, setActionLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'assigned' | 'manual'>('assigned')
+  const [filter, setFilter] = useState<'all' | 'active' | 'verified'>('all')
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState({ name: '', phone: '', specialization: '' })
+  const [saving, setSaving] = useState(false)
 
-  const fetchMechanics = async () => {
+  const load = async () => {
     try {
-      const [profileRes, assignedRes] = await Promise.all([
-        shopAPI.getProfile(),
-        shopAPI.getAssignedMechanics()
+      const [p, a] = await Promise.all([
+        shopAPI.getProfile().catch(() => null),
+        shopAPI.getAssignedMechanics().catch(() => null),
       ])
-      if (profileRes.data?.success) {
-        setMechanics(profileRes.data.data.mechanics || [])
-      }
-      if (assignedRes.data?.success) {
-        setAssignedMechanics(assignedRes.data.data || [])
-      }
-    } catch (err) {
-      console.error('Fetch mechanics error:', err)
-    } finally {
-      setLoading(false)
-    }
+      const own: Mech[] = ((p?.data?.data?.mechanics) || []).map((m: any) => ({ ...m, kind: 'own' as const }))
+      const platRaw = a?.data?.data?.mechanics || a?.data?.data || []
+      const plat: Mech[] = (Array.isArray(platRaw) ? platRaw : []).map((m: any) => ({ ...m, kind: 'platform' as const }))
+      setMechs([...own, ...plat])
+    } catch { toast.error('Could not load mechanics') } finally { setLoading(false) }
   }
+  useEffect(() => { load() }, [])
 
-  useEffect(() => {
-    fetchMechanics()
-  }, [])
-
-  const handleAdd = async () => {
-    if (!name || !phone) return alert('Name and phone are required')
-    setActionLoading(true)
+  const add = async () => {
+    if (!form.name.trim() || !form.phone.trim()) { toast.error('Name and phone are required'); return }
+    setSaving(true)
     try {
-      await shopAPI.addMechanic({ name, phone, specialization })
-      setShowDialog(false)
-      resetForm()
-      fetchMechanics()
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to add')
-    } finally {
-      setActionLoading(false)
-    }
+      const r = await shopAPI.addMechanic({ name: form.name.trim(), phone: form.phone.trim(), specialization: form.specialization.trim() || undefined })
+      if (r.data?.success) { toast.success('Mechanic added'); setAdding(false); setForm({ name: '', phone: '', specialization: '' }); load() }
+      else toast.error(r.data?.message || 'Could not add')
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Could not add mechanic') } finally { setSaving(false) }
   }
 
-  const handleUpdate = async () => {
-    if (!editingId || !name || !phone) return
-    setActionLoading(true)
-    try {
-      await shopAPI.updateMechanic(editingId, { name, phone, specialization })
-      setShowDialog(false)
-      resetForm()
-      fetchMechanics()
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update')
-    } finally {
-      setActionLoading(false)
-    }
+  const remove = async (m: Mech) => {
+    if (m.kind !== 'own' || !m._id) { toast.error('Platform mechanics are managed by admin'); return }
+    if (!confirm(`Remove ${m.name}?`)) return
+    try { await shopAPI.removeMechanic(m._id); toast.success('Removed'); load() }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Could not remove') }
   }
 
-  const handleRemove = async (id: string) => {
-    if (!confirm('Remove this mechanic?')) return
-    try {
-      await shopAPI.removeMechanic(id)
-      fetchMechanics()
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to remove')
-    }
-  }
+  if (loading) return <div className="flex items-center justify-center h-72"><Loader2 className="h-8 w-8 animate-spin" style={{ color: DIST }} /></div>
 
-  const handleToggleActive = async (id: string, currentActive: boolean) => {
-    try {
-      await shopAPI.updateMechanic(id, { isActive: !currentActive })
-      fetchMechanics()
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed')
-    }
-  }
+  const nm = (m: Mech) => m.name || m.fullName || m.user?.fullName || 'Mechanic'
+  const isActive = (m: Mech) => m.isActive !== false
+  const shown = mechs.filter((m) => filter === 'all' || (filter === 'active' && isActive(m)) || (filter === 'verified' && m.isVerified))
 
-  const resetForm = () => {
-    setName('')
-    setPhone('')
-    setSpecialization('')
-    setEditingId(null)
-  }
-
-  const openEdit = (mechanic: any) => {
-    setName(mechanic.name)
-    setPhone(mechanic.phone)
-    setSpecialization(mechanic.specialization || '')
-    setEditingId(mechanic._id)
-    setShowDialog(true)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-[#FF6B35]" />
-      </div>
-    )
-  }
-
-  const totalCount = assignedMechanics.length + mechanics.length
+  const total = mechs.length
+  const online = mechs.filter(isActive).length
+  const verified = mechs.filter((m) => m.isVerified).length
+  const rated = mechs.filter((m) => m.rating)
+  const avg = rated.length ? (rated.reduce((s, m) => s + (m.rating || 0), 0) / rated.length).toFixed(1) : '—'
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Mechanics</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {totalCount} total ({assignedMechanics.length} platform + {mechanics.length} manual)
-          </p>
+    <div className="p-4 md:p-6">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-[18px]">
+        <Kpi bg={DIST_50} fg={DIST_2} path="M9 8m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M3 21a6 6 0 0 1 12 0" val={String(total)} label="Total mechanics" />
+        <Kpi bg="#E7F6EF" fg={GREEN} path="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0" val={String(online)} label="Active now" />
+        <Kpi bg="#FFF7E6" fg={STAR} path="M12 2l2.9 6.3L22 9.3l-5 4.7 1.2 6.8L12 17.6 5.8 20.8 7 14 2 9.3l7.1-1z" val={String(avg)} label="Avg. rating" />
+        <Kpi bg={DIST_50} fg={DIST_2} path="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" val={String(verified)} label="Verified" />
+      </div>
+
+      {/* Filters + Add */}
+      <div className="flex gap-2.5 flex-wrap mb-4 items-center">
+        {(['all', 'active', 'verified'] as const).map((f) => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-[15px] py-2.5 rounded-full text-[13px] font-bold border capitalize transition ${filter === f ? 'text-white border-transparent' : 'bg-white text-[#475569] border-[#E7ECF3]'}`}
+            style={filter === f ? { background: DIST } : {}}>{f}</button>
+        ))}
+        <button onClick={() => setAdding(true)} className="ml-auto inline-flex items-center gap-2 text-white font-bold text-[14px] rounded-[11px] px-[18px] py-[11px]" style={{ background: DIST }}>
+          <Plus className="h-[17px] w-[17px]" /> Add mechanic
+        </button>
+      </div>
+
+      {/* Grid of mcards */}
+      {!shown.length ? (
+        <div className="bg-white border border-[#E7ECF3] rounded-2xl py-14 text-center text-[#7B8AA3]">
+          <Users className="h-12 w-12 mx-auto mb-3 text-[#E7ECF3]" />
+          <p className="text-sm">No mechanics yet. Add your shop staff to start accepting jobs.</p>
         </div>
-        <Button
-          className="bg-[#FF6B35] hover:bg-[#e55a28] text-white"
-          onClick={() => { resetForm(); setActiveTab('manual'); setShowDialog(true) }}
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add Manual
-        </Button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTab('assigned')}
-          className={cn(
-            'px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
-            activeTab === 'assigned'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          )}
-        >
-          <Shield className="h-4 w-4" />
-          Platform Mechanics ({assignedMechanics.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('manual')}
-          className={cn(
-            'px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
-            activeTab === 'manual'
-              ? 'bg-[#0F2545] text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          )}
-        >
-          <Users className="h-4 w-4" />
-          Manual Mechanics ({mechanics.length})
-        </button>
-      </div>
-
-      {/* Platform Mechanics Tab */}
-      {activeTab === 'assigned' && (
-        <>
-          {assignedMechanics.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 bg-white rounded-xl border">
-              <Shield className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-              <p className="font-medium">No platform mechanics assigned</p>
-              <p className="text-sm mt-1 text-gray-400">
-                Admin will assign verified mechanics to your shop
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {assignedMechanics.map((mechanic: any) => (
-                <div key={mechanic._id} className="bg-white rounded-xl border border-indigo-100 p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">
-                        {mechanic.name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{mechanic.name}</p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                          <Phone className="h-3 w-3" /> {mechanic.phone}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={cn(
-                        'px-2 py-0.5 rounded-full text-xs font-medium',
-                        mechanic.availability === 'available' ? 'bg-green-100 text-green-700' :
-                        mechanic.availability === 'busy' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
-                      )}>
-                        {mechanic.availability || 'N/A'}
-                      </span>
-                      {mechanic.isVerified && (
-                        <span className="text-xs text-indigo-600 flex items-center gap-0.5">
-                          <CheckCircle className="h-3 w-3" /> Verified
-                        </span>
-                      )}
-                    </div>
+      ) : (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {shown.map((m, i) => {
+            const active = isActive(m)
+            return (
+              <div key={m._id || i} className="bg-white border border-[#E7ECF3] rounded-2xl p-[18px] shadow-sm">
+                <div className="flex items-center gap-3 mb-3.5">
+                  <div className="relative h-12 w-12 rounded-[13px] flex items-center justify-center text-white font-extrabold text-[17px] shrink-0" style={{ background: `linear-gradient(135deg, ${NAVY}, #2A5298)` }}>
+                    {nm(m).split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                    <span className="absolute -bottom-0.5 -right-0.5 h-[13px] w-[13px] rounded-full border-[2.5px] border-white" style={{ background: active ? '#22C55E' : '#94A3B8' }} />
                   </div>
-
-                  {/* Specializations */}
-                  {mechanic.specializations?.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {mechanic.specializations.slice(0, 3).map((s: string) => (
-                        <span key={s} className="bg-indigo-50 text-indigo-700 text-xs px-2 py-0.5 rounded-full">
-                          {s}
-                        </span>
-                      ))}
-                      {mechanic.specializations.length > 3 && (
-                        <span className="text-xs text-gray-400">+{mechanic.specializations.length - 3} more</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-sm text-gray-500 pt-2 border-t">
-                    {mechanic.rating > 0 && (
-                      <span className="flex items-center gap-1 text-amber-600">
-                        <Star className="h-3.5 w-3.5" /> {mechanic.rating?.toFixed(1)}
-                      </span>
-                    )}
-                    {mechanic.completedJobs > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="h-3.5 w-3.5" /> {mechanic.completedJobs} jobs
-                      </span>
-                    )}
-                    {mechanic.experience && (
-                      <span className="flex items-center gap-1">
-                        <Wrench className="h-3.5 w-3.5" /> {mechanic.experience}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="bg-indigo-50 rounded-lg px-3 py-1.5 text-xs text-indigo-600 text-center">
-                    Assigned by Admin
+                  <div className="min-w-0">
+                    <b className="font-extrabold text-[15px] flex items-center gap-1.5 text-[#13203A]"><span className="truncate">{nm(m)}</span>{m.isVerified && <Check className="h-[15px] w-[15px] text-[#15936B] shrink-0" />}</b>
+                    <span className="text-[12px] text-[#7B8AA3]">{m.specialization || 'Mechanic'}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
 
-      {/* Manual Mechanics Tab */}
-      {activeTab === 'manual' && (
-        <>
-          {mechanics.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 bg-white rounded-xl border">
-              <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-              <p className="font-medium">No manual mechanics added</p>
-              <p className="text-sm mt-1">Add your shop employees to assign them to orders</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mechanics.map((mechanic: any) => (
-                <div key={mechanic._id} className={cn(
-                  'bg-white rounded-xl border p-5 space-y-3 transition-all',
-                  mechanic.isActive ? 'border-green-200' : 'border-gray-200 opacity-60'
-                )}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        'w-10 h-10 rounded-full flex items-center justify-center text-white font-bold',
-                        mechanic.isActive ? 'bg-green-500' : 'bg-gray-400'
-                      )}>
-                        {mechanic.name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{mechanic.name}</p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                          <Phone className="h-3 w-3" /> {mechanic.phone}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={cn(
-                      'px-2 py-0.5 rounded-full text-xs font-medium',
-                      mechanic.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                    )}>
-                      {mechanic.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-
-                  {mechanic.specialization && (
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Wrench className="h-3.5 w-3.5 text-gray-400" />
-                      {mechanic.specialization}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-2 border-t">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(mechanic)}>
-                      <Edit className="h-3 w-3 mr-1" /> Edit
-                    </Button>
-                    <Button
-                      size="sm" variant="outline"
-                      className={mechanic.isActive ? 'text-amber-600' : 'text-green-600'}
-                      onClick={() => handleToggleActive(mechanic._id, mechanic.isActive)}
-                    >
-                      {mechanic.isActive ? <UserX className="h-3 w-3 mr-1" /> : <UserCheck className="h-3 w-3 mr-1" />}
-                      {mechanic.isActive ? 'Disable' : 'Enable'}
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-red-600" onClick={() => handleRemove(mechanic._id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                <div className="flex gap-2 flex-wrap mb-3.5">
+                  <span className="text-[11px] font-bold px-2.5 py-[5px] rounded-lg bg-[#F6F8FB] inline-flex items-center gap-1.5" style={{ color: active ? GREEN : '#7B8AA3' }}><Star className="h-3 w-3" />{active ? 'Active' : 'Inactive'}</span>
+                  {m.rating ? <span className="text-[11px] font-bold px-2.5 py-[5px] rounded-lg bg-[#F6F8FB] text-[#475569] inline-flex items-center gap-1.5"><Star className="h-3 w-3" />{Number(m.rating).toFixed(1)}</span> : null}
+                  {m.isVerified
+                    ? <span className="text-[11px] font-bold px-2.5 py-[5px] rounded-lg bg-[#F6F8FB] inline-flex items-center gap-1.5" style={{ color: GREEN }}><ShieldCheck className="h-3 w-3" />Verified</span>
+                    : <span className="text-[11px] font-bold px-2.5 py-[5px] rounded-lg bg-[#F6F8FB] inline-flex items-center gap-1.5" style={{ color: DIST }}><AlertTriangle className="h-3 w-3" />Pending</span>}
                 </div>
-              ))}
-            </div>
-          )}
-        </>
+
+                <div className="flex justify-between py-3 border-t border-b border-[#EEF1F6] mb-3.5">
+                  <div className="text-center"><b className="block font-extrabold text-[16px] text-[#13203A]">{m.jobsDone ?? 0}</b><span className="text-[10.5px] text-[#7B8AA3]">Jobs done</span></div>
+                  <div className="text-center"><b className="block font-extrabold text-[16px] text-[#13203A]">★{m.rating ? Number(m.rating).toFixed(1) : '—'}</b><span className="text-[10.5px] text-[#7B8AA3]">Rating</span></div>
+                  <div className="text-center"><b className="block font-extrabold text-[16px] text-[#13203A]">{m.kind === 'own' ? 'Staff' : 'Platform'}</b><span className="text-[10.5px] text-[#7B8AA3]">Type</span></div>
+                </div>
+
+                <div className="flex gap-2">
+                  <a href={`tel:${m.phone || m.user?.phone || ''}`} className="flex-1 border border-[#E7ECF3] bg-white rounded-[9px] py-2.5 font-bold text-[12.5px] text-[#475569] flex items-center justify-center gap-1.5 hover:border-[#D97706] hover:text-[#D97706]"><Phone className="h-3.5 w-3.5" />Call</a>
+                  <button className="flex-1 border border-[#E7ECF3] bg-white rounded-[9px] py-2.5 font-bold text-[12.5px] text-[#475569] flex items-center justify-center gap-1.5 hover:border-[#D97706] hover:text-[#D97706]"><MapPin className="h-3.5 w-3.5" />Track</button>
+                  {m.kind === 'own' && (
+                    <button onClick={() => remove(m)} className="flex-1 rounded-[9px] py-2.5 font-bold text-[12.5px] text-white flex items-center justify-center gap-1.5" style={{ background: DIST }}><Trash2 className="h-3.5 w-3.5" />Remove</button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       )}
 
-      {/* Add/Edit Dialog (Manual Mechanics only) */}
-      {showDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">
-              {editingId ? 'Edit Mechanic' : 'Add Manual Mechanic'}
-            </h3>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Name *</label>
-              <input
-                type="text" value={name} onChange={e => setName(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent"
-                placeholder="Mechanic name"
-              />
+      {/* Add mechanic modal */}
+      {adding && (
+        <div className="fixed inset-0 z-[80] bg-[#0F2547]/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={(e) => { if (e.target === e.currentTarget) setAdding(false) }}>
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-extrabold text-[#13203A]">Add mechanic</h3>
+              <button onClick={() => setAdding(false)} className="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-[#7B8AA3]"><X className="h-4 w-4" /></button>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Phone *</label>
-              <input
-                type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent"
-                placeholder="Phone number"
-              />
+            <div className="space-y-3">
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Full name *" className="w-full h-11 px-3 rounded-lg border border-[#E7ECF3] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]/20" />
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="Phone (10 digits) *" inputMode="numeric" className="w-full h-11 px-3 rounded-lg border border-[#E7ECF3] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]/20" />
+              <input value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} placeholder="Specialization (e.g. Engine, AC)" className="w-full h-11 px-3 rounded-lg border border-[#E7ECF3] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]/20" />
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Specialization</label>
-              <select
-                value={specialization} onChange={e => setSpecialization(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent"
-              >
-                <option value="">Select (optional)</option>
-                <option value="General Service">General Service</option>
-                <option value="Engine Repair">Engine Repair</option>
-                <option value="Electrical">Electrical</option>
-                <option value="AC Service">AC Service</option>
-                <option value="Brake System">Brake System</option>
-                <option value="Tyre Service">Tyre Service</option>
-                <option value="Body Work">Body Work</option>
-                <option value="Oil Change">Oil Change</option>
-              </select>
-            </div>
-            <div className="flex gap-3 justify-end pt-2">
-              <Button variant="outline" onClick={() => { setShowDialog(false); resetForm() }}>
-                Cancel
-              </Button>
-              <Button
-                className="bg-[#FF6B35] hover:bg-[#e55a28] text-white"
-                onClick={editingId ? handleUpdate : handleAdd}
-                disabled={actionLoading}
-              >
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                {editingId ? 'Update' : 'Add Mechanic'}
-              </Button>
-            </div>
+            <button onClick={add} disabled={saving} className="w-full h-11 rounded-xl text-white font-bold mt-4 inline-flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: DIST }}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add mechanic
+            </button>
           </div>
         </div>
       )}
