@@ -24,7 +24,7 @@ api.interceptors.request.use(
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
       const isAdminArea = path.startsWith('/admin') || path.startsWith('/shop-partner')
-        || path.startsWith('/shop-dashboard') || path.startsWith('/distributor-dashboard');
+        || path.startsWith('/shop-dashboard');
       token = isAdminArea ? adminToken : customerToken;
     } else {
       // SSR / non-browser: prefer customer token (storefront is the default surface)

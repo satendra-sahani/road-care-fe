@@ -11,12 +11,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // The old email/password shop-partner portal is retired — partners now use the
-  // simple phone+OTP login on the distributor dashboard.
+  // The distributor-dashboard demo is retired — the real shop/distributor partner
+  // dashboard lives at /shop-partner.
   async redirects() {
     return [
-      { source: '/shop-partner', destination: '/distributor-dashboard', permanent: false },
-      { source: '/shop-partner/:path*', destination: '/distributor-dashboard', permanent: false },
+      { source: '/distributor-dashboard', destination: '/shop-partner', permanent: false },
     ];
   },
 };
