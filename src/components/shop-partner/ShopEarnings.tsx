@@ -2,184 +2,111 @@
 
 import { useEffect, useState } from 'react'
 import { shopAPI } from '@/services/api'
-import {
-  IndianRupee, TrendingUp, Clock, CheckCircle, Loader2, Calendar,
-  ArrowDownRight, ArrowUpRight, FileText
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import Link from 'next/link'
+import { Loader2, Clock } from 'lucide-react'
+
+const DIST = '#D97706', DIST_50 = '#FEF3E2', DIST_2 = '#B45309', NAVY = '#1B3B6F', GREEN = '#15936B', STAR = '#F5A623'
+const inr = (n: number) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+
+function Kpi({ bg, fg, path, val, label }: { bg: string; fg: string; path: string; val: string; label: string }) {
+  return (
+    <div className="bg-white border border-[#E7ECF3] rounded-2xl p-[18px] shadow-sm">
+      <div className="h-[42px] w-[42px] rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color: fg }}>
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={path} /></svg>
+      </div>
+      <div className="text-[27px] font-extrabold tracking-tight text-[#13203A] leading-none">{val}</div>
+      <div className="text-[13px] text-[#7B8AA3] mt-1.5">{label}</div>
+    </div>
+  )
+}
 
 export function ShopEarnings() {
   const [data, setData] = useState<any>(null)
-  const [settlements, setSettlements] = useState<any>(null)
+  const [wallet, setWallet] = useState<any>(null)
+  const [settlements, setSettlements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'overview' | 'settlements'>('overview')
 
   useEffect(() => {
-    const fetch = async () => {
+    (async () => {
       try {
-        const [dashRes, settleRes] = await Promise.all([
+        const [d, w, s] = await Promise.all([
           shopAPI.getDashboard(),
-          shopAPI.getSettlements()
+          shopAPI.getWallet().catch(() => null),
+          shopAPI.getSettlements().catch(() => null),
         ])
-        if (dashRes.data?.success) setData(dashRes.data.data)
-        if (settleRes.data?.success) setSettlements(settleRes.data)
-      } catch (err) {
-        console.error('Earnings error:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetch()
+        if (d.data?.success) setData(d.data.data)
+        if (w?.data?.success) setWallet(w.data.data)
+        const list = s?.data?.data?.settlements || s?.data?.data || []
+        setSettlements(Array.isArray(list) ? list : [])
+      } catch { /* */ } finally { setLoading(false) }
+    })()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-[#FF6B35]" />
-      </div>
-    )
-  }
+  if (loading) return <div className="flex items-center justify-center h-72"><Loader2 className="h-8 w-8 animate-spin" style={{ color: DIST }} /></div>
 
+  const shop = data?.shop || {}
   const earnings = data?.earnings || {}
-  const summary = settlements?.summary || {}
-
-  const formatCurrency = (val: number) =>
-    (val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
+  const commission = shop.commissionRate ?? 25
+  const cycle = shop.settlementCycle || 'weekly'
+  const balance = wallet?.balance || 0
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Earnings & Settlements</h1>
-
-      {/* Tabs */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setTab('overview')}
-          className={cn('px-4 py-2 rounded-lg text-sm font-medium', tab === 'overview' ? 'bg-[#0F2545] text-white' : 'bg-gray-100 text-gray-600')}
-        >
-          Overview
-        </button>
-        <button
-          onClick={() => setTab('settlements')}
-          className={cn('px-4 py-2 rounded-lg text-sm font-medium', tab === 'settlements' ? 'bg-[#0F2545] text-white' : 'bg-gray-100 text-gray-600')}
-        >
-          Settlement History
-        </button>
+    <div className="p-4 md:p-6 space-y-[18px]">
+      <div className="grid lg:grid-cols-[1.7fr_1fr] gap-4">
+        {/* Wallet balance (navy) */}
+        <div className="rounded-2xl text-white p-[22px]" style={{ background: `linear-gradient(135deg, #0F2547, ${NAVY})` }}>
+          <div className="text-[13px] text-[#aec6dd] font-semibold">Wallet balance</div>
+          <div className="text-[42px] font-extrabold my-1 leading-none">{inr(balance)}</div>
+          <div className="text-[12.5px] text-[#aec6dd] mb-[18px] capitalize">Available for withdrawal · {cycle} settlement</div>
+          <div className="flex gap-2.5">
+            <Link href="/shop-partner/wallet" className="inline-flex items-center gap-2 text-white font-bold text-[14px] rounded-[11px] px-[18px] py-[11px]" style={{ background: DIST }}>Add / withdraw</Link>
+          </div>
+        </div>
+        {/* Commission structure */}
+        <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm">
+          <div className="px-[18px] py-4 border-b border-[#EEF1F6]"><h3 className="text-[15.5px] font-extrabold text-[#13203A]">Commission structure</h3></div>
+          <div className="p-[18px]">
+            <div className="flex items-center justify-between py-2.5"><span className="text-[13.5px] text-[#475569]">Platform commission</span><b>{commission}%</b></div>
+            <div className="flex items-center justify-between py-2.5 border-t border-[#EEF1F6]"><span className="text-[13.5px] text-[#475569]">Your share</span><b style={{ color: GREEN }}>{100 - commission}%</b></div>
+            <div className="flex items-center justify-between py-2.5 border-t border-[#EEF1F6]"><span className="text-[13.5px] text-[#475569]">Settlement cycle</span><b className="capitalize">{cycle}</b></div>
+          </div>
+        </div>
       </div>
 
-      {tab === 'overview' && (
-        <>
-          {/* Earnings Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl border p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <IndianRupee className="h-4 w-4 text-green-600" />
-                </div>
-                <span className="text-xs text-gray-500">Today</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(earnings.today?.totalEarning)}</p>
-              <p className="text-xs text-gray-500 mt-1">{earnings.today?.count || 0} jobs</p>
-            </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Kpi bg="#E7F6EF" fg={GREEN} path="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5" val={inr(shop.totalEarnings || earnings.thisMonth?.totalEarning || 0)} label="Total earnings" />
+        <Kpi bg="#F2F6FC" fg={NAVY} path="M16 8l-8 8M8 8h8v8" val={inr(shop.totalCommissionPaid || 0)} label="Commission paid" />
+        <Kpi bg={DIST_50} fg={DIST_2} path="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" val={inr(earnings.thisMonth?.totalEarning || 0)} label="This month" />
+        <Kpi bg="#FFF7E6" fg={STAR} path="M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" val={inr(earnings.pendingSettlement || 0)} label="Pending" />
+      </div>
 
-            <div className="bg-white rounded-xl border p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Calendar className="h-4 w-4 text-blue-600" />
-                </div>
-                <span className="text-xs text-gray-500">This Week</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(earnings.thisWeek?.totalEarning)}</p>
-              <p className="text-xs text-gray-500 mt-1">{earnings.thisWeek?.count || 0} jobs</p>
-            </div>
-
-            <div className="bg-white rounded-xl border p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <TrendingUp className="h-4 w-4 text-purple-600" />
-                </div>
-                <span className="text-xs text-gray-500">This Month</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(earnings.thisMonth?.totalEarning)}</p>
-              <p className="text-xs text-gray-500 mt-1">{earnings.thisMonth?.count || 0} jobs</p>
-            </div>
-
-            <div className="bg-white rounded-xl border p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                </div>
-                <span className="text-xs text-gray-500">Pending Settlement</span>
-              </div>
-              <p className="text-2xl font-bold text-amber-600">{formatCurrency(earnings.pendingSettlement)}</p>
-              <p className="text-xs text-gray-500 mt-1">To be settled</p>
-            </div>
-          </div>
-
-          {/* Revenue Breakdown */}
-          <div className="bg-white rounded-xl border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Total Summary</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-green-50 rounded-lg p-4 text-center">
-                <p className="text-sm text-green-600 mb-1">Total Earnings</p>
-                <p className="text-2xl font-bold text-green-700">{formatCurrency(earnings.totalEarnings)}</p>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-sm text-blue-600 mb-1">Settled Amount</p>
-                <p className="text-2xl font-bold text-blue-700">{formatCurrency(summary.settled?.total)}</p>
-              </div>
-              <div className="bg-amber-50 rounded-lg p-4 text-center">
-                <p className="text-sm text-amber-600 mb-1">Pending Amount</p>
-                <p className="text-2xl font-bold text-amber-700">{formatCurrency(summary.pendingSettlement)}</p>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {tab === 'settlements' && (
-        <div className="bg-white rounded-xl border">
-          <div className="p-4 border-b">
-            <h2 className="font-semibold text-gray-900">Settlement History</h2>
-            <p className="text-sm text-gray-500">Completed jobs and their settlement status</p>
-          </div>
-
-          {!settlements?.data?.length ? (
-            <div className="text-center py-12 text-gray-500">
-              <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-              <p>No settlements yet</p>
-            </div>
+      {/* Settlements / transactions */}
+      <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between px-[18px] py-4 border-b border-[#EEF1F6]"><h3 className="text-[15.5px] font-extrabold text-[#13203A]">Settlements</h3></div>
+        <div className="px-1 py-2 overflow-x-auto">
+          {!settlements.length ? (
+            <div className="text-center py-12 text-[#7B8AA3] text-sm flex flex-col items-center gap-2"><Clock className="h-8 w-8 text-[#E7ECF3]" /> No settlements yet. Completed jobs settle to your bank each cycle.</div>
           ) : (
-            <div className="divide-y">
-              {settlements.data.map((item: any) => (
-                <div key={item._id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{item.orderId}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Completed: {new Date(item.completedAt).toLocaleDateString('en-IN')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900">{formatCurrency(item.shopEarning)}</p>
-                      <span className={cn(
-                        'px-2 py-0.5 rounded-full text-xs font-medium',
-                        item.settlementStatus === 'settled'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-amber-100 text-amber-700'
-                      )}>
-                        {item.settlementStatus === 'settled' ? 'Settled' : 'Pending'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Commission: {formatCurrency(item.commissionAmount)} | Total: {formatCurrency(item.finalCost)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <table className="w-full min-w-[620px] border-collapse">
+              <thead><tr>{['Reference', 'Amount', 'Status', 'Date'].map((h) => <th key={h} className="text-left text-[11px] tracking-wide uppercase text-[#7B8AA3] font-extrabold px-3.5 pb-3">{h}</th>)}</tr></thead>
+              <tbody>
+                {settlements.map((s: any, i: number) => {
+                  const paid = (s.status || '').toLowerCase() === 'paid' || (s.status || '').toLowerCase() === 'completed'
+                  return (
+                    <tr key={s._id || i} className="hover:bg-[#F6F8FB]">
+                      <td className="px-3.5 py-3.5 border-t border-[#EEF1F6] text-[13px] font-bold" style={{ color: NAVY }}>{s.reference || s.settlementId || s.orderId || `#${String(s._id || i).slice(-6).toUpperCase()}`}</td>
+                      <td className="px-3.5 py-3.5 border-t border-[#EEF1F6] font-extrabold text-[#13203A]">{inr(s.amount || s.netAmount || 0)}</td>
+                      <td className="px-3.5 py-3.5 border-t border-[#EEF1F6]"><span className="inline-flex items-center gap-1.5 text-[11.5px] font-extrabold px-2.5 py-1 rounded-full" style={{ background: paid ? '#E7F6EF' : '#FEF3E2', color: paid ? GREEN : DIST_2 }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: paid ? GREEN : DIST_2 }} />{paid ? 'Paid' : (s.status || 'Pending')}</span></td>
+                      <td className="px-3.5 py-3.5 border-t border-[#EEF1F6] text-[12.5px] text-[#475569]">{s.settledAt || s.createdAt ? new Date(s.settledAt || s.createdAt).toLocaleDateString('en-IN') : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
