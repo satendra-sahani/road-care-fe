@@ -516,6 +516,9 @@ export const shopAPI = {
   // Settlements
   getSettlements: (params?: Record<string, any>) => api.get('/shop/settlements', { params }),
 
+  // KYC
+  submitKyc: (data: any) => api.post('/shop/kyc', data),
+
   // Wallet (balance + ₹2000 minimum + Razorpay top-up)
   getWallet: () => api.get('/shop/wallet'),
   getWalletTransactions: (params?: Record<string, any>) => api.get('/shop/wallet/transactions', { params }),

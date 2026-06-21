@@ -8,7 +8,7 @@ import Cookies from 'js-cookie'
 import { shopAPI } from '@/services/api'
 import {
   LayoutDashboard, Wrench, Users, Wallet, IndianRupee, Receipt,
-  Star, Store, ShieldCheck, Settings, LogOut, ArrowLeft, Check,
+  Store, ShieldCheck, Settings, LogOut, ArrowLeft, Check,
 } from 'lucide-react'
 
 const DIST = '#D97706'
@@ -22,13 +22,12 @@ const NAV: { cap: string; items: { id: string; label: string; icon: any; href: s
   { cap: 'Finance', items: [
     { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/shop-partner/wallet' },
     { id: 'earnings', label: 'Earnings', icon: IndianRupee, href: '/shop-partner/earnings' },
-    { id: 'settlements', label: 'Settlements', icon: Receipt, href: '/shop-partner/earnings?tab=settlements' },
+    { id: 'settlements', label: 'Settlements', icon: Receipt, href: '/shop-partner/settlements' },
   ] },
   { cap: 'Account', items: [
-    { id: 'ratings', label: 'Ratings & Reviews', icon: Star, href: '/shop-partner/profile?tab=ratings' },
     { id: 'profile', label: 'Shop Profile', icon: Store, href: '/shop-partner/profile' },
-    { id: 'kyc', label: 'KYC & Verification', icon: ShieldCheck, href: '/shop-partner/profile?tab=kyc' },
-    { id: 'settings', label: 'Settings', icon: Settings, href: '/shop-partner/profile?tab=settings' },
+    { id: 'kyc', label: 'KYC & Verification', icon: ShieldCheck, href: '/shop-partner/kyc' },
+    { id: 'settings', label: 'Settings', icon: Settings, href: '/shop-partner/settings' },
   ] },
 ]
 

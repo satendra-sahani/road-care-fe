@@ -13,7 +13,10 @@ const TITLES: Record<string, { t: string; s: string }> = {
   '/shop-partner/mechanics': { t: 'My Mechanics', s: 'Your shop staff & assigned mechanics' },
   '/shop-partner/wallet': { t: 'Wallet', s: 'Your balance, withdrawals & money in' },
   '/shop-partner/earnings': { t: 'Earnings', s: 'Revenue, commission & transactions' },
+  '/shop-partner/settlements': { t: 'Settlements', s: 'Settlement cycle & history' },
   '/shop-partner/profile': { t: 'Shop Profile', s: 'Manage your shop details & service area' },
+  '/shop-partner/kyc': { t: 'KYC & Verification', s: 'Documents & approval status' },
+  '/shop-partner/settings': { t: 'Settings', s: 'Account preferences' },
   '/shop-partner/requirements': { t: 'Requirements', s: 'What you need to partner with us' },
 }
 
