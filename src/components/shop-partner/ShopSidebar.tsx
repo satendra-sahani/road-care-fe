@@ -2,185 +2,104 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { useState, useEffect } from 'react'
-import {
-  Home, ClipboardList, DollarSign, Users, Store,
-  Menu, X, LogOut, Wallet
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Cookies from 'js-cookie'
 import { shopAPI } from '@/services/api'
+import {
+  LayoutDashboard, Wrench, Users, Wallet, IndianRupee, Receipt,
+  Star, Store, ShieldCheck, Settings, LogOut, ArrowLeft, Check,
+} from 'lucide-react'
 
-interface SidebarItem {
-  id: string
-  title: string
-  icon: React.ElementType
-  href: string
-  badge?: string
-  separator?: boolean
-}
+const DIST = '#D97706'
 
-const sidebarItems: SidebarItem[] = [
-  { id: 'dashboard', title: 'Dashboard', icon: Home, href: '/shop-partner' },
-  { id: 'orders', title: 'Orders', icon: ClipboardList, href: '/shop-partner/orders', separator: true },
-  { id: 'mechanics', title: 'My Mechanics', icon: Users, href: '/shop-partner/mechanics', separator: true },
-  { id: 'earnings', title: 'Earnings', icon: DollarSign, href: '/shop-partner/earnings' },
-  { id: 'wallet', title: 'Wallet', icon: Wallet, href: '/shop-partner/wallet', separator: true },
-  { id: 'profile', title: 'Shop Profile', icon: Store, href: '/shop-partner/profile', separator: true },
+const NAV: { cap: string; items: { id: string; label: string; icon: any; href: string; badge?: number }[] }[] = [
+  { cap: 'Overview', items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/shop-partner' }] },
+  { cap: 'Operations', items: [
+    { id: 'jobs', label: 'Jobs & Orders', icon: Wrench, href: '/shop-partner/orders' },
+    { id: 'mechanics', label: 'My Mechanics', icon: Users, href: '/shop-partner/mechanics' },
+  ] },
+  { cap: 'Finance', items: [
+    { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/shop-partner/wallet' },
+    { id: 'earnings', label: 'Earnings', icon: IndianRupee, href: '/shop-partner/earnings' },
+    { id: 'settlements', label: 'Settlements', icon: Receipt, href: '/shop-partner/earnings?tab=settlements' },
+  ] },
+  { cap: 'Account', items: [
+    { id: 'ratings', label: 'Ratings & Reviews', icon: Star, href: '/shop-partner/profile?tab=ratings' },
+    { id: 'profile', label: 'Shop Profile', icon: Store, href: '/shop-partner/profile' },
+    { id: 'kyc', label: 'KYC & Verification', icon: ShieldCheck, href: '/shop-partner/profile?tab=kyc' },
+    { id: 'settings', label: 'Settings', icon: Settings, href: '/shop-partner/profile?tab=settings' },
+  ] },
 ]
 
-// Module-level cache — survives page navigations between shop-partner routes, prevents badge blinking.
-// mountCount tracks how many live ShopSidebar instances exist so the last unmount can stop polling
-// when the user leaves the shop-partner area entirely (avoids a silent background poll leak).
-let cachedPendingCount = 0
-let badgeInterval: ReturnType<typeof setInterval> | null = null
-let mountCount = 0
-// Global setter registry so the single interval updates all live instances
-const listeners = new Set<(val: number) => void>()
-
-const fetchBadge = async () => {
-  try {
-    const res = await shopAPI.getDashboard()
-    if (res.data?.success) {
-      cachedPendingCount = res.data.data.stats.pendingOrders || 0
-      listeners.forEach(fn => fn(cachedPendingCount))
-    }
-  } catch {}
-}
-
-const stopPolling = () => {
-  if (badgeInterval) {
-    clearInterval(badgeInterval)
-    badgeInterval = null
-  }
-}
-
-export function ShopSidebar() {
+export function ShopSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter()
-  const [isOpen, setIsOpen] = useState(false)
-  // Initialize from cache — no flash
-  const [pendingCount, setPendingCount] = useState(cachedPendingCount)
+  const [shop, setShop] = useState<{ shopName?: string; city?: string; isVerified?: boolean } | null>(null)
 
   useEffect(() => {
-    const setter = (val: number) => setPendingCount(val)
-    listeners.add(setter)
-    mountCount++
-
-    // Start polling only once across instances
-    if (!badgeInterval) {
-      fetchBadge()
-      badgeInterval = setInterval(fetchBadge, 30000)
-    }
-
-    return () => {
-      listeners.delete(setter)
-      mountCount--
-      // When the last sidebar unmounts (user navigated out of shop-partner area), stop polling
-      if (mountCount <= 0) {
-        mountCount = 0
-        stopPolling()
-      }
-    }
+    shopAPI.getProfile().then((r) => { if (r.data?.success) setShop(r.data.data) }).catch(() => {})
   }, [])
 
-  const handleLogout = () => {
-    stopPolling()
-    listeners.clear()
-    mountCount = 0
-    cachedPendingCount = 0
-    Cookies.remove('token')
-    Cookies.remove('customer_token')
-    router.push('/shop-partner/login')
-  }
-
   const isActive = (href: string) => {
-    if (href === '/shop-partner') return router.pathname === '/shop-partner'
-    return router.pathname.startsWith(href)
+    const base = href.split('?')[0]
+    if (base === '/shop-partner') return router.pathname === '/shop-partner'
+    return router.pathname === base
   }
 
-  const items = sidebarItems.map(item => ({
-    ...item,
-    badge: item.id === 'orders' && pendingCount > 0 ? String(pendingCount) : undefined
-  }))
+  const initials = (shop?.shopName || 'Shop').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+
+  const handleLogout = () => { Cookies.remove('token'); router.push('/shop-partner/login') }
 
   return (
     <>
-      {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-[#0F2545] flex items-center px-4 shadow-md">
-        <button
-          className="p-2 text-white rounded-lg hover:bg-white/10"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-        <div className="ml-3 flex items-center gap-2">
-          <div className="w-7 h-7 bg-[#FF6B35] rounded-lg flex items-center justify-center">
-            <Store className="h-4 w-4 text-white" />
-          </div>
-          <span className="font-semibold text-white text-sm">BharatMechanics</span>
-        </div>
-      </div>
-
-      {/* Overlay */}
-      {isOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/50 z-[55]" onClick={() => setIsOpen(false)} />
-      )}
-
-      {/* Sidebar */}
-      <aside className={cn(
-        'fixed top-0 left-0 h-full w-72 bg-[#0F2545] text-white z-[60] flex flex-col',
-        'lg:translate-x-0',
-        isOpen ? 'translate-x-0' : '-translate-x-full'
-      )}>
-        {/* Logo */}
-        <div className="p-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#FF6B35] rounded-xl flex items-center justify-center">
-              <Store className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-lg">BharatMechanics</h1>
-              <p className="text-xs text-gray-400">Shop Partner Portal</p>
-            </div>
+      {open && <div className="lg:hidden fixed inset-0 bg-black/40 z-[55]" onClick={onClose} />}
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-[60] w-[262px] flex flex-col text-[#cfe] transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        style={{ background: '#0F2547' }}
+      >
+        {/* Brand chip */}
+        <div className="flex items-center justify-center px-4 pt-[18px] pb-4 border-b border-white/[0.08]">
+          <div className="bg-white rounded-2xl px-[18px] py-3.5 w-full flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,.28)]">
+            <Image src="/brand-logo-v3.png" alt="Bharat Mechanics" width={200} height={48} className="h-[34px] w-auto object-contain" />
           </div>
         </div>
 
-        {/* Menu items */}
-        <nav className="flex-1 py-4 overflow-y-auto">
-          {items.map((item) => (
-            <div key={item.id}>
-              {item.separator && <div className="my-2 mx-4 border-t border-white/10" />}
-              <Link
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 mx-3 px-3 py-2.5 rounded-lg text-sm',
-                  isActive(item.href)
-                    ? 'bg-[#FF6B35] text-white font-medium'
-                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                )}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                <span className="flex-1">{item.title}</span>
-                {item.badge && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
+        {/* Role card */}
+        <div className="mx-4 mt-3.5 mb-1.5 flex items-center gap-2.5 bg-white/[0.06] border border-white/10 rounded-xl px-3.5 py-3">
+          <div className="h-[38px] w-[38px] rounded-[10px] flex items-center justify-center font-extrabold text-[15px] text-white shrink-0" style={{ background: `linear-gradient(135deg, ${DIST}, #F59E0B)` }}>{initials}</div>
+          <div className="min-w-0">
+            <b className="block text-[13.5px] text-white leading-tight truncate">{shop?.shopName || 'Shop Partner'}</b>
+            <span className="text-[11px] text-[#8fb3cf]">Shop Partner{shop?.city ? ` · ${shop.city}` : ''}</span>
+          </div>
+          {shop?.isVerified && <Check className="ml-auto h-4 w-4 text-[#34D6B8] shrink-0" />}
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 pb-5 pt-1 scrollbar-ultra-narrow">
+          {NAV.map((grp) => (
+            <div key={grp.cap}>
+              <div className="text-[10.5px] tracking-[0.12em] uppercase text-[#5d7a96] font-extrabold mx-3 mt-4 mb-2">{grp.cap}</div>
+              {grp.items.map((it) => {
+                const active = isActive(it.href)
+                return (
+                  <Link
+                    key={it.id} href={it.href} onClick={onClose}
+                    className={`flex items-center gap-3 px-3.5 py-[11px] rounded-[11px] text-[14px] font-semibold mb-0.5 transition-colors ${active ? 'text-white' : 'text-[#aec6dd] hover:bg-white/[0.06] hover:text-white'}`}
+                    style={active ? { background: `linear-gradient(90deg, ${DIST}, rgba(15,118,110,.55))` } : {}}
+                  >
+                    <it.icon className="h-[19px] w-[19px] shrink-0" /> {it.label}
+                    {it.badge ? <span className="ml-auto bg-[#FF6B35] text-white text-[10.5px] font-extrabold rounded-full px-1.5 min-w-[20px] text-center">{it.badge}</span> : null}
+                  </Link>
+                )
+              })}
             </div>
           ))}
         </nav>
 
-        {/* Logout */}
-        <div className="p-4 border-t border-white/10">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-300 hover:bg-red-500/20 hover:text-red-400 text-sm"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>Logout</span>
-          </button>
+        {/* Footer */}
+        <div className="p-3.5 border-t border-white/[0.08] space-y-0.5">
+          <Link href="/" className="flex items-center gap-2.5 text-[#aec6dd] hover:text-white hover:bg-white/[0.06] text-[13.5px] font-semibold px-3 py-2.5 rounded-[10px]"><ArrowLeft className="h-[18px] w-[18px]" /> Back to website</Link>
+          <button onClick={handleLogout} className="w-full flex items-center gap-2.5 text-[#aec6dd] hover:text-white hover:bg-white/[0.06] text-[13.5px] font-semibold px-3 py-2.5 rounded-[10px]"><LogOut className="h-[18px] w-[18px]" /> Logout</button>
         </div>
       </aside>
     </>
