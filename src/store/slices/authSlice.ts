@@ -48,6 +48,12 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.error = null;
+      // A successful login definitively establishes auth state. Mark the initial
+      // check done so the /admin/login redirect (gated on initialCheckDone &&
+      // isAuthenticated) fires, and so AuthGuard renders /admin immediately
+      // instead of re-running checkAuth. The login page renders outside
+      // AuthGuard, so nothing else would ever set this on a direct login.
+      state.initialCheckDone = true;
     },
     loginFailure(state, action: PayloadAction<string>) {
       state.loading = false;
