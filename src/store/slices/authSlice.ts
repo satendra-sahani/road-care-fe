@@ -23,7 +23,12 @@ const initialState: AuthState = {
   user: null,
   token: null,
   isAuthenticated: false,
-  loading: true, // Start with loading true to prevent immediate redirects
+  // Start `false`: this flag means "an auth op is in flight". Redirect/guard
+  // logic is gated on `initialCheckDone`, NOT `loading`, so it doesn't need to
+  // start true. Starting it true used to wedge the public /admin/login page
+  // (which renders outside AuthGuard, so nothing ever dispatched checkAuth to
+  // clear it) — the Sign In button stayed spinning + disabled forever.
+  loading: false,
   error: null,
   initialCheckDone: false,
 };
