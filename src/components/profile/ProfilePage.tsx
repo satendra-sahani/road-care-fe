@@ -15,8 +15,9 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   User, Mail, Phone, MapPin, Package, Wrench, Wallet, Bell, Star, MapPinned,
-  LogOut, Edit, Save, X, Loader2, ChevronRight,
+  LogOut, Edit, Save, X, Loader2, ChevronRight, Shield, QrCode,
 } from 'lucide-react'
+import { BMCareProfileCard } from '@/components/subscription/BMCareStrip'
 
 export function ProfilePage() {
   const router = useRouter()
@@ -162,9 +163,17 @@ export function ProfilePage() {
           )}
         </div>
 
+        {/* BM Care membership card */}
+        <div className="mb-4">
+          <BMCareProfileCard />
+        </div>
+
         {/* Quick Links */}
         <div className="bg-white border rounded-xl divide-y mb-4">
           {[
+            { icon: Edit, label: 'Edit Profile', href: '/profile/edit', desc: 'Update your photo and details', color: 'bg-slate-100', iconColor: 'text-[#1B3B6F]' },
+            { icon: Shield, label: 'BM Care Membership', href: '/subscription', desc: 'Free services & priority', color: 'bg-[#EAF0FA]', iconColor: 'text-[#1B3B6F]' },
+            { icon: QrCode, label: 'My Vehicle QR', href: '/vehicle-qr', desc: 'SecureContact · private', color: 'bg-orange-50', iconColor: 'text-[#FF6B35]' },
             { icon: Package, label: 'My Orders', href: '/orders', desc: 'View order history and track deliveries', color: 'bg-blue-50', iconColor: 'text-[#1B3B6F]' },
             { icon: Wrench, label: 'Service Requests', href: '/service', desc: 'View your service bookings', color: 'bg-orange-50', iconColor: 'text-[#FF6B35]' },
             { icon: MapPinned, label: 'My Addresses', href: '/addresses', desc: 'Manage delivery addresses', color: 'bg-green-50', iconColor: 'text-green-600' },

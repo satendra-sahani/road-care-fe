@@ -7,6 +7,7 @@ import { SEOHead } from '@/components/SEOHead'
 import { loadUserRequest } from '@/store/slices/customerAuthSlice'
 import { catalogAPI, userCartAPI, bannerAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
+import { BMCareStrip } from '@/components/subscription/BMCareStrip'
 import Link from 'next/link'
 import Head from 'next/head'
 import {
@@ -525,6 +526,15 @@ export default function HomePage() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            SECTION 1A2 — BM Care subscription strip
+           ══════════════════════════════════════════════════════════════ */}
+        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
+          <div className="max-w-7xl mx-auto">
+            <BMCareStrip />
           </div>
         </section>
 
