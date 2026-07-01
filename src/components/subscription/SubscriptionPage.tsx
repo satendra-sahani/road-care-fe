@@ -6,17 +6,37 @@
 // `@/lib/bmCare`. Rendered inside the customer UserLayout.
 import { useState } from 'react'
 import { useRouter } from 'next/router'
+import { useSelector } from 'react-redux'
+import Cookies from 'js-cookie'
+import { toast } from 'sonner'
 import { UserLayout } from '@/components/layout/UserLayout'
+import { useLoginModal } from '@/components/auth/LoginModalProvider'
+import { userMembershipAPI } from '@/services/api'
+import type { RootState } from '@/store'
 import {
-  SUB_PLANS, planById, fmtDate, bmCareStore, useBmCareSub,
+  SUB_PLANS, planById, planKeyById, fmtDate, bmCareStore, useBmCareSub,
   type SubPlan, type Cycle,
 } from '@/lib/bmCare'
 import {
   Shield, Wrench, Check, ChevronRight, ChevronLeft, ArrowRight,
-  Smartphone, CreditCard, Wallet, Landmark, Tag, PartyPopper,
+  Smartphone, CreditCard, Wallet, Landmark, Tag, PartyPopper, Loader2,
 } from 'lucide-react'
 
 const inr = (n: number) => n.toLocaleString('en-IN')
+
+declare global { interface Window { Razorpay: any } }
+
+// Robust Razorpay web-SDK loader (falls back if the _document tag hasn't loaded)
+function loadRazorpay(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) return resolve(true)
+    const s = document.createElement('script')
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    s.onload = () => resolve(true)
+    s.onerror = () => resolve(false)
+    document.body.appendChild(s)
+  })
+}
 
 const PAY_OPTS: { id: string; t: string; s: string; icon: React.ReactNode }[] = [
   { id: 'upi', t: 'UPI', s: 'Google Pay, PhonePe, Paytm', icon: <Smartphone className="h-5 w-5 text-[#1B3B6F]" /> },
@@ -40,7 +60,74 @@ export function SubscriptionPage() {
   const moEquiv = cycle === 'yr' ? Math.round(plan.yr / 12) : plan.mo
   const yrSave = plan.mo * 12 - plan.yr
 
-  const doPay = () => { bmCareStore.activate(plan.id, cycle); setStep('success') }
+  const { openLogin } = useLoginModal()
+  const isAuthenticated = useSelector((s: RootState) => s.customerAuth?.isAuthenticated)
+  const [paying, setPaying] = useState(false)
+
+  // Real subscription: login gate → backend order (price from admin Plan
+  // Pricing, never client-claimed) → Razorpay → verify → server membership.
+  const doPay = async () => {
+    if (paying) return
+    if (!isAuthenticated && !Cookies.get('customer_token')) {
+      openLogin(() => { doPay() })
+      return
+    }
+    setPaying(true)
+    try {
+      const res = await userMembershipAPI.subscribe(planKeyById(plan.id), cycle)
+      const payload = res.data?.data
+
+      // Free plan — activated immediately, no payment sheet
+      if (payload?.membership) {
+        bmCareStore.applyServerMembership(payload.membership)
+        setStep('success')
+        return
+      }
+
+      const rzp = payload?.razorpay
+      if (!rzp?.orderId || !rzp?.keyId) throw new Error('Could not start the payment')
+      const ok = await loadRazorpay()
+      if (!ok || typeof window.Razorpay === 'undefined') {
+        toast.error('Payment gateway not loaded. Please refresh and try again.')
+        return
+      }
+
+      const options = {
+        key: rzp.keyId,
+        amount: rzp.amount,
+        currency: rzp.currency || 'INR',
+        name: 'Bharat Mechanics · BM Care',
+        description: `${plan.name} membership · ${cycle === 'yr' ? 'yearly' : 'monthly'}`,
+        order_id: rzp.orderId,
+        handler: async (response: any) => {
+          try {
+            const vr = await userMembershipAPI.verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            })
+            if (vr.data?.success && vr.data.data) {
+              bmCareStore.applyServerMembership(vr.data.data)
+              setStep('success')
+            } else {
+              toast.error(vr.data?.message || 'Verification pending — contact support if not active shortly.')
+            }
+          } catch {
+            toast.error('Payment verification failed. Contact support.')
+          } finally {
+            setPaying(false)
+          }
+        },
+        theme: { color: '#1B3B6F' },
+        modal: { ondismiss: () => { toast.info('Payment cancelled — no money was charged.'); setPaying(false) } },
+      }
+      new window.Razorpay(options).open()
+      return // paying state cleared by handler/ondismiss
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Could not complete the payment')
+    }
+    setPaying(false)
+  }
 
   // ── SUCCESS ──────────────────────────────────────────────
   if (step === 'success') {
@@ -55,7 +142,7 @@ export function SubscriptionPage() {
           </h1>
           <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-600">
             {plan.em} <b>{plan.name}</b> is now active.<br />
-            Renews {fmtDate(new Date(Date.now() + (cycle === 'yr' ? 365 : 30) * 864e5))}.
+            Renews {fmtDate(sub?.renew ? new Date(sub.renew) : new Date(Date.now() + (cycle === 'yr' ? 365 : 30) * 864e5))}.
           </p>
           <div className="mt-7 space-y-3">
             <button onClick={() => setStep('browse')}
@@ -145,9 +232,10 @@ export function SubscriptionPage() {
               <div className="text-[11px] font-bold leading-none text-slate-500">Total</div>
               <div className="mt-0.5 text-xl font-extrabold text-[#0F2545]">₹{inr(price)}</div>
             </div>
-            <button onClick={doPay}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#FF6B35] py-3.5 font-bold text-white transition hover:bg-[#E55A2B]">
-              <Shield className="h-[18px] w-[18px]" /> Pay ₹{inr(price)}
+            <button onClick={doPay} disabled={paying}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#FF6B35] py-3.5 font-bold text-white transition hover:bg-[#E55A2B] disabled:opacity-70">
+              {paying ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Shield className="h-[18px] w-[18px]" />}
+              {paying ? 'Processing…' : `Pay ₹${inr(price)}`}
             </button>
           </div>
         </div>

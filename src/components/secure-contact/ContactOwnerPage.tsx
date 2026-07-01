@@ -4,9 +4,14 @@
 // Ported from bmc-extra.jsx ContactOwner + QRCall.
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
+import { useSelector } from 'react-redux'
+import Cookies from 'js-cookie'
 import { toast } from 'sonner'
 import { UserLayout } from '@/components/layout/UserLayout'
-import { vehicleStore, maskPlate } from '@/lib/secureContact'
+import { useLoginModal } from '@/components/auth/LoginModalProvider'
+import { userVehicleQrAPI } from '@/services/api'
+import type { RootState } from '@/store'
+import { resolveCode, maskPlate, type ScanResult } from '@/lib/secureContact'
 import { Shield, Phone, Send, Check, ChevronRight, Info, Volume2, PhoneOff } from 'lucide-react'
 
 const QUICK_MSGS = [
@@ -21,12 +26,46 @@ const DEMO = { em: '🚗', name: 'Maruti Swift VXi', plate: 'DL 8C XY 4821' }
 export function ContactOwnerPage() {
   const router = useRouter()
   const code = typeof router.query.code === 'string' ? router.query.code : undefined
-  const found = code ? vehicleStore.byCode(code) : undefined
-  const veh = found || DEMO
-  const masked = maskPlate(veh.plate)
+  const { openLogin } = useLoginModal()
+  const isAuthenticated = useSelector((s: RootState) => s.customerAuth?.isAuthenticated)
+
+  // Server-resolved vehicle (masked). Falls back to the demo vehicle when no
+  // code is present — the previous behaviour for direct visits.
+  const [resolved, setResolved] = useState<ScanResult | null>(null)
+  useEffect(() => {
+    if (!code) return
+    let cancelled = false
+    resolveCode(code).then((r) => { if (!cancelled && r) setResolved(r) })
+    return () => { cancelled = true }
+  }, [code])
+
+  const veh = resolved ? { em: resolved.em, name: resolved.name, plate: resolved.maskedPlate } : DEMO
+  const masked = resolved ? resolved.maskedPlate : maskPlate(veh.plate)
 
   const [sent, setSent] = useState<string | null>(null)
+  const [sending, setSending] = useState<string | null>(null)
   const [calling, setCalling] = useState(false)
+
+  // Real anonymous message via the platform (owner gets an app notification).
+  // Requires login; the demo (no code) keeps the old toast behaviour.
+  const sendQuickMsg = async (m: string) => {
+    if (sending) return
+    if (!code) { setSent(m); toast.success('Message sent anonymously'); return }
+    if (!isAuthenticated && !Cookies.get('customer_token')) {
+      openLogin(() => { sendQuickMsg(m) })
+      return
+    }
+    setSending(m)
+    try {
+      const res = await userVehicleQrAPI.message(code, m)
+      if (res.data?.success) { setSent(m); toast.success('Message sent anonymously') }
+      else toast.error(res.data?.message || 'Could not send the message')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not send the message')
+    } finally {
+      setSending(null)
+    }
+  }
 
   return (
     <UserLayout>
@@ -56,10 +95,10 @@ export function ContactOwnerPage() {
         <h3 className="mb-2.5 mt-5 text-base font-extrabold text-[#0F2545]">Send a quick <span className="text-[#FF6B35]">message</span></h3>
         <div className="grid gap-2.5">
           {QUICK_MSGS.map((m) => (
-            <button key={m} onClick={() => { setSent(m); toast.success('Message sent anonymously') }}
-              className={`flex items-center gap-3 rounded-2xl bg-white p-3.5 text-left shadow-sm ${sent === m ? 'border-[1.5px] border-[#1BA672]' : 'border border-slate-100'}`}>
+            <button key={m} onClick={() => sendQuickMsg(m)} disabled={sending !== null}
+              className={`flex items-center gap-3 rounded-2xl bg-white p-3.5 text-left shadow-sm disabled:opacity-60 ${sent === m ? 'border-[1.5px] border-[#1BA672]' : 'border border-slate-100'}`}>
               <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#FFF1EA]"><Send className="h-[17px] w-[17px] text-[#FF6B35]" /></div>
-              <span className="flex-1 text-[13.5px] font-bold text-[#0F2545]">{m}</span>
+              <span className="flex-1 text-[13.5px] font-bold text-[#0F2545]">{sending === m ? 'Sending…' : m}</span>
               {sent === m ? <Check className="h-[18px] w-[18px] text-[#1BA672]" strokeWidth={3} /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
             </button>
           ))}

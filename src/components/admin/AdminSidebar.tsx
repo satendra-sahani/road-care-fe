@@ -29,6 +29,7 @@ import {
   Sparkles,
   Gift,
   Coins,
+  Crown,
 } from 'lucide-react'
 import NextImage from 'next/image'
 import { cn } from '@/lib/utils'
@@ -61,6 +62,7 @@ const baseSidebarItems: SidebarItem[] = [
   { id: 'service-requests', title: 'Service Requests', icon: ClipboardList, href: '/admin/services/requests', separator: true },
   { id: 'payments',         title: 'Payment Management', icon: CreditCard,   href: '/admin/services/payments' },
   { id: 'issue-pricing',    title: 'Issue Pricing',      icon: DollarSign,   href: '/admin/services/issue-pricing' },
+  { id: 'plan-pricing',     title: 'Plan Pricing',       icon: Crown,        href: '/admin/services/plan-pricing' },
 
   // Inventory & Stock
   { id: 'inventory', title: 'Products', icon: Package, href: '/admin/inventory/products', separator: true },

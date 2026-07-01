@@ -4,10 +4,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import { toast } from 'sonner'
+import { QRCodeSVG } from 'qrcode.react'
 import { UserLayout } from '@/components/layout/UserLayout'
-import { QRMatrix } from './QRMatrix'
 import {
-  useVehicles, vehicleStore, VEHICLE_EMOJIS, plateToCode, type Vehicle,
+  useVehicles, vehicleStore, VEHICLE_EMOJIS, plateToCode, qrPayload, type Vehicle,
 } from '@/lib/secureContact'
 import {
   Shield, Pencil, Download, Send, Plus, Info, Phone, QrCode, Check, Trash2,
@@ -56,7 +56,8 @@ export function VehicleQRPage() {
           </div>
           <div className="px-4 pb-5 pt-5 text-center">
             <div className="inline-block rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
-              <QRMatrix id={v.code} px={6} />
+              {/* Real scannable QR — any phone camera opens the public landing page */}
+              <QRCodeSVG value={qrPayload(v.code)} size={150} fgColor="#0C1B2E" bgColor="#FFFFFF" />
             </div>
             <div className="mt-3.5 flex items-center justify-center gap-2">
               <div className="text-[15px] font-extrabold text-[#0F2545]">{v.name}</div>
@@ -81,7 +82,14 @@ export function VehicleQRPage() {
             className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#1B3B6F] text-sm font-bold text-white">
             <Download className="h-[18px] w-[18px]" /> Download
           </button>
-          <button onClick={() => toast.success('Share link copied')}
+          <button onClick={async () => {
+            const link = qrPayload(v.code)
+            const message = `Reach me about my vehicle ${v.plate} via Bharat Mechanics SecureContact: ${link}`
+            try {
+              if (navigator.share) await navigator.share({ title: 'SecureContact', text: message, url: link })
+              else { await navigator.clipboard.writeText(link); toast.success('Share link copied') }
+            } catch { /* user dismissed the share sheet */ }
+          }}
             className="flex h-12 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-slate-200 bg-slate-50 text-sm font-bold text-[#1B3B6F]">
             <Send className="h-[17px] w-[17px]" /> Share link
           </button>
@@ -90,9 +98,13 @@ export function VehicleQRPage() {
           className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-slate-300 bg-slate-50 text-[13px] font-bold text-slate-700">
           <Plus className="h-4 w-4 text-[#1B3B6F]" /> Add another vehicle
         </button>
-        <button onClick={() => router.push(`/c/${v.code}`)}
+        <button onClick={() => router.push(`/v/${v.code}`)}
           className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-slate-300 bg-slate-50 text-[13px] font-bold text-slate-700">
           <Info className="h-4 w-4 text-[#12A4B4]" /> Preview what a scanner sees
+        </button>
+        <button onClick={() => router.push('/scan')}
+          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-slate-300 bg-slate-50 text-[13px] font-bold text-slate-700">
+          <QrCode className="h-4 w-4 text-[#1B3B6F]" /> Scan someone&apos;s vehicle QR
         </button>
 
         {/* how it works */}

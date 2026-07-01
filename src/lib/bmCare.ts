@@ -1,12 +1,12 @@
 // ════════════════════════════════════════════════════════════
-// BM Care — subscription store (client-side, ported from the
-// customer-app prototype's `bmc_sub` localStorage model).
-//
-// This is a faithful port of the prototype: state lives in
-// localStorage with no backend. Swap `bmCareStore.activate` for a
-// real API call when the subscription backend lands.
+// BM Care — subscription store. Plans + membership state hydrate
+// from the backend (admin-managed PlanPricing + /user/membership);
+// the localStorage cache below is the offline/SSR fallback so the
+// page renders instantly and never breaks without the server.
 // ════════════════════════════════════════════════════════════
 import { useSyncExternalStore, useCallback } from 'react';
+import Cookies from 'js-cookie';
+import { publicPlansAPI, userMembershipAPI } from '@/services/api';
 
 export interface SubPlan {
   id: 'care' | 'plus' | 'pro';
@@ -79,8 +79,85 @@ const persist = () => {
   }
 };
 
+// ── server sync ─────────────────────────────────────────────
+// Plan pricing (public) + the user's membership (authed) come from the
+// backend; offline or logged-out, the local defaults/cache stand.
+const REMOTE_KEY: Record<SubPlan['id'], string> = {
+  care: 'bm_care',
+  plus: 'bm_care_plus',
+  pro: 'bm_care_pro',
+};
+export const planKeyById = (id: SubPlan['id']): string => REMOTE_KEY[id] || 'bm_care_plus';
+const idByPlanKey = (key: string): SubPlan['id'] =>
+  (Object.keys(REMOTE_KEY) as SubPlan['id'][]).find((k) => REMOTE_KEY[k] === key) || 'plus';
+
+const membershipToSub = (m: any): BmcSub => ({
+  plan: idByPlanKey(m.planKey),
+  cycle: m.cycle === 'mo' ? 'mo' : 'yr',
+  since: m.startedAt || new Date().toISOString(),
+  renew: m.renewsAt || new Date().toISOString(),
+  active: m.status === 'active',
+  freeTotal: m.meta?.freeTotal ?? 2,
+  servicesUsed: m.meta?.servicesUsed ?? 0,
+  roadTotal: m.meta?.roadTotal ?? 0,
+  roadUsed: m.meta?.roadUsed ?? 0,
+  partsDisc: m.meta?.partsDisc ?? 5,
+});
+
+let plansLoaded = false;
+let plansFetching = false;
+const hydratePlansFromServer = async () => {
+  if (plansLoaded || plansFetching || typeof window === 'undefined') return;
+  plansFetching = true;
+  try {
+    const res = await publicPlansAPI.getPlans('membership');
+    const list = res.data?.data;
+    if (Array.isArray(list)) {
+      plansLoaded = true;
+      const byKey: Record<string, any> = {};
+      for (const p of list) byKey[p.key] = p;
+      let changed = false;
+      for (const plan of SUB_PLANS) {
+        const r = byKey[REMOTE_KEY[plan.id]];
+        if (!r) continue;
+        if (typeof r.priceMonthly === 'number') plan.mo = r.priceMonthly;
+        if (typeof r.priceYearly === 'number') plan.yr = r.priceYearly;
+        if (r.name) plan.name = r.name;
+        if (r.tagline) plan.tagline = r.tagline;
+        if (r.tag !== undefined) plan.tag = r.tag || null;
+        if (Array.isArray(r.benefits) && r.benefits.length > 0) plan.perks = r.benefits;
+        changed = true;
+      }
+      if (changed) { data = data ? { ...data } : data; emit(); }
+    }
+  } catch { /* offline — defaults stand; retried on next mount */ }
+  finally { plansFetching = false; }
+};
+
+let subLoaded = false;
+let subFetching = false;
+const syncSubFromServer = async () => {
+  if (subLoaded || subFetching || typeof window === 'undefined') return;
+  // Only when logged in — an unauthenticated call would 401-redirect to /login.
+  if (!Cookies.get('customer_token')) return;
+  subFetching = true;
+  try {
+    const res = await userMembershipAPI.getMine();
+    if (res.data?.success) {
+      subLoaded = true;
+      if (res.data.data) { data = membershipToSub(res.data.data); persist(); emit(); }
+    }
+  } catch { /* offline — cache stands; retried on next mount */ }
+  finally { subFetching = false; }
+};
+
 export const bmCareStore = {
-  subscribe(f: () => void) { listeners.add(f); return () => { listeners.delete(f); }; },
+  subscribe(f: () => void) {
+    hydratePlansFromServer(); // no-op once loaded
+    syncSubFromServer();      // no-op once loaded / logged out
+    listeners.add(f);
+    return () => { listeners.delete(f); };
+  },
   get() { return data; },
   activate(plan: SubPlan['id'], cycle: Cycle) {
     const now = new Date();
@@ -92,11 +169,23 @@ export const bmCareStore = {
     const partsDisc = ({ care: 5, plus: 10, pro: 15 } as const)[plan] ?? 5;
     data = {
       plan, cycle, since: now.toISOString(), renew: renew.toISOString(), active: true,
-      freeTotal, servicesUsed: 1, roadTotal, roadUsed: 0, partsDisc,
+      freeTotal, servicesUsed: 0, roadTotal, roadUsed: 0, partsDisc,
     };
     persist(); emit();
   },
-  cancel() { if (data) { data = { ...data, active: false }; persist(); emit(); } },
+  // Adopt a server membership (after payment verification)
+  applyServerMembership(m: any) {
+    if (!m) return;
+    data = membershipToSub(m);
+    subLoaded = true;
+    persist(); emit();
+  },
+  cancel() {
+    if (data) { data = { ...data, active: false }; persist(); emit(); }
+    if (typeof window !== 'undefined' && Cookies.get('customer_token')) {
+      userMembershipAPI.cancel().catch(() => { /* offline — local already reflects it */ });
+    }
+  },
 };
 
 // ── hook ────────────────────────────────────────────────────

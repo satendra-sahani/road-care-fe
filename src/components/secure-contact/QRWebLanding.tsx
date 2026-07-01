@@ -1,20 +1,35 @@
 'use client'
 
 // Public web landing shown to non-app users who scan a vehicle QR.
-// Ported from bmc-extra.jsx QRWeb. Standalone (no app chrome / auth).
-import { useState } from 'react'
+// Resolves the code against the backend (masked info only — the owner's
+// identity/phone never reaches the browser). Standalone, no auth.
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { vehicleStore, maskPlate } from '@/lib/secureContact'
-import { Shield, Phone, Send, Check, Apple, Play, Wrench } from 'lucide-react'
+import { resolveCode, type ScanResult } from '@/lib/secureContact'
+import { Shield, Phone, Send, Check, Apple, Play, Wrench, Loader2, SearchX } from 'lucide-react'
 
-const DEMO = { em: '🚗', name: 'Maruti Swift VXi', plate: 'DL 8C XY 4821' }
+const DEMO: ScanResult = { code: '', em: '🚗', name: 'Maruti Swift VXi', maskedPlate: 'DL 8C XY ••21' }
 
 export function QRWebLanding({ code }: { code: string }) {
   const router = useRouter()
-  const found = vehicleStore.byCode(code)
-  const veh = found || DEMO
-  const masked = maskPlate(veh.plate)
+  const [veh, setVeh] = useState<ScanResult | null>(null)
+  const [state, setState] = useState<'loading' | 'ok' | 'notfound'>('loading')
   const [done, setDone] = useState<'call' | 'msg' | null>(null)
+
+  useEffect(() => {
+    if (!code) return // router.query hydrates on the next render
+    let cancelled = false
+    setState('loading')
+    resolveCode(code).then((r) => {
+      if (cancelled) return
+      if (r) { setVeh(r); setState('ok') }
+      else if (code.toUpperCase() === 'DEMO') { setVeh(DEMO); setState('ok') }
+      else setState('notfound')
+    })
+    return () => { cancelled = true }
+  }, [code])
+
+  const masked = veh?.maskedPlate || ''
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F4F6F8] to-white">
@@ -32,33 +47,49 @@ export function QRWebLanding({ code }: { code: string }) {
       </div>
 
       <div className="-mt-4 px-[18px] pb-8">
-        {/* vehicle card */}
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg">
-          <div className="grid h-[54px] w-[54px] shrink-0 place-items-center rounded-2xl bg-[#EAF0FA] text-[28px]">{veh.em}</div>
-          <div className="flex-1">
-            <div className="text-[15.5px] font-extrabold text-[#0F2545]">{veh.name}</div>
-            <div className="text-[13px] font-extrabold tracking-widest text-[#1B3B6F]">{masked}</div>
+        {state === 'loading' ? (
+          <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-white p-6 text-sm font-bold text-slate-500 shadow-lg">
+            <Loader2 className="h-4 w-4 animate-spin" /> Looking up this vehicle…
           </div>
-          <span className="rounded-lg bg-[#E6F7F0] px-2.5 py-1.5 text-center text-[10.5px] font-extrabold leading-tight text-[#1BA672]">NOTIFIED</span>
-        </div>
-
-        {done ? (
-          <div className="mt-3.5 rounded-2xl bg-[#E6F7F0] p-5 text-center">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#1BA672]"><Check className="h-7 w-7 text-white" strokeWidth={3} /></div>
-            <div className="mt-3 font-display text-lg font-extrabold text-[#0F2545]">{done === 'call' ? 'Connecting your call…' : 'Message sent!'}</div>
-            <div className="mt-1 text-[12.5px] font-bold text-slate-700">The owner has been alerted. Numbers stay private.</div>
+        ) : state === 'notfound' ? (
+          <div className="rounded-2xl border border-slate-100 bg-white p-6 text-center shadow-lg">
+            <SearchX className="mx-auto h-10 w-10 text-slate-300" />
+            <div className="mt-3 font-display text-lg font-extrabold text-[#0F2545]">No vehicle found</div>
+            <div className="mt-1 text-[12.5px] font-bold text-slate-600">This QR code isn&apos;t registered (or was deactivated by the owner).</div>
           </div>
         ) : (
-          <div className="mt-3.5 grid gap-3">
-            <button onClick={() => setDone('call')}
-              className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-[#1BA672] text-[15.5px] font-bold text-white shadow-[0_8px_20px_-6px_rgba(27,166,114,.5)]">
-              <Phone className="h-5 w-5" fill="currentColor" /> Call owner — free
-            </button>
-            <button onClick={() => setDone('msg')}
-              className="flex h-14 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-slate-200 bg-white text-[15.5px] font-bold text-[#1B3B6F]">
-              <Send className="h-[18px] w-[18px]" /> Send a message
-            </button>
-          </div>
+          <>
+            {/* vehicle card */}
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-lg">
+              <div className="grid h-[54px] w-[54px] shrink-0 place-items-center rounded-2xl bg-[#EAF0FA] text-[28px]">{veh!.em}</div>
+              <div className="flex-1">
+                <div className="text-[15.5px] font-extrabold text-[#0F2545]">{veh!.name}</div>
+                <div className="text-[13px] font-extrabold tracking-widest text-[#1B3B6F]">{masked}</div>
+              </div>
+              <span className="rounded-lg bg-[#E6F7F0] px-2.5 py-1.5 text-center text-[10.5px] font-extrabold leading-tight text-[#1BA672]">VERIFIED</span>
+            </div>
+
+            {done ? (
+              <div className="mt-3.5 rounded-2xl bg-[#E6F7F0] p-5 text-center">
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#1BA672]"><Check className="h-7 w-7 text-white" strokeWidth={3} /></div>
+                <div className="mt-3 font-display text-lg font-extrabold text-[#0F2545]">{done === 'call' ? 'Connecting your call…' : 'Message sent!'}</div>
+                <div className="mt-1 text-[12.5px] font-bold text-slate-700">The owner has been alerted. Numbers stay private.</div>
+              </div>
+            ) : (
+              <div className="mt-3.5 grid gap-3">
+                {/* Both actions continue on the site's contact page (login there
+                    keeps the owner anonymous end-to-end); calls are app-first. */}
+                <button onClick={() => router.push(`/contact-owner?code=${encodeURIComponent(veh!.code)}`)}
+                  className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-[#1BA672] text-[15.5px] font-bold text-white shadow-[0_8px_20px_-6px_rgba(27,166,114,.5)]">
+                  <Phone className="h-5 w-5" fill="currentColor" /> Call owner — free
+                </button>
+                <button onClick={() => router.push(`/contact-owner?code=${encodeURIComponent(veh!.code)}`)}
+                  className="flex h-14 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-slate-200 bg-white text-[15.5px] font-bold text-[#1B3B6F]">
+                  <Send className="h-[18px] w-[18px]" /> Send a message
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {/* app upsell */}

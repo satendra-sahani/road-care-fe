@@ -229,6 +229,20 @@ export const issuePricingAPI = {
     api.delete(`/admin/service-pricing/${vehicleType}/emergency-services/${serviceId}`),
 };
 
+// ─── Plan Pricing APIs (memberships / GPS hardware / add-ons) ─────────
+export const planPricingAPI = {
+  getAll: (planType?: string) =>
+    api.get('/admin/pricing-plans', { params: planType ? { planType } : {} }),
+  create: (data: Record<string, any>) =>
+    api.post('/admin/pricing-plans', data),
+  update: (id: string, data: Record<string, any>) =>
+    api.put(`/admin/pricing-plans/${id}`, data),
+  remove: (id: string) =>
+    api.delete(`/admin/pricing-plans/${id}`),
+  seedDefaults: () =>
+    api.post('/admin/pricing-plans/seed-defaults'),
+};
+
 // ─── Order Management APIs ───────────────────────────────────────────
 export const orderAPI = {
   getAll: (params?: any) => api.get('/admin/orders', { params }),
@@ -446,6 +460,36 @@ export const userPaymentAPI = {
   getPricing: () => api.get('/payments/pricing'),
   getIssuePricing: (vehicleType?: string) =>
     vehicleType ? api.get(`/common/service-pricing/${vehicleType}`) : api.get('/common/service-pricing'),
+};
+
+// ─── Public Plan Pricing APIs ────────────────────────────────────────
+export const publicPlansAPI = {
+  getPlans: (planType?: string, vehicleType?: string) =>
+    api.get('/common/plans', { params: { ...(planType ? { planType } : {}), ...(vehicleType ? { vehicleType } : {}) } }),
+};
+
+// ─── User Membership APIs (BM Care subscription) ─────────────────────
+export const userMembershipAPI = {
+  getMine: () => api.get('/user/membership'),
+  subscribe: (planKey: string, cycle: 'mo' | 'yr') =>
+    api.post('/user/membership/subscribe', { planKey, cycle }),
+  verifyPayment: (data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    api.post('/user/membership/verify', data),
+  cancel: () => api.post('/user/membership/cancel'),
+};
+
+// ─── User Vehicle QR APIs (SecureContact) ────────────────────────────
+export const userVehicleQrAPI = {
+  getMine: () => api.get('/user/vehicle-qr'),
+  register: (data: { name: string; em?: string; plate: string }) =>
+    api.post('/user/vehicle-qr', data),
+  update: (id: string, data: { name?: string; em?: string; plate?: string; isActive?: boolean }) =>
+    api.put(`/user/vehicle-qr/${id}`, data),
+  remove: (id: string) => api.delete(`/user/vehicle-qr/${id}`),
+  message: (code: string, message: string) =>
+    api.post('/user/vehicle-qr/message', { code, message }),
+  // Public resolve — no auth needed (works for logged-out scanners)
+  resolvePublic: (code: string) => api.get(`/common/vehicle-qr/${encodeURIComponent(code)}`),
 };
 
 // ─── User Wallet APIs (Customer-facing) ─────────────────────────────
