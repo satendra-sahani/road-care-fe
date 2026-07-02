@@ -30,6 +30,7 @@ import {
   Gift,
   Coins,
   Crown,
+  MessageSquare,
 } from 'lucide-react'
 import NextImage from 'next/image'
 import { cn } from '@/lib/utils'
@@ -84,6 +85,7 @@ const baseSidebarItems: SidebarItem[] = [
   { id: 'banners', title: 'Banners', icon: ImageIcon, href: '/admin/banners', separator: true },
   { id: 'locations', title: 'Locations', icon: MapPin, href: '/admin/locations' },
   { id: 'notifications', title: 'Notifications', icon: Bell, href: '/admin/communication/notifications' },
+  { id: 'support', title: 'Help & Support', icon: MessageSquare, href: '/admin/communication/support' },
   { id: 'call-logs', title: 'Call Logs', icon: Phone, href: '/admin/communication/call-logs' },
 
   // Settings

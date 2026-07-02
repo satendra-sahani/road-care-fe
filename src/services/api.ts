@@ -545,6 +545,21 @@ export const userCallAPI = {
     api.put(`/user/calls/${callId}/status`, { status, duration }),
 };
 
+// ─── Admin Support APIs (Help & Support tickets + answering support calls) ────
+export const adminSupportAPI = {
+  getTickets: (params?: { status?: string; page?: number; limit?: number }) =>
+    api.get('/admin/support/tickets', { params }),
+  getTicket: (id: string) => api.get(`/admin/support/tickets/${id}`),
+  reply: (id: string, text: string) => api.post(`/admin/support/tickets/${id}/reply`, { text }),
+  updateTicket: (id: string, data: { status?: string; priority?: string; assignedTo?: string | null }) =>
+    api.put(`/admin/support/tickets/${id}`, data),
+  // Answering an in-app support call
+  answerCall: (callId: string) => api.post(`/admin/support/calls/${callId}/answer`),
+  getCallStatus: (callId: string) => api.get(`/admin/support/calls/${callId}/status`),
+  updateCallStatus: (callId: string, status: string, duration = 0) =>
+    api.put(`/admin/support/calls/${callId}/status`, { status, duration }),
+};
+
 // ─── Guest Calling APIs (no account — scanner calls a vehicle owner) ──────────
 // The guest token rides in X-Guest-Token so it never clashes with a customer
 // Authorization header.
