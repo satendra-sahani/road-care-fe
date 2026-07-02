@@ -8,7 +8,7 @@ import Cookies from 'js-cookie'
 import { shopAPI } from '@/services/api'
 import {
   LayoutDashboard, Wrench, Users, Wallet, IndianRupee, Receipt,
-  Store, ShieldCheck, Settings, LogOut, ArrowLeft, Check, Star, Headset,
+  Store, ShieldCheck, Settings, LogOut, ArrowLeft, Check, Star, Headset, FileText,
 } from 'lucide-react'
 
 const DIST = '#D97706'
@@ -22,6 +22,7 @@ const NAV: { cap: string; items: { id: string; label: string; icon: any; href: s
   { cap: 'Finance', items: [
     { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/shop-partner/wallet' },
     { id: 'earnings', label: 'Earnings', icon: IndianRupee, href: '/shop-partner/earnings' },
+    { id: 'invoices', label: 'Invoices & GST', icon: FileText, href: '/shop-partner/invoices' },
     { id: 'settlements', label: 'Settlements', icon: Receipt, href: '/shop-partner/settlements' },
   ] },
   { cap: 'Reputation', items: [
