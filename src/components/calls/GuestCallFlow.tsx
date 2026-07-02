@@ -11,6 +11,13 @@ import { guestCallAPI, userCallAPI } from '@/services/api'
 import { WebCall, type CallHandle } from './WebCall'
 import { Shield, Phone, X, Loader2, ArrowRight } from 'lucide-react'
 
+// Friendlier text for the common failure modes (a bare axios "Network Error"
+// means the phone couldn't reach the API server).
+const errMsg = (e: any, fallback: string): string =>
+  e?.response?.data?.message
+  || (e?.message === 'Network Error' ? 'Cannot reach the server. Check that your phone is on the same Wi-Fi.' : e?.message)
+  || fallback
+
 interface Props {
   code: string
   peerName: string // e.g. "Owner of DL 8C XY ••21"
@@ -40,7 +47,7 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
       if (res.data?.success) { setStep('otp'); toast.success('OTP sent') }
       else toast.error(res.data?.message || 'Could not send OTP')
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Could not send OTP')
+      toast.error(errMsg(e, 'Could not send OTP'))
     } finally { setBusy(false) }
   }
 
@@ -61,7 +68,7 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
       })
       setStep('incall')
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || e?.message || 'Could not place the call')
+      toast.error(errMsg(e, 'Could not place the call'))
       onClose()
     }
   }
@@ -79,7 +86,7 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
         toast.error(res.data?.message || 'Invalid OTP')
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Verification failed')
+      toast.error(errMsg(e, 'Verification failed'))
     } finally { setBusy(false) }
   }
 
@@ -100,7 +107,7 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
       })
       setStep('incall')
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || e?.message || 'Could not place the call')
+      toast.error(errMsg(e, 'Could not place the call'))
       onClose()
     }
   }

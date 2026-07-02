@@ -68,6 +68,15 @@ export function WebCall({ appId, channelName, token, uid, peerName, outgoing = t
     let statusTimer: ReturnType<typeof setInterval> | null = null
 
     const start = async () => {
+      // Microphone access requires a secure context — https:// or localhost.
+      // On a phone hitting a plain http://<LAN-IP> dev site the browser blocks
+      // getUserMedia, so surface a clear message instead of a silent failure.
+      if (typeof window !== 'undefined' && !window.isSecureContext) {
+        setError('Voice calls need a secure (HTTPS) connection. Open this site over HTTPS, or test on the computer.')
+        endCall(true, 'failed')
+        return
+      }
+
       let AgoraRTC: any
       try {
         AgoraRTC = (await import('agora-rtc-sdk-ng')).default
