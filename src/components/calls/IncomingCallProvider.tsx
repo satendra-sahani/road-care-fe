@@ -2,8 +2,9 @@
 
 // Global incoming-call listener for logged-in customers on the website. Keeps
 // an authenticated socket open and, when the backend emits 'call:incoming'
-// (e.g. someone scanned this user's vehicle QR and called), shows a ringing
-// modal. Accept → join the Agora channel; reject → tell the backend.
+// (someone scanned this user's vehicle QR and called), shows a FULL-SCREEN
+// ringing screen with a ringtone + vibration so it can't be missed. Accept →
+// join the Agora channel; reject → tell the backend.
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSelector } from 'react-redux'
 import Cookies from 'js-cookie'
@@ -28,6 +29,51 @@ interface ActiveCall {
   peerName: string
 }
 
+// A ringtone via the Web Audio API (no asset needed) + vibration. Loops until
+// stopped. Best-effort: if the browser blocks audio, the full-screen visual and
+// vibration still grab attention.
+function createRinger() {
+  let ctx: any = null
+  let timer: ReturnType<typeof setInterval> | null = null
+  let dead = false
+  const tick = () => {
+    if (dead) return
+    try {
+      if (ctx) {
+        const now = ctx.currentTime
+        for (const [f, at] of [[523, 0], [659, 0.4]] as const) {
+          const o = ctx.createOscillator(); const g = ctx.createGain()
+          o.type = 'sine'; o.frequency.value = f
+          g.gain.setValueAtTime(0.0001, now + at)
+          g.gain.exponentialRampToValueAtTime(0.28, now + at + 0.04)
+          g.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.34)
+          o.connect(g); g.connect(ctx.destination)
+          o.start(now + at); o.stop(now + at + 0.4)
+        }
+      }
+    } catch { /* audio blocked */ }
+    try { (navigator as any).vibrate?.([400, 200, 400]) } catch { /* no vibration */ }
+  }
+  return {
+    start() {
+      dead = false
+      try {
+        const AC = (window as any).AudioContext || (window as any).webkitAudioContext
+        if (AC) { ctx = new AC(); if (ctx.state === 'suspended') ctx.resume?.() }
+      } catch { /* no audio context */ }
+      tick()
+      timer = setInterval(tick, 1700)
+    },
+    stop() {
+      dead = true
+      if (timer) { clearInterval(timer); timer = null }
+      try { ctx?.close?.() } catch { /* noop */ }
+      ctx = null
+      try { (navigator as any).vibrate?.(0) } catch { /* noop */ }
+    },
+  }
+}
+
 const Ctx = createContext<null>(null)
 export const useIncomingCall = () => useContext(Ctx)
 
@@ -41,6 +87,12 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
   const activeRef = useRef<ActiveCall | null>(null)
   activeRef.current = active
 
+  const endIncoming = async (status: string) => {
+    const id = incomingRef.current?.callId
+    setIncoming(null)
+    if (id) { try { await userCallAPI.updateStatus(id, status, 0) } catch { /* noop */ } }
+  }
+
   // Attach the incoming-call listener ONCE per auth session. Using refs for the
   // busy check keeps the listener stable so no event is missed while a call is
   // being set up (the handler registry also re-binds it across reconnects).
@@ -51,8 +103,7 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
     socketService.ensureConnected()
     const handler = (data: any) => {
       if (!data?.callId) return
-      // Ignore a second ring while already busy.
-      if (incomingRef.current || activeRef.current) return
+      if (incomingRef.current || activeRef.current) return // already busy
       setIncoming({
         callId: String(data.callId),
         callerName: String(data.callerName || 'Incoming call'),
@@ -63,6 +114,16 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
     const unsub = socketService.on('call:incoming', handler)
     return () => { unsub() }
   }, [isAuthenticated])
+
+  // Ring (sound + vibration) while an incoming call is pending; auto-miss after 45s.
+  useEffect(() => {
+    if (!incoming || active) return
+    const ringer = createRinger()
+    ringer.start()
+    const timeout = setTimeout(() => { endIncoming('missed') }, 45000)
+    return () => { ringer.stop(); clearTimeout(timeout) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming, active])
 
   const accept = async () => {
     if (!incoming || joining) return
@@ -81,19 +142,11 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
       })
       setIncoming(null)
     } catch {
-      // Could not join — mark missed and drop the prompt.
       try { await userCallAPI.updateStatus(incoming.callId, 'failed', 0) } catch { /* noop */ }
       setIncoming(null)
     } finally {
       setJoining(false)
     }
-  }
-
-  const reject = async () => {
-    if (!incoming) return
-    const id = incoming.callId
-    setIncoming(null)
-    try { await userCallAPI.updateStatus(id, 'rejected', 0) } catch { /* noop */ }
   }
 
   const activeApi: CallHandle | null = active && {
@@ -105,23 +158,35 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={null}>
       {children}
 
-      {/* Ringing prompt */}
+      {/* Full-screen incoming ring */}
       {incoming && !active && (
-        <div className="fixed inset-x-0 top-4 z-[70] mx-auto flex max-w-sm items-center gap-3 rounded-2xl bg-[#0F2647] px-4 py-3 text-white shadow-2xl ring-1 ring-white/10">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/15 text-2xl">🚗</div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1 text-[10px] font-extrabold tracking-wide text-[#FFD68A]">
-              <Shield className="h-3 w-3" fill="currentColor" /> SECURECONTACT
+        <div className="fixed inset-0 z-[80] flex flex-col text-white" style={{ background: 'linear-gradient(180deg,#0F2647,#1B3B6F 55%,#24508C)' }}>
+          <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[11.5px] font-extrabold tracking-wide text-[#FFD68A]">
+              <Shield className="h-3.5 w-3.5" fill="currentColor" /> SECURECONTACT
             </div>
-            <div className="truncate text-sm font-extrabold">{incoming.callerName}</div>
-            <div className="text-[11px] font-semibold opacity-70">Incoming voice call…</div>
+            <div className="relative mt-10 h-[132px] w-[132px]">
+              <span className="absolute inset-0 animate-ping rounded-full border-2 border-white/30" />
+              <span className="absolute -inset-2 animate-pulse rounded-full bg-[#1BA672]/20" />
+              <div className="flex h-[132px] w-[132px] items-center justify-center rounded-full bg-white/15 text-[62px]">🚗</div>
+            </div>
+            <div className="mt-7 font-display text-2xl font-extrabold">{incoming.callerName}</div>
+            <div className="mt-2 text-sm font-bold opacity-85">Incoming voice call · number stays private</div>
           </div>
-          <button onClick={reject} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#E5484D]">
-            <PhoneOff className="h-5 w-5" />
-          </button>
-          <button onClick={accept} disabled={joining} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#1BA672]">
-            {joining ? <Loader2 className="h-5 w-5 animate-spin" /> : <Phone className="h-5 w-5" fill="currentColor" />}
-          </button>
+          <div className="flex items-center justify-center gap-16 px-10 pb-16">
+            <button onClick={() => endIncoming('rejected')} className="flex flex-col items-center gap-2">
+              <span className="grid h-[70px] w-[70px] place-items-center rounded-full bg-[#E5484D] shadow-[0_12px_30px_-8px_rgba(229,72,77,.7)]">
+                <PhoneOff className="h-7 w-7 text-white" />
+              </span>
+              <span className="text-xs font-bold opacity-85">Decline</span>
+            </button>
+            <button onClick={accept} disabled={joining} className="flex flex-col items-center gap-2">
+              <span className="grid h-[70px] w-[70px] place-items-center rounded-full bg-[#1BA672] shadow-[0_12px_30px_-8px_rgba(27,166,114,.7)]">
+                {joining ? <Loader2 className="h-7 w-7 animate-spin text-white" /> : <Phone className="h-7 w-7 text-white" fill="currentColor" />}
+              </span>
+              <span className="text-xs font-bold opacity-85">{joining ? 'Connecting…' : 'Accept'}</span>
+            </button>
+          </div>
         </div>
       )}
 
