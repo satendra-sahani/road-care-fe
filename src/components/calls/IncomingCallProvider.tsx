@@ -38,7 +38,12 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
   const [joining, setJoining] = useState(false)
   const incomingRef = useRef<IncomingCall | null>(null)
   incomingRef.current = incoming
+  const activeRef = useRef<ActiveCall | null>(null)
+  activeRef.current = active
 
+  // Attach the incoming-call listener ONCE per auth session. Using refs for the
+  // busy check keeps the listener stable so no event is missed while a call is
+  // being set up (the handler registry also re-binds it across reconnects).
   useEffect(() => {
     const hasToken = typeof window !== 'undefined' && !!Cookies.get('customer_token')
     if (!isAuthenticated && !hasToken) return
@@ -47,7 +52,7 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
     const handler = (data: any) => {
       if (!data?.callId) return
       // Ignore a second ring while already busy.
-      if (incomingRef.current || active) return
+      if (incomingRef.current || activeRef.current) return
       setIncoming({
         callId: String(data.callId),
         callerName: String(data.callerName || 'Incoming call'),
@@ -57,7 +62,7 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
     }
     const unsub = socketService.on('call:incoming', handler)
     return () => { unsub() }
-  }, [isAuthenticated, active])
+  }, [isAuthenticated])
 
   const accept = async () => {
     if (!incoming || joining) return

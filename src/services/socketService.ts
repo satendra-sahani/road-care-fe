@@ -26,6 +26,10 @@ class SocketService {
   private socket: Socket | null = null;
   private locationCallbacks = new Map<string, LocationCallback>();
   private statusCallbacks = new Map<string, StatusCallback>();
+  // Generic event handlers (e.g. 'call:incoming') — kept in a registry so they
+  // are (re)attached whenever the socket is created/recreated, and survive a
+  // handler being registered before the socket exists.
+  private genericHandlers = new Map<string, Set<(...args: any[]) => void>>();
 
   connect(token?: string): void {
     if (this.socket?.connected) return;
@@ -44,6 +48,11 @@ class SocketService {
       reconnectionDelay: 3000,
       reconnectionDelayMax: 10000,
     });
+
+    // Re-bind every registered generic handler to the fresh socket.
+    for (const [event, handlers] of this.genericHandlers) {
+      for (const h of handlers) this.socket.on(event, h);
+    }
 
     this.socket.on('connect', () => {
       console.log('[Socket] Connected');
@@ -85,14 +94,18 @@ class SocketService {
     if (!this.socket?.connected) this.connect();
   }
 
-  // Generic event subscription (used by the incoming-call listener). Returns an
-  // unsubscribe function.
+  // Generic event subscription (used by the incoming-call listener). The
+  // handler is stored so it survives (re)connects even if registered before the
+  // socket exists. Returns an unsubscribe function.
   on(event: string, handler: (...args: any[]) => void): () => void {
+    if (!this.genericHandlers.has(event)) this.genericHandlers.set(event, new Set());
+    this.genericHandlers.get(event)!.add(handler);
     this.socket?.on(event, handler);
-    return () => { this.socket?.off(event, handler); };
+    return () => { this.off(event, handler); };
   }
 
   off(event: string, handler: (...args: any[]) => void): void {
+    this.genericHandlers.get(event)?.delete(handler);
     this.socket?.off(event, handler);
   }
 

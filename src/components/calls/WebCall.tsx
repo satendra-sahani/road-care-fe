@@ -46,14 +46,20 @@ export function WebCall({ appId, channelName, token, uid, peerName, outgoing = t
     return () => clearInterval(t)
   }, [phase])
 
-  const endCall = async (report = true) => {
+  const goLive = () => {
+    if (endedRef.current || phaseRef.current === 'live') return
+    startedAtRef.current = Date.now()
+    setPhase('live')
+  }
+
+  const endCall = async (report = true, status = 'completed') => {
     if (endedRef.current) return
     endedRef.current = true
     const duration = startedAtRef.current ? Math.round((Date.now() - startedAtRef.current) / 1000) : 0
     setPhase('ended')
     try { micTrackRef.current?.stop?.(); micTrackRef.current?.close?.() } catch { /* noop */ }
     try { await clientRef.current?.leave?.() } catch { /* noop */ }
-    if (report) { try { await api.updateStatus('completed', duration) } catch { /* offline */ } }
+    if (report) { try { await api.updateStatus(status, duration) } catch { /* offline */ } }
     setTimeout(onClose, 900)
   }
 
@@ -81,8 +87,7 @@ export function WebCall({ appId, channelName, token, uid, peerName, outgoing = t
           if (mediaType === 'audio') user.audioTrack?.play()
         } catch { /* subscribe race — ignore */ }
         if (!endedRef.current && phaseRef.current !== 'live') {
-          startedAtRef.current = Date.now()
-          setPhase('live')
+          goLive()
           if (outgoing) { try { api.updateStatus('answered', 0) } catch { /* noop */ } }
         }
       })
@@ -101,17 +106,20 @@ export function WebCall({ appId, channelName, token, uid, peerName, outgoing = t
           ? 'Microphone permission denied. Allow mic access to talk.'
           : 'Could not connect the call. Please try again.'
         setError(msg)
-        endCall(true)
+        endCall(true, 'failed')
         return
       }
 
-      // Poll backend so we drop the call if the peer rejects / ends elsewhere.
+      // Poll backend to (a) go live as soon as the other side answers — even if
+      // their audio hasn't arrived yet — and (b) drop the call when the peer
+      // rejects/ends elsewhere.
       statusTimer = setInterval(async () => {
         if (endedRef.current) return
         try {
           const res = await api.getStatus()
           const st = res?.data?.data?.status
-          if (st && ['completed', 'missed', 'rejected', 'failed'].includes(st)) endCall(false)
+          if (st === 'answered') goLive()
+          else if (st && ['completed', 'missed', 'rejected', 'failed'].includes(st)) endCall(false)
         } catch { /* transient */ }
       }, 3000)
     }
