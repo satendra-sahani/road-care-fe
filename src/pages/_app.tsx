@@ -7,6 +7,7 @@ import { CustomerAuthGuard } from "@/components/auth/CustomerAuthGuard";
 import { ShopAuthGuard } from "@/components/shop-partner/ShopAuthGuard";
 import { ShopLayout } from "@/components/shop-partner/ShopLayout";
 import { LoginModalProvider } from "@/components/auth/LoginModalProvider";
+import { IncomingCallProvider } from "@/components/calls/IncomingCallProvider";
 import { useRouter } from "next/router";
 import { Toaster } from "sonner";
 import { Manrope, Bricolage_Grotesque } from "next/font/google";
@@ -66,6 +67,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <Provider store={store}>
       <LoginModalProvider>
+      <IncomingCallProvider>
       <div className={`${body.variable} ${display.variable} font-sans`}>
         <Toaster position="top-right" richColors closeButton />
         {needsAdminAuth(router.pathname) ? (
@@ -86,6 +88,7 @@ export default function App({ Component, pageProps }: AppProps) {
           <Component {...pageProps} />
         )}
       </div>
+      </IncomingCallProvider>
       </LoginModalProvider>
     </Provider>
   );

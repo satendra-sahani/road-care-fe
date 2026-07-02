@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { resolveCode, type ScanResult } from '@/lib/secureContact'
+import { GuestCallFlow } from '@/components/calls/GuestCallFlow'
 import { Shield, Phone, Send, Check, Apple, Play, Wrench, Loader2, SearchX } from 'lucide-react'
 
 const DEMO: ScanResult = { code: '', em: '🚗', name: 'Maruti Swift VXi', maskedPlate: 'DL 8C XY ••21' }
@@ -15,6 +16,7 @@ export function QRWebLanding({ code }: { code: string }) {
   const [veh, setVeh] = useState<ScanResult | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'notfound'>('loading')
   const [done, setDone] = useState<'call' | 'msg' | null>(null)
+  const [calling, setCalling] = useState(false)
 
   useEffect(() => {
     if (!code) return // router.query hydrates on the next render
@@ -69,17 +71,17 @@ export function QRWebLanding({ code }: { code: string }) {
               <span className="rounded-lg bg-[#E6F7F0] px-2.5 py-1.5 text-center text-[10.5px] font-extrabold leading-tight text-[#1BA672]">VERIFIED</span>
             </div>
 
-            {done ? (
+            {done === 'msg' ? (
               <div className="mt-3.5 rounded-2xl bg-[#E6F7F0] p-5 text-center">
                 <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#1BA672]"><Check className="h-7 w-7 text-white" strokeWidth={3} /></div>
-                <div className="mt-3 font-display text-lg font-extrabold text-[#0F2545]">{done === 'call' ? 'Connecting your call…' : 'Message sent!'}</div>
+                <div className="mt-3 font-display text-lg font-extrabold text-[#0F2545]">Message sent!</div>
                 <div className="mt-1 text-[12.5px] font-bold text-slate-700">The owner has been alerted. Numbers stay private.</div>
               </div>
             ) : (
               <div className="mt-3.5 grid gap-3">
-                {/* Both actions continue on the site's contact page (login there
-                    keeps the owner anonymous end-to-end); calls are app-first. */}
-                <button onClick={() => router.push(`/contact-owner?code=${encodeURIComponent(veh!.code)}`)}
+                {/* Real in-browser voice call (guest verifies name+phone+OTP once);
+                    message continues to the contact page. Owner stays anonymous. */}
+                <button onClick={() => setCalling(true)}
                   className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-[#1BA672] text-[15.5px] font-bold text-white shadow-[0_8px_20px_-6px_rgba(27,166,114,.5)]">
                   <Phone className="h-5 w-5" fill="currentColor" /> Call owner — free
                 </button>
@@ -90,6 +92,10 @@ export function QRWebLanding({ code }: { code: string }) {
               </div>
             )}
           </>
+        )}
+
+        {calling && veh && (
+          <GuestCallFlow code={veh.code} peerName={`Owner of ${veh.maskedPlate}`} onClose={() => setCalling(false)} />
         )}
 
         {/* app upsell */}

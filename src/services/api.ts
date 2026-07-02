@@ -507,6 +507,32 @@ export const userVehicleQrAPI = {
   resolvePublic: (code: string) => api.get(`/common/vehicle-qr/${encodeURIComponent(code)}`),
 };
 
+// ─── User Calling APIs (SecureContact + service/order calls) ─────────────────
+export const userCallAPI = {
+  callVehicleOwner: (code: string, callType: 'audio' | 'video' = 'audio') =>
+    api.post('/user/calls/vehicle-owner', { code, callType }),
+  join: (callId: string) => api.post(`/user/calls/${callId}/join`),
+  getStatus: (callId: string) => api.get(`/user/calls/${callId}/status`),
+  updateStatus: (callId: string, status: string, duration = 0) =>
+    api.put(`/user/calls/${callId}/status`, { status, duration }),
+};
+
+// ─── Guest Calling APIs (no account — scanner calls a vehicle owner) ──────────
+// The guest token rides in X-Guest-Token so it never clashes with a customer
+// Authorization header.
+const guestHeaders = (guestToken: string) => ({ headers: { 'X-Guest-Token': guestToken } });
+export const guestCallAPI = {
+  sendOtp: (phone: string) => api.post('/common/guest/send-otp', { phone }),
+  verifyOtp: (phone: string, name: string, otp: string) =>
+    api.post('/common/guest/verify-otp', { phone, name, otp }),
+  call: (code: string, callType: 'audio' | 'video', guestToken: string) =>
+    api.post('/common/guest/vehicle-owner/call', { code, callType }, guestHeaders(guestToken)),
+  getStatus: (callId: string, guestToken: string) =>
+    api.get(`/common/guest/calls/${callId}/status`, guestHeaders(guestToken)),
+  updateStatus: (callId: string, status: string, duration: number, guestToken: string) =>
+    api.post(`/common/guest/calls/${callId}/status`, { status, duration }, guestHeaders(guestToken)),
+};
+
 // ─── User Wallet APIs (Customer-facing) ─────────────────────────────
 export const userWalletAPI = {
   getWallet: () => api.get('/user/wallet'),

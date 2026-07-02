@@ -79,6 +79,23 @@ class SocketService {
     return this.socket?.connected ?? false;
   }
 
+  // Ensure a connection exists (uses the customer_token cookie). Safe to call
+  // repeatedly — no-op if already connected.
+  ensureConnected(): void {
+    if (!this.socket?.connected) this.connect();
+  }
+
+  // Generic event subscription (used by the incoming-call listener). Returns an
+  // unsubscribe function.
+  on(event: string, handler: (...args: any[]) => void): () => void {
+    this.socket?.on(event, handler);
+    return () => { this.socket?.off(event, handler); };
+  }
+
+  off(event: string, handler: (...args: any[]) => void): void {
+    this.socket?.off(event, handler);
+  }
+
   watchTracking(
     requestId: string,
     onLocation: LocationCallback,

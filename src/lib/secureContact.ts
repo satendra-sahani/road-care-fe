@@ -16,9 +16,12 @@ export interface Vehicle {
   serverId?: string // backend VehicleQr _id once synced
 }
 
-// QR payload — a URL so any phone camera opens the public landing page;
-// the in-app scanners extract the trailing code.
-export const qrPayload = (code: string) => `https://bharatmechanics.com/v/${code.toUpperCase()}`
+// QR payload — a URL so any phone camera opens the public landing page; the
+// in-app scanners extract the trailing code. The base is configurable via
+// NEXT_PUBLIC_PUBLIC_BASE_URL so it can point at a local dev IP (e.g.
+// http://10.60.50.73:3000) while testing, and the production domain otherwise.
+const PUBLIC_BASE_URL = (process.env.NEXT_PUBLIC_PUBLIC_BASE_URL || 'https://bharatmechanics.com').replace(/\/$/, '')
+export const qrPayload = (code: string) => `${PUBLIC_BASE_URL}/v/${code.toUpperCase()}`
 
 export const VEHICLE_EMOJIS = ['🏍️', '🛵', '🚗', '🚙', '🚚', '🛺']
 

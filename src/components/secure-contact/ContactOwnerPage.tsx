@@ -12,7 +12,8 @@ import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import { userVehicleQrAPI } from '@/services/api'
 import type { RootState } from '@/store'
 import { resolveCode, maskPlate, type ScanResult } from '@/lib/secureContact'
-import { Shield, Phone, Send, Check, ChevronRight, Info, Volume2, PhoneOff } from 'lucide-react'
+import { GuestCallFlow } from '@/components/calls/GuestCallFlow'
+import { Shield, Phone, Send, Check, ChevronRight, Info } from 'lucide-react'
 
 const QUICK_MSGS = [
   'Please move your vehicle 🙏',
@@ -98,8 +99,8 @@ export function ContactOwnerPage() {
         </div>
 
         {/* call */}
-        <button onClick={() => setCalling(true)}
-          className="mt-3.5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#1B3B6F] text-base font-bold text-white transition hover:bg-[#16315c]">
+        <button onClick={() => setCalling(true)} disabled={!code || notFound}
+          className="mt-3.5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#1B3B6F] text-base font-bold text-white transition hover:bg-[#16315c] disabled:opacity-50">
           <Phone className="h-5 w-5" fill="currentColor" /> Call owner anonymously
         </button>
 
@@ -122,65 +123,9 @@ export function ContactOwnerPage() {
         </div>
       </div>
 
-      {calling && <QRCallOverlay vehicle={veh} masked={masked} onHangup={() => setCalling(false)} />}
+      {calling && code && !notFound && (
+        <GuestCallFlow code={code} peerName={`Owner of ${masked}`} onClose={() => setCalling(false)} />
+      )}
     </UserLayout>
-  )
-}
-
-function QRCallOverlay({ vehicle, masked, onHangup }: { vehicle: { em: string; name: string }; masked: string; onHangup: () => void }) {
-  const [phase, setPhase] = useState<'connecting' | 'ringing' | 'live'>('connecting')
-  const [sec, setSec] = useState(0)
-  const [mute, setMute] = useState(false)
-  const [spk, setSpk] = useState(false)
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase('ringing'), 1500)
-    const t2 = setTimeout(() => setPhase('live'), 4200)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [])
-  useEffect(() => {
-    if (phase !== 'live') return
-    const t = setInterval(() => setSec((s) => s + 1), 1000)
-    return () => clearInterval(t)
-  }, [phase])
-
-  const mm = String(Math.floor(sec / 60)).padStart(2, '0')
-  const ss = String(sec % 60).padStart(2, '0')
-  const status = phase === 'connecting' ? 'Connecting securely…' : phase === 'ringing' ? 'Ringing…' : `${mm}:${ss}`
-
-  return (
-    <div className="fixed inset-0 z-[70] flex flex-col text-white" style={{ background: 'linear-gradient(180deg,#0F2647,#1B3B6F 55%,#24508C)' }}>
-      <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[11.5px] font-extrabold tracking-wide text-[#FFD68A]">
-          <Shield className="h-3.5 w-3.5" fill="currentColor" /> SECURE LINE · NUMBER HIDDEN
-        </div>
-        <div className="relative mt-8 h-[130px] w-[130px]">
-          {phase !== 'live' && <span className="absolute inset-0 animate-ping rounded-full border-2 border-white/30" />}
-          <div className="flex h-[130px] w-[130px] items-center justify-center rounded-full bg-white/15 text-[60px]">{vehicle.em}</div>
-        </div>
-        <div className="mt-6 font-display text-2xl font-extrabold">Owner of {masked}</div>
-        <div className="mt-1.5 text-sm font-bold opacity-85">{vehicle.name} · via Bharat Mechanics</div>
-        <div className={`mt-4 text-xl font-extrabold tabular-nums tracking-wide ${phase === 'live' ? 'text-[#7DF3B0]' : 'text-white'}`}>{status}</div>
-      </div>
-      <div className="px-10 pb-12">
-        <div className="mb-6 flex justify-center gap-7">
-          <CallCtl label="Mute" active={mute} onClick={() => setMute((m) => !m)} icon={<Phone className="h-6 w-6" fill={mute ? 'currentColor' : 'none'} />} />
-          <CallCtl label="Speaker" active={spk} onClick={() => setSpk((s) => !s)} icon={<Volume2 className="h-6 w-6" />} />
-        </div>
-        <button onClick={onHangup}
-          className="mx-auto flex h-[70px] w-[70px] items-center justify-center rounded-full bg-[#E5484D] shadow-[0_12px_30px_-8px_rgba(229,72,77,.7)]">
-          <PhoneOff className="h-7 w-7 text-white" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function CallCtl({ label, active, onClick, icon }: { label: string; active: boolean; onClick: () => void; icon: React.ReactNode }) {
-  return (
-    <button onClick={onClick} className="flex flex-col items-center gap-2 text-white">
-      <span className={`grid h-[58px] w-[58px] place-items-center rounded-full ${active ? 'bg-white text-[#1B3B6F]' : 'bg-white/15 text-white'}`}>{icon}</span>
-      <span className="text-xs font-bold opacity-85">{label}</span>
-    </button>
   )
 }
