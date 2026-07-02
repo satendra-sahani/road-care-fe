@@ -42,3 +42,6 @@ next-env.d.ts
 
 # stray non-dot env file
 env.local
+
+# Local self-signed HTTPS dev certificates (generated, never committed)
+certificates/

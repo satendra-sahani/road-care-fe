@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
+  // Allow the dev machine's LAN IP to load /_next/* dev assets (so testing on a
+  // phone over http://<ip>:3000 or https://<ip>:3000 works without warnings).
+  allowedDevOrigins: ['10.60.50.73'],
   images: {
     remotePatterns: [
       {
