@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
-import { userCartAPI, userOrderAPI, userAddressAPI, userProfileAPI } from '@/services/api'
+import { userCartAPI, userOrderAPI, userAddressAPI, userProfileAPI, userMembershipAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,6 +53,9 @@ export function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online')
   const [notes, setNotes] = useState('')
 
+  // BM Care membership — parts-discount % applied at checkout (matches backend).
+  const [member, setMember] = useState<{ partsDisc: number; planName: string } | null>(null)
+
   useEffect(() => {
     fetchData()
   }, [])
@@ -60,11 +63,18 @@ export function CheckoutPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [cartRes, addrRes, profileRes] = await Promise.all([
+      const [cartRes, addrRes, profileRes, memberRes] = await Promise.all([
         userCartAPI.get(),
         userAddressAPI.getAll().catch(() => ({ data: { success: false } })),
         userProfileAPI.get().catch(() => ({ data: { success: false } })),
+        userMembershipAPI.getMine().catch(() => ({ data: { success: false } })),
       ])
+
+      // Active membership → surface the parts-discount % (backend applies the same).
+      const m = memberRes?.data?.data
+      if (m && m.status === 'active' && Number(m.meta?.partsDisc) > 0) {
+        setMember({ partsDisc: Number(m.meta.partsDisc), planName: m.planName || 'BM Care' })
+      }
 
       if (cartRes.data.success) {
         setCart(cartRes.data.data)
@@ -252,7 +262,9 @@ export function CheckoutPage() {
     return acc + price * item.quantity
   }, 0)
   const shipping = subtotal >= 500 ? 0 : 50
-  const total = subtotal + shipping
+  // Member parts-discount — mirrors the backend (round(subtotal * partsDisc / 100)).
+  const memberDiscount = member ? Math.min(Math.round((subtotal * member.partsDisc) / 100), subtotal) : 0
+  const total = subtotal + shipping - memberDiscount
 
   if (loading) {
     return (
@@ -559,6 +571,12 @@ export function CheckoutPage() {
                   <span className="text-muted-foreground">Shipping</span>
                   <span className={shipping === 0 ? 'text-green-600' : ''}>{shipping === 0 ? 'FREE' : `₹${shipping}`}</span>
                 </div>
+                {memberDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5" /> {member?.planName} saving ({member?.partsDisc}% off)</span>
+                    <span className="font-medium">−₹{memberDiscount.toLocaleString()}</span>
+                  </div>
+                )}
                 <Separator />
                 <div className="flex justify-between text-base font-bold">
                   <span>Total</span>
