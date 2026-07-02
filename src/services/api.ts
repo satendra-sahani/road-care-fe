@@ -663,6 +663,9 @@ export const shopAPI = {
   // In-app voice call to the customer (Agora) — shop → customer
   callCustomer: (serviceRequestId: string, callType: 'audio' | 'video' = 'audio') =>
     api.post('/shop/calls/customer', { serviceRequestId, callType }),
+  // In-app voice call to the assigned platform mechanic (Agora) — shop → mechanic
+  callMechanic: (serviceRequestId: string, callType: 'audio' | 'video' = 'audio') =>
+    api.post('/shop/calls/mechanic', { serviceRequestId, callType }),
   getCallStatus: (callId: string) => api.get(`/shop/calls/${callId}/status`),
   updateCallStatus: (callId: string, status: string, duration = 0) =>
     api.put(`/shop/calls/${callId}/status`, { status, duration }),

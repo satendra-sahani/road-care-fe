@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { shopAPI } from '@/services/api'
+import { useEffect, useRef, useState } from 'react'
+import { shopAPI, uploadAPI } from '@/services/api'
 import { toast } from 'sonner'
 import { Loader2, Check, Plus, ShieldCheck } from 'lucide-react'
 
@@ -22,6 +22,8 @@ export function ShopProfile() {
   const [p, setP] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const logoInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     shopAPI.getProfile().then((r) => { if (r.data?.success) setP(normalize(r.data.data)) }).catch(() => toast.error('Could not load profile')).finally(() => setLoading(false))
@@ -33,10 +35,28 @@ export function ShopProfile() {
     latitude: d.address?.coordinates?.latitude ?? '', longitude: d.address?.coordinates?.longitude ?? '',
     coverageRadius: d.coverageRadius ?? 10, isAvailable: d.isAvailable !== false, isVerified: d.isVerified,
     open: d.operatingHours?.open || '09:00', close: d.operatingHours?.close || '20:00',
-    specializations: d.specializations || [], vehicleTypes: d.vehicleTypes || [],
+    specializations: d.specializations || [], vehicleTypes: d.vehicleTypes || [], logo: d.logo || '',
   })
 
   const set = (k: string, v: any) => setP((s: any) => ({ ...s, [k]: v }))
+
+  const onLogoPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) { toast.error('Please choose an image file'); return }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); return }
+    setUploadingLogo(true)
+    try {
+      const r = await uploadAPI.uploadImageAny(file, 'shop-logos')
+      const url = r.data?.data?.url || r.data?.url
+      if (!url) throw new Error('No URL returned')
+      set('logo', url)
+      // Persist immediately so the logo survives even without a full profile save.
+      await shopAPI.updateProfile({ logo: url })
+      toast.success('Logo updated')
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Could not upload logo') }
+    finally { setUploadingLogo(false); if (logoInput.current) logoInput.current.value = '' }
+  }
   const toggleArr = (k: 'specializations' | 'vehicleTypes', v: string) =>
     setP((s: any) => ({ ...s, [k]: s[k].includes(v) ? s[k].filter((x: string) => x !== v) : [...s[k], v] }))
 
@@ -48,7 +68,7 @@ export function ShopProfile() {
         address: { street: p.street, city: p.city, state: p.state, pincode: p.pincode, coordinates: { latitude: Number(p.latitude) || undefined, longitude: Number(p.longitude) || undefined } },
         coverageRadius: Number(p.coverageRadius), isAvailable: p.isAvailable,
         operatingHours: { open: p.open, close: p.close },
-        specializations: p.specializations, vehicleTypes: p.vehicleTypes,
+        specializations: p.specializations, vehicleTypes: p.vehicleTypes, logo: p.logo || undefined,
       })
       if (r.data?.success) toast.success('Shop profile saved'); else toast.error(r.data?.message || 'Could not save')
     } catch (e: any) { toast.error(e.response?.data?.message || 'Could not save') } finally { setSaving(false) }
@@ -79,8 +99,16 @@ export function ShopProfile() {
           <div className="px-[18px] py-4 border-b border-[#EEF1F6]"><h3 className="text-[15.5px] font-extrabold text-[#13203A]">Logo & availability</h3></div>
           <div className="p-[18px]">
             <div className="flex items-center gap-3.5 mb-[18px]">
-              <div className="h-[72px] w-[72px] rounded-2xl flex items-center justify-center font-extrabold text-[24px]" style={{ background: DIST_50, color: DIST_2 }}>{initials}</div>
-              <button className="inline-flex items-center gap-2 font-bold text-[14px] rounded-[11px] px-[18px] py-[11px] bg-white border border-[#E7ECF3]" style={{ color: DIST_2 }}><Plus className="h-[15px] w-[15px]" /> Upload logo</button>
+              {p.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.logo} alt="Shop logo" className="h-[72px] w-[72px] rounded-2xl object-cover border border-[#E7ECF3]" />
+              ) : (
+                <div className="h-[72px] w-[72px] rounded-2xl flex items-center justify-center font-extrabold text-[24px]" style={{ background: DIST_50, color: DIST_2 }}>{initials}</div>
+              )}
+              <input ref={logoInput} type="file" accept="image/*" className="hidden" onChange={onLogoPick} />
+              <button onClick={() => logoInput.current?.click()} disabled={uploadingLogo} className="inline-flex items-center gap-2 font-bold text-[14px] rounded-[11px] px-[18px] py-[11px] bg-white border border-[#E7ECF3] disabled:opacity-60" style={{ color: DIST_2 }}>
+                {uploadingLogo ? <Loader2 className="h-[15px] w-[15px] animate-spin" /> : <Plus className="h-[15px] w-[15px]" />} {p.logo ? 'Change logo' : 'Upload logo'}
+              </button>
             </div>
             <div className="flex items-center justify-between bg-white border border-[#E7ECF3] rounded-[11px] px-3.5 py-2 mb-3.5">
               <b className="text-[13px] text-[#13203A]">Available for new jobs</b>

@@ -7,6 +7,8 @@ import { Loader2, Check, Lock } from 'lucide-react'
 
 const DIST = '#D97706'
 const NOTIFS = ['New job alerts', 'Settlement updates', 'Customer reviews', 'Low-rating warnings']
+// Maps each toggle (by index) to its notificationPreferences key on the shop model.
+const NOTIF_KEYS = ['jobs', 'settlements', 'reviews', 'lowRating'] as const
 
 export function ShopSettings() {
   const [email, setEmail] = useState('')
@@ -21,13 +23,21 @@ export function ShopSettings() {
         const d = r.data.data
         setEmail(d?.shopEmail || d?.user?.email || '')
         setPhone(d?.shopPhone || d?.user?.phone || '')
+        const np = d?.notificationPreferences
+        if (np && typeof np === 'object') {
+          setNotif(NOTIF_KEYS.map((k, i) => (np[k] !== undefined ? !!np[k] : [true, true, true, false][i])))
+        }
       }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
   const save = async () => {
     setSaving(true)
-    try { const r = await shopAPI.updateProfile({ shopEmail: email }); if (r.data?.success) toast.success('Settings saved'); else toast.error(r.data?.message || 'Could not save') }
+    try {
+      const notificationPreferences = NOTIF_KEYS.reduce((acc, k, i) => ({ ...acc, [k]: notif[i] }), {} as Record<string, boolean>)
+      const r = await shopAPI.updateProfile({ shopEmail: email, notificationPreferences })
+      if (r.data?.success) toast.success('Settings saved'); else toast.error(r.data?.message || 'Could not save')
+    }
     catch (e: any) { toast.error(e.response?.data?.message || 'Could not save') } finally { setSaving(false) }
   }
 

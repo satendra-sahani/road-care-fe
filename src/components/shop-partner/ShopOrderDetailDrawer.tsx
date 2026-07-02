@@ -64,16 +64,16 @@ export function ShopOrderDetailDrawer({ order, onClose, onReload }: { order: any
   }
   const assign = (m: Mechanic) => act(() => shopAPI.assignMechanic(id, { mechanicProfileId: m._id, name: m.name, phone: m.phone }), `Assigned to ${m.name}`).then(() => setAssigning(false))
 
-  const startCall = async () => {
+  const startCall = async (target: 'customer' | 'mechanic') => {
     if (!srId) return
     setBusy(true)
     try {
-      const r = await shopAPI.callCustomer(srId, 'audio')
+      const r = target === 'mechanic' ? await shopAPI.callMechanic(srId, 'audio') : await shopAPI.callCustomer(srId, 'audio')
       const d = r.data?.data
       if (r.data?.success && d?.agora?.appId) {
         setCall({
           appId: d.agora.appId, channelName: d.agora.channelName, token: d.agora.token, uid: Number(d.agora.uid),
-          peerName: d.receiver?.name || o.customer?.fullName || 'Customer',
+          peerName: d.receiver?.name || (target === 'mechanic' ? o.assignedMechanic?.name || 'Mechanic' : o.customer?.fullName || 'Customer'),
           api: { getStatus: () => shopAPI.getCallStatus(d.callId), updateStatus: (st: string, dur: number) => shopAPI.updateCallStatus(d.callId, st, dur) } as CallHandle,
         })
       } else toast.error(r.data?.message || 'Could not start the call')
@@ -133,8 +133,13 @@ export function ShopOrderDetailDrawer({ order, onClose, onReload }: { order: any
 
         {/* call */}
         {canCall && (
-          <button onClick={startCall} disabled={busy} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl font-bold text-white disabled:opacity-60" style={{ background: GREEN }}>
+          <button onClick={() => startCall('customer')} disabled={busy} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl font-bold text-white disabled:opacity-60" style={{ background: GREEN }}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />} Call customer (in-app)
+          </button>
+        )}
+        {canCall && !!mechanicId && (
+          <button onClick={() => startCall('mechanic')} disabled={busy} className="mt-2.5 flex h-11 w-full items-center justify-center gap-2 rounded-xl font-bold text-white disabled:opacity-60" style={{ background: NAVY }}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />} Call mechanic (in-app)
           </button>
         )}
 

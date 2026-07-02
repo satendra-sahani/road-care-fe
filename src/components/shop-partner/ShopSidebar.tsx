@@ -61,11 +61,9 @@ export function ShopSidebar({ open, onClose }: { open: boolean; onClose: () => v
         className={`fixed top-0 bottom-0 left-0 z-[60] w-[262px] flex flex-col text-[#cfe] transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         style={{ background: '#0F2547' }}
       >
-        {/* Brand chip */}
-        <div className="flex items-center justify-center px-4 pt-[18px] pb-4 border-b border-white/[0.08]">
-          <div className="bg-white rounded-2xl px-[18px] py-3.5 w-full flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,.28)]">
-            <Image src="/brand-logo-v3.png" alt="Bharat Mechanics" width={200} height={48} className="h-[34px] w-auto object-contain" />
-          </div>
+        {/* Brand */}
+        <div className="flex items-center justify-center px-5 pt-6 pb-5 border-b border-white/[0.08]">
+          <Image src="/white-logo-bm.png" alt="Bharat Mechanics" width={220} height={52} priority className="h-[44px] w-auto object-contain" />
         </div>
 
         {/* Role card */}

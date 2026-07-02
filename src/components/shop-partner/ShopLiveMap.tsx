@@ -2,8 +2,9 @@
 
 // Live tracking for the shop: watches the assigned mechanic's GPS over the
 // socket (room tracking:<serviceRequestId>) and plots it against the customer's
-// location. Reuses the shared leaflet LiveTrackingMap renderer. Note: only the
-// mechanic broadcasts GPS — the customer pin is static (from the order).
+// location. Reuses the shared leaflet LiveTrackingMap renderer. The customer
+// now also broadcasts its own GPS (type 'customer'), so the customer pin moves
+// live too — falling back to the static order location until the first update.
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Cookies from 'js-cookie'
@@ -20,6 +21,7 @@ interface LatLng { lat: number; lng: number }
 
 export function ShopLiveMap({ requestId, customer, mechanicId }: { requestId: string; customer: LatLng | null; mechanicId?: string }) {
   const [worker, setWorker] = useState<LatLng | null>(null)
+  const [liveCustomer, setLiveCustomer] = useState<LatLng | null>(null)
   const [status, setStatus] = useState<'connecting' | 'tracking' | 'paused' | 'arrived'>('connecting')
   const [updated, setUpdated] = useState<Date | null>(null)
   const mounted = useRef(true)
@@ -30,7 +32,11 @@ export function ShopLiveMap({ requestId, customer, mechanicId }: { requestId: st
     socketService.connect(Cookies.get('token')) // shop socket
     socketService.watchTracking(
       requestId,
-      (d: any) => { if (mounted.current && d.latitude && d.longitude) { setWorker({ lat: d.latitude, lng: d.longitude }); setStatus('tracking'); setUpdated(new Date()) } },
+      (d: any) => {
+        if (!mounted.current || !d.latitude || !d.longitude) return
+        if (d.type === 'customer') { setLiveCustomer({ lat: d.latitude, lng: d.longitude }); return }
+        setWorker({ lat: d.latitude, lng: d.longitude }); setStatus('tracking'); setUpdated(new Date())
+      },
       (d: any) => { if (mounted.current) setStatus(d.active ? 'tracking' : 'paused') },
     )
     // Seed from last-known GPS so a pin shows before the first socket update.
@@ -47,7 +53,7 @@ export function ShopLiveMap({ requestId, customer, mechanicId }: { requestId: st
   return (
     <div className="overflow-hidden rounded-xl border border-[#E7ECF3]">
       <div className="h-[240px] w-full">
-        <LiveTrackingMap workerLocation={worker} customerLocation={customer} routeCoords={[]} trackingStatus={status} type="mechanic" />
+        <LiveTrackingMap workerLocation={worker} customerLocation={liveCustomer || customer} routeCoords={[]} trackingStatus={status} type="mechanic" />
       </div>
       <div className="flex items-center justify-between px-3 py-2 text-[11.5px] font-semibold text-[#7B8AA3]">
         <span className="inline-flex items-center gap-1.5">

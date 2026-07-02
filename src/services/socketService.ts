@@ -20,6 +20,7 @@ type LocationCallback = (data: {
   longitude: number;
   heading: number;
   speed: number;
+  type?: 'mechanic' | 'delivery' | 'customer';
   timestamp: string;
 }) => void;
 
@@ -126,6 +127,20 @@ class SocketService {
     this.locationCallbacks.delete(requestId);
     this.statusCallbacks.delete(requestId);
     this.socket?.emit('tracking:unwatch', { requestId });
+  }
+
+  // Broadcast this client's own location into the tracking room. Used by the
+  // customer to share live GPS (type 'customer') so the mechanic/shop see them
+  // move. Requires having joined the room first (watchTracking).
+  sendLocation(
+    requestId: string,
+    latitude: number,
+    longitude: number,
+    type: 'mechanic' | 'delivery' | 'customer' = 'customer',
+    heading = 0,
+    speed = 0,
+  ): void {
+    this.socket?.emit('location:update', { requestId, latitude, longitude, heading, speed, type });
   }
 }
 

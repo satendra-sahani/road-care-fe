@@ -117,21 +117,26 @@ export function useLocationTracking(
     [customerLocation, routeCoords.length, fetchRoute]
   );
 
-  // Get customer GPS
+  // Get customer GPS — and share it live with the tracking room (throttled ~5s)
+  // so the mechanic/shop see the customer move, not just a static booking pin.
+  const lastEmitRef = useRef(0);
   useEffect(() => {
     if (!navigator.geolocation) return;
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setCustomerLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        setCustomerLocation({ lat, lng });
+        const now = Date.now();
+        if (requestId && now - lastEmitRef.current > 5000) {
+          lastEmitRef.current = now;
+          socketService.sendLocation(requestId, lat, lng, 'customer');
+        }
       },
       () => {},
       { enableHighAccuracy: true, maximumAge: 10000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, [requestId]);
 
   // Socket + REST polling
   useEffect(() => {
@@ -143,7 +148,9 @@ export function useLocationTracking(
     socketService.watchTracking(
       requestId,
       (data) => {
-        if (mountedRef.current && data.latitude && data.longitude) {
+        // The worker marker is driven only by mechanic/delivery updates — never
+        // by our own 'customer' broadcast echoed back in a multi-watcher room.
+        if (mountedRef.current && data.latitude && data.longitude && data.type !== 'customer') {
           handleLocationUpdate(data.latitude, data.longitude);
         }
       },
