@@ -5,13 +5,17 @@
 // role) and the shared WebCall component.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Cookies from 'js-cookie'
+import { io, type Socket } from 'socket.io-client'
 import { toast } from 'sonner'
 import { supportAPI } from '@/services/api'
-import socketService from '@/services/socketService'
 import { WebCall, type CallHandle } from '@/components/calls/WebCall'
 import { Loader2, Send, Phone, Headset } from 'lucide-react'
 
 const DIST = '#D97706'
+// Own socket authed with the shop `token` cookie — the shared socketService may
+// already be connected with the customer token (IncomingCallProvider mounts
+// globally), which would leave this shop out of its user room → no realtime.
+const SOCKET_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api').replace(/\/api\/?$/, '')
 const fmt = (iso?: string) => { try { return new Date(iso || '').toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) } catch { return '' } }
 
 interface Msg { id?: string; _id?: string; senderRole: string; senderName?: string; text: string; createdAt: string }
@@ -40,13 +44,17 @@ export function ShopSupport() {
 
   useEffect(() => { load() }, [load])
 
-  // Real-time admin replies (socket authed with the shop `token` cookie).
+  // Real-time admin replies (dedicated socket authed with the shop `token`).
   useEffect(() => {
-    socketService.connect(Cookies.get('token'))
+    const token = Cookies.get('token')
     const onMsg = (data: any) => { if (data?.message?.senderRole === 'admin') { setMessages((m) => [...m, data.message]); toEnd() } }
-    const unsub = socketService.on('support:message', onMsg)
+    let socket: Socket | null = null
+    if (token) {
+      socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'], reconnection: true })
+      socket.on('support:message', onMsg)
+    }
     const poll = setInterval(() => load(true), 6000) // fallback
-    return () => { unsub(); clearInterval(poll) }
+    return () => { if (socket) { socket.off('support:message', onMsg); socket.disconnect() } clearInterval(poll) }
   }, [load])
 
   const send = async () => {

@@ -4,9 +4,15 @@
 // real time (socket) + push. New user messages arrive here over the socket.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Cookies from 'js-cookie'
+import { io, type Socket } from 'socket.io-client'
 import { adminSupportAPI } from '@/services/api'
-import socketService from '@/services/socketService'
 import { Loader2, Send, MessageSquare, Search, User as UserIcon } from 'lucide-react'
+
+// Own socket, authed with the admin `token` cookie. The shared socketService
+// singleton may already be connected with the CUSTOMER token (IncomingCallProvider
+// mounts globally), in which case this admin never joins support:agents and no
+// realtime messages arrive — the exact bug AdminCallProvider dodged the same way.
+const SOCKET_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api').replace(/\/api\/?$/, '')
 
 const STATUS_STYLES: Record<string, string> = {
   open: 'bg-amber-100 text-amber-700',
@@ -52,9 +58,11 @@ export function AdminSupport() {
 
   useEffect(() => { loadTickets() }, [loadTickets])
 
-  // Real-time: new user messages / replies land here.
+  // Real-time: new user messages / replies land here (dedicated admin socket).
   useEffect(() => {
-    socketService.connect(Cookies.get('token'))
+    const token = Cookies.get('token')
+    if (!token) return
+    const socket: Socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'], reconnection: true })
     const onMsg = (data: any) => {
       if (!data?.ticketId) return
       if (data.ticketId === selectedRef.current && data.message?.senderRole === 'user') {
@@ -62,8 +70,8 @@ export function AdminSupport() {
       }
       loadTickets() // refresh queue ordering + unread badges
     }
-    const unsub = socketService.on('support:message', onMsg)
-    return () => { unsub() }
+    socket.on('support:message', onMsg)
+    return () => { socket.off('support:message', onMsg); socket.disconnect() }
   }, [loadTickets])
 
   const send = async () => {
