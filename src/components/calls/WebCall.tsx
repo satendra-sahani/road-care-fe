@@ -68,6 +68,10 @@ export function WebCall({ appId, channelName, token, uid, peerName, outgoing = t
     let statusTimer: ReturnType<typeof setInterval> | null = null
 
     const start = async () => {
+      // Guard against a double-join (React StrictMode / re-entry): joining Agora
+      // twice on the same channel+uid makes the peer see a leave and hang up.
+      if (clientRef.current || endedRef.current) return
+
       // Microphone access requires a secure context — https:// or localhost.
       // On a phone hitting a plain http://<LAN-IP> dev site the browser blocks
       // getUserMedia, so surface a clear message instead of a silent failure.
@@ -133,9 +137,14 @@ export function WebCall({ appId, channelName, token, uid, peerName, outgoing = t
       }, 3000)
     }
 
-    start()
+    // Delay the join a tick so React StrictMode's throwaway dev mount is
+    // cancelled BEFORE we ever join Agora — otherwise the join/leave/join race
+    // makes the peer see a drop and the call cuts a few seconds after connecting.
+    const startTimer = setTimeout(() => { if (!cancelled) start() }, 150)
+
     return () => {
       cancelled = true
+      clearTimeout(startTimer)
       if (statusTimer) clearInterval(statusTimer)
       try { micTrackRef.current?.close?.() } catch { /* noop */ }
       try { clientRef.current?.removeAllListeners?.(); clientRef.current?.leave?.() } catch { /* noop */ }
