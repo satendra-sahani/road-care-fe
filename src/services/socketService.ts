@@ -1,7 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import Cookies from 'js-cookie';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5002';
+// Derive the socket origin from the API URL by stripping ONLY the trailing
+// "/api". A plain .replace('/api','') matched the "/api" inside "://api…",
+// producing a broken host ("wss://https/…") so the browser could never connect.
+const SOCKET_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api').replace(/\/api\/?$/, '');
 
 export interface LocationData {
   latitude: number;
