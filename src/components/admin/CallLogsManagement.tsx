@@ -140,6 +140,9 @@ const roleConfig: Record<string, { label: string; className: string }> = {
   user: { label: 'User', className: 'bg-blue-50 text-blue-700' },
   mechanic: { label: 'Mechanic', className: 'bg-orange-50 text-orange-700' },
   delivery: { label: 'Delivery', className: 'bg-green-50 text-green-700' },
+  guest: { label: 'Guest (QR)', className: 'bg-purple-50 text-purple-700' },
+  shop: { label: 'Shop', className: 'bg-amber-50 text-amber-700' },
+  admin: { label: 'Admin', className: 'bg-slate-100 text-slate-700' },
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -479,6 +482,8 @@ export function CallLogsManagement() {
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="mechanic">Mechanic</SelectItem>
                     <SelectItem value="delivery">Delivery</SelectItem>
+                    <SelectItem value="guest">Guest (QR scan)</SelectItem>
+                    <SelectItem value="shop">Shop</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -490,6 +495,8 @@ export function CallLogsManagement() {
                     <SelectItem value="all">All Contexts</SelectItem>
                     <SelectItem value="service_request">Service Request</SelectItem>
                     <SelectItem value="order">Order</SelectItem>
+                    <SelectItem value="vehicle_qr">Vehicle QR (SecureContact)</SelectItem>
+                    <SelectItem value="support">Support</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -560,25 +567,25 @@ export function CallLogsManagement() {
                       const StatusIcon = stCfg.icon
                       return (
                         <TableRow key={call._id} className="hover:bg-gray-50/50 transition-colors">
-                          {/* Caller */}
+                          {/* Caller — guests (QR scanners) have no account; show guestCaller */}
                           <TableCell>
                             <div className="flex items-center gap-2.5">
                               <Avatar className="h-8 w-8 border border-gray-100">
                                 <AvatarImage src={call.caller?.profileImage} />
                                 <AvatarFallback className="text-xs bg-blue-50 text-blue-700">
-                                  {getInitials(call.caller?.fullName || '')}
+                                  {getInitials(call.caller?.fullName || (call as any).guestCaller?.name || '')}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
                                 <p className="font-semibold text-[#1B3B6F] text-sm leading-tight">
-                                  {call.caller?.fullName || 'Unknown'}
+                                  {call.caller?.fullName || (call as any).guestCaller?.name || 'Unknown'}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 border-0 ${roleConfig[call.callerRole]?.className || 'bg-gray-50 text-gray-600'}`}>
                                     {roleConfig[call.callerRole]?.label || call.callerRole}
                                   </Badge>
-                                  {call.caller?.phone && (
-                                    <span className="text-[10px] text-[#9CA3AF]">{call.caller.phone}</span>
+                                  {(call.caller?.phone || (call as any).guestCaller?.phone) && (
+                                    <span className="text-[10px] text-[#9CA3AF]">{call.caller?.phone || (call as any).guestCaller?.phone}</span>
                                   )}
                                 </div>
                               </div>
@@ -644,9 +651,15 @@ export function CallLogsManagement() {
                                 <Wrench className="h-3.5 w-3.5 text-indigo-500" />
                               ) : call.context?.type === 'order' ? (
                                 <ShoppingBag className="h-3.5 w-3.5 text-indigo-500" />
+                              ) : call.context?.type === 'vehicle_qr' ? (
+                                <Phone className="h-3.5 w-3.5 text-purple-500" />
                               ) : null}
                               <span className="text-xs text-[#6B7280]">
-                                {call.context?.type === 'service_request' ? 'Service' : call.context?.type === 'order' ? 'Order' : call.context?.type || '-'}
+                                {call.context?.type === 'service_request' ? 'Service'
+                                  : call.context?.type === 'order' ? 'Order'
+                                  : call.context?.type === 'vehicle_qr' ? 'Vehicle QR'
+                                  : call.context?.type === 'support' ? 'Support'
+                                  : call.context?.type || '-'}
                               </span>
                             </div>
                           </TableCell>

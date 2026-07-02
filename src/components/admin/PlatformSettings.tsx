@@ -260,6 +260,8 @@ export function PlatformSettings() {
     },
     codEnabled: true,
     onlineEnabled: true,
+    qrCallingEnabled: true,
+    qrCallingFee: 0,
     maxNegotiationRounds: 2,
     platformCommission: 15,
     minTrustScore: 40,
@@ -898,6 +900,36 @@ export function PlatformSettings() {
                         onCheckedChange={(checked) => setServiceConfig({...serviceConfig, onlineEnabled: checked})}
                       />
                     </div>
+                  </div>
+
+                  {/* SecureContact QR Calling */}
+                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                    <h3 className="font-medium text-[#1A1D29]">SecureContact QR Calling</h3>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Guest QR calling</Label>
+                        <p className="text-sm text-[#6B7280]">Let anyone who scans a vehicle QR call the owner anonymously</p>
+                      </div>
+                      <Switch
+                        checked={(serviceConfig as any).qrCallingEnabled !== false}
+                        onCheckedChange={(checked) => setServiceConfig({...serviceConfig, qrCallingEnabled: checked} as any)}
+                      />
+                    </div>
+                    {(serviceConfig as any).qrCallingEnabled !== false && (
+                      <div>
+                        <Label htmlFor="qrCallingFee">Per-call fee (₹) — keep 0 for free</Label>
+                        <Input
+                          id="qrCallingFee"
+                          type="number"
+                          min={0}
+                          value={(serviceConfig as any).qrCallingFee ?? 0}
+                          onChange={(e) => setServiceConfig({...serviceConfig, qrCallingFee: Math.max(0, parseInt(e.target.value) || 0)} as any)}
+                        />
+                        <p className="mt-1 text-xs text-[#6B7280]">
+                          Currently {((serviceConfig as any).qrCallingFee ?? 0) > 0 ? `₹${(serviceConfig as any).qrCallingFee} per call (payment collection goes live with the fee)` : 'FREE for all scanners'}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Platform Settings */}

@@ -31,6 +31,8 @@ import {
   Coins,
   Crown,
   MessageSquare,
+  Satellite,
+  ChevronDown,
 } from 'lucide-react'
 import NextImage from 'next/image'
 import { cn } from '@/lib/utils'
@@ -45,51 +47,79 @@ interface SidebarItem {
   icon: React.ElementType
   href: string
   badge?: string
-  separator?: boolean
 }
 
-const baseSidebarItems: SidebarItem[] = [
-  { id: 'dashboard', title: 'Dashboard', icon: Home, href: '/admin' },
-  { id: 'analytics', title: 'Analytics', icon: BarChart3, href: '/admin/analytics/overview' },
+interface SidebarGroup {
+  id: string
+  title: string          // group label ('' = ungrouped top-level items)
+  items: SidebarItem[]
+}
 
-  // Orders
-  { id: 'orders', title: 'Orders', icon: ShoppingCart, href: '/admin/orders', separator: true },
-
-  // Users & Customers
-  { id: 'users', title: 'Mechanics', icon: Wrench, href: '/admin/users/mechanics', separator: true },
-  { id: 'customers', title: 'Customers', icon: UserCheck, href: '/admin/users/customers' },
-
-  // Services
-  { id: 'service-requests', title: 'Service Requests', icon: ClipboardList, href: '/admin/services/requests', separator: true },
-  { id: 'payments',         title: 'Payment Management', icon: CreditCard,   href: '/admin/services/payments' },
-  { id: 'issue-pricing',    title: 'Issue Pricing',      icon: DollarSign,   href: '/admin/services/issue-pricing' },
-  { id: 'plan-pricing',     title: 'Plan Pricing',       icon: Crown,        href: '/admin/services/plan-pricing' },
-
-  // Inventory & Stock
-  { id: 'inventory', title: 'Products', icon: Package, href: '/admin/inventory/products', separator: true },
-  { id: 'categories', title: 'Categories', icon: Tag, href: '/admin/inventory/categories' },
-  { id: 'brands', title: 'Brands', icon: Shield, href: '/admin/inventory/brands' },
-  { id: 'purchase-ledger', title: 'Purchase Ledger', icon: ClipboardList, href: '/admin/inventory/purchases' },
-  // Shop Partners
-  { id: 'shop-partners', title: 'Shop Partners', icon: Store, href: '/admin/shops', separator: true },
-
-  // Financial
-  { id: 'revenue', title: 'Revenue', icon: DollarSign, href: '/admin/financial/revenue', separator: true },
-
-  // Growth & Rewards
-  { id: 'spin-wheel',      title: 'Spin & Win',      icon: Sparkles, href: '/admin/growth/spin-wheel', separator: true },
-  { id: 'referrals',       title: 'Referrals',       icon: Gift,     href: '/admin/growth/referrals' },
-  { id: 'rewards-wallet',  title: 'Rewards Wallet',  icon: Coins,    href: '/admin/growth/rewards-wallet' },
-
-  // Content & Communication
-  { id: 'banners', title: 'Banners', icon: ImageIcon, href: '/admin/banners', separator: true },
-  { id: 'locations', title: 'Locations', icon: MapPin, href: '/admin/locations' },
-  { id: 'notifications', title: 'Notifications', icon: Bell, href: '/admin/communication/notifications' },
-  { id: 'support', title: 'Help & Support', icon: MessageSquare, href: '/admin/communication/support' },
-  { id: 'call-logs', title: 'Call Logs', icon: Phone, href: '/admin/communication/call-logs' },
-
-  // Settings
-  { id: 'settings', title: 'Settings', icon: Settings, href: '/admin/settings/general', separator: true },
+// Grouped navigation — each group renders as a collapsible dropdown; the group
+// holding the active route auto-expands. Order = daily-usage frequency.
+const NAV_GROUPS: SidebarGroup[] = [
+  {
+    id: 'home', title: '', items: [
+      { id: 'dashboard', title: 'Dashboard', icon: Home, href: '/admin' },
+      { id: 'analytics', title: 'Analytics', icon: BarChart3, href: '/admin/analytics/overview' },
+    ],
+  },
+  {
+    id: 'operations', title: 'Orders & Services', items: [
+      { id: 'orders', title: 'Orders', icon: ShoppingCart, href: '/admin/orders' },
+      { id: 'service-requests', title: 'Service Requests', icon: ClipboardList, href: '/admin/services/requests' },
+      { id: 'payments', title: 'Payments', icon: CreditCard, href: '/admin/services/payments' },
+    ],
+  },
+  {
+    id: 'people', title: 'People & Partners', items: [
+      { id: 'customers', title: 'Customers', icon: UserCheck, href: '/admin/users/customers' },
+      { id: 'users', title: 'Mechanics', icon: Wrench, href: '/admin/users/mechanics' },
+      { id: 'shop-partners', title: 'Shop Partners', icon: Store, href: '/admin/shops' },
+    ],
+  },
+  {
+    id: 'subscriptions', title: 'Subscriptions & Plans', items: [
+      { id: 'memberships', title: 'BM Care Members', icon: Crown, href: '/admin/subscriptions/memberships' },
+      { id: 'trackers', title: 'GPS Trackers', icon: Satellite, href: '/admin/subscriptions/trackers' },
+      { id: 'plan-pricing', title: 'Plan Pricing', icon: DollarSign, href: '/admin/services/plan-pricing' },
+    ],
+  },
+  {
+    id: 'catalog', title: 'Catalog & Stock', items: [
+      { id: 'inventory', title: 'Products', icon: Package, href: '/admin/inventory/products' },
+      { id: 'categories', title: 'Categories', icon: Tag, href: '/admin/inventory/categories' },
+      { id: 'brands', title: 'Brands', icon: Shield, href: '/admin/inventory/brands' },
+      { id: 'purchase-ledger', title: 'Purchase Ledger', icon: ClipboardList, href: '/admin/inventory/purchases' },
+    ],
+  },
+  {
+    id: 'finance', title: 'Finance & Pricing', items: [
+      { id: 'revenue', title: 'Revenue', icon: DollarSign, href: '/admin/financial/revenue' },
+      { id: 'issue-pricing', title: 'Issue Pricing', icon: DollarSign, href: '/admin/services/issue-pricing' },
+    ],
+  },
+  {
+    id: 'growth', title: 'Growth & Rewards', items: [
+      { id: 'spin-wheel', title: 'Spin & Win', icon: Sparkles, href: '/admin/growth/spin-wheel' },
+      { id: 'referrals', title: 'Referrals', icon: Gift, href: '/admin/growth/referrals' },
+      { id: 'rewards-wallet', title: 'Rewards Wallet', icon: Coins, href: '/admin/growth/rewards-wallet' },
+    ],
+  },
+  {
+    id: 'communication', title: 'Communication', items: [
+      { id: 'notifications', title: 'Notifications', icon: Bell, href: '/admin/communication/notifications' },
+      { id: 'support', title: 'Help & Support', icon: MessageSquare, href: '/admin/communication/support' },
+      { id: 'call-logs', title: 'Call Logs', icon: Phone, href: '/admin/communication/call-logs' },
+      { id: 'banners', title: 'Banners', icon: ImageIcon, href: '/admin/banners' },
+      { id: 'locations', title: 'Locations', icon: MapPin, href: '/admin/locations' },
+    ],
+  },
+  {
+    id: 'system', title: '', items: [
+      { id: 'settings', title: 'Settings', icon: Settings, href: '/admin/settings/general' },
+    ],
+  },
 ]
 
 interface AdminSidebarProps {
@@ -181,16 +211,28 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
     }
   }, [])
 
-  // Build sidebar items with dynamic badges
-  const sidebarItems = baseSidebarItems.map((item) => {
-    if (item.id === 'orders' && badgeCounts.orders) {
-      return { ...item, badge: badgeCounts.orders }
-    }
-    if (item.id === 'service-requests' && badgeCounts.serviceRequests) {
-      return { ...item, badge: badgeCounts.serviceRequests }
-    }
-    return item
+  // Inject dynamic badges into the grouped nav
+  const groups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.map((item) => {
+      if (item.id === 'orders' && badgeCounts.orders) return { ...item, badge: badgeCounts.orders }
+      if (item.id === 'service-requests' && badgeCounts.serviceRequests) return { ...item, badge: badgeCounts.serviceRequests }
+      return item
+    }),
+  }))
+
+  // Collapsible groups — the group containing the active route starts open.
+  const activeGroupId = NAV_GROUPS.find((g) => g.items.some((i) => i.href === pathname))?.id
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    NAV_GROUPS.forEach((g) => { init[g.id] = !g.title || g.id === activeGroupId })
+    return init
   })
+  // Keep the active group expanded across navigation
+  useEffect(() => {
+    if (activeGroupId) setOpenGroups((s) => (s[activeGroupId] ? s : { ...s, [activeGroupId]: true }))
+  }, [activeGroupId])
+  const toggleGroup = (id: string) => setOpenGroups((s) => ({ ...s, [id]: !s[id] }))
 
   // Check if mobile/tablet
   useEffect(() => {
@@ -293,47 +335,70 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
           )}
         </div>
 
-        {/* Navigation */}
+        {/* Navigation — collapsible groups */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 scrollbar-ultra-narrow">
-          {sidebarItems.map((item) => {
-            const Icon = item.icon
-            const active = isActive(item.href)
+          {groups.map((group) => {
+            const showLabels = !collapsed || isMobile
+            const groupBadge = group.items.reduce((n, i) => n + (i.badge ? parseInt(i.badge) || 0 : 0), 0)
+            const isOpen = !group.title || !showLabels || openGroups[group.id]
 
-            return (
-              <div key={item.id}>
-                {item.separator && (
-                  <div className="my-2 mx-3 border-t border-[#2E5090]" />
-                )}
-                <Link href={item.href} onClick={() => isMobile && setIsMobileMenuOpen(false)}>
+            const renderItem = (item: SidebarItem) => {
+              const Icon = item.icon
+              const active = isActive(item.href)
+              return (
+                <Link key={item.id} href={item.href} onClick={() => isMobile && setIsMobileMenuOpen(false)}>
                   <Button
                     variant="ghost"
                     className={cn(
-                      "w-full justify-start h-10 px-3 py-2 text-left text-sm font-medium transition-all duration-200 rounded-lg",
+                      "w-full justify-start h-9 px-3 py-2 text-left text-sm font-medium transition-all duration-200 rounded-lg",
                       collapsed && !isMobile && "justify-center px-2",
+                      group.title && showLabels && "pl-4",
                       active && "bg-[#FF6B35] text-white hover:bg-[#E55A2B]",
                       !active && "text-gray-300 hover:bg-[#2E5090] hover:text-white"
                     )}
                   >
-                    <Icon className={cn("h-4 w-4 flex-shrink-0", (!collapsed || isMobile) && "mr-3")} />
-                    {(!collapsed || isMobile) && (
-                    <>
-                      <span className="flex-1 truncate">{item.title}</span>
-                      {item.badge && (
-                        <span className={cn(
-                          "ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          active ? "bg-white text-[#FF6B35]" : "bg-[#FF6B35] text-white"
-                        )}>
-                          {item.badge}
-                        </span>
+                    <Icon className={cn("h-4 w-4 flex-shrink-0", showLabels && "mr-3")} />
+                    {showLabels && (
+                      <>
+                        <span className="flex-1 truncate">{item.title}</span>
+                        {item.badge && (
+                          <span className={cn(
+                            "ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                            active ? "bg-white text-[#FF6B35]" : "bg-[#FF6B35] text-white"
+                          )}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Button>
+                </Link>
+              )
+            }
+
+            return (
+              <div key={group.id}>
+                {group.title && showLabels ? (
+                  <button
+                    onClick={() => toggleGroup(group.id)}
+                    className="mt-2 flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left"
+                  >
+                    <span className="text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-[#7E9CC9]">{group.title}</span>
+                    <span className="flex items-center gap-1.5">
+                      {!isOpen && groupBadge > 0 && (
+                        <span className="rounded-full bg-[#FF6B35] px-1.5 py-0.5 text-[9px] font-bold text-white">{groupBadge}</span>
                       )}
-                    </>
-                  )}
-                </Button>
-              </Link>
-            </div>
-          )
-        })}
-      </nav>
+                      <ChevronDown className={cn("h-3.5 w-3.5 text-[#7E9CC9] transition-transform", !isOpen && "-rotate-90")} />
+                    </span>
+                  </button>
+                ) : group.title && !showLabels ? (
+                  <div className="my-2 mx-3 border-t border-[#2E5090]" />
+                ) : null}
+                {isOpen && group.items.map(renderItem)}
+              </div>
+            )
+          })}
+        </nav>
 
       {/* Footer */}
       <div className="p-3 border-t border-[#2E5090] space-y-2">

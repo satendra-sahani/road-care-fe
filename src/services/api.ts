@@ -628,6 +628,23 @@ export const adminCallLogsAPI = {
   getById: (id: string) => api.get(`/admin/calls/${id}`),
 };
 
+// ─── Admin Memberships (BM Care subscriptions) ──────────────────────
+export const adminMembershipsAPI = {
+  getAll: (params?: { status?: string; planKey?: string; search?: string; page?: number; limit?: number }) =>
+    api.get('/admin/memberships', { params }),
+  update: (id: string, data: { status?: string; extendDays?: number }) =>
+    api.put(`/admin/memberships/${id}`, data),
+};
+
+// ─── Admin GPS Tracker devices/subscriptions ────────────────────────
+export const adminTrackerAPI = {
+  getDevices: (params?: { status?: string; search?: string; page?: number; limit?: number }) =>
+    api.get('/admin/tracker/devices', { params }),
+  getDevice: (id: string) => api.get(`/admin/tracker/devices/${id}`),
+  update: (id: string, data: { status?: string; extendDays?: number }) =>
+    api.put(`/admin/tracker/devices/${id}`, data),
+};
+
 // ─── Shop Partner APIs ──────────────────────────────────────────────
 export const shopAPI = {
   // Dashboard
