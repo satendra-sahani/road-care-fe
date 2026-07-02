@@ -657,6 +657,15 @@ export const shopAPI = {
 
   // Assigned platform mechanics (assigned by admin)
   getAssignedMechanics: () => api.get('/shop/assigned-mechanics'),
+  // Assigned mechanic's last-known GPS (seeds the live map before socket updates)
+  mechanicLocation: (mechanicId: string) => api.get(`/shop/mechanics/${mechanicId}/location`),
+
+  // In-app voice call to the customer (Agora) — shop → customer
+  callCustomer: (serviceRequestId: string, callType: 'audio' | 'video' = 'audio') =>
+    api.post('/shop/calls/customer', { serviceRequestId, callType }),
+  getCallStatus: (callId: string) => api.get(`/shop/calls/${callId}/status`),
+  updateCallStatus: (callId: string, status: string, duration = 0) =>
+    api.put(`/shop/calls/${callId}/status`, { status, duration }),
 
   // Settlements
   getSettlements: (params?: Record<string, any>) => api.get('/shop/settlements', { params }),

@@ -3,9 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { shopAPI } from '@/services/api'
 import { toast } from 'sonner'
-import {
-  Loader2, Check, X, Eye, Phone, MapPin, Clock, Wrench,
-} from 'lucide-react'
+import { Loader2, Check, Eye } from 'lucide-react'
+import { ShopOrderDetailDrawer } from '@/components/shop-partner/ShopOrderDetailDrawer'
 
 const DIST = '#D97706', NAVY = '#1B3B6F', GREEN = '#15936B'
 
@@ -141,48 +140,8 @@ export function ShopOrders() {
         </div>
       )}
 
-      {/* Detail drawer */}
-      {detail && (
-        <div className="fixed inset-0 z-[80] flex justify-end" onClick={() => setDetail(null)}>
-          <div className="absolute inset-0 bg-[#0F2547]/40 backdrop-blur-sm" />
-          <div className="relative w-full max-w-md bg-white h-full overflow-y-auto p-5 md:p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div><h3 className="text-lg font-extrabold text-[#13203A]">{detail.orderId || 'Job'}</h3>
-                <span className="inline-flex items-center gap-1.5 text-[11.5px] font-extrabold px-2.5 py-1 rounded-full mt-1" style={{ background: (STATUS[(detail.status || '').toLowerCase()] || {}).bg, color: (STATUS[(detail.status || '').toLowerCase()] || {}).fg }}>{(STATUS[(detail.status || '').toLowerCase()] || {}).label || detail.status}</span>
-              </div>
-              <button onClick={() => setDetail(null)} className="h-9 w-9 rounded-lg hover:bg-gray-100 flex items-center justify-center text-[#7B8AA3]"><X className="h-5 w-5" /></button>
-            </div>
-            <div className="space-y-3 text-sm">
-              <Row icon={<Wrench className="h-4 w-4" />} label="Customer" value={detail.customer?.fullName} />
-              <Row icon={<Phone className="h-4 w-4" />} label="Phone" value={detail.customer?.phone} />
-              <Row icon={<Wrench className="h-4 w-4" />} label="Service" value={detail.serviceCategory || detail.serviceType} />
-              <Row icon={<MapPin className="h-4 w-4" />} label="Address" value={detail.location?.address || detail.address?.address || (typeof detail.address === 'string' ? detail.address : '')} />
-              <Row icon={<Clock className="h-4 w-4" />} label="Slot" value={detail.preferredTimeSlot || (detail.preferredDate ? new Date(detail.preferredDate).toLocaleDateString('en-IN') : '')} />
-              {detail.issues?.length ? <Row icon={<Wrench className="h-4 w-4" />} label="Issues" value={detail.issues.join(', ')} /> : null}
-              <Row icon={<Wrench className="h-4 w-4" />} label="Estimate" value={inr(detail.finalCost || detail.estimatedCost || 0)} />
-            </div>
-            {detail.customer?.phone && (
-              <a href={`tel:${detail.customer.phone}`} className="mt-5 w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl text-white font-bold" style={{ background: GREEN }}><Phone className="h-4 w-4" /> Call customer</a>
-            )}
-            {(detail.status || '').toLowerCase() === 'pending' && (
-              <div className="flex gap-2 mt-3">
-                <button onClick={() => { setRejectFor(detail); setDetail(null) }} className="flex-1 h-11 rounded-xl border border-[#f3c9c9] text-[#DC2626] font-bold">Reject</button>
-                <button onClick={() => { accept(detail._id || detail.id); setDetail(null) }} className="flex-1 h-11 rounded-xl text-white font-bold inline-flex items-center justify-center gap-1.5" style={{ background: GREEN }}><Check className="h-4 w-4" />Accept</button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string }) {
-  if (!value) return null
-  return (
-    <div className="flex items-start justify-between gap-3 py-2.5 border-b border-[#EEF1F6]">
-      <span className="flex items-center gap-2 text-[#475569] shrink-0 [&>svg]:text-[#1B3B6F]">{icon} {label}</span>
-      <b className="text-[#13203A] text-right max-w-[60%]">{value}</b>
+      {/* Full detail drawer — assign, live track, in-app call, status flow */}
+      {detail && <ShopOrderDetailDrawer order={detail} onClose={() => setDetail(null)} onReload={load} />}
     </div>
   )
 }
