@@ -545,6 +545,18 @@ export const userCallAPI = {
     api.put(`/user/calls/${callId}/status`, { status, duration }),
 };
 
+// ─── Support APIs (Help & Support — chat + call, any authenticated role) ──────
+// Hits /common/support, so customers AND shop-partners can use it. Auth is the
+// area-appropriate cookie (customer_token on the storefront, token on /shop-*).
+export const supportAPI = {
+  getThread: () => api.get('/common/support'),
+  sendMessage: (text: string) => api.post('/common/support/message', { text }),
+  call: (callType: 'audio' | 'video' = 'audio') => api.post('/common/support/call', { callType }),
+  getCallStatus: (callId: string) => api.get(`/common/support/calls/${callId}/status`),
+  updateCallStatus: (callId: string, status: string, duration = 0) =>
+    api.put(`/common/support/calls/${callId}/status`, { status, duration }),
+};
+
 // ─── Admin Support APIs (Help & Support tickets + answering support calls) ────
 export const adminSupportAPI = {
   getTickets: (params?: { status?: string; page?: number; limit?: number }) =>
