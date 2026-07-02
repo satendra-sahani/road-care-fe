@@ -1,7 +1,25 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api';
+// Resolve the API base URL, with a mixed-content guard. When the page is served
+// over HTTPS (e.g. testing SecureContact voice calls on a phone — the mic needs
+// a secure context) but the configured API is plain HTTP, the browser would
+// block those calls as "mixed content". In that one case we route through the
+// same-origin Next.js proxy (/proxy-api, see next.config rewrites) so every
+// request stays secure and same-origin. Every other scenario is unchanged.
+function resolveApiBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api';
+  if (
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    configured.startsWith('http://')
+  ) {
+    return '/proxy-api';
+  }
+  return configured;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
