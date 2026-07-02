@@ -82,6 +82,11 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (data: { email: string; password: string; rememberMe?: boolean }) =>
     api.post('/common/auth/login', data),
+  // Phone-OTP login (used by the shop-partner portal — mobile number only).
+  sendOtp: (phone: string, purpose: 'login' | 'registration' = 'login') =>
+    api.post('/common/auth/send-otp', { phone, purpose }),
+  verifyOtp: (phone: string, otp: string, purpose: 'login' | 'registration' = 'login') =>
+    api.post('/common/auth/verify-otp', { phone, otp, purpose }),
   getProfile: () => api.get('/common/auth/profile'),
   logout: () => api.post('/common/auth/logout'),
 };
