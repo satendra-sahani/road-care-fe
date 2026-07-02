@@ -105,6 +105,16 @@ export const uploadAPI = {
     });
   },
   deleteImage: (fileId: string) => api.delete(`/admin/upload/image/${fileId}`),
+  // Upload as ANY authenticated user (e.g. a shop-partner uploading KYC docs) —
+  // the admin upload route requires an admin role, this one only auth.
+  uploadImageAny: (file: File, folder?: string) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    if (folder) formData.append('folder', folder);
+    return api.post('/common/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // ─── Banner APIs ─────────────────────────────────────────────────────
