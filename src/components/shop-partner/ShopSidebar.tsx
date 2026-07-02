@@ -26,7 +26,7 @@ const NAV: { cap: string; items: { id: string; label: string; icon: any; href: s
     { id: 'settlements', label: 'Settlements', icon: Receipt, href: '/shop-partner/settlements' },
   ] },
   { cap: 'Reputation', items: [
-    { id: 'ratings', label: 'Ratings & Reviews', icon: Star, href: '/shop-partner/profile' },
+    { id: 'ratings', label: 'Ratings & Reviews', icon: Star, href: '/shop-partner/ratings' },
   ] },
   { cap: 'Account', items: [
     { id: 'profile', label: 'Shop Profile', icon: Store, href: '/shop-partner/profile' },

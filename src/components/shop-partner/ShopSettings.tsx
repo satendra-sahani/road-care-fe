@@ -10,12 +10,19 @@ const NOTIFS = ['New job alerts', 'Settlement updates', 'Customer reviews', 'Low
 
 export function ShopSettings() {
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notif, setNotif] = useState<boolean[]>([true, true, true, false])
 
   useEffect(() => {
-    shopAPI.getProfile().then((r) => { if (r.data?.success) setEmail(r.data.data?.shopEmail || r.data.data?.user?.email || '') }).catch(() => {}).finally(() => setLoading(false))
+    shopAPI.getProfile().then((r) => {
+      if (r.data?.success) {
+        const d = r.data.data
+        setEmail(d?.shopEmail || d?.user?.email || '')
+        setPhone(d?.shopPhone || d?.user?.phone || '')
+      }
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
   const save = async () => {
@@ -33,10 +40,11 @@ export function ShopSettings() {
         <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-sm">
           <div className="px-[18px] py-4 border-b border-[#EEF1F6]"><h3 className="text-[15.5px] font-extrabold text-[#13203A]">Account</h3></div>
           <div className="p-[18px]">
-            <div className="mb-3.5"><label className="block text-[12px] font-bold text-[#7B8AA3] mb-1.5">Login email</label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-11 px-3 rounded-lg border border-[#E7ECF3] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]/20" /></div>
-            <div className="mb-3.5"><label className="block text-[12px] font-bold text-[#7B8AA3] mb-1.5">Password</label>
-              <input type="password" value="••••••••••" readOnly className="w-full h-11 px-3 rounded-lg border border-[#E7ECF3] text-sm bg-[#F6F8FB] text-[#7B8AA3]" /></div>
+            <div className="mb-3.5"><label className="block text-[12px] font-bold text-[#7B8AA3] mb-1.5">Login mobile number</label>
+              <input value={phone ? `+91 ${phone}` : '—'} readOnly className="w-full h-11 px-3 rounded-lg border border-[#E7ECF3] text-sm bg-[#F6F8FB] text-[#7B8AA3]" />
+              <p className="mt-1 text-[11px] text-[#9AA7B8]">You log in with OTP on this number. To change it, contact the admin team.</p></div>
+            <div className="mb-3.5"><label className="block text-[12px] font-bold text-[#7B8AA3] mb-1.5">Contact email</label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="shop@example.com" className="w-full h-11 px-3 rounded-lg border border-[#E7ECF3] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97706]/20" /></div>
             <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 text-white font-bold text-[14px] rounded-[11px] px-[18px] py-[11px] disabled:opacity-50" style={{ background: DIST }}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Save changes</button>
           </div>
         </div>
