@@ -72,7 +72,12 @@ const read = (): BmcSub | null => {
 
 let data: BmcSub | null = read();
 const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((f) => f());
+// Versioned snapshot: a fresh object per emit so useSyncExternalStore
+// re-renders consumers even when `data` itself is unchanged/null (e.g. when
+// only the SUB_PLANS pricing hydrated from the server).
+let snap: { sub: BmcSub | null } = { sub: data };
+const SSR_SNAP: { sub: BmcSub | null } = { sub: null };
+const emit = () => { snap = { sub: data }; listeners.forEach((f) => f()); };
 const persist = () => {
   if (typeof window !== 'undefined') {
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* ignore quota */ }
@@ -128,7 +133,7 @@ const hydratePlansFromServer = async () => {
         if (Array.isArray(r.benefits) && r.benefits.length > 0) plan.perks = r.benefits;
         changed = true;
       }
-      if (changed) { data = data ? { ...data } : data; emit(); }
+      if (changed) emit(); // versioned snapshot re-renders consumers
     }
   } catch { /* offline — defaults stand; retried on next mount */ }
   finally { plansFetching = false; }
@@ -146,6 +151,9 @@ const syncSubFromServer = async () => {
     if (res.data?.success) {
       subLoaded = true;
       if (res.data.data) { data = membershipToSub(res.data.data); persist(); emit(); }
+      // Server says no membership — clear any stale cache (e.g. a previous
+      // account's plan on a shared browser).
+      else if (data) { data = null; persist(); emit(); }
     }
   } catch { /* offline — cache stands; retried on next mount */ }
   finally { subFetching = false; }
@@ -191,7 +199,7 @@ export const bmCareStore = {
 // ── hook ────────────────────────────────────────────────────
 export function useBmCareSub(): BmcSub | null {
   const subscribe = useCallback((f: () => void) => bmCareStore.subscribe(f), []);
-  const get = useCallback(() => bmCareStore.get(), []);
-  // server snapshot is always null (no localStorage during SSR)
-  return useSyncExternalStore(subscribe, get, () => null);
+  const get = useCallback(() => snap, []);
+  // server snapshot is a stable null wrapper (no localStorage during SSR)
+  return useSyncExternalStore(subscribe, get, () => SSR_SNAP).sub;
 }

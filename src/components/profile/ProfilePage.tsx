@@ -15,7 +15,8 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   User, Mail, Phone, MapPin, Package, Wrench, Wallet, Bell, Star, MapPinned,
-  LogOut, Edit, Save, X, Loader2, ChevronRight, Shield, QrCode,
+  LogOut, Edit, Save, X, Loader2, ChevronRight, Shield, QrCode, ScanLine,
+  Sparkles, Gift,
 } from 'lucide-react'
 import { BMCareProfileCard } from '@/components/subscription/BMCareStrip'
 
@@ -174,6 +175,9 @@ export function ProfilePage() {
             { icon: Edit, label: 'Edit Profile', href: '/profile/edit', desc: 'Update your photo and details', color: 'bg-slate-100', iconColor: 'text-[#1B3B6F]' },
             { icon: Shield, label: 'BM Care Membership', href: '/subscription', desc: 'Free services & priority', color: 'bg-[#EAF0FA]', iconColor: 'text-[#1B3B6F]' },
             { icon: QrCode, label: 'My Vehicle QR', href: '/vehicle-qr', desc: 'SecureContact · private', color: 'bg-orange-50', iconColor: 'text-[#FF6B35]' },
+            { icon: ScanLine, label: 'Scan vehicle QR', href: '/scan', desc: 'Reach a parked vehicle’s owner', color: 'bg-[#E6F6F8]', iconColor: 'text-[#12A4B4]' },
+            { icon: Sparkles, label: 'Spin & Win', href: '/spin', desc: 'Free daily spin, win rewards', color: 'bg-orange-50', iconColor: 'text-[#FF6B35]' },
+            { icon: Gift, label: 'Refer & Earn', href: '/refer', desc: 'Invite friends, both get rewarded', color: 'bg-green-50', iconColor: 'text-green-600' },
             { icon: Package, label: 'My Orders', href: '/orders', desc: 'View order history and track deliveries', color: 'bg-blue-50', iconColor: 'text-[#1B3B6F]' },
             { icon: Wrench, label: 'Service Requests', href: '/service', desc: 'View your service bookings', color: 'bg-orange-50', iconColor: 'text-[#FF6B35]' },
             { icon: MapPinned, label: 'My Addresses', href: '/addresses', desc: 'Manage delivery addresses', color: 'bg-green-50', iconColor: 'text-green-600' },

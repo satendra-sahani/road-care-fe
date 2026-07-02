@@ -20,21 +20,21 @@ export interface Vehicle {
 // the in-app scanners extract the trailing code.
 export const qrPayload = (code: string) => `https://bharatmechanics.com/v/${code.toUpperCase()}`
 
-export const MY_VEHICLES: Vehicle[] = [
-  { id: 'v1', em: '🏍️', name: 'Honda Activa 6G', plate: 'DL 3S AB 1234', code: 'AB1234' },
-  { id: 'v2', em: '🚗', name: 'Maruti Swift VXi', plate: 'DL 8C XY 4821', code: 'XY4821' },
-]
-
 export const VEHICLE_EMOJIS = ['🏍️', '🛵', '🚗', '🚙', '🚚', '🛺']
 
 const KEY = 'bmc_myveh'
+const EMPTY: Vehicle[] = []
+// Old builds seeded these demo codes into localStorage — strip them so real
+// users never see vehicles that aren't theirs.
+const DEMO_CODES = ['AB1234', 'XY4821']
 
 const read = (): Vehicle[] => {
-  if (typeof window === 'undefined') return MY_VEHICLES
+  if (typeof window === 'undefined') return EMPTY
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || 'null')
-    return Array.isArray(s) && s.length ? s : MY_VEHICLES
-  } catch { return MY_VEHICLES }
+    const list: Vehicle[] = Array.isArray(s) ? s : []
+    return list.filter((v) => v?.serverId || !DEMO_CODES.includes(String(v?.code || '').toUpperCase()))
+  } catch { return EMPTY }
 }
 
 let data: Vehicle[] = read()
@@ -65,8 +65,12 @@ const syncFromServer = async () => {
         data = list.map((v: any) => ({
           id: v._id, serverId: v._id, em: v.em || '🚗', name: v.name, plate: v.plate, code: v.code,
         }))
-        persist(); emit()
+      } else {
+        // Server says no vehicles — drop any stale cache (e.g. a previous
+        // account's plates on a shared browser).
+        data = []
       }
+      persist(); emit()
     }
   } catch { /* offline — cache stands; retried on next mount */ }
   finally { serverFetching = false }
@@ -81,16 +85,19 @@ export const vehicleStore = {
   get() { return data },
   save(list: Vehicle[]) { data = list; persist(); emit() },
   add(v: Omit<Vehicle, 'id'>) {
-    data = [...data, { ...v, id: 'v' + Date.now() }]
+    const localId = 'v' + Date.now()
+    data = [...data, { ...v, id: localId }]
     persist(); emit()
     const index = data.length - 1
     // Write-through: register on the server; adopt its unique code + id.
+    // Patch by the optimistic local id — the list may have been re-synced or
+    // reordered by the time the response lands.
     if (typeof window !== 'undefined' && Cookies.get('customer_token')) {
       userVehicleQrAPI.register({ name: v.name, em: v.em, plate: v.plate })
         .then((res) => {
           const srv = res.data?.data
           if (res.data?.success && srv) {
-            data = data.map((x, i) => (i === index ? { ...x, serverId: srv._id, code: srv.code } : x))
+            data = data.map((x) => (x.id === localId ? { ...x, serverId: srv._id, code: srv.code } : x))
             persist(); emit()
           }
         })
@@ -99,7 +106,11 @@ export const vehicleStore = {
     return index
   },
   update(index: number, patch: Partial<Vehicle>) {
-    data = data.map((x, i) => (i === index ? { ...x, ...patch } : x))
+    // The QR code is server-owned once registered — a recomputed local code
+    // would render a QR the server can't resolve (or a stranger's code).
+    const safe = { ...patch }
+    if (data[index]?.serverId) { delete safe.code; delete safe.serverId }
+    data = data.map((x, i) => (i === index ? { ...x, ...safe } : x))
     persist(); emit()
     const v = data[index]
     if (v?.serverId && typeof window !== 'undefined' && Cookies.get('customer_token')) {
@@ -126,7 +137,12 @@ export async function resolveCode(code: string): Promise<ScanResult | null> {
   try {
     const res = await userVehicleQrAPI.resolvePublic(clean)
     if (res.data?.success && res.data.data) return res.data.data as ScanResult
-  } catch { /* fall through to local */ }
+    return null
+  } catch (e: any) {
+    // Server answered "not found" (or deactivated) — that's authoritative.
+    // Only fall back to the local cache when the server was unreachable.
+    if (e?.response?.status) return null
+  }
   const local = vehicleStore.byCode(clean)
   return local ? { code: local.code, name: local.name, em: local.em, maskedPlate: maskPlate(local.plate) } : null
 }
@@ -134,13 +150,14 @@ export async function resolveCode(code: string): Promise<ScanResult | null> {
 export function useVehicles(): Vehicle[] {
   const subscribe = useCallback((f: () => void) => vehicleStore.subscribe(f), [])
   const get = useCallback(() => vehicleStore.get(), [])
-  return useSyncExternalStore(subscribe, get, () => MY_VEHICLES)
+  return useSyncExternalStore(subscribe, get, () => EMPTY)
 }
 
-// Mask a plate's last 2 chars, e.g. "DL 8C XY 4821" -> "DL 8C XY ••21"
+// Mask the chars before the last 2, e.g. "DL 8C XY 4821" -> "DL 8C XY ••21"
 export const maskPlate = (plate: string): string => {
   const compact = plate.replace(/\s+/g, ' ').trim()
-  return compact.replace(/(\w{2})(\s*)$/, '••$1')
+  const masked = compact.replace(/\w\w(\s*\w\w)$/, '••$1')
+  return masked === compact && compact.length > 2 ? '••' + compact.slice(-2) : masked
 }
 
 export const plateToCode = (plate: string): string =>

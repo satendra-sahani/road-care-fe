@@ -530,22 +530,15 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 1A2 — BM Care subscription strip
+            SECTION 1A2 — BM Care membership + AI Voice Booking (one row on
+            desktop, stacked on mobile)
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
-          <div className="max-w-7xl mx-auto">
-            <BMCareStrip />
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════
-            SECTION 1B — AI Voice Booking (highlighted feature, top-of-page)
-           ══════════════════════════════════════════════════════════════ */}
-        <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-stretch">
+            <BMCareStrip className="h-full" />
             <Link
               href="/ai-booking"
-              className="group/ai relative block overflow-hidden rounded-2xl md:rounded-[22px] ring-1 ring-white/10 shadow-[0_12px_44px_-14px_rgba(15,37,71,0.55)] transition-all duration-300 hover:ring-white/[0.18] hover:shadow-[0_18px_54px_-14px_rgba(15,37,71,0.65)] hover:-translate-y-0.5"
+              className="group/ai relative block h-full overflow-hidden rounded-2xl md:rounded-[22px] ring-1 ring-white/10 shadow-[0_12px_44px_-14px_rgba(15,37,71,0.55)] transition-all duration-300 hover:ring-white/[0.18] hover:shadow-[0_18px_54px_-14px_rgba(15,37,71,0.65)] hover:-translate-y-0.5"
               style={{ background: 'linear-gradient(115deg,#0E2042 0%,#1B3B6F 54%,#173461 100%)' }}
             >
               {/* Material: top inner highlight, brand glow, right sheen, fine grain */}
@@ -554,13 +547,13 @@ export default function HomePage() {
               <div className="pointer-events-none absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-[#FF6B35]/[0.07] to-transparent" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,.9) 0.8px,transparent 0.8px)', backgroundSize: '14px 14px' }} />
 
-              <div className="relative flex items-center gap-3 md:gap-4 px-3.5 py-2 md:px-6 md:py-3.5 lg:px-7">
+              <div className="relative flex h-full items-center gap-3 md:gap-4 px-3.5 py-2 md:px-5 md:py-2.5 lg:px-6">
                 {/* Mic orb with listening sonar */}
                 <div className="relative shrink-0 grid place-items-center">
-                  <span className="absolute h-9 w-9 md:h-10 md:w-10 rounded-full ring-1 ring-[#FF6B35]/50 animate-ping" aria-hidden />
-                  <span className="absolute inset-0 m-auto h-9 w-9 md:h-10 md:w-10 rounded-full bg-[#FF6B35]/25 blur-md" aria-hidden />
-                  <div className="relative h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-[#FF8A5C] to-[#FF5A1F] flex items-center justify-center ring-2 ring-white/25 shadow-[0_4px_14px_-2px_rgba(255,107,53,0.65)]">
-                    <Mic className="h-4 w-4 md:h-[18px] md:w-[18px] text-white" strokeWidth={2.4} />
+                  <span className="absolute h-8 w-8 md:h-9 md:w-9 rounded-full ring-1 ring-[#FF6B35]/50 animate-ping" aria-hidden />
+                  <span className="absolute inset-0 m-auto h-8 w-8 md:h-9 md:w-9 rounded-full bg-[#FF6B35]/25 blur-md" aria-hidden />
+                  <div className="relative h-8 w-8 md:h-9 md:w-9 rounded-full bg-gradient-to-br from-[#FF8A5C] to-[#FF5A1F] flex items-center justify-center ring-2 ring-white/25 shadow-[0_4px_14px_-2px_rgba(255,107,53,0.65)]">
+                    <Mic className="h-4 w-4 text-white" strokeWidth={2.4} />
                   </div>
                   {/* Live dot */}
                   <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
@@ -574,18 +567,18 @@ export default function HomePage() {
                   <span className="hidden sm:inline-flex items-center gap-1 text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] text-[#FFC2A6] bg-white/[0.08] ring-1 ring-white/10 rounded-full px-2 py-[3px] font-sans backdrop-blur-sm mb-1">
                     <Sparkles className="h-2.5 w-2.5 text-[#FF8A5C]" /> AI Powered · हिंदी में
                   </span>
-                  <p className="text-[14px] md:text-[18px] font-extrabold tracking-[-0.02em] text-white leading-[1.15] truncate">
+                  <p className="text-[13.5px] md:text-[15.5px] font-extrabold tracking-[-0.02em] text-white leading-[1.15] truncate">
                     {/* Short on mobile to stay one tight line, full headline on sm+ */}
                     <span className="sm:hidden">AI <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF8A5C] to-[#FFC2A6]">Voice</span> Booking</span>
                     <span className="hidden sm:inline">Book a service just by <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF8A5C] to-[#FFC2A6]">speaking</span></span>
                   </p>
-                  <p className="hidden sm:block text-[11px] md:text-[12.5px] text-white/55 font-medium mt-0.5 truncate font-sans">
+                  <p className="hidden sm:block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">
                     Baat karein, booking ho jayegi — in Hindi or English, hands-free.
                   </p>
                 </div>
 
-                {/* Live equalizer (md+) */}
-                <div className="hidden md:flex items-center gap-[3px] h-7 mr-0.5" aria-hidden>
+                {/* Live equalizer (roomy widths only) */}
+                <div className="hidden md:flex lg:hidden xl:flex items-center gap-[3px] h-6 mr-0.5" aria-hidden>
                   {[0.4, 0.78, 1, 0.55, 0.9, 0.5, 0.82, 0.62, 0.95, 0.45].map((h, i) => (
                     <span
                       key={i}
@@ -600,7 +593,7 @@ export default function HomePage() {
                 </div>
 
                 {/* CTA */}
-                <span className="relative inline-flex items-center gap-1.5 bg-white text-[#0F2547] group-hover/ai:bg-[#FF6B35] group-hover/ai:text-white font-bold px-4 py-2 md:px-5 rounded-full text-[12px] md:text-[13px] shrink-0 shadow-[0_4px_14px_-3px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.04] transition-colors duration-300">
+                <span className="relative inline-flex items-center gap-1.5 bg-white text-[#0F2547] group-hover/ai:bg-[#FF6B35] group-hover/ai:text-white font-bold px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[11.5px] md:text-[12.5px] shrink-0 shadow-[0_4px_14px_-3px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.04] transition-colors duration-300">
                   Try Now
                   <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover/ai:translate-x-1" />
                 </span>

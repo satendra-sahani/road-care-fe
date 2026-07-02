@@ -478,6 +478,21 @@ export const userMembershipAPI = {
   cancel: () => api.post('/user/membership/cancel'),
 };
 
+// ─── User Spin & Win APIs ────────────────────────────────────────────
+export const userSpinAPI = {
+  getWheel: () => api.get('/user/spin/wheel'),
+  spin: () => api.post('/user/spin', {}),
+  getHistory: (params?: { page?: number; limit?: number }) =>
+    api.get('/user/spin/history', { params }),
+};
+
+// ─── User Referral APIs ──────────────────────────────────────────────
+export const userReferralAPI = {
+  getMine: () => api.get('/user/referral/me'),
+  getList: (params?: { page?: number; limit?: number }) =>
+    api.get('/user/referral/list', { params }),
+};
+
 // ─── User Vehicle QR APIs (SecureContact) ────────────────────────────
 export const userVehicleQrAPI = {
   getMine: () => api.get('/user/vehicle-qr'),

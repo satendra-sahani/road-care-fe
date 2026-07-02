@@ -22,6 +22,35 @@ export function VehicleQRPage() {
   const [edit, setEdit] = useState<number | 'new' | null>(null)
   const v = list[vi] || list[0]
 
+  // No vehicles yet — real users start empty (no demo data)
+  if (!v) {
+    return (
+      <UserLayout>
+        <div className="mx-auto max-w-md px-4 pb-10" style={{ background: 'linear-gradient(180deg,#E6F6F8,#F4F6FB 70%)' }}>
+          <div className="pt-5">
+            <h1 className="font-display text-2xl font-extrabold text-[#0F2545]">My Vehicle QR</h1>
+            <p className="text-[12.5px] font-semibold text-slate-500">SecureContact · number stays private</p>
+          </div>
+          <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#EAF0FA] text-3xl">🛡️</div>
+            <h2 className="mt-4 font-display text-lg font-extrabold text-[#0F2545]">No vehicles yet</h2>
+            <p className="mt-1 text-[12.5px] font-semibold leading-relaxed text-slate-500">
+              Add your vehicle to get its SecureContact QR sticker — anyone who scans it can reach you without ever seeing your number.
+            </p>
+            <button onClick={() => setEdit('new')}
+              className="mx-auto mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#1B3B6F] text-sm font-extrabold text-white">
+              <Plus className="h-4 w-4" /> Add my vehicle
+            </button>
+          </div>
+          {edit === 'new' && (
+            <VehEditSheet veh={null} onClose={() => setEdit(null)}
+              onSave={(nv) => { const idx = vehicleStore.add(nv); setVi(idx); setEdit(null); toast.success('Vehicle added') }} />
+          )}
+        </div>
+      </UserLayout>
+    )
+  }
+
   return (
     <UserLayout>
       <div className="mx-auto max-w-md px-4 pb-10" style={{ background: 'linear-gradient(180deg,#E6F6F8,#F4F6FB 70%)' }}>
@@ -150,7 +179,7 @@ export function VehicleQRPage() {
             else { vehicleStore.update(edit, nv) }
             setEdit(null); toast.success('Vehicle details saved')
           }}
-          onDelete={edit !== 'new' && list.length > 1 ? () => { vehicleStore.remove(edit); setVi(0); setEdit(null); toast.success('Vehicle removed') } : undefined}
+          onDelete={edit !== 'new' ? () => { vehicleStore.remove(edit); setVi(0); setEdit(null); toast.success('Vehicle removed') } : undefined}
         />
       )}
     </UserLayout>

@@ -81,6 +81,7 @@ export function SubscriptionPage() {
       if (payload?.membership) {
         bmCareStore.applyServerMembership(payload.membership)
         setStep('success')
+        setPaying(false)
         return
       }
 
@@ -89,6 +90,7 @@ export function SubscriptionPage() {
       const ok = await loadRazorpay()
       if (!ok || typeof window.Razorpay === 'undefined') {
         toast.error('Payment gateway not loaded. Please refresh and try again.')
+        setPaying(false)
         return
       }
 

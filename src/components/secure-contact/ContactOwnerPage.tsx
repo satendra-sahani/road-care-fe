@@ -29,18 +29,29 @@ export function ContactOwnerPage() {
   const { openLogin } = useLoginModal()
   const isAuthenticated = useSelector((s: RootState) => s.customerAuth?.isAuthenticated)
 
-  // Server-resolved vehicle (masked). Falls back to the demo vehicle when no
-  // code is present — the previous behaviour for direct visits.
+  // Server-resolved vehicle (masked). Falls back to the demo vehicle only when
+  // no code is present (direct visits) — a code that fails to resolve shows an
+  // explicit unavailable state instead of impersonating the demo vehicle.
   const [resolved, setResolved] = useState<ScanResult | null>(null)
+  const [notFound, setNotFound] = useState(false)
   useEffect(() => {
     if (!code) return
     let cancelled = false
-    resolveCode(code).then((r) => { if (!cancelled && r) setResolved(r) })
+    setNotFound(false)
+    resolveCode(code).then((r) => {
+      if (cancelled) return
+      if (r) setResolved(r)
+      else { setNotFound(true); toast.error('This QR code is no longer active') }
+    })
     return () => { cancelled = true }
   }, [code])
 
-  const veh = resolved ? { em: resolved.em, name: resolved.name, plate: resolved.maskedPlate } : DEMO
-  const masked = resolved ? resolved.maskedPlate : maskPlate(veh.plate)
+  const veh = resolved
+    ? { em: resolved.em, name: resolved.name, plate: resolved.maskedPlate }
+    : notFound
+      ? { em: '🚫', name: 'Vehicle unavailable', plate: '——' }
+      : DEMO
+  const masked = resolved ? resolved.maskedPlate : notFound ? '——' : maskPlate(veh.plate)
 
   const [sent, setSent] = useState<string | null>(null)
   const [sending, setSending] = useState<string | null>(null)
@@ -50,6 +61,7 @@ export function ContactOwnerPage() {
   // Requires login; the demo (no code) keeps the old toast behaviour.
   const sendQuickMsg = async (m: string) => {
     if (sending) return
+    if (notFound) { toast.error('This QR code is no longer active'); return }
     if (!code) { setSent(m); toast.success('Message sent anonymously'); return }
     if (!isAuthenticated && !Cookies.get('customer_token')) {
       openLogin(() => { sendQuickMsg(m) })
