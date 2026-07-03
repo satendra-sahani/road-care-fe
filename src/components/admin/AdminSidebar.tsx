@@ -285,7 +285,7 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
       {/* Sidebar */}
       <aside
         className={cn(
-          "admin-sidebar fixed left-0 top-0 flex flex-col h-screen bg-gradient-to-b from-[#0F2545] to-[#1B3B6F] border-r border-[#2E5090] transition-all duration-300 z-50",
+          "admin-sidebar fixed left-0 top-0 flex flex-col h-screen bg-[#0E1F3D] border-r border-white/[0.06] transition-all duration-300 z-50",
           // Desktop behavior
           "lg:z-30",
           collapsed ? "lg:w-16" : "lg:w-64",
@@ -298,19 +298,17 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
         )}
       >
       {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#2E5090]">
+        <div className="flex items-center justify-between px-4 pt-5 pb-4 border-b border-white/[0.07]">
           {!collapsed ? (
-            <div className="flex flex-col">
-              <span className="inline-flex bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
-                <NextImage
-                  src="/brand-logo-v3.png"
-                  alt="Bharat Mechanics"
-                  width={170}
-                  height={40}
-                  className="h-9 w-auto object-contain"
-                />
-              </span>
-              <p className="text-[10px] text-gray-400 mt-1">Admin Panel</p>
+            <div className="flex items-center gap-3">
+              <NextImage
+                src="/white-logo-bm.png"
+                alt="Bharat Mechanics"
+                width={190}
+                height={44}
+                className="h-9 w-auto object-contain"
+              />
+              <span className="rounded-md bg-[#FF6B35]/15 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#FF9A6B]">Admin</span>
             </div>
           ) : (
             <NextImage
@@ -321,13 +319,13 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
               className="w-8 h-8 object-contain rounded-lg mx-auto"
             />
           )}
-          
+
           {/* Mobile close button */}
           {isMobile && (
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden text-white hover:bg-[#2E5090]"
+              className="lg:hidden text-white hover:bg-white/10"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               <X className="h-4 w-4" />
@@ -336,7 +334,7 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
         </div>
 
         {/* Navigation — collapsible groups */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 scrollbar-ultra-narrow">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-ultra-narrow">
           {groups.map((group) => {
             const showLabels = !collapsed || isMobile
             const groupBadge = group.items.reduce((n, i) => n + (i.badge ? parseInt(i.badge) || 0 : 0), 0)
@@ -347,78 +345,80 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
               const active = isActive(item.href)
               return (
                 <Link key={item.id} href={item.href} onClick={() => isMobile && setIsMobileMenuOpen(false)}>
-                  <Button
-                    variant="ghost"
+                  <span
                     className={cn(
-                      "w-full justify-start h-9 px-3 py-2 text-left text-sm font-medium transition-all duration-200 rounded-lg",
+                      "group relative flex h-9 items-center rounded-lg px-3 text-[13px] font-medium transition-colors duration-150",
                       collapsed && !isMobile && "justify-center px-2",
-                      group.title && showLabels && "pl-4",
-                      active && "bg-[#FF6B35] text-white hover:bg-[#E55A2B]",
-                      !active && "text-gray-300 hover:bg-[#2E5090] hover:text-white"
+                      active
+                        ? "bg-white/[0.09] text-white"
+                        : "text-[#A8BEDC] hover:bg-white/[0.05] hover:text-white"
                     )}
                   >
-                    <Icon className={cn("h-4 w-4 flex-shrink-0", showLabels && "mr-3")} />
+                    {/* active accent bar */}
+                    {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[#FF6B35]" />}
+                    <Icon className={cn(
+                      "h-[17px] w-[17px] flex-shrink-0 transition-colors",
+                      active ? "text-[#FF8A5C]" : "text-[#7E9CC9] group-hover:text-white",
+                      showLabels && "mr-3"
+                    )} />
                     {showLabels && (
                       <>
                         <span className="flex-1 truncate">{item.title}</span>
                         {item.badge && (
-                          <span className={cn(
-                            "ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                            active ? "bg-white text-[#FF6B35]" : "bg-[#FF6B35] text-white"
-                          )}>
+                          <span className="ml-auto grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#FF6B35] px-1.5 text-[10px] font-bold text-white">
                             {item.badge}
                           </span>
                         )}
                       </>
                     )}
-                  </Button>
+                  </span>
                 </Link>
               )
             }
 
             return (
-              <div key={group.id}>
+              <div key={group.id} className={cn(group.title && showLabels && "mt-4 first:mt-0")}>
                 {group.title && showLabels ? (
                   <button
                     onClick={() => toggleGroup(group.id)}
-                    className="mt-2 flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left"
+                    className="group/hdr mb-1 flex w-full items-center justify-between rounded-md px-3 py-1 text-left"
                   >
-                    <span className="text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-[#7E9CC9]">{group.title}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#5F7DA8] transition-colors group-hover/hdr:text-[#8FAAD0]">{group.title}</span>
                     <span className="flex items-center gap-1.5">
                       {!isOpen && groupBadge > 0 && (
-                        <span className="rounded-full bg-[#FF6B35] px-1.5 py-0.5 text-[9px] font-bold text-white">{groupBadge}</span>
+                        <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#FF6B35] px-1 text-[9px] font-bold text-white">{groupBadge}</span>
                       )}
-                      <ChevronDown className={cn("h-3.5 w-3.5 text-[#7E9CC9] transition-transform", !isOpen && "-rotate-90")} />
+                      <ChevronDown className={cn("h-3 w-3 text-[#5F7DA8] transition-transform duration-200 group-hover/hdr:text-[#8FAAD0]", !isOpen && "-rotate-90")} />
                     </span>
                   </button>
                 ) : group.title && !showLabels ? (
-                  <div className="my-2 mx-3 border-t border-[#2E5090]" />
+                  <div className="my-2 mx-3 border-t border-white/[0.07]" />
                 ) : null}
-                {isOpen && group.items.map(renderItem)}
+                {isOpen && <div className="space-y-px">{group.items.map(renderItem)}</div>}
               </div>
             )
           })}
         </nav>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-[#2E5090] space-y-2">
+      {/* Footer — user chip + logout */}
+      <div className="border-t border-white/[0.07] p-3">
           {(!collapsed || isMobile) ? (
-            <>
-              {user && (
-                <div className="px-3 py-2">
-                  <p className="text-sm font-medium text-white truncate">{user.fullName}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
-                </div>
-              )}
-              <Button
-                variant="ghost"
+            <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.05] px-3 py-2.5">
+              <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#FF6B35] to-[#E55A2B] text-[12px] font-extrabold text-white">
+                {(user?.fullName || 'A').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12.5px] font-semibold leading-tight text-white">{user?.fullName || 'Administrator'}</p>
+                <p className="truncate text-[10px] text-[#7E9CC9]">{user?.email || ''}</p>
+              </div>
+              <button
                 onClick={handleLogout}
-                className="w-full justify-start h-9 px-3 text-sm text-red-300 hover:bg-red-500/20 hover:text-red-200"
+                title="Logout"
+                className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-[#A8BEDC] transition-colors hover:bg-red-500/20 hover:text-red-300"
               >
-                <LogOut className="h-4 w-4 mr-3" />
-                Logout
-              </Button>
-            </>
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           ) : (
             <Button
               variant="ghost"
