@@ -585,8 +585,16 @@ export const guestCallAPI = {
   sendOtp: (phone: string) => api.post('/common/guest/send-otp', { phone }),
   verifyOtp: (phone: string, name: string, otp: string) =>
     api.post('/common/guest/verify-otp', { phone, name, otp }),
-  call: (code: string, callType: 'audio' | 'video', guestToken: string) =>
-    api.post('/common/guest/vehicle-owner/call', { code, callType }, guestHeaders(guestToken)),
+  // When a QR-calling fee is set, the first call returns { requiresPayment,
+  // fee, data.razorpay }; retry with the payment proof to connect. Free calls
+  // (no fee) connect on the first call with no payment.
+  call: (
+    code: string,
+    callType: 'audio' | 'video',
+    guestToken: string,
+    payment?: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string },
+  ) =>
+    api.post('/common/guest/vehicle-owner/call', { code, callType, ...(payment || {}) }, guestHeaders(guestToken)),
   getStatus: (callId: string, guestToken: string) =>
     api.get(`/common/guest/calls/${callId}/status`, guestHeaders(guestToken)),
   updateStatus: (callId: string, status: string, duration: number, guestToken: string) =>

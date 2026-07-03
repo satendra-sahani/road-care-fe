@@ -18,6 +18,18 @@ const errMsg = (e: any, fallback: string): string =>
   || (e?.message === 'Network Error' ? 'Cannot reach the server. Check that your phone is on the same Wi-Fi.' : e?.message)
   || fallback
 
+// Razorpay web checkout (only used when the admin sets a QR-calling fee).
+function loadRazorpay(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && (window as any).Razorpay) return resolve(true)
+    const s = document.createElement('script')
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    s.onload = () => resolve(true)
+    s.onerror = () => resolve(false)
+    document.body.appendChild(s)
+  })
+}
+
 interface Props {
   code: string
   peerName: string // e.g. "Owner of DL 8C XY ••21"
@@ -51,11 +63,44 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
     } finally { setBusy(false) }
   }
 
+  // If the call needs a fee first, run Razorpay checkout and return the payment
+  // proof; the call is then retried with it. Resolves null if the guest cancels.
+  const payQrFee = async (order: any, fee: number): Promise<any | null> => {
+    const ok = await loadRazorpay()
+    if (!ok || !(window as any).Razorpay) { toast.error('Payment is unavailable right now'); return null }
+    return new Promise((resolve) => {
+      const rzp = new (window as any).Razorpay({
+        key: order.keyId,
+        order_id: order.orderId,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: 'Bharat Mechanics',
+        description: `Vehicle owner call · ₹${fee}`,
+        theme: { color: '#1B3B6F' },
+        handler: (r: any) => resolve({
+          razorpayOrderId: r.razorpay_order_id,
+          razorpayPaymentId: r.razorpay_payment_id,
+          razorpaySignature: r.razorpay_signature,
+        }),
+        modal: { ondismiss: () => resolve(null) },
+      })
+      rzp.open()
+    })
+  }
+
   // Place the call once we have a guest token (or immediately, when logged in).
   const placeGuestCall = async (token: string) => {
     setStep('placing')
     try {
-      const res = await guestCallAPI.call(code, 'audio', token)
+      let res = await guestCallAPI.call(code, 'audio', token)
+
+      // Paid QR calling: pay the fee, then retry the call with the proof.
+      if (res.data?.requiresPayment) {
+        const proof = await payQrFee(res.data.data?.razorpay, res.data.fee)
+        if (!proof) { toast.message('Call cancelled — no money was charged'); onClose(); return }
+        res = await guestCallAPI.call(code, 'audio', token, proof)
+      }
+
       const d = res.data?.data
       if (!res.data?.success || !d?.agora?.appId) throw new Error(res.data?.message || 'Call failed')
       setLive({
