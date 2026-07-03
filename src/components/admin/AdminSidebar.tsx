@@ -221,18 +221,30 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
     }),
   }))
 
-  // Collapsible groups — the group containing the active route starts open.
+  // Collapsible groups — ALL OPEN by default (a nav full of collapsed headers
+  // reads as broken). Collapsing is opt-in and remembered per admin.
   const activeGroupId = NAV_GROUPS.find((g) => g.items.some((i) => i.href === pathname))?.id
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
-    NAV_GROUPS.forEach((g) => { init[g.id] = !g.title || g.id === activeGroupId })
+    NAV_GROUPS.forEach((g) => { init[g.id] = true })
     return init
   })
-  // Keep the active group expanded across navigation
+  // Restore the admin's saved collapse choices after mount (SSR-safe)
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('admin_nav_groups') || 'null')
+      if (saved && typeof saved === 'object') setOpenGroups((s) => ({ ...s, ...saved }))
+    } catch { /* ignore corrupt state */ }
+  }, [])
+  // The group holding the active route always stays expanded
   useEffect(() => {
     if (activeGroupId) setOpenGroups((s) => (s[activeGroupId] ? s : { ...s, [activeGroupId]: true }))
   }, [activeGroupId])
-  const toggleGroup = (id: string) => setOpenGroups((s) => ({ ...s, [id]: !s[id] }))
+  const toggleGroup = (id: string) => setOpenGroups((s) => {
+    const next = { ...s, [id]: !s[id] }
+    try { localStorage.setItem('admin_nav_groups', JSON.stringify(next)) } catch { /* private mode */ }
+    return next
+  })
 
   // Check if mobile/tablet
   useEffect(() => {
