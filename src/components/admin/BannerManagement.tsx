@@ -342,13 +342,13 @@ export function BannerManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-[#1A1D29]">Banner Management</h1>
+            <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Banner Management</h1>
             <p className="text-sm text-[#6B7280] mt-1">
               Manage homepage slider banners for website and mobile app
             </p>
           </div>
           <Button
-            className="bg-[#1B3B6F] hover:bg-[#0F2545]"
+            className="bg-[#1B3B6F] hover:bg-[#0F2545] shadow-sm"
             onClick={handleOpenCreate}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -368,62 +368,46 @@ export function BannerManagement() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <ImageIcon className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#1A1D29]">{banners.length}</p>
-                  <p className="text-xs text-[#6B7280]">Total Banners</p>
-                </div>
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Total Banners</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50">
+                <ImageIcon className="h-[18px] w-[18px] text-blue-600" />
               </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                  <Eye className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#1A1D29]">{activeBanners.length}</p>
-                  <p className="text-xs text-[#6B7280]">Active</p>
-                </div>
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{banners.length}</p>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Active</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50">
+                <Eye className="h-[18px] w-[18px] text-emerald-600" />
               </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center">
-                  <Monitor className="h-5 w-5 text-indigo-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#1A1D29]">{webBanners.length}</p>
-                  <p className="text-xs text-[#6B7280]">Web Banners</p>
-                </div>
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{activeBanners.length}</p>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Web Banners</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50">
+                <Monitor className="h-[18px] w-[18px] text-indigo-600" />
               </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center">
-                  <Smartphone className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#1A1D29]">{androidBanners.length}</p>
-                  <p className="text-xs text-[#6B7280]">Android Banners</p>
-                </div>
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{webBanners.length}</p>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Android Banners</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-green-50">
+                <Smartphone className="h-[18px] w-[18px] text-green-600" />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{androidBanners.length}</p>
+          </div>
         </div>
 
         {/* Filter Bar */}
-        <Card className="border-0 shadow-sm">
+        <Card className="rounded-2xl border border-gray-100 shadow-sm">
           <CardContent className="p-4 flex items-center gap-4">
             <Label className="text-sm font-medium text-[#6B7280]">Platform:</Label>
             <div className="flex gap-2">
@@ -459,7 +443,7 @@ export function BannerManagement() {
             <Loader2 className="h-8 w-8 animate-spin text-[#1B3B6F]" />
           </div>
         ) : filteredBanners.length === 0 ? (
-          <Card className="border-0 shadow-sm">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <ImageIcon className="h-8 w-8 text-gray-400" />
@@ -477,7 +461,7 @@ export function BannerManagement() {
               <Card
                 key={banner._id}
                 className={cn(
-                  'border-0 shadow-sm overflow-hidden hover:shadow-md transition-all group',
+                  'rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md group',
                   !banner.isActive && 'opacity-60'
                 )}
               >
@@ -567,7 +551,7 @@ export function BannerManagement() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"

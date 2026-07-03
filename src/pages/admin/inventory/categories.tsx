@@ -210,7 +210,9 @@ export default function CategoriesPage() {
   }
 
   const getStatusColor = (isActive: boolean) =>
-    isActive ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'
+    isActive
+      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+      : 'bg-slate-100 text-slate-600 border-slate-200'
 
   const getParentName = (cat: CategoryItem) => {
     if (!cat.parentCategory) return '—'
@@ -225,68 +227,83 @@ export default function CategoriesPage() {
       <main className="lg:pl-64 transition-all duration-300">
         <div className="space-y-6 p-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-[#1A1D29]">Product Categories</h1>
-              <p className="text-[#6B7280] mt-1">Manage your inventory categories</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1B3B6F]/10">
+                <Grid3X3 className="h-5 w-5 text-[#1B3B6F]" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Product Categories</h1>
+                <p className="text-[#6B7280] mt-1 text-sm">Manage your inventory categories</p>
+              </div>
             </div>
-            <Button onClick={handleOpenAdd} className="bg-[#1B3B6F] hover:bg-[#1B3B6F]/90">
+            <Button onClick={handleOpenAdd} className="bg-[#1B3B6F] hover:bg-[#1B3B6F]/90 shadow-sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Category
             </Button>
           </div>
 
-          {/* Stats */}
+          {/* Stats — Total/Active/Inactive double as quick filters for the existing statusFilter state */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Grid3X3 className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-[#1A1D29]">{categories.length}</p>
-                    <p className="text-xs text-[#6B7280]">Total Categories</p>
-                  </div>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`text-left rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                statusFilter === 'all' ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-gray-100'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Total Categories</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50">
+                  <Grid3X3 className="h-[18px] w-[18px] text-blue-600" />
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Tag className="h-5 w-5 text-green-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-[#1A1D29]">{activeCount}</p>
-                    <p className="text-xs text-[#6B7280]">Active</p>
-                  </div>
+              </div>
+              <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{categories.length}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('active')}
+              className={`text-left rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                statusFilter === 'active' ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-gray-100'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Active</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50">
+                  <Tag className="h-[18px] w-[18px] text-emerald-600" />
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Package className="h-5 w-5 text-purple-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-[#1A1D29]">{pagination.total}</p>
-                    <p className="text-xs text-[#6B7280]">Total From API</p>
-                  </div>
+              </div>
+              <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{activeCount}</p>
+            </button>
+            <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Total From API</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-violet-50">
+                  <Package className="h-[18px] w-[18px] text-violet-600" />
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-5 w-5 text-orange-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-[#1A1D29]">{inactiveCount}</p>
-                    <p className="text-xs text-[#6B7280]">Inactive</p>
-                  </div>
+              </div>
+              <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{pagination.total}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('inactive')}
+              className={`text-left rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                statusFilter === 'inactive' ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-gray-100'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Inactive</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50">
+                  <AlertCircle className="h-[18px] w-[18px] text-amber-600" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{inactiveCount}</p>
+            </button>
           </div>
 
           {/* Table Card */}
-          <Card>
-            <CardHeader>
+          <Card className="border-0 shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-gray-100">
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                 <div>
                   <CardTitle>Categories List</CardTitle>
@@ -299,13 +316,13 @@ export default function CategoriesPage() {
                       placeholder="Search categories..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 w-[250px]"
+                      className="pl-8 w-[250px] bg-gray-50 border-gray-200 focus:bg-white"
                     />
                   </div>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]"
+                    className="px-3 py-2 border border-gray-200 rounded-md text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]"
                   >
                     <option value="all">All Status</option>
                     <option value="active">Active</option>
@@ -320,34 +337,44 @@ export default function CategoriesPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-[#1B3B6F]" />
                 </div>
               ) : filteredCategories.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No categories found</h3>
-                  <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                <div className="text-center py-12">
+                  <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                    <Package className="h-7 w-7 text-gray-400" />
+                  </div>
+                  <h3 className="text-base font-medium text-[#1A1D29] mb-1">No categories found</h3>
+                  <p className="text-sm text-[#6B7280]">Try adjusting your search or filter criteria</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Parent</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                    <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Parent</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredCategories.map((cat) => (
-                      <TableRow key={cat._id}>
+                      <TableRow
+                        key={cat._id}
+                        className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                        style={{ borderLeftColor: cat.isActive ? '#22c55e' : '#94a3b8' }}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            {cat.image && (
+                            {cat.image ? (
                               <img
                                 src={cat.image}
                                 alt={cat.name}
-                                className="w-8 h-8 rounded object-cover"
+                                className="w-9 h-9 rounded-lg object-cover border border-gray-100"
                               />
+                            ) : (
+                              <div className="w-9 h-9 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center">
+                                <Tag className="h-4 w-4 text-[#1B3B6F]" />
+                              </div>
                             )}
                             <div>
                               <div className="font-medium text-[#1A1D29]">{cat.name}</div>
@@ -419,7 +446,16 @@ export default function CategoriesPage() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center">
+                    {editingCategory ? (
+                      <Edit className="h-4 w-4 text-[#1B3B6F]" />
+                    ) : (
+                      <Plus className="h-4 w-4 text-[#1B3B6F]" />
+                    )}
+                  </div>
+                  {editingCategory ? 'Edit Category' : 'Add New Category'}
+                </DialogTitle>
                 <DialogDescription>
                   {editingCategory
                     ? 'Update category details'
@@ -588,7 +624,12 @@ export default function CategoriesPage() {
           <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
             <DialogContent className="max-w-sm">
               <DialogHeader>
-                <DialogTitle>Delete Category</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center">
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </div>
+                  Delete Category
+                </DialogTitle>
                 <DialogDescription>
                   Are you sure you want to delete this category? This action cannot be undone.
                 </DialogDescription>
@@ -609,7 +650,12 @@ export default function CategoriesPage() {
           <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Category Details</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center">
+                    <Eye className="h-4 w-4 text-[#1B3B6F]" />
+                  </div>
+                  Category Details
+                </DialogTitle>
               </DialogHeader>
               {viewCategory && (
                 <div className="space-y-4">
@@ -617,7 +663,7 @@ export default function CategoriesPage() {
                     <img
                       src={viewCategory.image}
                       alt={viewCategory.name}
-                      className="w-full h-40 rounded-lg object-cover"
+                      className="w-full h-40 rounded-lg object-cover border border-gray-100"
                     />
                   )}
                   <div className="grid grid-cols-2 gap-3 text-sm">

@@ -2,12 +2,12 @@
 
 import * as React from 'react'
 import { useState, useMemo } from 'react'
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Eye, 
-  Edit, 
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
+  Eye,
+  Edit,
   Trash2,
   Download,
   Plus,
@@ -28,7 +28,16 @@ import {
   CheckCircle,
   Save,
   Upload,
-  RefreshCw
+  RefreshCw,
+  IndianRupee,
+  Receipt,
+  Wallet,
+  QrCode,
+  SlidersHorizontal,
+  Tag,
+  MessageSquare,
+  Headset,
+  HardDrive
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -234,6 +243,23 @@ const healthStatus = {
   critical: { color: 'text-red-600', label: 'Critical', icon: AlertTriangle }
 }
 
+// Presentational-only accent maps (icon chip colors + left stripe) — purely cosmetic, keyed off existing ids/status.
+const GATEWAY_ACCENT: Record<string, { stripe: string; chipBg: string; chipText: string; icon: any }> = {
+  razorpay: { stripe: '#3b82f6', chipBg: 'bg-blue-50', chipText: 'text-blue-600', icon: CreditCard },
+  paytm: { stripe: '#6366f1', chipBg: 'bg-indigo-50', chipText: 'text-indigo-600', icon: Wallet },
+  phonepe: { stripe: '#8b5cf6', chipBg: 'bg-violet-50', chipText: 'text-violet-600', icon: Smartphone },
+  cod: { stripe: '#10b981', chipBg: 'bg-emerald-50', chipText: 'text-emerald-600', icon: IndianRupee },
+}
+const DEFAULT_GATEWAY_ACCENT = { stripe: '#94a3b8', chipBg: 'bg-gray-100', chipText: 'text-gray-600', icon: CreditCard }
+
+const ROLE_ACCENT: Record<string, { chipBg: string; chipText: string; icon: any }> = {
+  admin: { chipBg: 'bg-indigo-50', chipText: 'text-indigo-600', icon: Shield },
+  manager: { chipBg: 'bg-sky-50', chipText: 'text-sky-600', icon: UserCheck },
+  customer_service: { chipBg: 'bg-violet-50', chipText: 'text-violet-600', icon: Headset },
+  customer: { chipBg: 'bg-slate-100', chipText: 'text-slate-600', icon: Users },
+}
+const DEFAULT_ROLE_ACCENT = { chipBg: 'bg-slate-100', chipText: 'text-slate-600', icon: Users }
+
 export function PlatformSettings() {
   const [activeTab, setActiveTab] = useState('general')
   const [searchQuery, setSearchQuery] = useState('')
@@ -383,16 +409,39 @@ export function PlatformSettings() {
 
   const stats = getSystemStats()
 
+  // Export the currently-loaded settings (general + service config + security) as a CSV — reads existing state only.
+  const exportConfigCsv = () => {
+    const rows: string[][] = [['Section', 'Setting', 'Value']]
+    const flatten = (section: string, obj: any) => {
+      Object.entries(obj || {}).forEach(([key, val]) => {
+        if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+          flatten(`${section} > ${key}`, val)
+        } else {
+          rows.push([section, key, Array.isArray(val) ? val.join('; ') : String(val)])
+        }
+      })
+    }
+    flatten('General', generalSettings)
+    flatten('Service Config', serviceConfig)
+    flatten('Security', securitySettings)
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    a.download = `platform-settings-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1D29]">Platform Settings</h1>
+          <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Platform Settings</h1>
           <p className="text-[#6B7280] mt-1">Configure and manage your platform settings and preferences</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={exportConfigCsv}>
             <Download className="h-4 w-4 mr-2" />
             Export Configuration
           </Button>
@@ -412,104 +461,82 @@ export function PlatformSettings() {
       </div>
 
       {/* System Health Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Database className="h-5 w-5 text-[#1B3B6F]" />
-              <div>
-                <p className="text-lg font-bold text-[#1A1D29]">{getHealthStatus(mockSystemHealth.serverStatus)}</p>
-                <p className="text-xs text-[#6B7280]">Server Status</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Users className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-lg font-bold text-[#1A1D29]">{mockSystemHealth.activeUsers}</p>
-                <p className="text-xs text-[#6B7280]">Active Users</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CreditCard className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-lg font-bold text-[#1A1D29]">{stats.activeGateways}</p>
-                <p className="text-xs text-[#6B7280]">Payment Gateways</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Shield className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-lg font-bold text-[#1A1D29]">{securitySettings.twoFactorAuth ? 'Enabled' : 'Disabled'}</p>
-                <p className="text-xs text-[#6B7280]">2FA Status</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Database className="h-5 w-5 text-orange-600" />
-              <div>
-                <p className="text-lg font-bold text-[#1A1D29]">{mockSystemHealth.storageUsage}%</p>
-                <p className="text-xs text-[#6B7280]">Storage Used</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Globe className="h-5 w-5 text-teal-600" />
-              <div>
-                <p className="text-lg font-bold text-[#1A1D29]">{mockSystemHealth.uptime}</p>
-                <p className="text-xs text-[#6B7280]">System Uptime</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-50">
+            <Database className="h-4 w-4 text-[#1B3B6F]" />
+          </div>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Server Status</p>
+          <div className="mt-0.5 text-sm font-extrabold text-[#1A1D29]">{getHealthStatus(mockSystemHealth.serverStatus)}</div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50">
+            <Users className="h-4 w-4 text-emerald-600" />
+          </div>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Active Users</p>
+          <p className="mt-0.5 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{mockSystemHealth.activeUsers}</p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50">
+            <CreditCard className="h-4 w-4 text-blue-600" />
+          </div>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Payment Gateways</p>
+          <p className="mt-0.5 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{stats.activeGateways}</p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-violet-50">
+            <Shield className="h-4 w-4 text-violet-600" />
+          </div>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">2FA Status</p>
+          <p className="mt-0.5 text-2xl font-extrabold text-[#1A1D29]">{securitySettings.twoFactorAuth ? 'Enabled' : 'Disabled'}</p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50">
+            <HardDrive className="h-4 w-4 text-orange-600" />
+          </div>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Storage Used</p>
+          <p className="mt-0.5 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{mockSystemHealth.storageUsage}%</p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-teal-50">
+            <Globe className="h-4 w-4 text-teal-600" />
+          </div>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">System Uptime</p>
+          <p className="mt-0.5 text-sm font-extrabold text-[#1A1D29]">{mockSystemHealth.uptime}</p>
+        </div>
       </div>
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-4xl grid-cols-6">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="permissions">Permissions</TabsTrigger>
-          <TabsTrigger value="system">System</TabsTrigger>
-          <TabsTrigger value="app-update">App Update</TabsTrigger>
+        <TabsList className="grid w-full max-w-4xl grid-cols-6 h-11 rounded-xl border border-gray-100 bg-[#F6F8FB] p-1">
+          <TabsTrigger value="general" className="rounded-lg text-sm font-medium data-[state=active]:bg-[#1B3B6F] data-[state=active]:text-white data-[state=active]:shadow-sm">General</TabsTrigger>
+          <TabsTrigger value="payments" className="rounded-lg text-sm font-medium data-[state=active]:bg-[#1B3B6F] data-[state=active]:text-white data-[state=active]:shadow-sm">Payments</TabsTrigger>
+          <TabsTrigger value="security" className="rounded-lg text-sm font-medium data-[state=active]:bg-[#1B3B6F] data-[state=active]:text-white data-[state=active]:shadow-sm">Security</TabsTrigger>
+          <TabsTrigger value="permissions" className="rounded-lg text-sm font-medium data-[state=active]:bg-[#1B3B6F] data-[state=active]:text-white data-[state=active]:shadow-sm">Permissions</TabsTrigger>
+          <TabsTrigger value="system" className="rounded-lg text-sm font-medium data-[state=active]:bg-[#1B3B6F] data-[state=active]:text-white data-[state=active]:shadow-sm">System</TabsTrigger>
+          <TabsTrigger value="app-update" className="rounded-lg text-sm font-medium data-[state=active]:bg-[#1B3B6F] data-[state=active]:text-white data-[state=active]:shadow-sm">App Update</TabsTrigger>
         </TabsList>
 
         {/* General Settings Tab */}
         <TabsContent value="general" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Basic Information */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Globe className="h-5 w-5 mr-2" />
+            <Card className="border border-gray-100 shadow-sm rounded-2xl">
+              <CardHeader className="border-b border-gray-100">
+                <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50">
+                    <Globe className="h-4 w-4 text-blue-600" />
+                  </div>
                   Basic Information
                 </CardTitle>
                 <CardDescription>Configure your platform's basic information</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div>
                   <Label htmlFor="siteName">Site Name</Label>
                   <Input
@@ -561,15 +588,17 @@ export function PlatformSettings() {
             </Card>
 
             {/* System Preferences */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Settings className="h-5 w-5 mr-2" />
+            <Card className="border border-gray-100 shadow-sm rounded-2xl">
+              <CardHeader className="border-b border-gray-100">
+                <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-violet-50">
+                    <Settings className="h-4 w-4 text-violet-600" />
+                  </div>
                   System Preferences
                 </CardTitle>
                 <CardDescription>Configure system-wide preferences</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div>
                   <Label htmlFor="timezone">Timezone</Label>
                   <Select value={generalSettings.timezone} onValueChange={(value) => setGeneralSettings({...generalSettings, timezone: value})}>
@@ -666,12 +695,14 @@ export function PlatformSettings() {
 
         {/* Payment Settings Tab */}
         <TabsContent value="payments" className="space-y-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+          <Card className="border border-gray-100 shadow-sm rounded-2xl">
+            <CardHeader className="border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center">
-                    <CreditCard className="h-5 w-5 mr-2" />
+                  <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50">
+                      <CreditCard className="h-4 w-4 text-emerald-600" />
+                    </div>
                     Payment Gateways
                   </CardTitle>
                   <CardDescription>Configure and manage payment methods</CardDescription>
@@ -682,14 +713,21 @@ export function PlatformSettings() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {mockPaymentGateways.map((gateway) => (
-                  <div key={gateway.id} className="p-4 border border-gray-200 rounded-lg">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {mockPaymentGateways.map((gateway) => {
+                  const accent = GATEWAY_ACCENT[gateway.id] || DEFAULT_GATEWAY_ACCENT
+                  const GatewayIcon = accent.icon
+                  return (
+                  <div
+                    key={gateway.id}
+                    className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm border-l-[3px] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                    style={{ borderLeftColor: accent.stripe }}
+                  >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <CreditCard className="h-5 w-5 text-gray-600" />
+                        <div className={`grid h-10 w-10 place-items-center rounded-xl ${accent.chipBg}`}>
+                          <GatewayIcon className={`h-5 w-5 ${accent.chipText}`} />
                         </div>
                         <div>
                           <h3 className="font-medium text-[#1A1D29]">{gateway.name}</h3>
@@ -698,14 +736,14 @@ export function PlatformSettings() {
                       </div>
                       {getStatusBadge(gateway.status)}
                     </div>
-                    
+
                     <div className="flex items-center justify-between text-sm mb-3">
                       <span className="text-[#6B7280]">Configuration:</span>
                       <span className={`font-medium ${gateway.isConfigured ? 'text-green-600' : 'text-red-600'}`}>
                         {gateway.isConfigured ? 'Complete' : 'Incomplete'}
                       </span>
                     </div>
-                    
+
                     <div className="flex space-x-2">
                       <Button
                         size="sm"
@@ -721,18 +759,21 @@ export function PlatformSettings() {
                       </Button>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
 
           {/* Service Configuration — real API */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+          <Card className="border border-gray-100 shadow-sm rounded-2xl">
+            <CardHeader className="border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center">
-                    <Wrench className="h-5 w-5 mr-2" />
+                  <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50">
+                      <Wrench className="h-4 w-4 text-orange-600" />
+                    </div>
                     Service Configuration
                   </CardTitle>
                   <CardDescription>Configure advance fees, payment methods, and platform settings</CardDescription>
@@ -747,17 +788,22 @@ export function PlatformSettings() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5 pt-6">
               {configLoading ? (
                 <p className="text-[#6B7280]">Loading config...</p>
               ) : (
                 <>
                   {/* Advance Fee */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="font-medium">Advance Fee (Before Mechanic Dispatch)</Label>
-                        <p className="text-sm text-[#6B7280]">Require customers to pay advance fee before mechanic is sent</p>
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-8 w-8 place-items-center rounded-lg bg-blue-50 shrink-0">
+                          <IndianRupee className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <Label className="font-medium">Advance Fee (Before Mechanic Dispatch)</Label>
+                          <p className="text-sm text-[#6B7280]">Require customers to pay advance fee before mechanic is sent</p>
+                        </div>
                       </div>
                       <Switch
                         checked={serviceConfig.advanceFeeEnabled}
@@ -812,11 +858,16 @@ export function PlatformSettings() {
                   </div>
 
                   {/* Booking Fee */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="font-medium">Booking Fee</Label>
-                        <p className="text-sm text-[#6B7280]">Starting price shown to customers at booking (non-refundable, adjusted against final bill)</p>
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 shrink-0">
+                          <Receipt className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <div>
+                          <Label className="font-medium">Booking Fee</Label>
+                          <p className="text-sm text-[#6B7280]">Starting price shown to customers at booking (non-refundable, adjusted against final bill)</p>
+                        </div>
                       </div>
                       <Switch
                         checked={serviceConfig.bookingFeeEnabled}
@@ -877,8 +928,13 @@ export function PlatformSettings() {
                   </div>
 
                   {/* Payment Methods */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
-                    <h3 className="font-medium text-[#1A1D29]">Payment Methods</h3>
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
+                    <h3 className="flex items-center gap-2.5 font-medium text-[#1A1D29]">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg bg-sky-50 shrink-0">
+                        <Wallet className="h-4 w-4 text-sky-600" />
+                      </div>
+                      Payment Methods
+                    </h3>
                     <div className="flex items-center justify-between">
                       <div>
                         <Label>Cash on Delivery (COD)</Label>
@@ -903,8 +959,13 @@ export function PlatformSettings() {
                   </div>
 
                   {/* SecureContact QR Calling */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
-                    <h3 className="font-medium text-[#1A1D29]">SecureContact QR Calling</h3>
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
+                    <h3 className="flex items-center gap-2.5 font-medium text-[#1A1D29]">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg bg-teal-50 shrink-0">
+                        <QrCode className="h-4 w-4 text-teal-600" />
+                      </div>
+                      SecureContact QR Calling
+                    </h3>
                     <div className="flex items-center justify-between">
                       <div>
                         <Label>Guest QR calling</Label>
@@ -933,8 +994,13 @@ export function PlatformSettings() {
                   </div>
 
                   {/* Platform Settings */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
-                    <h3 className="font-medium text-[#1A1D29]">Platform Settings</h3>
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
+                    <h3 className="flex items-center gap-2.5 font-medium text-[#1A1D29]">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 shrink-0">
+                        <SlidersHorizontal className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      Platform Settings
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="platformCommission">Platform Commission (%)</Label>
@@ -976,8 +1042,13 @@ export function PlatformSettings() {
                   </div>
 
                   {/* Service Settings */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
-                    <h3 className="font-medium text-[#1A1D29]">Service Settings</h3>
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
+                    <h3 className="flex items-center gap-2.5 font-medium text-[#1A1D29]">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 shrink-0">
+                        <Wrench className="h-4 w-4 text-rose-600" />
+                      </div>
+                      Service Settings
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <Label htmlFor="minOrderValue">Minimum Order Value (₹)</Label>
@@ -1036,15 +1107,17 @@ export function PlatformSettings() {
         <TabsContent value="security" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Authentication Settings */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="h-5 w-5 mr-2" />
+            <Card className="border border-gray-100 shadow-sm rounded-2xl">
+              <CardHeader className="border-b border-gray-100">
+                <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50">
+                    <Shield className="h-4 w-4 text-indigo-600" />
+                  </div>
                   Authentication & Access
                 </CardTitle>
                 <CardDescription>Configure authentication and access controls</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Two-Factor Authentication</Label>
@@ -1102,15 +1175,17 @@ export function PlatformSettings() {
             </Card>
 
             {/* Password Policy & SSL */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Lock className="h-5 w-5 mr-2" />
+            <Card className="border border-gray-100 shadow-sm rounded-2xl">
+              <CardHeader className="border-b border-gray-100">
+                <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-rose-50">
+                    <Lock className="h-4 w-4 text-rose-600" />
+                  </div>
                   Password Policy & Encryption
                 </CardTitle>
                 <CardDescription>Configure password requirements and encryption</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div>
                   <Label htmlFor="minLength">Minimum Password Length</Label>
                   <Input
@@ -1175,23 +1250,23 @@ export function PlatformSettings() {
                 
                 <div>
                   <Label>SSL Certificate Status</Label>
-                  <div className="mt-2 p-3 bg-green-50 rounded-lg">
+                  <div className="mt-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-green-800">Certificate Valid</p>
-                        <p className="text-xs text-green-600">Issuer: {securitySettings.sslCertificate.issuer}</p>
+                        <p className="text-sm font-medium text-emerald-800">Certificate Valid</p>
+                        <p className="text-xs text-emerald-600">Issuer: {securitySettings.sslCertificate.issuer}</p>
                       </div>
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <CheckCircle className="h-5 w-5 text-emerald-600" />
                     </div>
-                    <p className="text-xs text-green-600 mt-1">
+                    <p className="text-xs text-emerald-600 mt-1">
                       Valid until: {formatDate(securitySettings.sslCertificate.validUntil)}
                     </p>
                   </div>
                 </div>
-                
+
                 <div>
                   <Label>Encryption Level</Label>
-                  <div className="mt-1 p-2 bg-gray-50 rounded">
+                  <div className="mt-1 p-2 bg-gray-50 border border-gray-100 rounded-lg">
                     <span className="text-sm font-medium">{securitySettings.encryptionLevel}</span>
                   </div>
                 </div>
@@ -1202,12 +1277,14 @@ export function PlatformSettings() {
 
         {/* Permissions Tab */}
         <TabsContent value="permissions" className="space-y-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+          <Card className="border border-gray-100 shadow-sm rounded-2xl">
+            <CardHeader className="border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center">
-                    <UserCheck className="h-5 w-5 mr-2" />
+                  <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-sky-50">
+                      <UserCheck className="h-4 w-4 text-sky-600" />
+                    </div>
                     User Roles & Permissions
                   </CardTitle>
                   <CardDescription>Manage user roles and their permissions</CardDescription>
@@ -1221,26 +1298,34 @@ export function PlatformSettings() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {mockUserRoles.map((role) => (
-                  <div key={role.id} className="p-4 border border-gray-200 rounded-lg">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                {mockUserRoles.map((role) => {
+                  const accent = ROLE_ACCENT[role.id] || DEFAULT_ROLE_ACCENT
+                  const RoleIcon = accent.icon
+                  return (
+                  <div key={role.id} className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                     <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-[#1A1D29]">{role.name}</h3>
-                          {role.isDefault && (
-                            <Badge variant="secondary">Default</Badge>
-                          )}
+                      <div className="flex items-center gap-3">
+                        <div className={`grid h-9 w-9 place-items-center rounded-xl shrink-0 ${accent.chipBg}`}>
+                          <RoleIcon className={`h-4 w-4 ${accent.chipText}`} />
                         </div>
-                        <p className="text-sm text-[#6B7280]">{role.description}</p>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-medium text-[#1A1D29]">{role.name}</h3>
+                            {role.isDefault && (
+                              <Badge variant="secondary">Default</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-[#6B7280]">{role.description}</p>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-[#1A1D29]">{role.userCount.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-[#1A1D29] tabular-nums">{role.userCount.toLocaleString()}</p>
                         <p className="text-xs text-[#6B7280]">Users</p>
                       </div>
                     </div>
-                    
+
                     <div className="mb-3">
                       <Label className="text-xs text-[#6B7280]">PERMISSIONS</Label>
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -1278,7 +1363,8 @@ export function PlatformSettings() {
                       )}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
@@ -1288,15 +1374,17 @@ export function PlatformSettings() {
         <TabsContent value="system" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* System Health */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Database className="h-5 w-5 mr-2" />
+            <Card className="border border-gray-100 shadow-sm rounded-2xl">
+              <CardHeader className="border-b border-gray-100">
+                <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-teal-50">
+                    <Database className="h-4 w-4 text-teal-600" />
+                  </div>
                   System Health
                 </CardTitle>
                 <CardDescription>Monitor system performance and health</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-[#6B7280]">Server Status</span>
@@ -1345,15 +1433,17 @@ export function PlatformSettings() {
             </Card>
 
             {/* System Information */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Settings className="h-5 w-5 mr-2" />
+            <Card className="border border-gray-100 shadow-sm rounded-2xl">
+              <CardHeader className="border-b border-gray-100">
+                <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100">
+                    <Settings className="h-4 w-4 text-slate-600" />
+                  </div>
                   System Information
                 </CardTitle>
                 <CardDescription>System version and maintenance information</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-[#6B7280]">System Version</span>
@@ -1401,12 +1491,14 @@ export function PlatformSettings() {
 
         {/* App Update Tab — Android force-update control */}
         <TabsContent value="app-update" className="space-y-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+          <Card className="border border-gray-100 shadow-sm rounded-2xl">
+            <CardHeader className="border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center">
-                    <Smartphone className="h-5 w-5 mr-2" />
+                  <CardTitle className="flex items-center gap-2.5 text-[#1A1D29]">
+                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50">
+                      <Smartphone className="h-4 w-4 text-amber-600" />
+                    </div>
                     Android App Update Control
                   </CardTitle>
                   <CardDescription>
@@ -1423,13 +1515,13 @@ export function PlatformSettings() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5 pt-6">
               {configLoading ? (
                 <p className="text-[#6B7280]">Loading config...</p>
               ) : (
                 <>
                   {/* How it works banner */}
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
                     <div className="flex items-start space-x-2">
                       <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-blue-900 space-y-1">
@@ -1443,8 +1535,13 @@ export function PlatformSettings() {
                   </div>
 
                   {/* Version fields */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
-                    <h3 className="font-medium text-[#1A1D29]">Version Numbers</h3>
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
+                    <h3 className="flex items-center gap-2.5 font-medium text-[#1A1D29]">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 shrink-0">
+                        <Tag className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      Version Numbers
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="latestVersion">Latest Version (e.g., 1.2.0)</Label>
@@ -1476,11 +1573,16 @@ export function PlatformSettings() {
                   </div>
 
                   {/* Force-update toggle */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="font-medium">Force Update (Block all older versions)</Label>
-                        <p className="text-sm text-[#6B7280]">When ON, treats Latest Version as the minimum. Everyone below is blocked.</p>
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-8 w-8 place-items-center rounded-lg bg-red-50 shrink-0">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div>
+                          <Label className="font-medium">Force Update (Block all older versions)</Label>
+                          <p className="text-sm text-[#6B7280]">When ON, treats Latest Version as the minimum. Everyone below is blocked.</p>
+                        </div>
                       </div>
                       <Switch
                         checked={!!serviceConfig.androidApp?.forceUpdate}
@@ -1503,8 +1605,13 @@ export function PlatformSettings() {
                   </div>
 
                   {/* Play Store URL + messaging */}
-                  <div className="p-4 border border-gray-200 rounded-lg space-y-4">
-                    <h3 className="font-medium text-[#1A1D29]">Update Screen Content</h3>
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
+                    <h3 className="flex items-center gap-2.5 font-medium text-[#1A1D29]">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 shrink-0">
+                        <MessageSquare className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      Update Screen Content
+                    </h3>
                     <div>
                       <Label htmlFor="playStoreUrl">Play Store URL</Label>
                       <Input
@@ -1554,16 +1661,21 @@ export function PlatformSettings() {
       {/* Gateway Configuration Modal */}
       <Dialog open={!!selectedGateway} onOpenChange={() => setSelectedGateway(null)}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Configure {selectedGateway?.name}</DialogTitle>
+          <DialogHeader className="border-b border-gray-100 pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Settings className="h-4 w-4 text-blue-600" />
+              </div>
+              Configure {selectedGateway?.name}
+            </DialogTitle>
             <DialogDescription>
               Set up payment gateway configuration and credentials
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedGateway && (
             <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
                 <div className="flex items-center space-x-2">
                   <CreditCard className="h-5 w-5 text-blue-600" />
                   <div>
@@ -1572,7 +1684,7 @@ export function PlatformSettings() {
                   </div>
                 </div>
               </div>
-              
+
               {selectedGateway.id === 'razorpay' && (
                 <div className="space-y-4">
                   <div>
@@ -1614,16 +1726,21 @@ export function PlatformSettings() {
       {/* Role Details Modal */}
       <Dialog open={!!selectedRole} onOpenChange={() => setSelectedRole(null)}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Role Details - {selectedRole?.name}</DialogTitle>
+          <DialogHeader className="border-b border-gray-100 pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${(ROLE_ACCENT[selectedRole?.id] || DEFAULT_ROLE_ACCENT).chipBg}`}>
+                <UserCheck className={`h-4 w-4 ${(ROLE_ACCENT[selectedRole?.id] || DEFAULT_ROLE_ACCENT).chipText}`} />
+              </div>
+              Role Details - {selectedRole?.name}
+            </DialogTitle>
             <DialogDescription>
               View and manage role permissions
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedRole && (
             <div className="space-y-4">
-              <div>
+              <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/60">
                 <h4 className="font-medium text-[#1A1D29] mb-2">Role Information</h4>
                 <div className="space-y-2 text-sm">
                   <p><span className="text-[#6B7280]">Name:</span> {selectedRole.name}</p>
@@ -1632,12 +1749,12 @@ export function PlatformSettings() {
                   <p><span className="text-[#6B7280]">Default Role:</span> {selectedRole.isDefault ? 'Yes' : 'No'}</p>
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-medium text-[#1A1D29] mb-2">Permissions</h4>
                 <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-ultra-narrow">
                   {selectedRole.permissions.map((permission: string) => (
-                    <div key={permission} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                    <div key={permission} className="flex items-center justify-between p-2 bg-emerald-50/60 border border-emerald-100 rounded-lg text-sm">
                       <span>{permission}</span>
                       <CheckCircle className="h-4 w-4 text-green-600" />
                     </div>

@@ -136,6 +136,17 @@ const statusConfig: Record<string, { label: string; className: string; icon: any
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800 border-red-200', icon: AlertCircle },
 }
 
+// Left-edge stripe color per call status — makes the table scannable at a glance.
+const STATUS_STRIPE: Record<string, string> = {
+  initiated: '#3b82f6',
+  ringing: '#f59e0b',
+  answered: '#22c55e',
+  missed: '#ef4444',
+  rejected: '#f97316',
+  completed: '#10b981',
+  failed: '#ef4444',
+}
+
 const roleConfig: Record<string, { label: string; className: string }> = {
   user: { label: 'User', className: 'bg-blue-50 text-blue-700' },
   mechanic: { label: 'Mechanic', className: 'bg-orange-50 text-orange-700' },
@@ -324,14 +335,18 @@ export function CallLogsManagement() {
   }
 
   // ─── KPI Cards ────────────────────────────────────────────────────────
-  const kpiCards = [
-    { label: 'Total Calls', value: stats.totalCalls, icon: Phone, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Completed', value: stats.completedCalls, icon: CheckCircle, color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Missed', value: stats.missedCalls, icon: PhoneMissed, color: 'bg-red-50 text-red-600' },
-    { label: 'Rejected', value: stats.rejectedCalls, icon: PhoneOff, color: 'bg-orange-50 text-orange-600' },
-    { label: 'Today', value: stats.todayCalls, icon: Calendar, color: 'bg-cyan-50 text-cyan-600' },
-    { label: 'Avg Duration', value: formatDuration(stats.avgDuration), icon: Timer, color: 'bg-violet-50 text-violet-600', isText: true },
-    { label: 'Answer Rate', value: `${stats.answerRate}%`, icon: TrendingUp, color: 'bg-pink-50 text-pink-600', isText: true },
+  // Status-backed cards double as quick filters — they reuse the existing
+  // selectedStatus / setSelectedStatus filter state, no new logic added.
+  const statusFilterCards = [
+    { key: 'completed', label: 'Completed', value: stats.completedCalls, icon: CheckCircle, tint: 'text-emerald-600 bg-emerald-50' },
+    { key: 'missed', label: 'Missed', value: stats.missedCalls, icon: PhoneMissed, tint: 'text-red-600 bg-red-50' },
+    { key: 'rejected', label: 'Rejected', value: stats.rejectedCalls, icon: PhoneOff, tint: 'text-orange-600 bg-orange-50' },
+  ]
+
+  const metricCards = [
+    { label: 'Today', value: stats.todayCalls, icon: Calendar, tint: 'text-cyan-600 bg-cyan-50' },
+    { label: 'Avg Duration', value: formatDuration(stats.avgDuration), icon: Timer, tint: 'text-violet-600 bg-violet-50' },
+    { label: 'Answer Rate', value: `${stats.answerRate}%`, icon: TrendingUp, tint: 'text-pink-600 bg-pink-50' },
   ]
 
   // ─── Render ───────────────────────────────────────────────────────────
@@ -373,24 +388,72 @@ export function CallLogsManagement() {
           </div>
         )}
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-          {kpiCards.map((card, i) => {
+        {/* KPI row: total-calls hero + clickable status quick-filters */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+          {/* Total calls hero */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+            <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+            <div className="relative flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">Total Calls</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+                <Phone className="h-[18px] w-[18px] text-white" />
+              </div>
+            </div>
+            <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white tabular-nums">
+              {statsLoading ? '—' : stats.totalCalls}
+            </p>
+            <div className="relative mt-3 flex items-center gap-3 text-[12px] text-white/70">
+              <span><b className="text-white">{statsLoading ? '—' : stats.todayCalls}</b> today</span>
+              <span className="text-white/30">·</span>
+              <span><b className="text-white">{statsLoading ? '—' : `${stats.answerRate}%`}</b> answered</span>
+            </div>
+          </div>
+
+          {/* Clickable status filter cards — reuse existing selectedStatus filter */}
+          <div className="lg:col-span-3 grid grid-cols-3 gap-3">
+            {statusFilterCards.map((s) => {
+              const Icon = s.icon
+              const active = selectedStatus === s.key
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setSelectedStatus(s.key)}
+                  className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${active ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-gray-100'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className={`grid h-9 w-9 place-items-center rounded-xl ${s.tint}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    {active && <span className="text-[9px] font-bold uppercase tracking-wide text-[#1B3B6F]">Filtered</span>}
+                  </div>
+                  <p className="mt-2 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{statsLoading ? '—' : s.value}</p>
+                  <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">{s.label}</p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Secondary metric cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {metricCards.map((card, i) => {
             const Icon = card.icon
             return (
-              <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`h-9 w-9 rounded-lg ${card.color} flex items-center justify-center`}>
-                      <Icon className="h-4.5 w-4.5" />
-                    </div>
+              <div
+                key={i}
+                className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">{card.label}</p>
+                  <div className={`grid h-9 w-9 place-items-center rounded-xl ${card.tint}`}>
+                    <Icon className="h-4 w-4" />
                   </div>
-                  <p className={`font-bold text-[#1A1D29] ${card.isText ? 'text-lg' : 'text-2xl'}`}>
-                    {statsLoading ? '—' : card.value}
-                  </p>
-                  <p className="text-xs text-[#6B7280] mt-0.5">{card.label}</p>
-                </CardContent>
-              </Card>
+                </div>
+                <p className="mt-2 text-2xl font-extrabold text-[#1A1D29] tabular-nums">
+                  {statsLoading ? '—' : card.value}
+                </p>
+              </div>
             )
           })}
         </div>
@@ -399,32 +462,28 @@ export function CallLogsManagement() {
         {!statsLoading && (stats.byRole && Object.keys(stats.byRole).length > 0) && (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
             {Object.entries(stats.byRole).map(([role, count]) => (
-              <Card key={`role-${role}`} className="border-0 shadow-sm">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${roleConfig[role]?.className || 'bg-gray-50 text-gray-600'}`}>
-                    <Users className="h-3.5 w-3.5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-[#1A1D29]">{count}</p>
-                    <p className="text-[10px] text-[#6B7280] uppercase tracking-wider">{roleConfig[role]?.label || role}</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={`role-${role}`} className="rounded-xl border border-gray-100 bg-white shadow-sm p-3 flex items-center gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${roleConfig[role]?.className || 'bg-gray-50 text-gray-600'}`}>
+                  <Users className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-[#1A1D29]">{count}</p>
+                  <p className="text-[10px] text-[#6B7280] uppercase tracking-wider">{roleConfig[role]?.label || role}</p>
+                </div>
+              </div>
             ))}
             {Object.entries(stats.byContext).map(([ctx, count]) => (
-              <Card key={`ctx-${ctx}`} className="border-0 shadow-sm">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    {ctx === 'service_request' ? <Wrench className="h-3.5 w-3.5" /> : <ShoppingBag className="h-3.5 w-3.5" />}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-[#1A1D29]">{count}</p>
-                    <p className="text-[10px] text-[#6B7280] uppercase tracking-wider">
-                      {ctx === 'service_request' ? 'Service' : ctx === 'order' ? 'Order' : ctx || 'Other'}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={`ctx-${ctx}`} className="rounded-xl border border-gray-100 bg-white shadow-sm p-3 flex items-center gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  {ctx === 'service_request' ? <Wrench className="h-3.5 w-3.5" /> : <ShoppingBag className="h-3.5 w-3.5" />}
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-[#1A1D29]">{count}</p>
+                  <p className="text-[10px] text-[#6B7280] uppercase tracking-wider">
+                    {ctx === 'service_request' ? 'Service' : ctx === 'order' ? 'Order' : ctx || 'Other'}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -529,7 +588,7 @@ export function CallLogsManagement() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+                  <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
                     <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Caller</TableHead>
                     <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Receiver</TableHead>
                     <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</TableHead>
@@ -566,7 +625,11 @@ export function CallLogsManagement() {
                       const stCfg = statusConfig[call.status] || { label: call.status, className: 'bg-gray-100 text-gray-800', icon: Phone }
                       const StatusIcon = stCfg.icon
                       return (
-                        <TableRow key={call._id} className="hover:bg-gray-50/50 transition-colors">
+                        <TableRow
+                          key={call._id}
+                          className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                          style={{ borderLeftColor: STATUS_STRIPE[call.status] || 'transparent' }}
+                        >
                           {/* Caller — guests (QR scanners) have no account; show guestCaller */}
                           <TableCell>
                             <div className="flex items-center gap-2.5">
@@ -639,7 +702,7 @@ export function CallLogsManagement() {
 
                           {/* Duration */}
                           <TableCell>
-                            <span className="text-sm text-[#1A1D29] font-medium">
+                            <span className="text-sm text-[#1A1D29] font-medium tabular-nums">
                               {call.duration > 0 ? formatDuration(call.duration) : '-'}
                             </span>
                           </TableCell>

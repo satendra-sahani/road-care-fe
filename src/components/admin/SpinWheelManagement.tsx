@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   RefreshCw, Save, Plus, Trash2, Loader2, CheckCircle, Gift, TrendingUp, Sparkles, AlertCircle,
-  UserPlus, Search, Zap, ShieldAlert, Lock, Unlock,
+  UserPlus, Search, Zap, ShieldAlert, Lock, Unlock, IndianRupee, Settings2, ListChecks,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -386,51 +386,89 @@ export function SpinWheelManagement() {
             <Button
               onClick={() => { resetRestrictForm(); setRestrictDialog(true) }}
               variant="outline"
-              className="border-rose-300 text-rose-700 hover:bg-rose-50"
+              size="sm"
+              className="h-9 text-xs border-rose-300 text-rose-700 hover:bg-rose-50"
             >
-              <ShieldAlert className="h-4 w-4 mr-1" /> Rig User Spin
+              <ShieldAlert className="h-3.5 w-3.5 mr-1.5" /> Rig User Spin
             </Button>
             <Button
               onClick={() => { resetGrantForm(); setGrantDialog(true) }}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
+              size="sm"
+              className="h-9 text-xs bg-amber-500 hover:bg-amber-600 text-white"
             >
-              <UserPlus className="h-4 w-4 mr-1" /> Grant Bonus Spins
+              <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Grant Bonus Spins
             </Button>
           </div>
         </div>
 
-      {/* Analytics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card><CardContent className="p-4">
-          <div className="text-sm text-gray-500">Total spins (30d)</div>
-          <div className="text-2xl font-bold flex items-center gap-2 mt-1"><Sparkles className="h-5 w-5 text-amber-500"/>{analytics?.totalSpins ?? 0}</div>
-        </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <div className="text-sm text-gray-500">Jackpots today</div>
-          <div className="text-2xl font-bold flex items-center gap-2 mt-1"><Gift className="h-5 w-5 text-pink-500"/>{analytics?.jackpotsToday ?? 0}</div>
-        </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <div className="text-sm text-gray-500">Wallet credit paid (30d)</div>
-          <div className="text-2xl font-bold flex items-center gap-2 mt-1"><TrendingUp className="h-5 w-5 text-emerald-500"/>
-            ₹{analytics?.byType?.filter(b => b._id === 'wallet_credit' || b._id === 'jackpot_wallet').reduce((s, b) => s + (b.totalValue || 0), 0) ?? 0}
+      {/* Analytics: wallet-credit hero + supporting stat cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        {/* Wallet credit paid — headline money metric */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+          <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+          <div className="relative flex items-center justify-between">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">Wallet credit paid (30d)</p>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+              <IndianRupee className="h-[18px] w-[18px] text-white" />
+            </div>
           </div>
-        </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <div className="text-sm text-gray-500">Active configs</div>
-          <div className="text-2xl font-bold flex items-center gap-2 mt-1"><CheckCircle className="h-5 w-5 text-blue-500"/>{configs.filter(c => c.isActive).length}</div>
-        </CardContent></Card>
+          <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white">
+            ₹{(analytics?.byType?.filter(b => b._id === 'wallet_credit' || b._id === 'jackpot_wallet').reduce((s, b) => s + (b.totalValue || 0), 0) ?? 0).toLocaleString('en-IN')}
+          </p>
+          <div className="relative mt-3 flex items-center gap-3 text-[12px] text-white/70">
+            <span>Over last <b className="text-white">{analytics?.windowDays ?? 30}</b> days</span>
+          </div>
+        </div>
+
+        {/* Supporting stat cards */}
+        <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Total spins (30d)</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50">
+                <Sparkles className="h-[18px] w-[18px] text-amber-600" />
+              </div>
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{analytics?.totalSpins ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Jackpots today</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-rose-50">
+                <Gift className="h-[18px] w-[18px] text-rose-600" />
+              </div>
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{analytics?.jackpotsToday ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Active configs</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50">
+                <CheckCircle className="h-[18px] w-[18px] text-blue-600" />
+              </div>
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{configs.filter(c => c.isActive).length}</p>
+            <p className="text-xs text-gray-400">of {configs.length} total</p>
+          </div>
+        </div>
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded flex items-center gap-2"><AlertCircle className="h-4 w-4"/>{error}</div>}
-      {message && <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded flex items-center gap-2"><CheckCircle className="h-4 w-4"/>{message}</div>}
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0"/>{error}</div>}
+      {message && <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded-xl text-sm flex items-center gap-2"><CheckCircle className="h-4 w-4 shrink-0"/>{message}</div>}
 
       {/* Form */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>{editing ? `Edit: ${editing.name}` : 'Create new wheel config'}</CardTitle>
+      <Card className="border-gray-100 shadow-sm rounded-2xl">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-[#1A1D29]">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#1B3B6F]/10">
+              <Settings2 className="h-4 w-4 text-[#1B3B6F]" />
+            </div>
+            {editing ? `Edit: ${editing.name}` : 'Create new wheel config'}
+          </CardTitle>
           {editing && <Button variant="outline" size="sm" onClick={resetForm}>Cancel edit</Button>}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Name</Label>
@@ -449,14 +487,14 @@ export function SpinWheelManagement() {
           {/* Segments */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <Label>Segments (total weight: {totalWeight})</Label>
+              <Label className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Segments (total weight: {totalWeight})</Label>
               <Button variant="outline" size="sm" onClick={addSegment}><Plus className="h-4 w-4 mr-1"/>Add segment</Button>
             </div>
             <div className="space-y-3">
               {(form.segments || []).map((seg, i) => {
                 const prob = totalWeight ? ((seg.weight / totalWeight) * 100).toFixed(1) : '0'
                 return (
-                  <div key={i} className="border rounded-lg p-3 bg-gray-50">
+                  <div key={i} className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                       <div className="md:col-span-2">
                         <Label>Label</Label>
@@ -554,36 +592,47 @@ export function SpinWheelManagement() {
       </Card>
 
       {/* List */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>All configs ({configs.length})</CardTitle>
+      <Card className="border-gray-100 shadow-sm rounded-2xl">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-[#1A1D29]">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#1B3B6F]/10">
+              <ListChecks className="h-4 w-4 text-[#1B3B6F]" />
+            </div>
+            All configs ({configs.length})
+          </CardTitle>
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1"/>Refresh</Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="animate-spin h-6 w-6"/></div>
+            <div className="flex justify-center py-8"><Loader2 className="animate-spin h-6 w-6 text-[#1B3B6F]"/></div>
           ) : (
             <div className="space-y-3">
               {configs.map(c => (
-                <div key={c._id} className="border rounded-lg p-3 flex items-center justify-between bg-white">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{c.name}</span>
-                      {c.isActive && <Badge className="bg-emerald-100 text-emerald-700">Active</Badge>}
-                      <span className="text-xs text-gray-500">{c.segments.length} segments · {c.dailyFreeSpins}/day</span>
+                <div
+                  key={c._id}
+                  className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md border-l-[3px]"
+                  style={{ borderLeftColor: c.isActive ? '#22c55e' : '#e5e7eb' }}
+                >
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[#1A1D29]">{c.name}</span>
+                        {c.isActive && <Badge className="bg-emerald-100 text-emerald-700">Active</Badge>}
+                        <span className="text-xs text-gray-400">{c.segments.length} segments · {c.dailyFreeSpins}/day</span>
+                      </div>
+                      <div className="flex gap-1 mt-2 flex-wrap">
+                        {c.segments.map(s => (
+                          <span key={s._id} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: s.color + '22', color: s.color }}>
+                            {s.label} ({s.weight})
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      {c.segments.map(s => (
-                        <span key={s._id} className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: s.color + '22', color: s.color }}>
-                          {s.label} ({s.weight})
-                        </span>
-                      ))}
+                    <div className="flex gap-2">
+                      {!c.isActive && <Button size="sm" variant="outline" onClick={() => activate(c._id)}>Activate</Button>}
+                      <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
+                      <Button size="sm" variant="ghost" className="text-red-600" onClick={() => remove(c._id)} disabled={c.isActive}><Trash2 className="h-4 w-4"/></Button>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {!c.isActive && <Button size="sm" variant="outline" onClick={() => activate(c._id)}>Activate</Button>}
-                    <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
-                    <Button size="sm" variant="ghost" className="text-red-600" onClick={() => remove(c._id)} disabled={c.isActive}><Trash2 className="h-4 w-4"/></Button>
                   </div>
                 </div>
               ))}
@@ -594,31 +643,40 @@ export function SpinWheelManagement() {
       </Card>
 
       {/* Recent bonus grants */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2"><Zap className="h-5 w-5 text-amber-500" /> Recent bonus-spin grants</CardTitle>
+      <Card className="border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-[#1A1D29]">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50">
+              <Zap className="h-4 w-4 text-amber-600" />
+            </div>
+            Recent bonus-spin grants
+          </CardTitle>
           <Button variant="outline" size="sm" onClick={() => { resetGrantForm(); setGrantDialog(true) }}>
             <UserPlus className="h-4 w-4 mr-1" /> New grant
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {grants.length === 0 ? (
             <div className="text-center py-6 text-gray-500">No grants issued yet.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-left text-gray-500 border-b">
+                <thead className="text-left text-gray-500 bg-[#F6F8FB] border-b border-gray-200">
                   <tr>
-                    <th className="py-2">When</th><th>User</th><th className="text-right">Spins</th>
-                    <th>Reason</th><th>Granted by</th><th className="text-right">Current bonus</th>
+                    <th className="py-2.5 px-2 text-xs font-semibold uppercase tracking-wide">When</th>
+                    <th className="text-xs font-semibold uppercase tracking-wide">User</th>
+                    <th className="text-right text-xs font-semibold uppercase tracking-wide">Spins</th>
+                    <th className="text-xs font-semibold uppercase tracking-wide">Reason</th>
+                    <th className="text-xs font-semibold uppercase tracking-wide">Granted by</th>
+                    <th className="text-right px-2 text-xs font-semibold uppercase tracking-wide">Current bonus</th>
                   </tr>
                 </thead>
                 <tbody>
                   {grants.map(g => (
-                    <tr key={g._id} className="border-b hover:bg-gray-50">
-                      <td className="py-2 text-xs">{new Date(g.createdAt).toLocaleString()}</td>
+                    <tr key={g._id} className="border-b border-gray-100 hover:bg-[#1B3B6F]/[0.03] transition-colors">
+                      <td className="py-2.5 px-2 text-xs text-gray-500">{new Date(g.createdAt).toLocaleString()}</td>
                       <td>
-                        <div className="font-medium">{g.user?.fullName || '—'}</div>
+                        <div className="font-medium text-[#1A1D29]">{g.user?.fullName || '—'}</div>
                         <div className="text-xs text-gray-500">{g.user?.phone}</div>
                       </td>
                       <td className="text-right">
@@ -626,7 +684,7 @@ export function SpinWheelManagement() {
                       </td>
                       <td className="text-gray-600 max-w-xs truncate">{g.reason}</td>
                       <td className="text-xs text-gray-600">{g.grantedBy?.fullName || '—'}</td>
-                      <td className="text-right font-semibold">{g.user?.bonusSpins ?? '—'}</td>
+                      <td className="text-right px-2 font-semibold tabular-nums text-[#1A1D29]">{g.user?.bonusSpins ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -637,11 +695,14 @@ export function SpinWheelManagement() {
       </Card>
 
       {/* Restricted users (rigged spins) */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-rose-500" /> Rigged spin accounts
-            <span className="text-xs font-normal text-gray-500">
+      <Card className="border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-[#1A1D29]">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50">
+              <ShieldAlert className="h-4 w-4 text-rose-600" />
+            </div>
+            Rigged spin accounts
+            <span className="text-xs font-normal text-gray-400">
               (influencer/demo — outcomes confined to low-value rewards)
             </span>
           </CardTitle>
@@ -650,7 +711,7 @@ export function SpinWheelManagement() {
             <Lock className="h-4 w-4 mr-1" /> Rig user
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {restrictions.length === 0 ? (
             <div className="text-center py-6 text-gray-500">
               No users are currently restricted. Use this for influencer demo accounts
@@ -659,20 +720,24 @@ export function SpinWheelManagement() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-left text-gray-500 border-b">
+                <thead className="text-left text-gray-500 bg-[#F6F8FB] border-b border-gray-200">
                   <tr>
-                    <th className="py-2">User</th>
-                    <th>Mode</th>
-                    <th>Reason</th>
-                    <th className="text-xs">Since</th>
-                    <th className="text-right">Actions</th>
+                    <th className="py-2.5 px-2 text-xs font-semibold uppercase tracking-wide">User</th>
+                    <th className="text-xs font-semibold uppercase tracking-wide">Mode</th>
+                    <th className="text-xs font-semibold uppercase tracking-wide">Reason</th>
+                    <th className="text-xs font-semibold uppercase tracking-wide">Since</th>
+                    <th className="text-right px-2 text-xs font-semibold uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {restrictions.map(u => (
-                    <tr key={u._id} className="border-b hover:bg-gray-50">
-                      <td className="py-2">
-                        <div className="font-medium">{u.fullName}</div>
+                    <tr
+                      key={u._id}
+                      className="border-b border-gray-100 hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                      style={{ borderLeftColor: u.spinRestriction.isInfluencer ? '#f59e0b' : '#94a3b8' }}
+                    >
+                      <td className="py-2.5 px-2">
+                        <div className="font-medium text-[#1A1D29]">{u.fullName}</div>
                         <div className="text-xs text-gray-500">{u.phone}</div>
                       </td>
                       <td>
@@ -694,7 +759,7 @@ export function SpinWheelManagement() {
                           ? new Date(u.spinRestriction.setAt).toLocaleDateString()
                           : '—'}
                       </td>
-                      <td className="text-right">
+                      <td className="text-right px-2">
                         <div className="flex gap-1 justify-end">
                           <Button size="sm" variant="ghost"
                             onClick={() => openRestrictDialogFor(u)}>
@@ -720,9 +785,12 @@ export function SpinWheelManagement() {
       <Dialog open={restrictDialog}
         onOpenChange={(open) => { setRestrictDialog(open); if (!open) resetRestrictForm() }}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
+          <DialogHeader className="border-b border-gray-100 pb-4">
             <DialogTitle className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-rose-500" /> Rig spin outcomes for user
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50">
+                <ShieldAlert className="h-4 w-4 text-rose-600" />
+              </div>
+              Rig spin outcomes for user
             </DialogTitle>
             <DialogDescription>
               The wheel UI always shows every prize — but the backend picks the winning
@@ -860,8 +928,13 @@ export function SpinWheelManagement() {
       {/* Grant bonus spins dialog */}
       <Dialog open={grantDialog} onOpenChange={(open) => { setGrantDialog(open); if (!open) resetGrantForm() }}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Grant bonus spins</DialogTitle>
+          <DialogHeader className="border-b border-gray-100 pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50">
+                <Gift className="h-4 w-4 text-amber-600" />
+              </div>
+              Grant bonus spins
+            </DialogTitle>
             <DialogDescription>
               Give a specific user extra spins. Bonus spins are consumed after their daily free allotment.
             </DialogDescription>

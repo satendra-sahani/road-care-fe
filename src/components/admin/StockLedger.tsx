@@ -261,6 +261,42 @@ export function StockLedger() {
     )
   }
 
+  // ------ Row stripe color by payment status ------
+  const STATUS_STRIPE: Record<string, string> = {
+    paid: '#10b981',
+    partial: '#f59e0b',
+    pending: '#ef4444',
+  }
+
+  // ------ Export currently-loaded (filtered) purchases to CSV ------
+  const exportCsv = () => {
+    const rows: string[][] = [
+      ['Invoice No', 'Date', 'Supplier', 'GST', 'Items', 'Total Amount', 'Paid Amount', 'Pending', 'Payment Method', 'Status'],
+    ]
+    filteredPurchases.forEach((p) => {
+      rows.push([
+        p.invoiceNo,
+        p.date,
+        p.supplierName,
+        p.supplierGST || '',
+        String(p.items?.length || 0),
+        String(p.totalAmount),
+        String(p.paidAmount),
+        String(p.totalAmount - p.paidAmount),
+        p.paymentMethod,
+        p.paymentStatus,
+      ])
+    })
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    a.download = `purchase-ledger-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   // ------ Mark as paid ------
   const markAsPaid = async (id: string) => {
     try {
@@ -393,8 +429,8 @@ export function StockLedger() {
       {/* ---- Header ---- */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Stock & Purchase Ledger</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Stock & Purchase Ledger</h1>
+          <p className="text-sm text-[#6B7280] mt-1">
             Track all purchase entries, supplier payments, and stock inflow
           </p>
         </div>
@@ -406,90 +442,99 @@ export function StockLedger() {
             <Plus className="w-4 h-4 mr-2" />
             Add Purchase Entry
           </Button>
-          <Button variant="outline" className="border-gray-300">
+          <Button
+            variant="outline"
+            className="border-gray-300"
+            onClick={exportCsv}
+            disabled={purchases.length === 0}
+          >
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
         </div>
       </div>
 
-      {/* ---- Summary Cards ---- */}
+      {/* ---- Summary: hero + stat cards ---- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Purchases */}
-        <Card className="border-l-4 border-l-[#1B3B6F]">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Purchases
-                </p>
-                <p className="text-xl font-bold text-gray-900 mt-1">
-                  {formatINR.format(summary.totalPurchases)}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-[#1B3B6F]/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-[#1B3B6F]" />
-              </div>
+        {/* Total Purchases — hero */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+          <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+          <div className="relative flex items-center justify-between">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">
+              Total Purchases
+            </p>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+              <Package className="h-[18px] w-[18px] text-white" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white">
+            {formatINR.format(summary.totalPurchases)}
+          </p>
+          <div className="relative mt-3 flex items-center gap-3 text-[12px] text-white/70">
+            <span><b className="text-white">{purchases.length}</b> invoices</span>
+            <span className="text-white/30">·</span>
+            <span><b className="text-white">{summary.totalItems.toLocaleString('en-IN')}</b> items</span>
+          </div>
+        </div>
 
         {/* Paid Amount */}
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Paid Amount
-                </p>
-                <p className="text-xl font-bold text-emerald-700 mt-1">
-                  {formatINR.format(summary.paidAmount)}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-              </div>
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+              Paid Amount
+            </p>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50">
+              <CheckCircle className="h-[18px] w-[18px] text-emerald-600" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">
+            {formatINR.format(summary.paidAmount)}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">Settled with suppliers</p>
+        </div>
 
-        {/* Pending Payments */}
-        <Card className="border-l-4 border-l-[#FF6B35]">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Pending Payments
-                </p>
-                <p className="text-xl font-bold text-[#FF6B35] mt-1">
-                  {formatINR.format(summary.pendingPayments)}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-[#FF6B35]/10 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-[#FF6B35]" />
-              </div>
+        {/* Pending Payments — doubles as a quick jump to the Pending tab */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('pending')}
+          className={`text-left rounded-2xl border bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+            activeTab === 'pending' ? 'border-[#FF6B35] ring-2 ring-[#FF6B35]/15' : 'border-gray-100'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+              Pending Payments
+            </p>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#FF6B35]/10">
+              <Clock className="h-[18px] w-[18px] text-[#FF6B35]" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="mt-2 text-2xl font-extrabold text-[#FF6B35]">
+            {formatINR.format(summary.pendingPayments)}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            {pendingPurchases.length} invoice(s) outstanding
+          </p>
+        </button>
 
         {/* Total Items Purchased */}
-        <Card className="border-l-4 border-l-violet-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Items Purchased
-                </p>
-                <p className="text-xl font-bold text-gray-900 mt-1">
-                  {summary.totalItems.toLocaleString('en-IN')}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-violet-50 flex items-center justify-center">
-                <Truck className="h-5 w-5 text-violet-600" />
-              </div>
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+              Total Items Purchased
+            </p>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-violet-50">
+              <Truck className="h-[18px] w-[18px] text-violet-600" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">
+            {summary.totalItems.toLocaleString('en-IN')}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            Across {purchases.length} purchase entries
+          </p>
+        </div>
       </div>
 
       {/* ---- Tabs ---- */}
@@ -514,7 +559,7 @@ export function StockLedger() {
         {/* ===================== ALL PURCHASES TAB ===================== */}
         <TabsContent value="all" className="mt-4 space-y-4">
           {/* Filters */}
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row gap-3 items-end">
                 <div className="flex-1">
@@ -564,21 +609,21 @@ export function StockLedger() {
           </Card>
 
           {/* Purchases Table */}
-          <Card>
+          <Card className="border-0 shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50">
+                  <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
                     <TableHead className="w-10" />
-                    <TableHead>Date</TableHead>
-                    <TableHead>Invoice No</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead className="text-center">Items</TableHead>
-                    <TableHead className="text-right">Total Amount</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Invoice No</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Supplier</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Items</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Total Amount</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Paid</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Payment</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -595,7 +640,8 @@ export function StockLedger() {
                         {/* Main row */}
                         <TableRow
                           key={purchase.id}
-                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                          className="cursor-pointer hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                          style={{ borderLeftColor: STATUS_STRIPE[purchase.paymentStatus] || 'transparent' }}
                           onClick={() => toggleRow(purchase.id)}
                         >
                           <TableCell className="text-center">
@@ -635,10 +681,10 @@ export function StockLedger() {
                               {purchase.items?.length || 0} items
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right font-semibold text-sm">
+                          <TableCell className="text-right font-semibold text-sm tabular-nums">
                             {formatINR.format(purchase.totalAmount)}
                           </TableCell>
-                          <TableCell className="text-right text-sm">
+                          <TableCell className="text-right text-sm tabular-nums">
                             {formatINR.format(purchase.paidAmount)}
                           </TableCell>
                           <TableCell>{methodBadge(purchase.paymentMethod)}</TableCell>
@@ -678,20 +724,20 @@ export function StockLedger() {
                                 </p>
                                 <Table>
                                   <TableHeader>
-                                    <TableRow className="bg-white">
-                                      <TableHead className="text-xs">Product</TableHead>
-                                      <TableHead className="text-xs">SKU</TableHead>
-                                      <TableHead className="text-xs text-center">Qty</TableHead>
-                                      <TableHead className="text-xs text-right">Cost/Unit</TableHead>
-                                      <TableHead className="text-xs text-right">Total Cost</TableHead>
-                                      <TableHead className="text-xs text-right">MRP</TableHead>
-                                      <TableHead className="text-xs text-right">Selling Price</TableHead>
-                                      <TableHead className="text-xs text-right">Margin/Unit</TableHead>
+                                    <TableRow className="bg-[#F6F8FB] border-b border-gray-200">
+                                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Product</TableHead>
+                                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide">SKU</TableHead>
+                                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center">Qty</TableHead>
+                                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Cost/Unit</TableHead>
+                                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Total Cost</TableHead>
+                                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">MRP</TableHead>
+                                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Selling Price</TableHead>
+                                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Margin/Unit</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                     {(purchase.items || []).map((item, idx) => (
-                                      <TableRow key={idx} className="bg-white">
+                                      <TableRow key={idx} className="bg-white hover:bg-[#1B3B6F]/[0.03] transition-colors">
                                         <TableCell className="text-sm font-medium">
                                           {item.productName}
                                         </TableCell>
@@ -700,22 +746,22 @@ export function StockLedger() {
                                             {item.sku}
                                           </code>
                                         </TableCell>
-                                        <TableCell className="text-center font-medium">
+                                        <TableCell className="text-center font-medium tabular-nums">
                                           {item.quantity}
                                         </TableCell>
-                                        <TableCell className="text-right text-sm">
+                                        <TableCell className="text-right text-sm tabular-nums">
                                           {formatINR.format(item.costPerUnit)}
                                         </TableCell>
-                                        <TableCell className="text-right text-sm font-semibold">
+                                        <TableCell className="text-right text-sm font-semibold tabular-nums">
                                           {formatINR.format(item.totalCost)}
                                         </TableCell>
-                                        <TableCell className="text-right text-sm text-gray-500">
+                                        <TableCell className="text-right text-sm text-gray-500 tabular-nums">
                                           {formatINR.format(item.mrp)}
                                         </TableCell>
-                                        <TableCell className="text-right text-sm">
+                                        <TableCell className="text-right text-sm tabular-nums">
                                           {formatINR.format(item.sellingPrice)}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="text-right tabular-nums">
                                           <span className="text-sm font-medium text-emerald-600">
                                             {formatINR.format(item.sellingPrice - item.costPerUnit)}
                                           </span>
@@ -746,12 +792,14 @@ export function StockLedger() {
         {/* ===================== PENDING PAYMENTS TAB ===================== */}
         <TabsContent value="pending" className="mt-4 space-y-4">
           {/* Pending summary */}
-          <Card className="bg-gradient-to-r from-[#FF6B35]/5 to-red-50 border-[#FF6B35]/20">
+          <Card className="rounded-2xl bg-gradient-to-r from-[#FF6B35]/5 to-red-50 border-[#FF6B35]/20 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-[#FF6B35]" />
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#FF6B35]/10">
+                  <AlertCircle className="h-5 w-5 text-[#FF6B35]" />
+                </div>
                 <div>
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-[#1A1D29]">
                     Total Pending: {formatINR.format(summary.pendingPayments)}
                   </p>
                   <p className="text-xs text-gray-500">
@@ -763,7 +811,7 @@ export function StockLedger() {
           </Card>
 
           {/* Filters */}
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row gap-3 items-end">
                 <div className="flex-1">
@@ -782,20 +830,20 @@ export function StockLedger() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead>Date</TableHead>
-                    <TableHead>Invoice No</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Pending</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
+                  <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Invoice No</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Supplier</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Total</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Paid</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Pending</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Payment</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -808,7 +856,11 @@ export function StockLedger() {
                     </TableRow>
                   ) : (
                     pendingPurchases.map((purchase) => (
-                      <TableRow key={purchase.id} className="hover:bg-gray-50 transition-colors">
+                      <TableRow
+                        key={purchase.id}
+                        className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                        style={{ borderLeftColor: STATUS_STRIPE[purchase.paymentStatus] || 'transparent' }}
+                      >
                         <TableCell className="text-sm">
                           {new Date(purchase.date).toLocaleDateString('en-IN', {
                             day: '2-digit',
@@ -824,13 +876,13 @@ export function StockLedger() {
                         <TableCell className="font-medium text-sm">
                           {purchase.supplierName}
                         </TableCell>
-                        <TableCell className="text-right text-sm">
+                        <TableCell className="text-right text-sm tabular-nums">
                           {formatINR.format(purchase.totalAmount)}
                         </TableCell>
-                        <TableCell className="text-right text-sm text-emerald-600">
+                        <TableCell className="text-right text-sm text-emerald-600 tabular-nums">
                           {formatINR.format(purchase.paidAmount)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right tabular-nums">
                           <span className="font-bold text-red-600 text-sm">
                             {formatINR.format(purchase.totalAmount - purchase.paidAmount)}
                           </span>
@@ -1130,13 +1182,25 @@ export function StockLedger() {
           {selectedPurchase && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-[#1B3B6F]">
-                  <FileText className="w-5 h-5" />
-                  Purchase Detail &mdash; {selectedPurchase.invoiceNo}
-                </DialogTitle>
-                <DialogDescription>
-                  Full purchase information and cost breakdown
-                </DialogDescription>
+                <div className="flex items-start justify-between gap-4 pr-6">
+                  <div>
+                    <DialogTitle className="flex items-center gap-2 text-[#1B3B6F]">
+                      <FileText className="w-5 h-5" />
+                      Purchase Detail &mdash; {selectedPurchase.invoiceNo}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Full purchase information and cost breakdown
+                    </DialogDescription>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      Total
+                    </p>
+                    <p className="text-xl font-extrabold text-[#1B3B6F] tabular-nums">
+                      {formatINR.format(selectedPurchase.totalAmount)}
+                    </p>
+                  </div>
+                </div>
               </DialogHeader>
 
               <div className="space-y-5 mt-2">
@@ -1177,60 +1241,60 @@ export function StockLedger() {
                   <div className="border rounded-lg overflow-hidden">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-gray-50">
-                          <TableHead className="text-xs">#</TableHead>
-                          <TableHead className="text-xs">Product</TableHead>
-                          <TableHead className="text-xs text-center">Qty</TableHead>
-                          <TableHead className="text-xs text-right">Cost/Unit</TableHead>
-                          <TableHead className="text-xs text-right">Total Cost</TableHead>
-                          <TableHead className="text-xs text-right">MRP</TableHead>
-                          <TableHead className="text-xs text-right">Selling Price</TableHead>
-                          <TableHead className="text-xs text-right">Profit Potential</TableHead>
+                        <TableRow className="bg-[#F6F8FB] border-b border-gray-200">
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide">#</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Product</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-center">Qty</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Cost/Unit</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Total Cost</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">MRP</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Selling Price</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Profit Potential</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {(selectedPurchase.items || []).map((item, idx) => (
-                          <TableRow key={idx}>
+                          <TableRow key={idx} className="hover:bg-[#1B3B6F]/[0.03] transition-colors">
                             <TableCell className="text-xs text-gray-400">{idx + 1}</TableCell>
                             <TableCell>
                               <p className="text-sm font-medium">{item.productName}</p>
                               <code className="text-[10px] text-gray-400">{item.sku}</code>
                             </TableCell>
-                            <TableCell className="text-center font-medium">{item.quantity}</TableCell>
-                            <TableCell className="text-right text-sm">
+                            <TableCell className="text-center font-medium tabular-nums">{item.quantity}</TableCell>
+                            <TableCell className="text-right text-sm tabular-nums">
                               {formatINR.format(item.costPerUnit)}
                             </TableCell>
-                            <TableCell className="text-right text-sm font-semibold">
+                            <TableCell className="text-right text-sm font-semibold tabular-nums">
                               {formatINR.format(item.totalCost)}
                             </TableCell>
-                            <TableCell className="text-right text-sm text-gray-500">
+                            <TableCell className="text-right text-sm text-gray-500 tabular-nums">
                               {formatINR.format(item.mrp)}
                             </TableCell>
-                            <TableCell className="text-right text-sm">
+                            <TableCell className="text-right text-sm tabular-nums">
                               {formatINR.format(item.sellingPrice)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right tabular-nums">
                               <span className="text-sm font-semibold text-emerald-600">
                                 {formatINR.format(profitPotential(item))}
                               </span>
                             </TableCell>
                           </TableRow>
                         ))}
-                        {/* Totals row */}
-                        <TableRow className="bg-gray-50 font-semibold">
-                          <TableCell colSpan={2} className="text-right text-sm">
+                        {/* Totals row — navy highlight band */}
+                        <TableRow className="bg-[#1B3B6F]/[0.06] font-semibold">
+                          <TableCell colSpan={2} className="text-right text-sm text-[#1B3B6F]">
                             Grand Total
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="text-center tabular-nums">
                             {selectedPurchase.items.reduce((s, i) => s + i.quantity, 0)}
                           </TableCell>
                           <TableCell />
-                          <TableCell className="text-right text-sm text-[#1B3B6F]">
+                          <TableCell className="text-right text-sm text-[#1B3B6F] tabular-nums">
                             {formatINR.format(selectedPurchase.totalAmount)}
                           </TableCell>
                           <TableCell />
                           <TableCell />
-                          <TableCell className="text-right text-sm text-emerald-600">
+                          <TableCell className="text-right text-sm text-emerald-600 tabular-nums">
                             {formatINR.format(
                               selectedPurchase.items.reduce((s, i) => s + profitPotential(i), 0)
                             )}
@@ -1243,35 +1307,35 @@ export function StockLedger() {
 
                 {/* Payment info */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <Card className="border-gray-200">
+                  <Card className="rounded-xl border-gray-100 bg-[#1B3B6F]/[0.04] shadow-none">
                     <CardContent className="p-3 text-center">
-                      <p className="text-[10px] text-gray-500 uppercase">Total</p>
-                      <p className="text-lg font-bold text-[#1B3B6F]">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Total</p>
+                      <p className="text-lg font-extrabold text-[#1B3B6F] tabular-nums">
                         {formatINR.format(selectedPurchase.totalAmount)}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="border-gray-200">
+                  <Card className="rounded-xl border-gray-100 bg-emerald-50/60 shadow-none">
                     <CardContent className="p-3 text-center">
-                      <p className="text-[10px] text-gray-500 uppercase">Paid</p>
-                      <p className="text-lg font-bold text-emerald-600">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Paid</p>
+                      <p className="text-lg font-extrabold text-emerald-600 tabular-nums">
                         {formatINR.format(selectedPurchase.paidAmount)}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="border-gray-200">
+                  <Card className="rounded-xl border-gray-100 bg-red-50/60 shadow-none">
                     <CardContent className="p-3 text-center">
-                      <p className="text-[10px] text-gray-500 uppercase">Pending</p>
-                      <p className="text-lg font-bold text-red-600">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Pending</p>
+                      <p className="text-lg font-extrabold text-red-600 tabular-nums">
                         {formatINR.format(
                           selectedPurchase.totalAmount - selectedPurchase.paidAmount
                         )}
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="border-gray-200">
+                  <Card className="rounded-xl border-gray-100 bg-gray-50/60 shadow-none">
                     <CardContent className="p-3 text-center">
-                      <p className="text-[10px] text-gray-500 uppercase">Method</p>
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Method</p>
                       <div className="mt-1">{methodBadge(selectedPurchase.paymentMethod)}</div>
                     </CardContent>
                   </Card>

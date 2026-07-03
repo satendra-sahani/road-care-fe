@@ -170,6 +170,11 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   failed: { color: 'bg-red-100 text-red-800', label: 'Failed' }
 }
 
+// Left-edge stripe color per notification status — makes the table scannable at a glance.
+const NOTIF_STATUS_STRIPE: Record<string, string> = {
+  draft: '#94a3b8', scheduled: '#3b82f6', sent: '#22c55e', failed: '#ef4444',
+}
+
 const audienceLabels: Record<string, string> = {
   all: 'All Users',
   users: 'Customers',
@@ -204,6 +209,11 @@ const supportStatusConfig: Record<string, { color: string; label: string }> = {
   in_progress: { color: 'bg-yellow-100 text-yellow-800', label: 'In Progress' },
   resolved: { color: 'bg-green-100 text-green-800', label: 'Resolved' },
   closed: { color: 'bg-gray-100 text-gray-800', label: 'Closed' }
+}
+
+// Left-edge stripe color per support ticket status.
+const SUPPORT_STATUS_STRIPE: Record<string, string> = {
+  open: '#ef4444', in_progress: '#f59e0b', resolved: '#22c55e', closed: '#94a3b8',
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -544,70 +554,58 @@ export function CommunicationCenter() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A1D29]">Communication Center</h1>
-          <p className="text-[#6B7280] mt-1">Manage notifications, customer support, and communications</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1B3B6F]/10 shrink-0">
+            <MessageSquare className="h-5 w-5 text-[#1B3B6F]" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Communication Center</h1>
+            <p className="text-[#6B7280] mt-1 text-sm">Manage notifications, customer support, and communications</p>
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Bell className="h-5 w-5 text-[#1B3B6F]" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.total}</p>
-                <p className="text-xs text-[#6B7280]">Total Notifications</p>
+      {/* Stats Cards — clickable quick filters wired to the existing status filter */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { key: 'all', label: 'Total Notifications', value: notifStats.total, icon: Bell, tint: 'bg-slate-100 text-slate-600' },
+          { key: 'sent', label: 'Sent', value: notifStats.sent, icon: Send, tint: 'bg-emerald-50 text-emerald-600' },
+          { key: 'scheduled', label: 'Scheduled', value: notifStats.scheduled, icon: Clock, tint: 'bg-blue-50 text-blue-600' },
+          { key: 'draft', label: 'Drafts', value: notifStats.draft, icon: Edit, tint: 'bg-gray-100 text-gray-600' },
+          { key: 'failed', label: 'Failed', value: notifStats.failed, icon: XCircle, tint: 'bg-red-50 text-red-600' },
+        ].map((s) => {
+          const Icon = s.icon
+          const active = statusFilter === s.key
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => { setStatusFilter(s.key); setNotifPage(1) }}
+              className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${active ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-gray-100'}`}
+            >
+              <div className="flex items-center justify-between">
+                <div className={`grid h-9 w-9 place-items-center rounded-xl ${s.tint}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                {active && <span className="text-[9px] font-bold uppercase tracking-wide text-[#1B3B6F]">Filtered</span>}
               </div>
+              <p className="mt-2 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{s.value}</p>
+              <p className="text-[11.5px] font-semibold uppercase tracking-wide text-gray-400">{s.label}</p>
+            </button>
+          )
+        })}
+
+        {/* Registered devices — informational only, no matching status filter */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-violet-50 text-violet-600">
+              <Users className="h-4 w-4" />
             </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Send className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.sent}</p>
-                <p className="text-xs text-[#6B7280]">Sent</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.scheduled}</p>
-                <p className="text-xs text-[#6B7280]">Scheduled</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Edit className="h-5 w-5 text-gray-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.draft}</p>
-                <p className="text-xs text-[#6B7280]">Drafts</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Users className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{notifStats.totalDevices}</p>
-                <p className="text-xs text-[#6B7280]">Registered Devices</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="mt-2 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{notifStats.totalDevices}</p>
+          <p className="text-[11.5px] font-semibold uppercase tracking-wide text-gray-400">Registered Devices</p>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -621,20 +619,20 @@ export function CommunicationCenter() {
         <TabsContent value="notifications" className="space-y-6">
           {/* Search / Filter / Create */}
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
-                <div className="flex-1 flex items-center space-x-3">
+            <CardContent className="p-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
                   <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
                       placeholder="Search notifications..."
                       value={searchQuery}
                       onChange={(e) => { setSearchQuery(e.target.value); setNotifPage(1) }}
-                      className="pl-10"
+                      className="pl-10 h-9 text-sm bg-gray-50 border-gray-200 focus:bg-white"
                     />
                   </div>
                   <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setNotifPage(1) }}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-full sm:w-40 h-9 text-xs">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -646,12 +644,12 @@ export function CommunicationCenter() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Button variant="outline" size="icon" onClick={() => { fetchNotifications(); fetchStats() }}>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => { fetchNotifications(); fetchStats() }}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
-                  <Button onClick={openCreate} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
-                    <Plus className="h-4 w-4 mr-2" />
+                  <Button onClick={openCreate} size="sm" className="bg-[#1B3B6F] hover:bg-[#0F2545] h-9 text-xs">
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
                     Create Notification
                   </Button>
                 </div>
@@ -660,95 +658,106 @@ export function CommunicationCenter() {
           </Card>
 
           {/* Notifications Table */}
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm overflow-hidden">
             <CardContent className="p-0">
               {notifLoading ? (
-                <div className="p-12 text-center text-gray-500">Loading notifications...</div>
+                <div className="p-16 text-center">
+                  <RefreshCw className="h-8 w-8 text-[#1B3B6F] animate-spin mx-auto mb-3" />
+                  <p className="text-gray-400 text-sm">Loading notifications...</p>
+                </div>
               ) : notifications.length === 0 ? (
-                <div className="p-12 text-center">
-                  <Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg font-medium">No notifications found</p>
-                  <p className="text-gray-400 text-sm mt-1">Create your first notification to get started</p>
+                <div className="p-16 text-center">
+                  <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                    <Bell className="h-7 w-7 text-gray-400" />
+                  </div>
+                  <p className="text-base font-medium text-[#1A1D29]">No notifications found</p>
+                  <p className="text-sm text-[#6B7280] mt-1">Create your first notification to get started</p>
                 </div>
               ) : (
                 <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gray-50">
-                        <TableHead>Notification</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Priority</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Audience</TableHead>
-                        <TableHead>Scheduled / Sent</TableHead>
-                        <TableHead>Reach</TableHead>
-                        <TableHead className="w-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {notifications.map((notif) => (
-                        <TableRow key={notif._id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <div>
-                              <div className="font-medium text-[#1A1D29]">{notif.title}</div>
-                              <div className="text-sm text-[#6B7280] max-w-md truncate">{notif.message}</div>
-                              <div className="text-xs text-[#9CA3AF] mt-1">
-                                By {notif.createdBy?.fullName || notif.createdBy?.username || 'System'}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{getTypeBadge(notif.type)}</TableCell>
-                          <TableCell>{getPriorityBadge(notif.priority)}</TableCell>
-                          <TableCell>{getStatusBadge(notif.status)}</TableCell>
-                          <TableCell>{audienceLabels[notif.targetAudience] || notif.targetAudience}</TableCell>
-                          <TableCell className="text-sm">
-                            {notif.sentAt ? formatDate(notif.sentAt) : notif.scheduledAt ? formatDate(notif.scheduledAt) : '—'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              <div>{notif.sentCount.toLocaleString()} sent</div>
-                              <div className="text-[#6B7280]">{notif.readCount.toLocaleString()} read</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {notif.status !== 'sent' && (
-                                  <DropdownMenuItem onClick={() => openEdit(notif)}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                )}
-                                {(notif.status === 'draft' || notif.status === 'scheduled') && (
-                                  <DropdownMenuItem onClick={() => handleSend(notif._id)}>
-                                    <Send className="h-4 w-4 mr-2" />
-                                    {sendingId === notif._id ? 'Sending...' : 'Send Now'}
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(notif._id)}>
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Notification</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Priority</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Audience</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Scheduled / Sent</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Reach</TableHead>
+                          <TableHead className="w-12"></TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {notifications.map((notif) => (
+                          <TableRow
+                            key={notif._id}
+                            className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                            style={{ borderLeftColor: NOTIF_STATUS_STRIPE[notif.status] || 'transparent' }}
+                          >
+                            <TableCell>
+                              <div>
+                                <div className="font-semibold text-sm text-[#1A1D29]">{notif.title}</div>
+                                <div className="text-sm text-[#6B7280] max-w-md truncate">{notif.message}</div>
+                                <div className="text-xs text-[#9CA3AF] mt-1">
+                                  By {notif.createdBy?.fullName || notif.createdBy?.username || 'System'}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>{getTypeBadge(notif.type)}</TableCell>
+                            <TableCell>{getPriorityBadge(notif.priority)}</TableCell>
+                            <TableCell>{getStatusBadge(notif.status)}</TableCell>
+                            <TableCell className="text-sm text-[#1A1D29]">{audienceLabels[notif.targetAudience] || notif.targetAudience}</TableCell>
+                            <TableCell className="text-sm text-[#6B7280]">
+                              {notif.sentAt ? formatDate(notif.sentAt) : notif.scheduledAt ? formatDate(notif.scheduledAt) : '—'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm tabular-nums">
+                                <div className="font-medium text-[#1A1D29]">{notif.sentCount.toLocaleString()} sent</div>
+                                <div className="text-[#6B7280]">{notif.readCount.toLocaleString()} read</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  {notif.status !== 'sent' && (
+                                    <DropdownMenuItem onClick={() => openEdit(notif)}>
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(notif.status === 'draft' || notif.status === 'scheduled') && (
+                                    <DropdownMenuItem onClick={() => handleSend(notif._id)}>
+                                      <Send className="h-4 w-4 mr-2" />
+                                      {sendingId === notif._id ? 'Sending...' : 'Send Now'}
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(notif._id)}>
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
 
                   {/* Pagination */}
                   {notifTotal > 15 && (
-                    <div className="flex items-center justify-between p-4 border-t">
-                      <p className="text-sm text-gray-500">
+                    <div className="flex items-center justify-between p-4 border-t border-gray-100">
+                      <p className="text-sm text-[#6B7280]">
                         Page {notifPage} of {Math.ceil(notifTotal / 15)} ({notifTotal} total)
                       </p>
                       <div className="flex space-x-2">
@@ -769,74 +778,80 @@ export function CommunicationCenter() {
 
         {/* ═══ CUSTOMER SUPPORT TAB (mock data) ═══ */}
         <TabsContent value="support" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 text-center">
-                <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#1A1D29]">{mockSupportTickets.filter(t => t.status === 'open').length}</p>
-                <p className="text-sm text-[#6B7280]">Open Tickets</p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 text-center">
-                <Clock className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#1A1D29]">{mockSupportTickets.filter(t => t.status === 'in_progress').length}</p>
-                <p className="text-sm text-[#6B7280]">In Progress</p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 text-center">
-                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#1A1D29]">{mockSupportTickets.filter(t => t.status === 'resolved').length}</p>
-                <p className="text-sm text-[#6B7280]">Resolved</p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md text-center">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-red-50 text-red-600 mx-auto mb-2">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <p className="text-2xl font-extrabold text-[#1A1D29] tabular-nums">{mockSupportTickets.filter(t => t.status === 'open').length}</p>
+              <p className="text-[11.5px] font-semibold uppercase tracking-wide text-gray-400">Open Tickets</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md text-center">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-amber-600 mx-auto mb-2">
+                <Clock className="h-4 w-4" />
+              </div>
+              <p className="text-2xl font-extrabold text-[#1A1D29] tabular-nums">{mockSupportTickets.filter(t => t.status === 'in_progress').length}</p>
+              <p className="text-[11.5px] font-semibold uppercase tracking-wide text-gray-400">In Progress</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md text-center">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-emerald-600 mx-auto mb-2">
+                <CheckCircle className="h-4 w-4" />
+              </div>
+              <p className="text-2xl font-extrabold text-[#1A1D29] tabular-nums">{mockSupportTickets.filter(t => t.status === 'resolved').length}</p>
+              <p className="text-[11.5px] font-semibold uppercase tracking-wide text-gray-400">Resolved</p>
+            </div>
           </div>
 
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm overflow-hidden">
             <CardHeader>
               <CardTitle>Support Tickets</CardTitle>
               <CardDescription>Customer support ticket management (coming soon)</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead>Ticket</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                    <TableHead>Response Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockSupportTickets.map((ticket) => (
-                    <TableRow key={ticket.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div>
-                          <div className="font-medium text-[#1A1D29]">{ticket.ticketNumber}</div>
-                          <div className="text-sm text-[#6B7280] max-w-sm truncate">{ticket.subject}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium text-[#1A1D29]">{ticket.customer.name}</div>
-                          <div className="text-xs text-[#6B7280]">{ticket.customer.email}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
-                      <TableCell>{getSupportStatusBadge(ticket.status)}</TableCell>
-                      <TableCell className="font-medium">{ticket.assignedTo}</TableCell>
-                      <TableCell>
-                        <span className={`font-medium ${ticket.responseTime > 120 ? 'text-red-600' : ticket.responseTime > 60 ? 'text-yellow-600' : 'text-green-600'}`}>
-                          {ticket.responseTime}m
-                        </span>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Ticket</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Priority</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Assigned To</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Response Time</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {mockSupportTickets.map((ticket) => (
+                      <TableRow
+                        key={ticket.id}
+                        className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                        style={{ borderLeftColor: SUPPORT_STATUS_STRIPE[ticket.status] || 'transparent' }}
+                      >
+                        <TableCell>
+                          <div>
+                            <div className="font-semibold text-sm text-[#1A1D29]">{ticket.ticketNumber}</div>
+                            <div className="text-sm text-[#6B7280] max-w-sm truncate">{ticket.subject}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium text-sm text-[#1A1D29]">{ticket.customer.name}</div>
+                            <div className="text-xs text-[#6B7280]">{ticket.customer.email}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
+                        <TableCell>{getSupportStatusBadge(ticket.status)}</TableCell>
+                        <TableCell className="font-medium text-sm text-[#1A1D29]">{ticket.assignedTo}</TableCell>
+                        <TableCell>
+                          <span className={`font-medium text-sm tabular-nums ${ticket.responseTime > 120 ? 'text-red-600' : ticket.responseTime > 60 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            {ticket.responseTime}m
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -845,8 +860,13 @@ export function CommunicationCenter() {
       {/* ═══ CREATE / EDIT NOTIFICATION DIALOG ═══ */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingNotif ? 'Edit Notification' : 'Create New Notification'}</DialogTitle>
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center">
+                <Send className="h-4 w-4 text-[#1B3B6F]" />
+              </div>
+              {editingNotif ? 'Edit Notification' : 'Create New Notification'}
+            </DialogTitle>
             <DialogDescription>
               {editingNotif ? 'Update the notification details' : 'Send push notifications to your users'}
             </DialogDescription>

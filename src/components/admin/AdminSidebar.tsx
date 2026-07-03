@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useRouter } from 'next/router'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import {
   BarChart3,
   ShoppingCart,
@@ -130,6 +130,10 @@ interface AdminSidebarProps {
 // Module-level cache — survives component re-mounts on page navigation
 let cachedBadgeCounts = { orders: '', serviceRequests: '' }
 let badgeFetchInterval: ReturnType<typeof setInterval> | null = null
+// Persist the sidebar's own scroll position too — the sidebar re-mounts on every
+// admin page, so without this it snaps back to the top after each navigation
+// (clicking a bottom item like Settings would jump you away from where you were).
+let cachedNavScroll = 0
 
 const fetchBadgeCounts = async (
   setter: (val: { orders: string; serviceRequests: string }) => void
@@ -182,6 +186,13 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
   const { user } = useAppSelector((state) => state.auth)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+
+  // Restore the sidebar scroll position on mount (before paint, so there's no
+  // visible jump) so navigating between admin pages keeps your place in the nav.
+  const navRef = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    if (navRef.current) navRef.current.scrollTop = cachedNavScroll
+  }, [])
 
   // Initialize from cache so badges never flicker on re-mount
   const [badgeCounts, setBadgeCounts] = useState(cachedBadgeCounts)
@@ -346,7 +357,11 @@ export function AdminSidebar({ collapsed = false, currentPath }: AdminSidebarPro
         </div>
 
         {/* Navigation — collapsible groups */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-ultra-narrow">
+        <nav
+          ref={navRef}
+          onScroll={(e) => { cachedNavScroll = (e.target as HTMLElement).scrollTop }}
+          className="flex-1 overflow-y-auto px-3 py-4 scrollbar-ultra-narrow"
+        >
           {groups.map((group) => {
             const showLabels = !collapsed || isMobile
             const groupBadge = group.items.reduce((n, i) => n + (i.badge ? parseInt(i.badge) || 0 : 0), 0)

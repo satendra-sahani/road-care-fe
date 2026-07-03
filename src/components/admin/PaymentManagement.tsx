@@ -195,6 +195,12 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
   settled:       { label: 'Settled',       color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: BadgeCheck },
 }
 
+// Left-edge stripe color per payment status — makes the table scannable at a glance.
+const STATUS_STRIPE: Record<string, string> = {
+  pending: '#f59e0b', initiated: '#3b82f6', paid: '#22c55e', failed: '#ef4444',
+  refunded: '#a855f7', cod_collected: '#f97316', settled: '#059669',
+}
+
 function StatusBadge({ status }: { status: string }) {
   const cfg = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-700 border-gray-200', icon: AlertCircle }
   const Icon = cfg.icon
@@ -255,34 +261,27 @@ function StatsCards({
   onPeriodChange: (p: StatsPeriod) => void
 }) {
   const bookingFees = stats?.bookingFeeRevenue || 0;
-  const cards = [
-    {
-      title: 'Total Revenue',
-      value: fmt(stats?.totalRevenue || 0),
-      sub: bookingFees > 0 ? `${stats?.totalPayments || 0} txns (incl. ₹${bookingFees} booking fees)` : `${stats?.totalPayments || 0} transactions`,
-      icon: IndianRupee,
-      gradient: 'from-blue-500 to-blue-600',
-    },
+  const metricCards = [
     {
       title: 'Platform Revenue',
       value: fmt(stats?.platformRevenue || 0),
       sub: 'Our commission share',
       icon: TrendingUp,
-      gradient: 'from-emerald-500 to-emerald-600',
+      tint: 'text-emerald-600 bg-emerald-50',
     },
     {
       title: 'Mechanic Payouts',
       value: fmt(stats?.mechanicPayout || 0),
       sub: 'Mechanics\' share',
       icon: Wallet,
-      gradient: 'from-violet-500 to-violet-600',
+      tint: 'text-violet-600 bg-violet-50',
     },
     {
       title: 'Pending COD',
       value: fmt(stats?.pendingCOD || 0),
       sub: 'Awaiting settlement',
       icon: Handshake,
-      gradient: 'from-orange-500 to-orange-600',
+      tint: 'text-amber-600 bg-amber-50',
     },
   ]
 
@@ -302,7 +301,7 @@ function StatsCards({
                 className={`
                   inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
                   ${isActive
-                    ? 'bg-white text-blue-700 shadow-sm ring-1 ring-gray-200'
+                    ? 'bg-white text-[#1B3B6F] shadow-sm ring-1 ring-gray-200'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                   }
                 `}
@@ -313,30 +312,52 @@ function StatsCards({
             )
           })}
         </div>
-        {loading && <Loader2 className="h-4 w-4 animate-spin text-blue-500 ml-2" />}
+        {loading && <Loader2 className="h-4 w-4 animate-spin text-[#1B3B6F] ml-2" />}
       </div>
 
-      {/* Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {cards.map((c) => {
-          const Icon = c.icon
-          return (
-            <Card key={c.title} className="overflow-hidden border-0 shadow-sm">
-              <div className={`bg-gradient-to-br ${c.gradient} p-4 ${loading ? 'opacity-60' : ''} transition-opacity`}>
+      {/* Cards Grid: navy revenue hero + metric cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        {/* Total Revenue hero */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+          <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+          <div className="relative flex items-center justify-between">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">Total Revenue</p>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+              <IndianRupee className="h-[18px] w-[18px] text-white" />
+            </div>
+          </div>
+          <p className={`relative mt-2 text-3xl font-extrabold tracking-tight text-white transition-opacity ${loading ? 'opacity-60' : ''}`}>
+            {loading ? '—' : fmt(stats?.totalRevenue || 0)}
+          </p>
+          <p className="relative mt-3 text-[12px] text-white/70">
+            {bookingFees > 0
+              ? `${stats?.totalPayments || 0} txns (incl. ₹${bookingFees} booking fees)`
+              : `${stats?.totalPayments || 0} transactions`}
+          </p>
+        </div>
+
+        {/* Metric cards */}
+        <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {metricCards.map((c) => {
+            const Icon = c.icon
+            return (
+              <div
+                key={c.title}
+                className={`rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${loading ? 'opacity-60' : ''}`}
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/80 text-xs font-medium">{c.title}</p>
-                    <p className="text-white text-2xl font-bold mt-1">{loading ? '...' : c.value}</p>
-                    <p className="text-white/70 text-xs mt-0.5">{c.sub}</p>
-                  </div>
-                  <div className="bg-white/20 rounded-full p-2.5">
-                    <Icon className="h-5 w-5 text-white" />
+                  <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">{c.title}</p>
+                  <div className={`grid h-9 w-9 place-items-center rounded-xl ${c.tint}`}>
+                    <Icon className="h-[18px] w-[18px]" />
                   </div>
                 </div>
+                <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{loading ? '…' : c.value}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{c.sub}</p>
               </div>
-            </Card>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -551,17 +572,17 @@ function PaymentHistoryTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Request / Order</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Customer</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Order / Service Status</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Method</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-700">Total</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-700">Payout</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Status</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Wallet</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Date</th>
+              <tr className="bg-[#F6F8FB] border-b border-gray-200">
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Type</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Request / Order</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Customer</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Order / Service Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Method</th>
+                <th className="text-right px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Total</th>
+                <th className="text-right px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Payout</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Wallet</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 uppercase tracking-wide text-xs">Date</th>
               </tr>
             </thead>
             <tbody>
@@ -583,7 +604,11 @@ function PaymentHistoryTab() {
                 payments.map((p, idx) => {
                   const linkedStatus = getLinkedStatus(p)
                   return (
-                    <tr key={p._id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${idx % 2 === 0 ? '' : 'bg-gray-50/40'}`}>
+                    <tr
+                      key={p._id}
+                      className={`border-b border-gray-100 border-l-[3px] hover:bg-[#1B3B6F]/[0.03] transition-colors ${idx % 2 === 0 ? '' : 'bg-gray-50/40'}`}
+                      style={{ borderLeftColor: STATUS_STRIPE[p.paymentStatus] || 'transparent' }}
+                    >
                       <td className="px-4 py-3">
                         <PaymentForBadge paymentFor={p.paymentFor} />
                       </td>
@@ -639,7 +664,7 @@ function PaymentHistoryTab() {
                           <MethodBadge method={p.paymentMethod} />
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right tabular-nums">
                         {p.combinedMethod === 'online_cod' ? (
                           <div>
                             <span className="font-bold text-[#1B3B6F]">{fmt(p.srTotalCost || ((p.onlineBookingFeeAmount || 0) + p.totalAmount))}</span>
@@ -663,7 +688,7 @@ function PaymentHistoryTab() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right text-violet-700 font-medium">{fmt(p.mechanicAmount)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-violet-700 font-medium">{fmt(p.mechanicAmount)}</td>
                       <td className="px-4 py-3"><StatusBadge status={p.paymentStatus} /></td>
                       <td className="px-4 py-3">
                         {p.walletTransferred ? (
@@ -3024,15 +3049,17 @@ export function PaymentManagement() {
   useEffect(() => { loadStats() }, [loadStats])
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <CreditCard className="h-6 w-6 text-blue-600" />
+          <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight flex items-center gap-2">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#1B3B6F]/10">
+              <CreditCard className="h-4 w-4 text-[#1B3B6F]" />
+            </div>
             Payment Management
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">
+          <p className="text-[#6B7280] text-sm mt-1">
             Monitor revenue, manage wallets, transactions, and configure service pricing
           </p>
         </div>
@@ -3041,7 +3068,7 @@ export function PaymentManagement() {
           size="sm"
           onClick={loadStats}
           disabled={statsLoading}
-          className="gap-2"
+          className="gap-2 h-9 text-xs w-fit"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${statsLoading ? 'animate-spin' : ''}`} />
           Refresh Stats

@@ -286,13 +286,42 @@ export function UserManagement() {
     return new Date(dateString).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
   }
 
-  // KPI cards
+  // Export the currently tab-filtered users to CSV.
+  const exportUsersCsv = () => {
+    const rows: string[][] = [['Name', 'Username', 'Role', 'Status', 'Trust Score', 'Email', 'Phone', 'Joined', 'Last Active']]
+    filteredUsersByTab.forEach((u) => {
+      rows.push([
+        u.fullName || u.username || 'Unknown',
+        u.username || '',
+        roleConfig[u.role as keyof typeof roleConfig]?.label || u.role,
+        u.isActive ? 'Active' : 'Inactive',
+        String(u.trustScore ?? ''),
+        u.email || '',
+        u.phone || '',
+        u.createdAt ? formatDate(u.createdAt) : '',
+        u.lastLoginAt ? formatDate(u.lastLoginAt) : 'Never',
+      ])
+    })
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  // Left-edge stripe color per account state — makes the table scannable at a glance.
+  const STATUS_STRIPE: Record<string, string> = { active: '#22c55e', inactive: '#94a3b8', blocked: '#ef4444' }
+  const getRowStripe = (user: User) => (user.isBlocked ? STATUS_STRIPE.blocked : user.isActive ? STATUS_STRIPE.active : STATUS_STRIPE.inactive)
+
+  // KPI cards (metric cards shown alongside the Total Users hero)
   const kpiCards = [
     { label: 'Total Users', value: stats.total || 0, icon: Users, color: 'bg-blue-50 text-blue-600' },
     { label: 'Active Users', value: stats.active || 0, icon: UserCheck, color: 'bg-emerald-50 text-emerald-600' },
     { label: 'Mechanics', value: stats.roles?.mechanic || 0, icon: Wrench, color: 'bg-orange-50 text-orange-600' },
     { label: 'New This Month', value: stats.recentUsers || 0, icon: TrendingUp, color: 'bg-violet-50 text-violet-600' },
   ]
+  const metricCards = kpiCards.slice(1)
 
   return (
     <div className="min-h-screen">
@@ -311,24 +340,43 @@ export function UserManagement() {
           </Button>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpiCards.map((card, i) => {
-            const Icon = card.icon
-            return (
-              <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`h-10 w-10 rounded-lg ${card.color} flex items-center justify-center`}>
-                      <Icon className="h-5 w-5" />
+        {/* KPI row: total-users hero + metric cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Total Users hero */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+            <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+            <div className="relative flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">Total Users</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+                <Users className="h-[18px] w-[18px] text-white" />
+              </div>
+            </div>
+            <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white tabular-nums">{stats.total || 0}</p>
+            <div className="relative mt-3 flex items-center gap-3 text-[12px] text-white/70">
+              <span><b className="text-white">{stats.active || 0}</b> active</span>
+              <span className="text-white/30">·</span>
+              <span><b className="text-white">{stats.recentUsers || 0}</b> new this month</span>
+            </div>
+          </div>
+
+          {/* Metric cards */}
+          <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {metricCards.map((card, i) => {
+              const Icon = card.icon
+              return (
+                <div key={i} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">{card.label}</p>
+                    <div className={`grid h-9 w-9 place-items-center rounded-xl ${card.color}`}>
+                      <Icon className="h-[18px] w-[18px]" />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-[#1A1D29]">{card.value}</p>
-                  <p className="text-xs text-[#6B7280] mt-0.5">{card.label}</p>
-                </CardContent>
-              </Card>
-            )
-          })}
+                  <p className="mt-2 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{card.value}</p>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         {/* Filters and Search */}
@@ -373,7 +421,7 @@ export function UserManagement() {
                   </SelectContent>
                 </Select>
 
-                <Button variant="outline" size="sm" className="h-9 text-xs">
+                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={exportUsersCsv} disabled={filteredUsersByTab.length === 0}>
                   <Download className="h-3.5 w-3.5 mr-1.5" />
                   Export
                 </Button>
@@ -431,7 +479,7 @@ export function UserManagement() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+                        <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
                           <TableHead className="w-10">
                             <Checkbox
                               checked={selectedUsers.length === filteredUsersByTab.length && filteredUsersByTab.length > 0}
@@ -450,7 +498,11 @@ export function UserManagement() {
                       </TableHeader>
                       <TableBody>
                         {filteredUsersByTab.map((user) => (
-                          <TableRow key={user._id} className="hover:bg-gray-50/50 transition-colors">
+                          <TableRow
+                            key={user._id}
+                            className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                            style={{ borderLeftColor: getRowStripe(user) }}
+                          >
                             <TableCell>
                               <Checkbox
                                 checked={selectedUsers.includes(user._id)}
@@ -476,18 +528,18 @@ export function UserManagement() {
                             <TableCell>
                               {(user.role === 'customer' || user.role === 'user') ? (
                                 <div className="flex items-center gap-1">
-                                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                                    (user.trustScore ?? 100) > 70 ? 'bg-green-100 text-green-700' :
-                                    (user.trustScore ?? 100) > 40 ? 'bg-yellow-100 text-yellow-700' :
+                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full tabular-nums ${
+                                    (user.trustScore ?? 100) > 70 ? 'bg-emerald-100 text-emerald-700' :
+                                    (user.trustScore ?? 100) > 40 ? 'bg-amber-100 text-amber-700' :
                                     'bg-red-100 text-red-700'
                                   }`}>
                                     {user.trustScore ?? 100}
                                   </span>
                                   {user.isBlocked && (
-                                    <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">Blocked</span>
+                                    <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Blocked</span>
                                   )}
                                   {user.forceAdvanceFee && (
-                                    <span className="text-xs bg-orange-100 text-orange-600 px-1 py-0.5 rounded">₹</span>
+                                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">₹</span>
                                   )}
                                 </div>
                               ) : (

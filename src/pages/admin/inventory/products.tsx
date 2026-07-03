@@ -87,6 +87,19 @@ const formatCurrency = (n: number) =>
 const getCatName = (cat: any) => (typeof cat === 'object' && cat ? cat.name : '—')
 const getBrandName = (b: any) => (typeof b === 'object' && b ? b.name : '—')
 
+// Left-edge row stripe — surfaces stock urgency (and active/inactive) at a glance.
+const STATUS_STRIPE: Record<string, string> = {
+  outOfStock: '#ef4444',
+  lowStock: '#f59e0b',
+  active: '#22c55e',
+  inactive: '#94a3b8',
+}
+const getStripeKey = (p: ProductItem) => {
+  if (p.inventory.quantity <= 0) return 'outOfStock'
+  if (p.inventory.quantity <= p.inventory.minStock) return 'lowStock'
+  return p.isActive ? 'active' : 'inactive'
+}
+
 const emptyProductForm = {
   name: '',
   sku: '',
@@ -320,9 +333,9 @@ export default function AdminInventoryProductsPage() {
 
   // ─── Helpers ─────────────────────────────────────────
   const getStockBadge = (p: ProductItem) => {
-    if (p.inventory.quantity <= 0) return <Badge className="bg-red-100 text-red-800 border-0">Out of Stock</Badge>
-    if (p.inventory.quantity <= p.inventory.minStock) return <Badge className="bg-yellow-100 text-yellow-800 border-0">Low Stock</Badge>
-    return <Badge className="bg-green-100 text-green-800 border-0">In Stock</Badge>
+    if (p.inventory.quantity <= 0) return <Badge className="bg-red-100 text-red-700 border-0">Out of Stock</Badge>
+    if (p.inventory.quantity <= p.inventory.minStock) return <Badge className="bg-amber-100 text-amber-700 border-0">Low Stock</Badge>
+    return <Badge className="bg-emerald-100 text-emerald-700 border-0">In Stock</Badge>
   }
 
   // ─── Product Form (shared by Add & Edit) ─────────────
@@ -414,7 +427,7 @@ export default function AdminInventoryProductsPage() {
           </div>
         </div>
         {formData.priceCost && formData.priceSelling && (
-          <div className="p-3 bg-green-50 rounded-lg text-sm text-green-800">
+          <div className="p-3 bg-emerald-50 rounded-xl text-sm text-emerald-700 font-medium">
             Margin: {formatCurrency(Number(formData.priceSelling) - Number(formData.priceCost))} ({(((Number(formData.priceSelling) - Number(formData.priceCost)) / Number(formData.priceSelling)) * 100).toFixed(1)}%)
           </div>
         )}
@@ -476,12 +489,12 @@ export default function AdminInventoryProductsPage() {
       <main className="lg:pl-64 transition-all duration-300">
         <div className="p-6 space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#1A1D29]">Products</h1>
-              <p className="text-[#6B7280] mt-1">Manage your product catalog and inventory</p>
+              <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Products</h1>
+              <p className="text-[#6B7280] mt-1 text-sm">Manage your product catalog and inventory</p>
             </div>
-            <Button onClick={handleOpenAdd} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
+            <Button onClick={handleOpenAdd} className="bg-[#1B3B6F] hover:bg-[#0F2545] shadow-sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
@@ -489,54 +502,50 @@ export default function AdminInventoryProductsPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Package className="h-5 w-5 text-[#1B3B6F]" />
-                  <div>
-                    <p className="text-2xl font-bold text-[#1A1D29]">{stats.total}</p>
-                    <p className="text-xs text-[#6B7280]">Total Products</p>
-                  </div>
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Total Products</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#1B3B6F]/10">
+                  <Package className="h-[18px] w-[18px] text-[#1B3B6F]" />
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-[#1A1D29]">{stats.active}</p>
-                    <p className="text-xs text-[#6B7280]">Active</p>
-                  </div>
+              </div>
+              <p className="mt-2 text-3xl font-extrabold text-[#1A1D29]">{stats.total}</p>
+              <p className="text-xs text-gray-400 mt-1">Across catalog</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Active</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50">
+                  <TrendingUp className="h-[18px] w-[18px] text-emerald-600" />
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-[#1A1D29]">{stats.lowStock}</p>
-                    <p className="text-xs text-[#6B7280]">Low Stock</p>
-                  </div>
+              </div>
+              <p className="mt-2 text-3xl font-extrabold text-[#1A1D29]">{stats.active}</p>
+              <p className="text-xs text-gray-400 mt-1">Currently listed</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Low Stock</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50">
+                  <AlertTriangle className="h-[18px] w-[18px] text-amber-600" />
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-[#1A1D29]">{stats.outOfStock}</p>
-                    <p className="text-xs text-[#6B7280]">Out of Stock</p>
-                  </div>
+              </div>
+              <p className="mt-2 text-3xl font-extrabold text-[#1A1D29]">{stats.lowStock}</p>
+              <p className="text-xs text-gray-400 mt-1">Needs reorder</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Out of Stock</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-red-50">
+                  <TrendingDown className="h-[18px] w-[18px] text-red-600" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="mt-2 text-3xl font-extrabold text-[#1A1D29]">{stats.outOfStock}</p>
+              <p className="text-xs text-gray-400 mt-1">Unavailable</p>
+            </div>
           </div>
 
           {/* Filters */}
-          <Card className="border-0 shadow-sm">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm">
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <div className="flex-1 max-w-md relative">
@@ -545,12 +554,12 @@ export default function AdminInventoryProductsPage() {
                     placeholder="Search by name, SKU..."
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
-                    className="pl-10"
+                    className="pl-10 h-9 text-sm bg-gray-50 border-gray-200 focus:bg-white"
                   />
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setPage(1) }}>
-                    <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Categories" /></SelectTrigger>
+                    <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue placeholder="All Categories" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
                       {categories.filter((c) => c.isActive).map((c) => (
@@ -559,7 +568,7 @@ export default function AdminInventoryProductsPage() {
                     </SelectContent>
                   </Select>
                   <Select value={brandFilter} onValueChange={(v) => { setBrandFilter(v); setPage(1) }}>
-                    <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Brands" /></SelectTrigger>
+                    <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="All Brands" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Brands</SelectItem>
                       {brands.filter((b) => b.isActive).map((b) => (
@@ -568,7 +577,7 @@ export default function AdminInventoryProductsPage() {
                     </SelectContent>
                   </Select>
                   <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
-                    <SelectTrigger className="w-[130px]"><SelectValue placeholder="All Status" /></SelectTrigger>
+                    <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue placeholder="All Status" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
@@ -581,7 +590,7 @@ export default function AdminInventoryProductsPage() {
           </Card>
 
           {/* Products Table */}
-          <Card className="border-0 shadow-sm">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <CardContent className="p-0">
               {loading && products.length === 0 ? (
                 <div className="flex justify-center py-16">
@@ -589,35 +598,42 @@ export default function AdminInventoryProductsPage() {
                 </div>
               ) : products.length === 0 ? (
                 <div className="text-center py-16">
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                    <Package className="h-7 w-7 text-gray-400" />
+                  </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
                   <p className="text-gray-500 mb-4">Try adjusting your filters or add a new product</p>
-                  <Button onClick={handleOpenAdd} className="bg-[#1B3B6F]">
+                  <Button onClick={handleOpenAdd} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
                     <Plus className="h-4 w-4 mr-2" /> Add Product
                   </Button>
                 </div>
               ) : (
                 <>
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-gray-50">
-                        <TableHead>Product</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Brand</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Stock</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Rating</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                      <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Brand</TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Stock</TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Rating</TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {products.map((product) => (
-                        <TableRow key={product._id} className="hover:bg-gray-50">
+                        <TableRow
+                          key={product._id}
+                          className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                          style={{ borderLeftColor: STATUS_STRIPE[getStripeKey(product)] }}
+                        >
                           <TableCell>
                             <div className="flex items-center space-x-3">
                               {product.thumbnail?.url ? (
-                                <img src={product.thumbnail.url} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+                                <img src={product.thumbnail.url} alt={product.name} className="w-10 h-10 rounded-lg object-cover border border-gray-100" />
                               ) : (
                                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                                   <Package className="h-5 w-5 text-gray-400" />
@@ -635,9 +651,9 @@ export default function AdminInventoryProductsPage() {
                           <TableCell className="text-sm font-medium">{getBrandName(product.brand)}</TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{formatCurrency(product.price.selling)}</div>
+                              <div className="font-medium tabular-nums">{formatCurrency(product.price.selling)}</div>
                               {product.price.mrp > product.price.selling && (
-                                <div className="text-xs text-gray-400 line-through">{formatCurrency(product.price.mrp)}</div>
+                                <div className="text-xs text-gray-400 line-through tabular-nums">{formatCurrency(product.price.mrp)}</div>
                               )}
                             </div>
                           </TableCell>
@@ -648,7 +664,7 @@ export default function AdminInventoryProductsPage() {
                               onClick={() => { setSelectedProduct(product); setStockQty(''); setIsStockOpen(true) }}
                             >
                               <div className="flex items-center gap-2">
-                                <span className={`font-medium ${product.inventory.quantity <= product.inventory.minStock ? 'text-red-600' : 'text-green-600'}`}>
+                                <span className={`font-medium tabular-nums ${product.inventory.quantity <= product.inventory.minStock ? 'text-red-600' : 'text-green-600'}`}>
                                   {product.inventory.quantity}
                                 </span>
                                 {getStockBadge(product)}
@@ -656,14 +672,14 @@ export default function AdminInventoryProductsPage() {
                             </Button>
                           </TableCell>
                           <TableCell>
-                            <Badge className={product.isActive ? 'bg-green-100 text-green-800 border-0' : 'bg-gray-100 text-gray-600 border-0'}>
+                            <Badge className={product.isActive ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-gray-100 text-gray-600 border-0'}>
                               {product.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
-                              <Star className="h-3.5 w-3.5 text-yellow-500" />
-                              <span className="text-sm font-medium">{product.reviewsSummary?.averageRating?.toFixed(1) || '0.0'}</span>
+                              <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-400" />
+                              <span className="text-sm font-medium tabular-nums">{product.reviewsSummary?.averageRating?.toFixed(1) || '0.0'}</span>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
@@ -698,18 +714,19 @@ export default function AdminInventoryProductsPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
 
                   {/* Pagination */}
-                  <div className="flex items-center justify-between p-4 border-t">
+                  <div className="flex items-center justify-between p-4 border-t border-gray-100">
                     <p className="text-sm text-gray-500">
                       Showing {(page - 1) * 10 + 1}–{Math.min(page * 10, pagination.total)} of {pagination.total}
                     </p>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={page <= 1} onClick={() => setPage(page - 1)}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <span className="text-sm font-medium px-2">Page {page} of {pagination.pages}</span>
-                      <Button variant="outline" size="sm" disabled={page >= pagination.pages} onClick={() => setPage(page + 1)}>
+                      <span className="text-sm font-medium px-2 tabular-nums">Page {page} of {pagination.pages}</span>
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={page >= pagination.pages} onClick={() => setPage(page + 1)}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -723,7 +740,12 @@ export default function AdminInventoryProductsPage() {
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
               <DialogHeader>
-                <DialogTitle>Add New Product</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center">
+                    <Plus className="h-4 w-4 text-[#1B3B6F]" />
+                  </div>
+                  Add New Product
+                </DialogTitle>
                 <DialogDescription>Create a new product in your inventory</DialogDescription>
               </DialogHeader>
               <ProductForm />
@@ -741,7 +763,12 @@ export default function AdminInventoryProductsPage() {
           <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
               <DialogHeader>
-                <DialogTitle>Edit Product</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Edit className="h-4 w-4 text-blue-600" />
+                  </div>
+                  Edit Product
+                </DialogTitle>
                 <DialogDescription>Update product details</DialogDescription>
               </DialogHeader>
               <ProductForm />
@@ -759,32 +786,37 @@ export default function AdminInventoryProductsPage() {
           <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
             <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
               <DialogHeader>
-                <DialogTitle>Product Details</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center">
+                    <Package className="h-4 w-4 text-[#1B3B6F]" />
+                  </div>
+                  Product Details
+                </DialogTitle>
               </DialogHeader>
               {selectedProduct && (
                 <div className="space-y-5">
                   {/* Thumb + Images */}
                   <div className="flex gap-3 flex-wrap">
                     {selectedProduct.thumbnail?.url && (
-                      <img src={selectedProduct.thumbnail.url} alt="thumb" className="w-24 h-24 rounded-lg object-cover border-2 border-blue-300" />
+                      <img src={selectedProduct.thumbnail.url} alt="thumb" className="w-24 h-24 rounded-xl object-cover border-2 border-[#1B3B6F]/30" />
                     )}
                     {selectedProduct.images?.map((img, i) => (
-                      <img key={i} src={img.url} alt={`img-${i}`} className="w-20 h-20 rounded-lg object-cover border" />
+                      <img key={i} src={img.url} alt={`img-${i}`} className="w-20 h-20 rounded-xl object-cover border border-gray-100" />
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-2 gap-4 text-sm rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                     <div><p className="text-gray-500">Name</p><p className="font-medium">{selectedProduct.name}</p></div>
                     <div><p className="text-gray-500">SKU</p><p className="font-medium">{selectedProduct.sku}</p></div>
                     <div><p className="text-gray-500">Category</p><p className="font-medium">{getCatName(selectedProduct.category)}</p></div>
                     <div><p className="text-gray-500">Brand</p><p className="font-medium">{getBrandName(selectedProduct.brand)}</p></div>
                     <div><p className="text-gray-500">Vehicle Type</p><p className="font-medium">{selectedProduct.vehicleType}</p></div>
-                    <div><p className="text-gray-500">Status</p><Badge className={selectedProduct.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>{selectedProduct.isActive ? 'Active' : 'Inactive'}</Badge></div>
-                    <div><p className="text-gray-500">Cost Price</p><p className="font-medium">{formatCurrency(selectedProduct.price.cost)}</p></div>
-                    <div><p className="text-gray-500">Selling Price</p><p className="font-medium">{formatCurrency(selectedProduct.price.selling)}</p></div>
-                    <div><p className="text-gray-500">MRP</p><p className="font-medium">{formatCurrency(selectedProduct.price.mrp)}</p></div>
-                    <div><p className="text-gray-500">Stock</p><p className="font-medium">{selectedProduct.inventory.quantity} units</p></div>
-                    <div><p className="text-gray-500">Min Stock</p><p className="font-medium">{selectedProduct.inventory.minStock}</p></div>
-                    <div><p className="text-gray-500">Rating</p><div className="flex items-center gap-1"><Star className="h-4 w-4 text-yellow-500" /><span className="font-medium">{selectedProduct.reviewsSummary?.averageRating?.toFixed(1) || '0'} ({selectedProduct.reviewsSummary?.totalReviews || 0})</span></div></div>
+                    <div><p className="text-gray-500">Status</p><Badge className={selectedProduct.isActive ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-gray-100 text-gray-600 border-0'}>{selectedProduct.isActive ? 'Active' : 'Inactive'}</Badge></div>
+                    <div><p className="text-gray-500">Cost Price</p><p className="font-medium tabular-nums">{formatCurrency(selectedProduct.price.cost)}</p></div>
+                    <div><p className="text-gray-500">Selling Price</p><p className="font-medium tabular-nums">{formatCurrency(selectedProduct.price.selling)}</p></div>
+                    <div><p className="text-gray-500">MRP</p><p className="font-medium tabular-nums">{formatCurrency(selectedProduct.price.mrp)}</p></div>
+                    <div><p className="text-gray-500">Stock</p><p className="font-medium tabular-nums">{selectedProduct.inventory.quantity} units</p></div>
+                    <div><p className="text-gray-500">Min Stock</p><p className="font-medium tabular-nums">{selectedProduct.inventory.minStock}</p></div>
+                    <div><p className="text-gray-500">Rating</p><div className="flex items-center gap-1"><Star className="h-4 w-4 text-yellow-500 fill-yellow-400" /><span className="font-medium tabular-nums">{selectedProduct.reviewsSummary?.averageRating?.toFixed(1) || '0'} ({selectedProduct.reviewsSummary?.totalReviews || 0})</span></div></div>
                     <div className="col-span-2"><p className="text-gray-500">Description</p><p className="text-sm">{selectedProduct.description}</p></div>
                     {selectedProduct.tags?.length > 0 && (
                       <div className="col-span-2">
@@ -804,7 +836,12 @@ export default function AdminInventoryProductsPage() {
           <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
             <DialogContent className="max-w-sm">
               <DialogHeader>
-                <DialogTitle>Delete Product</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center">
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </div>
+                  Delete Product
+                </DialogTitle>
                 <DialogDescription>
                   Are you sure you want to delete &ldquo;{selectedProduct?.name}&rdquo;? This cannot be undone.
                 </DialogDescription>
@@ -823,7 +860,12 @@ export default function AdminInventoryProductsPage() {
           <Dialog open={isStockOpen} onOpenChange={setIsStockOpen}>
             <DialogContent className="max-w-sm">
               <DialogHeader>
-                <DialogTitle>Add Stock</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <PlusCircle className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  Add Stock
+                </DialogTitle>
                 <DialogDescription>
                   Current stock for {selectedProduct?.name}: <strong>{selectedProduct?.inventory?.quantity}</strong> units
                 </DialogDescription>

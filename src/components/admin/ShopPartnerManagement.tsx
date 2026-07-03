@@ -251,39 +251,65 @@ export function ShopPartnerManagement() {
   const formatCurrency = (val: number) =>
     (val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
 
+  // Presentational only — left-edge accent per shop status, mirrors the STATUS_STRIPE
+  // pattern used on other admin list pages (e.g. OrderManagement).
+  const shopStripe = (shop: any) =>
+    !shop.isActive ? '#ef4444' : shop.isVerified ? '#22c55e' : '#f59e0b'
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Shop Partners</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your partner shop network</p>
+          <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Shop Partners</h1>
+          <p className="text-[#6B7280] text-sm mt-1">Manage your partner shop network</p>
         </div>
         <Button
-          className="bg-[#FF6B35] hover:bg-[#e55a28] text-white"
+          className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm"
           onClick={() => { resetForm(); setShowCreateDialog(true) }}
         >
           <Plus className="h-4 w-4 mr-2" /> Add Shop Partner
         </Button>
       </div>
 
-      {/* Stats */}
+      {/* Stats: commission hero + metric cards */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {[
-            { label: 'Total Shops', value: stats.totalShops, icon: Store, color: 'text-blue-600 bg-blue-50' },
-            { label: 'Active', value: stats.activeShops, icon: CheckCircle, color: 'text-green-600 bg-green-50' },
-            { label: 'Verified', value: stats.verifiedShops, icon: ShieldCheck, color: 'text-purple-600 bg-purple-50' },
-            { label: 'Total Orders', value: stats.totalOrders, icon: Package, color: 'text-orange-600 bg-orange-50' },
-            { label: 'Commission Earned', value: formatCurrency(stats.totalCommissionEarned), icon: IndianRupee, color: 'text-emerald-600 bg-emerald-50' },
-          ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl border p-4">
-              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center mb-2', s.color)}>
-                <s.icon className="h-4 w-4" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+            <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+            <div className="relative flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">Commission Earned</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+                <IndianRupee className="h-[18px] w-[18px] text-white" />
               </div>
-              <p className="text-xl font-bold text-gray-900">{s.value}</p>
-              <p className="text-xs text-gray-500">{s.label}</p>
             </div>
-          ))}
+            <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white">
+              {formatCurrency(stats.totalCommissionEarned)}
+            </p>
+            <div className="relative mt-3 flex items-center gap-2 text-[12px] text-white/70">
+              <Package className="h-3.5 w-3.5" />
+              <span><b className="text-white">{stats.totalOrders}</b> orders across the network</span>
+            </div>
+          </div>
+
+          <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Total Shops', value: stats.totalShops, icon: Store, tint: 'text-blue-600 bg-blue-50' },
+              { label: 'Active Shops', value: stats.activeShops, icon: CheckCircle, tint: 'text-emerald-600 bg-emerald-50' },
+              { label: 'Verified', value: stats.verifiedShops, icon: ShieldCheck, tint: 'text-violet-600 bg-violet-50' },
+              { label: 'Total Orders', value: stats.totalOrders, icon: Package, tint: 'text-orange-600 bg-orange-50' },
+            ].map(s => (
+              <div key={s.label} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className={cn('grid h-9 w-9 place-items-center rounded-xl', s.tint)}>
+                    <s.icon className="h-4 w-4" />
+                  </div>
+                </div>
+                <p className="mt-2 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{s.value}</p>
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">{s.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -292,42 +318,44 @@ export function ShopPartnerManagement() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text" value={search} onChange={e => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]"
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 bg-gray-50 focus:bg-white rounded-xl text-sm transition-colors focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
           placeholder="Search shops by name or city..."
         />
       </div>
 
       {/* Shops List */}
       {loading ? (
-        <div className="flex justify-center py-12">
+        <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-[#FF6B35]" />
         </div>
       ) : shops.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 bg-white rounded-xl border">
-          <Store className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p className="font-medium">No shop partners found</p>
-          <p className="text-sm mt-1">Click &quot;Add Shop Partner&quot; to onboard a new partner</p>
+        <div className="text-center py-16 text-gray-500 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+            <Store className="h-7 w-7 text-gray-400" />
+          </div>
+          <p className="font-medium text-[#1A1D29]">No shop partners found</p>
+          <p className="text-sm mt-1 text-gray-400">Click &quot;Add Shop Partner&quot; to onboard a new partner</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {shops.map(shop => (
             <div key={shop._id} className={cn(
-              'bg-white rounded-xl border p-5 space-y-3 transition-all hover:shadow-md',
+              'bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3 border-l-[3px] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
               !shop.isActive && 'opacity-60'
-            )}>
+            )} style={{ borderLeftColor: shopStripe(shop) }}>
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-bold text-gray-900">{shop.shopName}</h3>
+                  <h3 className="font-bold text-[#1A1D29]">{shop.shopName}</h3>
                   <p className="text-sm text-gray-500">{shop.user?.fullName}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {shop.isVerified ? (
-                    <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
+                    <span className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1">
                       <ShieldCheck className="h-3 w-3" /> Verified
                     </span>
                   ) : (
-                    <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                    <span className="bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
                       Unverified
                     </span>
                   )}
@@ -335,7 +363,7 @@ export function ShopPartnerManagement() {
               </div>
 
               {/* Info */}
-              <div className="text-sm space-y-1">
+              <div className="text-sm space-y-1.5">
                 <p className="flex items-center gap-2 text-gray-600">
                   <Phone className="h-3.5 w-3.5 text-gray-400" /> {shop.user?.phone || shop.shopPhone}
                 </p>
@@ -348,47 +376,49 @@ export function ShopPartnerManagement() {
               </div>
 
               {/* Stats row */}
-              <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 rounded-lg p-2">
+              <div className="grid grid-cols-3 gap-2 text-center bg-[#F6F8FB] rounded-xl p-2.5">
                 <div>
-                  <p className="text-sm font-bold text-gray-900">{shop.totalJobsCompleted}</p>
-                  <p className="text-xs text-gray-500">Jobs</p>
+                  <p className="text-sm font-bold text-[#1A1D29] tabular-nums">{shop.totalJobsCompleted}</p>
+                  <p className="text-[11px] text-gray-500">Jobs</p>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-900">{shop.commissionRate}%</p>
-                  <p className="text-xs text-gray-500">Commission</p>
+                  <p className="text-sm font-bold text-[#1A1D29] tabular-nums">{shop.commissionRate}%</p>
+                  <p className="text-[11px] text-gray-500">Commission</p>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-900">{shop.rating || '0'}</p>
-                  <p className="text-xs text-gray-500">Rating</p>
+                  <p className="text-sm font-bold text-[#1A1D29] tabular-nums flex items-center justify-center gap-0.5">
+                    <Star className="h-3 w-3 text-amber-400 fill-amber-400" /> {shop.rating || '0'}
+                  </p>
+                  <p className="text-[11px] text-gray-500">Rating</p>
                 </div>
               </div>
 
               {/* Pending Settlement */}
               {shop.pendingSettlement > 0 && (
-                <div className="bg-amber-50 rounded-lg p-2 text-center">
-                  <p className="text-xs text-amber-600">Pending Settlement</p>
-                  <p className="text-sm font-bold text-amber-700">{formatCurrency(shop.pendingSettlement)}</p>
+                <div className="bg-amber-50 rounded-xl p-2 text-center border border-amber-100">
+                  <p className="text-xs text-amber-600 font-medium">Pending Settlement</p>
+                  <p className="text-sm font-bold text-amber-700 tabular-nums">{formatCurrency(shop.pendingSettlement)}</p>
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t">
-                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs flex-1"
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs flex-1 rounded-lg"
                   onClick={() => openMechanicDialog(shop)}>
                   <UserPlus className="h-3 w-3 mr-1" /> Mechanics
                 </Button>
-                <Button size="sm" variant="outline" className="text-xs flex-1 border-purple-300 text-purple-700"
+                <Button size="sm" variant="outline" className="text-xs flex-1 rounded-lg border-violet-300 text-violet-700 hover:bg-violet-50"
                   onClick={() => openKycDialog(shop)} disabled={actionLoading}>
                   <Shield className="h-3 w-3 mr-1" />
                   {shop.isVerified ? 'View KYC' : 'Review KYC'}
                 </Button>
-                <Button size="sm" variant="outline" className="text-xs flex-1"
+                <Button size="sm" variant="outline" className="text-xs flex-1 rounded-lg"
                   onClick={() => handleToggleStatus(shop._id)} disabled={actionLoading}>
                   {shop.isActive ? <ToggleRight className="h-3 w-3 mr-1" /> : <ToggleLeft className="h-3 w-3 mr-1" />}
                   {shop.isActive ? 'Disable' : 'Enable'}
                 </Button>
                 {shop.pendingSettlement > 0 && (
-                  <Button size="sm" variant="outline" className="text-xs text-green-600 flex-1"
+                  <Button size="sm" variant="outline" className="text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 flex-1 rounded-lg"
                     onClick={() => handleSettle(shop._id)} disabled={actionLoading}>
                     <IndianRupee className="h-3 w-3 mr-1" /> Settle
                   </Button>
@@ -402,57 +432,62 @@ export function ShopPartnerManagement() {
       {/* Create Dialog */}
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900">Add Shop Partner</h3>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#FF6B35]/10">
+                <Store className="h-5 w-5 text-[#FF6B35]" />
+              </div>
+              <h3 className="text-lg font-bold text-[#1A1D29]">Add Shop Partner</h3>
+            </div>
 
-            <div className="border-b pb-3">
-              <p className="text-sm font-medium text-gray-700 mb-3">Owner Details</p>
+            <div className="border-b border-gray-100 pb-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Owner Details</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500">Full Name *</label>
                   <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Owner name" />
+                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Owner name" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Phone *</label>
                   <input type="tel" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Phone number" />
+                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Phone number" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Email (optional)</label>
                   <input type="email" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Email address" />
+                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Email address" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Password</label>
                   <input type="text" value={ownerPassword} onChange={e => setOwnerPassword(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Leave empty = phone number" />
+                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Leave empty = phone number" />
                 </div>
               </div>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-3">Shop Details</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Shop Details</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
                   <label className="text-xs text-gray-500">Shop Name *</label>
                   <input type="text" value={shopName} onChange={e => setShopName(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="Shop name" />
+                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop name" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">City</label>
                   <input type="text" value={shopCity} onChange={e => setShopCity(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="City" />
+                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="City" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Commission Rate (%)</label>
                   <input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" placeholder="25" min={0} max={50} />
+                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="25" min={0} max={50} />
                 </div>
               </div>
             </div>
 
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">
               If password is empty, phone number will be used as default password.
             </p>
 
@@ -471,14 +506,19 @@ export function ShopPartnerManagement() {
       {/* Mechanic Assignment Dialog */}
       {showMechanicDialog && mechanicShop && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
             {/* Header */}
-            <div className="p-5 border-b flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Manage Mechanics</h3>
-                <p className="text-sm text-gray-500">{mechanicShop.shopName}</p>
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50">
+                  <UserPlus className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#1A1D29]">Manage Mechanics</h3>
+                  <p className="text-sm text-gray-500">{mechanicShop.shopName}</p>
+                </div>
               </div>
-              <button onClick={() => setShowMechanicDialog(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => setShowMechanicDialog(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
@@ -501,7 +541,7 @@ export function ShopPartnerManagement() {
                 ) : (
                   <div className="space-y-2">
                     {shopMechanics.map((mech: any) => (
-                      <div key={mech._id} className="flex items-center justify-between bg-indigo-50 rounded-lg px-4 py-3">
+                      <div key={mech._id} className="flex items-center justify-between bg-indigo-50 rounded-xl px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
                             {mech.name?.charAt(0)?.toUpperCase() || '?'}
@@ -520,13 +560,13 @@ export function ShopPartnerManagement() {
                             </span>
                           )}
                           <span className={cn(
-                            'px-2 py-0.5 rounded-full text-xs font-medium',
-                            mech.availability === 'available' ? 'bg-green-100 text-green-700' :
+                            'px-2 py-0.5 rounded-full text-xs font-semibold',
+                            mech.availability === 'available' ? 'bg-emerald-100 text-emerald-700' :
                             mech.availability === 'busy' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
                           )}>
                             {mech.availability}
                           </span>
-                          <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50 h-7 px-2"
+                          <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50 h-7 px-2 rounded-lg"
                             onClick={() => handleUnassignMechanic(mech._id)} disabled={mechanicLoading}>
                             <UserMinus className="h-3 w-3" />
                           </Button>
@@ -538,12 +578,12 @@ export function ShopPartnerManagement() {
               </div>
 
               {/* Divider */}
-              <div className="border-t" />
+              <div className="border-t border-gray-100" />
 
               {/* Search & Add Available Mechanics */}
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                  <UserPlus className="h-4 w-4 text-green-600" />
+                  <UserPlus className="h-4 w-4 text-emerald-600" />
                   Add Platform Mechanic
                 </h4>
                 <div className="relative mb-3">
@@ -557,13 +597,13 @@ export function ShopPartnerManagement() {
                 </div>
 
                 {availableMechanics.length === 0 ? (
-                  <div className="text-center py-4 text-gray-400 text-sm bg-gray-50 rounded-lg">
+                  <div className="text-center py-4 text-gray-400 text-sm bg-gray-50 rounded-xl">
                     {mechanicSearch ? 'No mechanics found' : 'No unassigned mechanics available'}
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {availableMechanics.map((mech: any) => (
-                      <div key={mech._id} className="flex items-center justify-between bg-white border rounded-lg px-4 py-3 hover:border-indigo-300 transition-colors">
+                      <div key={mech._id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3 hover:border-indigo-300 transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center text-sm font-bold">
                             {mech.name?.charAt(0)?.toUpperCase() || '?'}
@@ -583,7 +623,7 @@ export function ShopPartnerManagement() {
                               <Star className="h-3 w-3" /> {mech.rating?.toFixed(1)}
                             </span>
                           )}
-                          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white h-7 px-3 text-xs"
+                          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white h-7 px-3 text-xs rounded-lg"
                             onClick={() => handleAssignMechanic(mech._id)} disabled={mechanicLoading}>
                             <Plus className="h-3 w-3 mr-1" /> Assign
                           </Button>
@@ -596,7 +636,7 @@ export function ShopPartnerManagement() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t">
+            <div className="p-4 border-t border-gray-100">
               <Button variant="outline" className="w-full" onClick={() => setShowMechanicDialog(false)}>
                 Done
               </Button>
@@ -608,29 +648,29 @@ export function ShopPartnerManagement() {
       {/* Credentials Dialog — shown after successful creation */}
       {showCredentials && credentials && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 shadow-xl">
             <div className="text-center">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle className="h-6 w-6 text-emerald-600" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Shop Partner Created!</h3>
+              <h3 className="text-lg font-bold text-[#1A1D29]">Shop Partner Created!</h3>
               <p className="text-sm text-gray-500 mt-1">Share these login credentials with the shop owner</p>
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+            <div className="rounded-xl p-4 space-y-3 bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0]">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">Login ID:</span>
-                <span className="font-mono font-bold text-gray-900">{credentials.loginId}</span>
+                <span className="text-sm text-white/60">Login ID:</span>
+                <span className="font-mono font-bold text-white">{credentials.loginId}</span>
               </div>
-              <div className="border-t border-gray-200" />
+              <div className="border-t border-white/15" />
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">Password:</span>
-                <span className="font-mono font-bold text-gray-900">{credentials.password}</span>
+                <span className="text-sm text-white/60">Password:</span>
+                <span className="font-mono font-bold text-white">{credentials.password}</span>
               </div>
-              <div className="border-t border-gray-200" />
+              <div className="border-t border-white/15" />
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">Portal URL:</span>
-                <span className="font-mono text-sm text-[#FF6B35]">{credentials.loginUrl}</span>
+                <span className="text-sm text-white/60">Portal URL:</span>
+                <span className="font-mono text-sm text-orange-300">{credentials.loginUrl}</span>
               </div>
             </div>
 
@@ -663,17 +703,20 @@ export function ShopPartnerManagement() {
       {/* ─── KYC Review Dialog ─────────────────────────────────── */}
       {showKycDialog && kycShop && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-purple-600" /> KYC Review — {kycShop.shopName}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  Submitted {kycShop.kyc?.submittedAt ? new Date(kycShop.kyc.submittedAt).toLocaleString() : '—'}
-                </p>
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50">
+                  <Shield className="h-5 w-5 text-violet-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#1A1D29]">KYC Review — {kycShop.shopName}</h3>
+                  <p className="text-xs text-gray-400">
+                    Submitted {kycShop.kyc?.submittedAt ? new Date(kycShop.kyc.submittedAt).toLocaleString() : '—'}
+                  </p>
+                </div>
               </div>
-              <button onClick={() => { setShowKycDialog(false); setKycShop(null); setKycRejectReason('') }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowKycDialog(false); setKycShop(null); setKycRejectReason('') }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -681,8 +724,8 @@ export function ShopPartnerManagement() {
             <div className="p-6 space-y-5">
               {/* Status banner */}
               <div className={cn(
-                'rounded-xl p-3 text-sm flex items-center gap-2',
-                kycShop.isVerified ? 'bg-green-50 text-green-700' : kycShop.rejectionReason ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                'rounded-xl p-3 text-sm flex items-center gap-2 border',
+                kycShop.isVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : kycShop.rejectionReason ? 'bg-red-50 text-red-700 border-red-100' : 'bg-amber-50 text-amber-700 border-amber-100'
               )}>
                 {kycShop.isVerified ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                 <span className="font-medium">
@@ -697,11 +740,11 @@ export function ShopPartnerManagement() {
               {/* Owner */}
               <div>
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Owner</h4>
-                <div className="flex items-center gap-4 bg-gray-50 rounded-xl p-3">
+                <div className="flex items-center gap-4 bg-[#F6F8FB] rounded-xl p-3">
                   {kycShop.kyc?.ownerPhoto ? (
-                    <img src={kycShop.kyc.ownerPhoto} alt="Owner" className="w-20 h-20 rounded-xl object-cover border" />
+                    <img src={kycShop.kyc.ownerPhoto} alt="Owner" className="w-20 h-20 rounded-xl object-cover border border-gray-200" />
                   ) : (
-                    <div className="w-20 h-20 rounded-xl bg-white border flex items-center justify-center text-gray-300">
+                    <div className="w-20 h-20 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-300">
                       <Users className="h-8 w-8" />
                     </div>
                   )}
@@ -728,18 +771,18 @@ export function ShopPartnerManagement() {
                     { label: 'PAN', num: kycShop.kyc?.panNumber, img: kycShop.kyc?.panImage, required: true },
                     { label: 'GST', num: kycShop.kyc?.gstNumber, img: kycShop.kyc?.gstImage, required: false },
                   ].map(doc => (
-                    <div key={doc.label} className="bg-white border rounded-xl p-3 space-y-2">
+                    <div key={doc.label} className="bg-white border border-gray-100 rounded-xl p-3 space-y-2 shadow-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">{doc.label}</span>
-                        {doc.required && !doc.num && <span className="text-[10px] text-red-500">Missing</span>}
+                        {doc.required && !doc.num && <span className="bg-red-100 text-red-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">Missing</span>}
                       </div>
                       <p className="font-mono text-sm text-gray-900 truncate">{doc.num || '—'}</p>
                       {doc.img ? (
                         <a href={doc.img} target="_blank" rel="noreferrer" className="block">
-                          <img src={doc.img} alt={doc.label} className="w-full h-32 object-cover rounded border" />
+                          <img src={doc.img} alt={doc.label} className="w-full h-32 object-cover rounded-lg border border-gray-100" />
                         </a>
                       ) : (
-                        <div className="w-full h-32 bg-gray-50 rounded border border-dashed flex items-center justify-center text-xs text-gray-400">
+                        <div className="w-full h-32 bg-gray-50 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">
                           No image
                         </div>
                       )}
@@ -751,7 +794,7 @@ export function ShopPartnerManagement() {
               {/* Location */}
               <div>
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Shop Location</h4>
-                <div className="bg-gray-50 rounded-xl p-3 text-sm space-y-1">
+                <div className="bg-[#F6F8FB] rounded-xl p-3 text-sm space-y-1">
                   <p className="flex items-center gap-2 text-gray-700">
                     <MapPin className="h-4 w-4 text-gray-400" />
                     {kycShop.address?.city || kycShop.address?.street
@@ -780,7 +823,7 @@ export function ShopPartnerManagement() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {kycShop.shopImages.map((img: any, idx: number) => (
                       <a key={idx} href={img.url || img} target="_blank" rel="noreferrer">
-                        <img src={img.url || img} alt={`Shop ${idx + 1}`} className="w-full h-24 object-cover rounded border" />
+                        <img src={img.url || img} alt={`Shop ${idx + 1}`} className="w-full h-24 object-cover rounded-lg border border-gray-100" />
                       </a>
                     ))}
                   </div>
@@ -792,7 +835,7 @@ export function ShopPartnerManagement() {
                 <div>
                   <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Rejection Reason (optional)</h4>
                   <textarea
-                    className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-purple-300"
+                    className="w-full border border-gray-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-violet-300 focus:border-violet-300"
                     rows={2}
                     placeholder="If rejecting, explain what needs to be fixed"
                     value={kycRejectReason}
@@ -803,7 +846,7 @@ export function ShopPartnerManagement() {
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex flex-wrap gap-2 justify-end">
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex flex-wrap gap-2 justify-end rounded-b-2xl">
               <Button variant="outline" onClick={() => { setShowKycDialog(false); setKycShop(null); setKycRejectReason('') }}>
                 Close
               </Button>
@@ -818,7 +861,7 @@ export function ShopPartnerManagement() {
                     <XCircle className="h-4 w-4 mr-1" /> Reject KYC
                   </Button>
                   <Button
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     onClick={() => handleVerify(kycShop._id)}
                     disabled={actionLoading}
                   >
