@@ -170,6 +170,13 @@ export function OrderManagement() {
     wallet: { label: 'Wallet', className: 'bg-yellow-100 text-yellow-800', icon: CreditCard }
   }
 
+  // Left-edge stripe color per status — makes the table scannable at a glance.
+  const STATUS_STRIPE: Record<string, string> = {
+    placed: '#f59e0b', pending: '#f59e0b', confirmed: '#3b82f6', processing: '#f97316',
+    packed: '#a855f7', shipped: '#6366f1', out_for_delivery: '#06b6d4', delivered: '#22c55e',
+    cancelled: '#ef4444', return_requested: '#f59e0b', returned: '#94a3b8',
+  }
+
   // Utility functions
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -676,7 +683,7 @@ export function OrderManagement() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+                  <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
                     <TableHead className="w-[40px]">
                       <Checkbox
                         checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
@@ -724,7 +731,11 @@ export function OrderManagement() {
                   ) : paginatedOrders.map((order) => {
                     const StatusIcon = statusConfig[order.status]?.icon || Clock
                     return (
-                      <TableRow key={order.id || order._id} className="hover:bg-gray-50/50 transition-colors">
+                      <TableRow
+                        key={order.id || order._id}
+                        className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                        style={{ borderLeftColor: STATUS_STRIPE[order.status] || 'transparent' }}
+                      >
                         <TableCell>
                           <Checkbox
                             checked={selectedOrders.includes(order.id || order._id)}
@@ -1544,38 +1555,55 @@ function OrderViewDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Fixed Header */}
         <DialogHeader className="border-b pb-4 flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <FileText className="h-4 w-4 text-blue-600" />
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <DialogTitle className="flex flex-wrap items-center gap-2">
+                <div className="h-9 w-9 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center shrink-0">
+                  <FileText className="h-[18px] w-[18px] text-[#1B3B6F]" />
+                </div>
+                <span className="text-[#1A1D29]">Order {order.orderNumber}</span>
+                <Badge className={`ml-0.5 ${statusConfig[order.status]?.className || 'bg-gray-100 text-gray-800'}`}>
+                  {statusConfig[order.status]?.label || order.status}
+                </Badge>
+              </DialogTitle>
+              <DialogDescription className="mt-1.5">
+                Placed {formatDate(order.orderDate || order.createdAt)} · {(order.products || []).length} item{(order.products || []).length !== 1 ? 's' : ''}
+              </DialogDescription>
             </div>
-            Order Details — {order.orderNumber}
-          </DialogTitle>
-          <DialogDescription>Complete order information, items, and shipping details</DialogDescription>
+            <div className="text-right shrink-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Order total</p>
+              <p className="text-2xl font-extrabold text-[#1B3B6F] tabular-nums">{formatCurrency(order.totalAmount)}</p>
+            </div>
+          </div>
         </DialogHeader>
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto space-y-5 py-4 pr-1" style={{ scrollbarWidth: 'thin' }}>
           {/* Order Status and Basic Info */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <Label className="text-xs font-medium text-gray-500">Order Status</Label>
+            <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
+              <Label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Order Status</Label>
               <Badge className={`mt-1.5 ${statusConfig[order.status]?.className || 'bg-gray-100 text-gray-800'}`}>
                 {statusConfig[order.status]?.label || order.status}
               </Badge>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <Label className="text-xs font-medium text-gray-500">Payment Status</Label>
+            <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
+              <Label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Payment Status</Label>
               <Badge className={`mt-1.5 ${paymentStatusConfig[order.paymentStatus]?.className || 'bg-gray-100 text-gray-800'}`}>
                 {paymentStatusConfig[order.paymentStatus]?.label || order.paymentStatus}
               </Badge>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <Label className="text-xs font-medium text-gray-500">Order Date</Label>
-              <p className="text-sm font-medium mt-1">{formatDate(order.orderDate || order.createdAt)}</p>
+            <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
+              <Label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Order Date</Label>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-[#1A1D29]">
+                <Calendar className="h-3.5 w-3.5 text-gray-400" />{formatDate(order.orderDate || order.createdAt)}
+              </p>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <Label className="text-xs font-medium text-gray-500">Payment Method</Label>
-              <p className="text-sm font-medium mt-1 capitalize">{order.paymentMethod}</p>
+            <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
+              <Label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Payment Method</Label>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium capitalize text-[#1A1D29]">
+                <CreditCard className="h-3.5 w-3.5 text-gray-400" />{order.paymentMethod}
+              </p>
             </div>
           </div>
 
@@ -1660,10 +1688,9 @@ function OrderViewDialog({
                   <span>-{formatCurrency(order.discount)}</span>
                 </div>
               )}
-              <hr />
-              <div className="flex justify-between font-bold text-lg">
-                <span className="text-[#1A1D29]">Total:</span>
-                <span className="text-[#1B3B6F]">{formatCurrency(order.totalAmount)}</span>
+              <div className="mt-1 -mx-4 -mb-4 flex items-center justify-between rounded-b-lg bg-[#1B3B6F] px-4 py-3">
+                <span className="text-sm font-semibold text-white/80">Total payable</span>
+                <span className="text-lg font-extrabold text-white tabular-nums">{formatCurrency(order.totalAmount)}</span>
               </div>
             </div>
           </div>
