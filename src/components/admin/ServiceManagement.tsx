@@ -352,6 +352,14 @@ const statusConfig: Record<string, { color: string; icon: any; label: string }> 
   cancelled:       { color: 'bg-red-100 text-red-800 border-red-200',          icon: XCircle,     label: 'Cancelled' },
 };
 
+// Left-edge stripe color per request status — makes the table scannable at a glance.
+const STATUS_STRIPE: Record<string, string> = {
+  pending: '#f59e0b', assigned: '#3b82f6', accepted: '#6366f1', mechanic_assigned: '#6366f1',
+  on_way: '#06b6d4', diagnosis: '#f59e0b', approved: '#10b981', in_progress: '#a855f7',
+  'in-progress': '#a855f7', completed: '#22c55e', payment_pending: '#f97316', paid: '#16a34a',
+  rejected_quote: '#f43f5e', payment_refused: '#ef4444', cancelled: '#ef4444',
+};
+
 // Full status progression order (matches pricing flow)
 const STATUS_FLOW: ServiceRequest['status'][] = [
   'pending', 'assigned', 'accepted', 'on_way', 'diagnosis', 'approved', 'in_progress', 'completed', 'payment_pending', 'paid'
@@ -603,6 +611,30 @@ export function ServiceManagement() {
     }).format(amount)
   }
 
+  // Export the currently-filtered service requests to CSV (from existing state).
+  const exportCsv = () => {
+    const rows: string[][] = [['Request ID', 'Customer', 'Service', 'Status', 'Priority', 'Est. Cost', 'Mechanic', 'City', 'Date']]
+    filteredRequests.forEach((r: any) => {
+      rows.push([
+        r.requestId || r.id || r._id || '',
+        r.customer?.name || r.customer?.fullName || '',
+        r.serviceType || '',
+        r.status || '',
+        r.priority || '',
+        String(r.finalCost ?? r.totalCost ?? r.estimatedCost ?? 0),
+        r.mechanic?.name || r.mechanic?.fullName || '',
+        r.location?.city || '',
+        r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN') : '',
+      ])
+    })
+    const csv = rows.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    a.download = `service-requests-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
       year: 'numeric',
@@ -796,7 +828,7 @@ export function ServiceManagement() {
           <p className="text-[#6B7280] mt-1 text-sm">Manage service requests, mechanic assignments, and job tracking</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 text-xs">
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={exportCsv} disabled={filteredRequests.length === 0}>
             <Download className="h-3.5 w-3.5 mr-1.5" />
             Export
           </Button>
@@ -807,33 +839,76 @@ export function ServiceManagement() {
         </div>
       </div>
 
-      {/* Service Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-        {[
-          { label: 'Total Requests', value: stats.totalRequests, icon: Wrench, color: 'bg-blue-50 text-blue-600' },
-          { label: 'Pending', value: stats.pendingRequests, icon: Clock, color: 'bg-amber-50 text-amber-600' },
-          { label: 'Diagnosis', value: stats.diagnosisRequests, icon: Search, color: 'bg-orange-50 text-orange-600' },
-          { label: 'In Progress', value: stats.inProgressRequests, icon: Wrench, color: 'bg-purple-50 text-purple-600' },
-          { label: 'Completed', value: stats.completedRequests, icon: CheckCircle, color: 'bg-emerald-50 text-emerald-600' },
-          { label: 'Paid', value: stats.paidRequests, icon: CreditCard, color: 'bg-green-50 text-green-600' },
-          { label: 'Avg Rating', value: stats.avgRating?.toFixed(1) || '0', icon: Star, color: 'bg-amber-50 text-amber-600' },
-        ].map((card, i) => {
-          const Icon = card.icon
-          return (
-            <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`h-9 w-9 rounded-lg ${card.color} flex items-center justify-center`}>
-                    <Icon className="h-4.5 w-4.5" />
+      {/* KPI row: total-requests hero + clickable status filters */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+          <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+          <div className="relative flex items-center justify-between">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">Total requests</p>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+              <Wrench className="h-[18px] w-[18px] text-white" />
+            </div>
+          </div>
+          <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white tabular-nums">{stats.totalRequests}</p>
+          <div className="relative mt-3 flex items-center gap-3 text-[12px] text-white/70">
+            <span><b className="text-white">{stats.completedRequests}</b> completed</span>
+            <span className="text-white/30">·</span>
+            <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-amber-300" /><b className="text-white">{stats.avgRating?.toFixed(1) || '0'}</b></span>
+          </div>
+        </div>
+
+        {/* Clickable status stat cards (reuse the existing statusFilter) */}
+        <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[
+            { key: 'pending', label: 'Pending', value: stats.pendingRequests, icon: Clock, tint: 'text-amber-600 bg-amber-50' },
+            { key: 'diagnosis', label: 'Diagnosis', value: stats.diagnosisRequests, icon: Search, tint: 'text-orange-600 bg-orange-50' },
+            { key: 'in_progress', label: 'In Progress', value: stats.inProgressRequests, icon: Wrench, tint: 'text-purple-600 bg-purple-50' },
+            { key: 'completed', label: 'Completed', value: stats.completedRequests, icon: CheckCircle, tint: 'text-emerald-600 bg-emerald-50' },
+            { key: 'paid', label: 'Paid', value: stats.paidRequests, icon: CreditCard, tint: 'text-green-600 bg-green-50' },
+          ].map((s) => {
+            const Icon = s.icon
+            const active = statusFilter === s.key
+            return (
+              <button
+                key={s.key}
+                onClick={() => setStatusFilter(s.key)}
+                className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${active ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-gray-100'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`grid h-8 w-8 place-items-center rounded-lg ${s.tint}`}>
+                    <Icon className="h-4 w-4" />
                   </div>
+                  {active && <span className="text-[9px] font-bold uppercase tracking-wide text-[#1B3B6F]">Filtered</span>}
                 </div>
-                <p className="text-2xl font-bold text-[#1A1D29]">{card.value}</p>
-                <p className="text-xs text-[#6B7280] mt-0.5">{card.label}</p>
-              </CardContent>
-            </Card>
-          )
-        })}
+                <p className="mt-2 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{s.value}</p>
+                <p className="text-[11.5px] font-medium text-gray-500">{s.label}</p>
+              </button>
+            )
+          })}
+        </div>
       </div>
+
+      {/* Pipeline proportion bar */}
+      {(() => {
+        const seg = [
+          { v: stats.pendingRequests, c: 'bg-amber-400' },
+          { v: stats.diagnosisRequests, c: 'bg-orange-400' },
+          { v: stats.inProgressRequests, c: 'bg-purple-400' },
+          { v: stats.completedRequests, c: 'bg-emerald-500' },
+          { v: stats.paidRequests, c: 'bg-green-500' },
+        ]
+        const tot = seg.reduce((a, s) => a + (s.v || 0), 0)
+        return tot > 0 ? (
+          <div className="flex items-center gap-3">
+            <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+              {seg.map((s, i) => (s.v > 0 ? <div key={i} className={s.c} style={{ width: `${(s.v / tot) * 100}%` }} /> : null))}
+            </div>
+            <span className="whitespace-nowrap text-[11px] font-medium text-gray-400">{tot} in pipeline</span>
+          </div>
+        ) : null
+      })()}
 
       {/* Service Management Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -949,7 +1024,7 @@ export function ServiceManagement() {
               <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+                  <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
                     <TableHead className="w-10">
                       <Checkbox
                         checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
@@ -971,7 +1046,11 @@ export function ServiceManagement() {
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.map((request) => (
-                    <TableRow key={request._id} className="hover:bg-gray-50/50 transition-colors">
+                    <TableRow
+                      key={request._id}
+                      className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
+                      style={{ borderLeftColor: STATUS_STRIPE[request.status] || 'transparent' }}
+                    >
                       <TableCell>
                         <Checkbox
                           checked={selectedRequests.includes(request._id)}
