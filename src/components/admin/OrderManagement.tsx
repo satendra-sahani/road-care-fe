@@ -180,6 +180,29 @@ export function OrderManagement() {
     }).format(amount)
   }
 
+  // Export the currently-loaded orders to CSV (respects the active filters).
+  const exportCsv = () => {
+    const rows: string[][] = [['Order ID', 'Customer', 'Phone', 'Status', 'Payment', 'Method', 'Amount', 'Date']]
+    orders.forEach((o: any) => {
+      rows.push([
+        o.orderId || o.orderNumber || o.id || '',
+        o.customer?.name || '',
+        o.customer?.phone || '',
+        o.status || '',
+        o.paymentStatus || '',
+        o.paymentMethod || '',
+        String(o.totalAmount ?? 0),
+        o.createdAt ? new Date(o.createdAt).toLocaleString('en-IN') : '',
+      ])
+    })
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   const formatDate = (dateString: string) => {
     if (!dateString) return '-'
     const d = new Date(dateString)
@@ -442,16 +465,15 @@ export function OrderManagement() {
     }
   }
 
-  // KPI card data
-  const kpiCards = [
-    { label: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'bg-blue-50 text-blue-600', trend: null },
-    { label: 'Pending', value: stats.pendingOrders, icon: Clock, color: 'bg-amber-50 text-amber-600', trend: null },
-    { label: 'Processing', value: stats.processingOrders, icon: Package, color: 'bg-orange-50 text-orange-600', trend: null },
-    { label: 'Shipped', value: stats.shippedOrders, icon: Truck, color: 'bg-indigo-50 text-indigo-600', trend: null },
-    { label: 'Delivered', value: stats.deliveredOrders, icon: CheckCircle, color: 'bg-emerald-50 text-emerald-600', trend: null },
-    { label: 'Revenue', value: formatCurrency(stats.totalRevenue), icon: IndianRupee, color: 'bg-violet-50 text-violet-600', isText: true },
-    { label: 'Avg Value', value: formatCurrency(stats.averageOrderValue), icon: TrendingUp, color: 'bg-pink-50 text-pink-600', isText: true },
+  // Clickable status quick-filters (count from stats; a click sets the list filter)
+  const statusStats = [
+    { key: 'all',        label: 'Total Orders', value: stats.totalOrders,      icon: ShoppingBag, tint: 'text-slate-600 bg-slate-100',    bar: 'bg-slate-400' },
+    { key: 'pending',    label: 'Pending',      value: stats.pendingOrders,    icon: Clock,       tint: 'text-amber-600 bg-amber-50',     bar: 'bg-amber-400' },
+    { key: 'processing', label: 'Processing',   value: stats.processingOrders, icon: Package,     tint: 'text-orange-600 bg-orange-50',   bar: 'bg-orange-400' },
+    { key: 'shipped',    label: 'Shipped',      value: stats.shippedOrders,    icon: Truck,       tint: 'text-indigo-600 bg-indigo-50',   bar: 'bg-indigo-400' },
+    { key: 'delivered',  label: 'Delivered',    value: stats.deliveredOrders,  icon: CheckCircle, tint: 'text-emerald-600 bg-emerald-50', bar: 'bg-emerald-500' },
   ]
+  const pipeTotal = stats.pendingOrders + stats.processingOrders + stats.shippedOrders + stats.deliveredOrders
 
   return (
     <div className="min-h-screen">
@@ -466,7 +488,7 @@ export function OrderManagement() {
             <p className="text-[#6B7280] mt-1 text-sm">Manage customer orders, track deliveries, and handle returns</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="text-xs h-9">
+            <Button variant="outline" size="sm" className="text-xs h-9" onClick={exportCsv} disabled={orders.length === 0}>
               <Download className="h-3.5 w-3.5 mr-1.5" />
               Export
             </Button>
@@ -500,27 +522,64 @@ export function OrderManagement() {
           </div>
         )}
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-          {kpiCards.map((card, i) => {
-            const Icon = card.icon
-            return (
-              <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`h-9 w-9 rounded-lg ${card.color} flex items-center justify-center`}>
-                      <Icon className="h-4.5 w-4.5" />
+        {/* KPI row: revenue hero + clickable status filters */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+          {/* Revenue hero */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+            <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+            <div className="relative flex items-center justify-between">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">Total revenue</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+                <IndianRupee className="h-[18px] w-[18px] text-white" />
+              </div>
+            </div>
+            <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white">
+              {statsLoading ? '—' : formatCurrency(stats.totalRevenue)}
+            </p>
+            <div className="relative mt-3 flex items-center gap-3 text-[12px] text-white/70">
+              <span>Avg <b className="text-white">{formatCurrency(stats.averageOrderValue)}</b></span>
+              <span className="text-white/30">·</span>
+              <span><b className="text-white">{stats.totalOrders}</b> orders</span>
+            </div>
+          </div>
+
+          {/* Clickable status filter cards */}
+          <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {statusStats.map((s) => {
+              const Icon = s.icon
+              const active = selectedStatus === s.key
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setSelectedStatus(s.key)}
+                  className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${active ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-gray-100'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className={`grid h-8 w-8 place-items-center rounded-lg ${s.tint}`}>
+                      <Icon className="h-4 w-4" />
                     </div>
+                    {active && <span className="text-[9px] font-bold uppercase tracking-wide text-[#1B3B6F]">Filtered</span>}
                   </div>
-                  <p className={`font-bold text-[#1A1D29] ${card.isText ? 'text-lg' : 'text-2xl'}`}>
-                    {statsLoading ? '—' : card.isText ? card.value : card.value}
-                  </p>
-                  <p className="text-xs text-[#6B7280] mt-0.5">{card.label}</p>
-                </CardContent>
-              </Card>
-            )
-          })}
+                  <p className="mt-2 text-2xl font-extrabold text-[#1A1D29]">{statsLoading ? '—' : s.value}</p>
+                  <p className="text-[11.5px] font-medium text-gray-500">{s.label}</p>
+                </button>
+              )
+            })}
+          </div>
         </div>
+
+        {/* Pipeline proportion bar */}
+        {pipeTotal > 0 && (
+          <div className="flex items-center gap-3">
+            <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+              {statusStats.slice(1).map((s) => (
+                s.value > 0 ? <div key={s.key} className={s.bar} style={{ width: `${(s.value / pipeTotal) * 100}%` }} title={`${s.label}: ${s.value}`} /> : null
+              ))}
+            </div>
+            <span className="whitespace-nowrap text-[11px] font-medium text-gray-400">{pipeTotal} in pipeline</span>
+          </div>
+        )}
 
         {/* Filters and Search */}
         <Card className="border-0 shadow-sm">
