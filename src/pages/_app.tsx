@@ -67,6 +67,15 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <Provider store={store}>
+      {/* Expose the fonts at :root so PORTALED content (dialogs, toasts,
+          dropdowns) — which mounts on document.body, outside the wrapper div —
+          uses the app font instead of falling back to a system serif/sans. */}
+      <style jsx global>{`
+        :root {
+          --font-body: ${body.style.fontFamily};
+          --font-display: ${display.style.fontFamily};
+        }
+      `}</style>
       <LoginModalProvider>
       <AdminCallProvider>
       <IncomingCallProvider>

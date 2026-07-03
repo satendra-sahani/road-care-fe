@@ -73,6 +73,37 @@ export function AnalyticsOverview({ type = 'overview' }: AnalyticsOverviewProps)
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount)
   }
 
+  // Download the current analytics snapshot as CSV.
+  const exportCsv = () => {
+    const rev = data?.revenueData || {}
+    const m = data?.metrics || {}
+    const cats = data?.topProductCategories || []
+    const geo = data?.geographicData || []
+    const lines = [
+      `Bharat Mechanics — Analytics (${selectedPeriod})`,
+      `Generated,${new Date().toLocaleString('en-IN')}`, '',
+      'Metric,Value',
+      `Total revenue,${rev.current || 0}`,
+      `Previous period,${rev.previous || 0}`,
+      `Growth %,${rev.growth || 0}`,
+      `Products revenue,${rev.breakdown?.products || 0}`,
+      `Services revenue,${rev.breakdown?.services || 0}`,
+      `Delivery revenue,${rev.breakdown?.delivery || 0}`,
+      `Total orders,${m.totalOrders || 0}`,
+      `Active users,${m.activeUsers || 0}`,
+      `Active service requests,${m.activeServiceRequests || 0}`, '',
+      'Top category,Revenue,Orders',
+      ...cats.map((c: any) => `"${c.name}",${c.revenue || 0},${c.orders || 0}`), '',
+      'City,Revenue,Orders',
+      ...geo.map((c: any) => `"${c.city}",${c.revenue || 0},${c.orders || 0}`),
+    ]
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' }))
+    a.download = `analytics-${selectedPeriod}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   const getTitle = () => {
     switch (type) {
       case 'revenue': return 'Revenue Analytics'
@@ -184,36 +215,49 @@ export function AnalyticsOverview({ type = 'overview' }: AnalyticsOverviewProps)
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button variant="outline" className="rounded-xl h-10 border-gray-200 hidden sm:flex">
+            <Button variant="outline" onClick={exportCsv} className="rounded-xl h-10 border-gray-200 hidden sm:flex">
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
           </div>
         </div>
 
-        {/* KPI Cards */}
+        {/* KPI row: revenue hero + metric cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-          {kpiCards.map((card, idx) => {
+          {/* Revenue hero */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
+            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+            <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+            <div className="relative flex items-center justify-between">
+              <p className="text-[12.5px] font-semibold uppercase tracking-wide text-white/60">Total revenue</p>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+                <IndianRupee className="h-[18px] w-[18px] text-white" />
+              </div>
+            </div>
+            <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white">{formatCurrency(revenueData.current)}</p>
+            {revenueData.growth != null && (
+              <div className={`relative mt-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${revenueData.growth >= 0 ? 'bg-emerald-400/15 text-emerald-300' : 'bg-red-400/15 text-red-300'}`}>
+                {revenueData.growth >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                {revenueData.growth >= 0 ? '+' : ''}{revenueData.growth}% vs last period
+              </div>
+            )}
+          </div>
+
+          {/* Metric cards */}
+          {kpiCards.slice(1).map((card, idx) => {
             const Icon = card.icon
+            const tint = card.iconBg.replace('bg-', 'text-')
             return (
-              <Card key={idx} className="border border-gray-100 shadow-sm rounded-2xl">
+              <Card key={idx} className="border border-gray-100 shadow-sm rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                 <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-500">{card.title}</p>
-                      <p className="text-2xl lg:text-3xl font-bold text-[#1A1D29] mt-1.5 tracking-tight">{card.value}</p>
-                      {card.subtitle && <p className="text-xs text-gray-400 mt-1.5">{card.subtitle}</p>}
-                    </div>
-                    <div className={`${card.iconBg} h-11 w-11 rounded-xl flex items-center justify-center shrink-0`}>
-                      <Icon className="h-5 w-5 text-white" />
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12.5px] font-semibold uppercase tracking-wide text-gray-400">{card.title}</p>
+                    <div className={`grid h-9 w-9 place-items-center rounded-xl ${card.iconBg}/10`}>
+                      <Icon className={`h-[18px] w-[18px] ${tint}`} />
                     </div>
                   </div>
-                  {card.trend != null && (
-                    <div className={`flex items-center gap-1 mt-3 text-xs font-medium ${card.trend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {card.trend >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-                      {card.trend >= 0 ? '+' : ''}{card.trend}% from last period
-                    </div>
-                  )}
+                  <p className="mt-2 text-3xl font-extrabold text-[#1A1D29] tracking-tight">{card.value}</p>
+                  {card.subtitle && <p className="text-xs text-gray-400 mt-1">{card.subtitle}</p>}
                 </CardContent>
               </Card>
             )
