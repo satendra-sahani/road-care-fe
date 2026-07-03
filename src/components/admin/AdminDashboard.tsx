@@ -1,19 +1,15 @@
 'use client'
 
+// Admin Dashboard — fully dynamic command centre. Every number on this page
+// comes from a live API (overview + service-request stats + memberships +
+// trackers + shops + call stats fetched in parallel); nothing is fabricated.
 import * as React from 'react'
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  DollarSign,
   ShoppingCart,
   Users,
   Wrench,
-  TrendingUp,
-  TrendingDown,
-  Eye,
-  MoreHorizontal,
-  Calendar,
   Download,
-  Loader2,
   ArrowUpRight,
   ArrowDownRight,
   Package,
@@ -24,242 +20,274 @@ import {
   IndianRupee,
   Activity,
   BarChart3,
+  RefreshCw,
+  Crown,
+  Satellite,
+  Store,
+  Phone,
+  AlertTriangle,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { dashboardAPI } from '@/services/api'
+  dashboardAPI,
+  serviceRequestAPI,
+  adminMembershipsAPI,
+  adminTrackerAPI,
+  adminShopAPI,
+  adminCallLogsAPI,
+} from '@/services/api'
 import Link from 'next/link'
 import { AdminHeader } from './AdminHeader'
 
+const NAVY = '#1B3B6F'
+
+// ─── formatting helpers ──────────────────────────────────────────────
+const compactINR = (amount: number) => {
+  if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(2)}Cr`
+  if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`
+  if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`
+  return `₹${Math.round(amount).toLocaleString('en-IN')}`
+}
+const fullINR = (amount: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0)
+
+const timeAgo = (timestamp: string) => {
+  const diffMin = Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000)
+  if (isNaN(diffMin) || diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const h = Math.floor(diffMin / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+const ORDER_STATUS: Record<string, { color: string; bg: string; label: string; icon: any }> = {
+  placed: { color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', label: 'Placed', icon: Clock },
+  pending: { color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', label: 'Pending', icon: Clock },
+  confirmed: { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', label: 'Confirmed', icon: CheckCircle2 },
+  processing: { color: 'text-indigo-700', bg: 'bg-indigo-50 border-indigo-200', label: 'Processing', icon: Package },
+  shipped: { color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', label: 'Shipped', icon: Truck },
+  out_for_delivery: { color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', label: 'On the way', icon: Truck },
+  delivered: { color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', label: 'Delivered', icon: CheckCircle2 },
+  completed: { color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', label: 'Completed', icon: CheckCircle2 },
+  cancelled: { color: 'text-red-700', bg: 'bg-red-50 border-red-200', label: 'Cancelled', icon: XCircle },
+}
+
+const ACTIVITY_ICON: Record<string, { icon: any; color: string; bg: string }> = {
+  order: { icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-100' },
+  user: { icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+  service: { icon: Wrench, color: 'text-purple-600', bg: 'bg-purple-100' },
+  payment: { icon: IndianRupee, color: 'text-green-600', bg: 'bg-green-100' },
+  inventory: { icon: Package, color: 'text-orange-600', bg: 'bg-orange-100' },
+}
+
+const PIPELINE: Array<{ key: string; label: string; bar: string }> = [
+  { key: 'placed', label: 'Placed', bar: 'bg-amber-400' },
+  { key: 'confirmed', label: 'Confirmed', bar: 'bg-blue-500' },
+  { key: 'processing', label: 'Processing', bar: 'bg-indigo-500' },
+  { key: 'shipped', label: 'Shipped', bar: 'bg-purple-500' },
+  { key: 'delivered', label: 'Delivered', bar: 'bg-emerald-500' },
+  { key: 'cancelled', label: 'Cancelled', bar: 'bg-red-400' },
+]
+
 export function AdminDashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState('30d')
   const [loading, setLoading] = useState(true)
-  const [dashboardData, setDashboardData] = useState<any>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [dash, setDash] = useState<any>(null)
+  const [srStats, setSrStats] = useState<any>(null)
+  const [memberStats, setMemberStats] = useState<any>(null)
+  const [trackerStats, setTrackerStats] = useState<any>(null)
+  const [shopStats, setShopStats] = useState<any>(null)
+  const [callStats, setCallStats] = useState<any>(null)
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
 
-  useEffect(() => {
-    fetchDashboard()
-  }, [])
-
-  const fetchDashboard = async () => {
-    setLoading(true)
+  const fetchAll = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true)
     try {
-      const res = await dashboardAPI.getOverview()
-      const data = res.data?.data || res.data
-      setDashboardData(data)
-    } catch (err) {
-      console.error('Dashboard fetch error:', err)
+      // Everything in parallel — one slow endpoint never blanks the page.
+      const [ov, sr, mem, trk, shops, calls] = await Promise.allSettled([
+        dashboardAPI.getOverview(),
+        serviceRequestAPI.getStats(),
+        adminMembershipsAPI.getAll({ limit: 1 }),
+        adminTrackerAPI.getDevices({ limit: 1 }),
+        adminShopAPI.getStats(),
+        adminCallLogsAPI.getStats(),
+      ])
+      if (ov.status === 'fulfilled') setDash(ov.value.data?.data || ov.value.data)
+      if (sr.status === 'fulfilled') setSrStats(sr.value.data?.data || sr.value.data)
+      if (mem.status === 'fulfilled') setMemberStats(mem.value.data?.stats || null)
+      if (trk.status === 'fulfilled') setTrackerStats(trk.value.data?.stats || null)
+      if (shops.status === 'fulfilled') setShopStats(shops.value.data?.data || shops.value.data)
+      if (calls.status === 'fulfilled') setCallStats(calls.value.data?.data || calls.value.data)
+      setUpdatedAt(new Date())
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [])
 
-  const formatCurrency = (amount: number) => {
-    if (amount >= 100000) {
-      return `₹${(amount / 100000).toFixed(1)}L`
-    }
-    if (amount >= 1000) {
-      return `₹${(amount / 1000).toFixed(1)}K`
-    }
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
+  useEffect(() => {
+    fetchAll()
+    const t = setInterval(() => fetchAll(true), 60000) // live refresh every 60s
+    return () => clearInterval(t)
+  }, [fetchAll])
 
-  const formatFullCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
-
-  const getStatusConfig = (status: string) => {
-    const config: Record<string, { color: string; bg: string; label: string; icon: any }> = {
-      placed: { color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', label: 'Placed', icon: Clock },
-      pending: { color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', label: 'Pending', icon: Clock },
-      confirmed: { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', label: 'Confirmed', icon: CheckCircle2 },
-      processing: { color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', label: 'Processing', icon: Package },
-      shipped: { color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', label: 'Shipped', icon: Truck },
-      out_for_delivery: { color: 'text-indigo-700', bg: 'bg-indigo-50 border-indigo-200', label: 'Out for Delivery', icon: Truck },
-      delivered: { color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', label: 'Delivered', icon: CheckCircle2 },
-      completed: { color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', label: 'Completed', icon: CheckCircle2 },
-      cancelled: { color: 'text-red-700', bg: 'bg-red-50 border-red-200', label: 'Cancelled', icon: XCircle },
-    }
-    return config[status] || config.pending
-  }
-
-  const getActivityIcon = (type: string) => {
-    const config: Record<string, { icon: any; color: string; bg: string }> = {
-      order: { icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-100' },
-      user: { icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-      service: { icon: Wrench, color: 'text-purple-600', bg: 'bg-purple-100' },
-      payment: { icon: IndianRupee, color: 'text-green-600', bg: 'bg-green-100' },
-      inventory: { icon: Package, color: 'text-orange-600', bg: 'bg-orange-100' },
-    }
-    return config[type] || { icon: Activity, color: 'text-gray-600', bg: 'bg-gray-100' }
-  }
-
-  const formatTimeAgo = (timestamp: string) => {
-    const now = new Date()
-    const date = new Date(timestamp)
-    const diffMs = now.getTime() - date.getTime()
-    const diffMin = Math.floor(diffMs / 60000)
-    if (diffMin < 1) return 'Just now'
-    if (diffMin < 60) return `${diffMin}m ago`
-    const diffHr = Math.floor(diffMin / 60)
-    if (diffHr < 24) return `${diffHr}h ago`
-    const diffDays = Math.floor(diffHr / 24)
-    return `${diffDays}d ago`
+  // ── REAL export: download the current snapshot as CSV ──
+  const exportCsv = () => {
+    const summary = dash?.summary || {}
+    const byStatus = dash?.orders?.byStatus || {}
+    const lines: string[] = [
+      'Bharat Mechanics — Admin dashboard snapshot',
+      `Generated,${new Date().toLocaleString('en-IN')}`,
+      '',
+      'Metric,Value',
+      `Total revenue,${summary.totalRevenue || 0}`,
+      `Total orders,${summary.totalOrders || 0}`,
+      `Total users,${summary.totalUsers || 0}`,
+      `Products listed,${summary.totalProducts || 0}`,
+      `Active service requests,${summary.activeServiceRequests || 0}`,
+      `Active memberships,${memberStats?.active ?? ''}`,
+      `Membership revenue,${memberStats?.revenue ?? ''}`,
+      `Tracker devices,${trackerStats?.total ?? ''}`,
+      '',
+      'Order status,Count',
+      ...PIPELINE.map((p) => `${p.label},${byStatus[p.key] || 0}`),
+      '',
+      'Recent orders',
+      'Order,Customer,Status,Amount,Time',
+      ...(dash?.recentOrders || []).map((o: any) =>
+        `${o.id},"${o.customer || ''}",${o.status},${o.amount || 0},${o.timestamp || ''}`),
+    ]
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `bm-dashboard-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
   }
 
   if (loading) {
     return (
       <>
         <AdminHeader />
-        <div className="p-6 lg:p-8">
-          {/* Skeleton loading */}
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-1/3" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-[140px] bg-white rounded-2xl" />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 h-[400px] bg-white rounded-2xl" />
-              <div className="h-[400px] bg-white rounded-2xl" />
-            </div>
+        <div className="p-6 lg:p-8 animate-pulse space-y-6">
+          <div className="h-24 rounded-2xl bg-slate-200/70" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-[132px] rounded-2xl bg-white" />)}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-[380px] rounded-2xl bg-white" />
+            <div className="h-[380px] rounded-2xl bg-white" />
           </div>
         </div>
       </>
     )
   }
 
-  const summary = dashboardData?.summary || {}
-  const recentOrders = dashboardData?.recentOrders || []
-  const topCategories = dashboardData?.topCategories || []
-  const recentActivities = dashboardData?.recentActivities || []
+  const summary = dash?.summary || {}
+  const recentOrders = dash?.recentOrders || []
+  const topCategories = dash?.topCategories || []
+  const recentActivities = dash?.recentActivities || []
+  const byStatus = dash?.orders?.byStatus || {}
+  const activeOrders = (byStatus.placed || 0) + (byStatus.confirmed || 0) + (byStatus.processing || 0) + (byStatus.shipped || 0) + (byStatus.out_for_delivery || 0)
+  const pipelineTotal = PIPELINE.reduce((n, p) => n + (byStatus[p.key] || 0), 0)
 
-  const ordersByStatus = dashboardData?.orders?.byStatus || {}
-  const activeOrders = (ordersByStatus.placed || 0) + (ordersByStatus.confirmed || 0) +
-    (ordersByStatus.processing || 0) + (ordersByStatus.shipped || 0) + (ordersByStatus.out_for_delivery || 0)
+  const srActive = srStats ? (srStats.pending || 0) + (srStats.assigned || 0) + (srStats.inProgress || 0) : (summary.activeServiceRequests || 0)
+  const srEmergency = srStats?.emergency || 0
 
-  const kpiCards = [
-    {
-      title: 'Total Revenue',
-      value: formatCurrency(summary.totalRevenue || 0),
-      subtitle: `From ${summary.totalOrders || 0} orders`,
-      icon: IndianRupee,
-      iconBg: 'bg-emerald-500',
-      trend: summary.revenueGrowth || null,
-      href: '/admin/financial/revenue',
-    },
-    {
-      title: 'Active Orders',
-      value: activeOrders,
-      subtitle: `${summary.totalOrders || 0} total orders`,
-      icon: ShoppingCart,
-      iconBg: 'bg-blue-500',
-      trend: null,
-      href: '/admin/orders',
-    },
-    {
-      title: 'Total Users',
-      value: (summary.totalUsers || 0).toLocaleString(),
-      subtitle: `${summary.totalProducts || 0} products listed`,
-      icon: Users,
-      iconBg: 'bg-violet-500',
-      trend: summary.userGrowth || null,
-      href: '/admin/users/customers',
-    },
-    {
-      title: 'Service Requests',
-      value: summary.activeServiceRequests || 0,
-      subtitle: 'Active requests',
-      icon: Wrench,
-      iconBg: 'bg-orange-500',
-      trend: null,
-      href: '/admin/services/requests',
-    },
-  ]
+  // Platform pulse — live counts across every product area (only render tiles
+  // whose endpoint answered, so nothing shows a made-up zero on API failure).
+  const pulseTiles = [
+    srStats && { icon: Wrench, label: 'Service requests', value: srActive, sub: `${srStats.completed || 0} completed`, href: '/admin/services/requests', tint: 'text-orange-600 bg-orange-50' },
+    shopStats && { icon: Store, label: 'Shop partners', value: shopStats.total ?? shopStats.totalShops ?? 0, sub: `${shopStats.verified ?? shopStats.verifiedShops ?? 0} verified`, href: '/admin/shops', tint: 'text-amber-600 bg-amber-50' },
+    memberStats && { icon: Crown, label: 'BM Care members', value: memberStats.active || 0, sub: `${compactINR(memberStats.revenue || 0)} revenue`, href: '/admin/subscriptions/memberships', tint: 'text-violet-600 bg-violet-50' },
+    trackerStats && { icon: Satellite, label: 'GPS trackers', value: trackerStats.total || 0, sub: `${trackerStats.reporting24h || 0} reporting`, href: '/admin/subscriptions/trackers', tint: 'text-sky-600 bg-sky-50' },
+    callStats && { icon: Phone, label: 'Calls today', value: callStats.today ?? callStats.todayCalls ?? 0, sub: `${callStats.total ?? callStats.totalCalls ?? 0} all-time`, href: '/admin/communication/call-logs', tint: 'text-emerald-600 bg-emerald-50' },
+  ].filter(Boolean) as Array<{ icon: any; label: string; value: number; sub: string; href: string; tint: string }>
 
-  const progressBarColors = [
-    'bg-[#1B3B6F]',
-    'bg-[#FF6B35]',
-    'bg-emerald-500',
-    'bg-violet-500',
-    'bg-blue-500',
-    'bg-amber-500',
+  const kpis = [
+    {
+      title: 'Active Orders', value: activeOrders, subtitle: `${summary.totalOrders || 0} orders all-time`,
+      icon: ShoppingCart, tint: 'bg-blue-500/10 text-blue-600', href: '/admin/orders', trend: null as number | null,
+    },
+    {
+      title: 'Total Users', value: (summary.totalUsers || 0).toLocaleString('en-IN'), subtitle: `${summary.totalProducts || 0} products listed`,
+      icon: Users, tint: 'bg-violet-500/10 text-violet-600', href: '/admin/users/customers', trend: summary.userGrowth ?? null,
+    },
+    {
+      title: 'Service Requests', value: srActive, subtitle: srEmergency > 0 ? `${srEmergency} emergency open` : 'No open emergencies',
+      icon: Wrench, tint: 'bg-orange-500/10 text-orange-600', href: '/admin/services/requests', trend: null as number | null,
+      alert: srEmergency > 0,
+    },
   ]
 
   return (
     <>
       <AdminHeader />
       <div className="p-5 lg:p-8 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* ── Page header ── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-[#1A1D29] tracking-tight">Dashboard</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1 className="text-2xl lg:text-[28px] font-bold tracking-tight text-[#1A1D29]">Dashboard</h1>
+            <p className="mt-1 text-sm text-gray-500">
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {updatedAt && <span className="ml-2 text-[11.5px] text-gray-400">· updated {timeAgo(updatedAt.toISOString())}</span>}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger className="w-[150px] bg-white border-gray-200 rounded-xl h-10">
-                <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                <SelectValue placeholder="Period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 90 days</SelectItem>
-                <SelectItem value="12m">Last 12 months</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" className="rounded-xl h-10 border-gray-200 hidden sm:flex">
-              <Download className="h-4 w-4 mr-2" />
-              Export
+          <div className="flex items-center gap-2.5">
+            <Button variant="outline" onClick={() => fetchAll(true)} disabled={refreshing} className="h-10 rounded-xl border-gray-200">
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+            </Button>
+            <Button onClick={exportCsv} className="h-10 rounded-xl bg-[#1B3B6F] text-white hover:bg-[#16305c]">
+              <Download className="h-4 w-4 mr-2" /> Export CSV
             </Button>
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-          {kpiCards.map((card, idx) => {
+        {/* ── KPI row: hero revenue card + 3 metric cards ── */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+          {/* Revenue hero */}
+          <Link href="/admin/financial/revenue" className="group">
+            <div className="relative h-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md transition-transform duration-200 hover:-translate-y-0.5">
+              <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
+              <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
+              <div className="flex items-center justify-between">
+                <p className="text-[12.5px] font-semibold uppercase tracking-wide text-white/60">Total revenue</p>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+                  <IndianRupee className="h-4.5 w-4.5 text-white" style={{ width: 18, height: 18 }} />
+                </div>
+              </div>
+              <p className="mt-2 text-3xl font-extrabold tracking-tight text-white">{compactINR(summary.totalRevenue || 0)}</p>
+              <p className="mt-1 text-[12px] text-white/55">from {summary.totalOrders || 0} orders</p>
+              {summary.revenueGrowth != null && (
+                <div className={`mt-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${summary.revenueGrowth >= 0 ? 'bg-emerald-400/15 text-emerald-300' : 'bg-red-400/15 text-red-300'}`}>
+                  {summary.revenueGrowth >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                  {Math.abs(summary.revenueGrowth)}% vs last period
+                </div>
+              )}
+            </div>
+          </Link>
+
+          {kpis.map((card) => {
             const Icon = card.icon
             return (
-              <Link key={idx} href={card.href}>
-                <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 rounded-2xl cursor-pointer group">
+              <Link key={card.title} href={card.href} className="group">
+                <Card className="h-full rounded-2xl border border-gray-100 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                   <CardContent className="p-5">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-500">{card.title}</p>
-                        <p className="text-2xl lg:text-3xl font-bold text-[#1A1D29] mt-1.5 tracking-tight">{card.value}</p>
-                        <p className="text-xs text-gray-400 mt-1.5">{card.subtitle}</p>
-                      </div>
-                      <div className={`${card.iconBg} h-11 w-11 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}>
-                        <Icon className="h-5 w-5 text-white" />
+                    <div className="flex items-center justify-between">
+                      <p className="text-[12.5px] font-semibold uppercase tracking-wide text-gray-400">{card.title}</p>
+                      <div className={`grid h-9 w-9 place-items-center rounded-xl ${card.tint}`}>
+                        <Icon className="h-[18px] w-[18px]" />
                       </div>
                     </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight text-[#1A1D29]">{card.value}</p>
+                    <p className={`mt-1 flex items-center gap-1 text-[12px] ${(card as any).alert ? 'font-semibold text-red-500' : 'text-gray-400'}`}>
+                      {(card as any).alert && <AlertTriangle className="h-3.5 w-3.5" />}
+                      {card.subtitle}
+                    </p>
                     {card.trend != null && (
-                      <div className={`flex items-center gap-1 mt-3 text-xs font-medium ${card.trend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      <div className={`mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold ${card.trend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                         {card.trend >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
                         {Math.abs(card.trend)}% vs last period
                       </div>
@@ -271,219 +299,216 @@ export function AdminDashboard() {
           })}
         </div>
 
-        {/* Order Status Overview */}
-        {Object.keys(ordersByStatus).length > 0 && (
-          <Card className="border border-gray-100 shadow-sm rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-[#1A1D29]">Order Pipeline</h3>
-                <Link href="/admin/orders">
-                  <Button variant="ghost" size="sm" className="text-[#1B3B6F] text-xs h-8">
-                    View All <ArrowUpRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {[
-                  { key: 'placed', label: 'Placed', color: 'bg-amber-500' },
-                  { key: 'confirmed', label: 'Confirmed', color: 'bg-blue-500' },
-                  { key: 'processing', label: 'Processing', color: 'bg-indigo-500' },
-                  { key: 'shipped', label: 'Shipped', color: 'bg-purple-500' },
-                  { key: 'delivered', label: 'Delivered', color: 'bg-emerald-500' },
-                  { key: 'cancelled', label: 'Cancelled', color: 'bg-red-500' },
-                ].map(status => {
-                  const count = ordersByStatus[status.key] || 0
-                  return (
-                    <div key={status.key} className="bg-gray-50 rounded-xl p-3.5 text-center hover:bg-gray-100 transition-colors">
-                      <div className={`${status.color} h-2 w-8 rounded-full mx-auto mb-2.5`} />
-                      <p className="text-xl font-bold text-[#1A1D29]">{count}</p>
-                      <p className="text-[11px] text-gray-500 font-medium mt-0.5">{status.label}</p>
+        {/* ── Platform pulse — live counts across every product area ── */}
+        {pulseTiles.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            {pulseTiles.map((t) => {
+              const Icon = t.icon
+              return (
+                <Link key={t.label} href={t.href}>
+                  <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm transition-colors hover:border-gray-200 hover:bg-gray-50/60">
+                    <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${t.tint}`}>
+                      <Icon className="h-[17px] w-[17px]" />
                     </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                    <div className="min-w-0">
+                      <p className="text-lg font-extrabold leading-tight text-[#1A1D29]">{t.value}</p>
+                      <p className="truncate text-[11px] font-medium text-gray-500">{t.label} <span className="text-gray-300">·</span> {t.sub}</p>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
         )}
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
-          {/* Recent Orders */}
-          <Card className="lg:col-span-2 border border-gray-100 shadow-sm rounded-2xl">
+        {/* ── Order pipeline with proportion bar ── */}
+        <Card className="rounded-2xl border border-gray-100 shadow-sm">
+          <CardContent className="p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-[#1A1D29]">Order Pipeline</h3>
+                <p className="text-[12px] text-gray-400">{pipelineTotal} orders across all stages</p>
+              </div>
+              <Link href="/admin/orders">
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-[#1B3B6F]">
+                  View all <ArrowUpRight className="ml-1 h-3 w-3" />
+                </Button>
+              </Link>
+            </div>
+
+            {/* proportion bar (real distribution) */}
+            {pipelineTotal > 0 && (
+              <div className="mb-4 flex h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+                {PIPELINE.map((p) => {
+                  const n = byStatus[p.key] || 0
+                  if (!n) return null
+                  return <div key={p.key} className={p.bar} style={{ width: `${(n / pipelineTotal) * 100}%` }} title={`${p.label}: ${n}`} />
+                })}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {PIPELINE.map((p) => (
+                <div key={p.key} className="rounded-xl bg-gray-50 p-3.5 text-center transition-colors hover:bg-gray-100">
+                  <div className={`mx-auto mb-2 h-1.5 w-8 rounded-full ${p.bar}`} />
+                  <p className="text-xl font-bold text-[#1A1D29]">{byStatus[p.key] || 0}</p>
+                  <p className="mt-0.5 text-[11px] font-medium text-gray-500">{p.label}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Recent orders + activity ── */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm lg:col-span-2">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-base font-semibold text-[#1A1D29]">Recent Orders</CardTitle>
-                  <CardDescription className="text-xs mt-0.5">Latest transactions</CardDescription>
+                  <CardDescription className="mt-0.5 text-xs">Latest transactions</CardDescription>
                 </div>
                 <Link href="/admin/orders">
-                  <Button variant="outline" size="sm" className="rounded-lg text-xs h-8 border-gray-200">
-                    View All
-                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 rounded-lg border-gray-200 text-xs">View all</Button>
                 </Link>
               </div>
             </CardHeader>
             <CardContent className="px-5 pb-5">
-              <div className="space-y-2.5">
-                {recentOrders.length === 0 ? (
-                  <div className="text-center py-10">
-                    <ShoppingCart className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No orders yet</p>
-                  </div>
-                ) : (
-                  recentOrders.slice(0, 6).map((order: any) => {
-                    const statusCfg = getStatusConfig(order.status)
-                    const StatusIcon = statusCfg.icon
+              {recentOrders.length === 0 ? (
+                <div className="py-10 text-center">
+                  <ShoppingCart className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <p className="text-sm text-gray-500">No orders yet</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {recentOrders.slice(0, 6).map((order: any) => {
+                    const cfg = ORDER_STATUS[order.status] || ORDER_STATUS.pending
+                    const StatusIcon = cfg.icon
                     return (
-                      <div key={order.id || order._id} className="flex items-center gap-4 p-3.5 rounded-xl hover:bg-gray-50 transition-colors group">
-                        {/* Status icon */}
-                        <div className={`h-9 w-9 rounded-lg ${statusCfg.bg} border flex items-center justify-center shrink-0`}>
-                          <StatusIcon className={`h-4 w-4 ${statusCfg.color}`} />
+                      <div key={order.id || order._id} className="flex items-center gap-4 px-1 py-3 transition-colors hover:bg-gray-50/60">
+                        <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg border ${cfg.bg}`}>
+                          <StatusIcon className={`h-4 w-4 ${cfg.color}`} />
                         </div>
-                        {/* Order info */}
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-[#1A1D29]">{order.id}</span>
-                            <Badge className={`${statusCfg.bg} ${statusCfg.color} border text-[10px] font-semibold px-1.5 py-0 h-5`}>
-                              {statusCfg.label}
-                            </Badge>
+                            <Badge className={`${cfg.bg} ${cfg.color} h-5 border px-1.5 py-0 text-[10px] font-semibold`}>{cfg.label}</Badge>
                           </div>
-                          <p className="text-xs text-gray-500 mt-0.5 truncate">{order.customer} {order.product ? `• ${order.product}` : ''}</p>
+                          <p className="mt-0.5 truncate text-xs text-gray-500">{order.customer}{order.product ? ` • ${order.product}` : ''}</p>
                         </div>
-                        {/* Amount & time */}
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-bold text-[#1A1D29]">{formatFullCurrency(order.amount)}</p>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{formatTimeAgo(order.timestamp)}</p>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-bold text-[#1A1D29]">{fullINR(order.amount)}</p>
+                          <p className="mt-0.5 text-[11px] text-gray-400">{timeAgo(order.timestamp)}</p>
                         </div>
-                        {/* Actions */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Update Status</DropdownMenuItem>
-                            <DropdownMenuItem>Contact Customer</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </div>
                     )
-                  })
-                )}
-              </div>
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Recent Activities */}
-          <Card className="border border-gray-100 shadow-sm rounded-2xl">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold text-[#1A1D29]">Activity Feed</CardTitle>
-              <CardDescription className="text-xs mt-0.5">Real-time platform updates</CardDescription>
+              <CardDescription className="mt-0.5 text-xs">Real-time platform updates</CardDescription>
             </CardHeader>
             <CardContent className="px-5 pb-5">
-              <div className="space-y-4">
-                {recentActivities.length === 0 ? (
-                  <div className="text-center py-10">
-                    <Activity className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No recent activity</p>
-                  </div>
-                ) : (
-                  recentActivities.slice(0, 8).map((activity: any, index: number) => {
-                    const actCfg = getActivityIcon(activity.type)
-                    const ActIcon = actCfg.icon
+              {recentActivities.length === 0 ? (
+                <div className="py-10 text-center">
+                  <Activity className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <p className="text-sm text-gray-500">No recent activity</p>
+                </div>
+              ) : (
+                <div className="relative space-y-4 before:absolute before:bottom-2 before:left-4 before:top-2 before:w-px before:bg-gray-100">
+                  {recentActivities.slice(0, 8).map((activity: any, index: number) => {
+                    const cfg = ACTIVITY_ICON[activity.type] || { icon: Activity, color: 'text-gray-600', bg: 'bg-gray-100' }
+                    const ActIcon = cfg.icon
                     return (
-                      <div key={activity.id || index} className="flex items-start gap-3">
-                        <div className={`h-8 w-8 rounded-lg ${actCfg.bg} flex items-center justify-center shrink-0`}>
-                          <ActIcon className={`h-3.5 w-3.5 ${actCfg.color}`} />
+                      <div key={activity.id || index} className="relative flex items-start gap-3">
+                        <div className={`relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${cfg.bg}`}>
+                          <ActIcon className={`h-3.5 w-3.5 ${cfg.color}`} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[#1A1D29] leading-snug">{activity.message}</p>
-                          <p className="text-[11px] text-gray-400 mt-1">{formatTimeAgo(activity.timestamp)}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm leading-snug text-[#1A1D29]">{activity.message}</p>
+                          <p className="mt-1 text-[11px] text-gray-400">{timeAgo(activity.timestamp)}</p>
                         </div>
                       </div>
                     )
-                  })
-                )}
-              </div>
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
-          {/* Top Categories */}
-          <Card className="border border-gray-100 shadow-sm rounded-2xl">
+        {/* ── Top categories + quick actions ── */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-base font-semibold text-[#1A1D29]">Top Categories</CardTitle>
-                  <CardDescription className="text-xs mt-0.5">Revenue by category</CardDescription>
+                  <CardDescription className="mt-0.5 text-xs">Revenue by category</CardDescription>
                 </div>
                 <Link href="/admin/inventory/categories">
-                  <Button variant="ghost" size="sm" className="text-[#1B3B6F] text-xs h-8">
-                    View All <ArrowUpRight className="h-3 w-3 ml-1" />
+                  <Button variant="ghost" size="sm" className="h-8 text-xs text-[#1B3B6F]">
+                    View all <ArrowUpRight className="ml-1 h-3 w-3" />
                   </Button>
                 </Link>
               </div>
             </CardHeader>
             <CardContent className="px-5 pb-5">
-              <div className="space-y-4">
-                {topCategories.length === 0 ? (
-                  <div className="text-center py-8">
-                    <BarChart3 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No category data yet</p>
-                  </div>
-                ) : (
-                  topCategories.slice(0, 5).map((category: any, index: number) => (
+              {topCategories.length === 0 ? (
+                <div className="py-8 text-center">
+                  <BarChart3 className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <p className="text-sm text-gray-500">No category data yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {topCategories.slice(0, 5).map((category: any, index: number) => (
                     <div key={index}>
-                      <div className="flex items-center justify-between mb-1.5">
+                      <div className="mb-1.5 flex items-center justify-between">
                         <span className="text-sm font-medium text-[#1A1D29]">{category.name}</span>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-[#1A1D29]">
-                            {formatCurrency(category.revenue)}
-                          </span>
-                          <span className="text-[11px] text-gray-400 w-16 text-right">
-                            {category.orders} orders
-                          </span>
+                          <span className="text-sm font-semibold text-[#1A1D29]">{compactINR(category.revenue)}</span>
+                          <span className="w-16 text-right text-[11px] text-gray-400">{category.orders} orders</span>
                         </div>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-2">
+                      <div className="h-2 w-full rounded-full bg-gray-100">
                         <div
-                          className={`${progressBarColors[index % progressBarColors.length]} h-2 rounded-full transition-all duration-500`}
+                          className="h-2 rounded-full bg-gradient-to-r from-[#1B3B6F] to-[#FF6B35] transition-all duration-500"
                           style={{ width: `${Math.min(category.percentage || 0, 100)}%` }}
                         />
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
-          <Card className="border border-gray-100 shadow-sm rounded-2xl">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold text-[#1A1D29]">Quick Actions</CardTitle>
-              <CardDescription className="text-xs mt-0.5">Common admin tasks</CardDescription>
+              <CardDescription className="mt-0.5 text-xs">Jump straight to common tasks</CardDescription>
             </CardHeader>
             <CardContent className="px-5 pb-5">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {[
-                  { title: 'Add Product', icon: Package, href: '/admin/inventory/products', color: 'text-blue-600', bg: 'bg-blue-50 hover:bg-blue-100' },
-                  { title: 'View Orders', icon: ShoppingCart, href: '/admin/orders', color: 'text-emerald-600', bg: 'bg-emerald-50 hover:bg-emerald-100' },
-                  { title: 'Manage Users', icon: Users, href: '/admin/users/customers', color: 'text-violet-600', bg: 'bg-violet-50 hover:bg-violet-100' },
-                  { title: 'Service Requests', icon: Wrench, href: '/admin/services/requests', color: 'text-orange-600', bg: 'bg-orange-50 hover:bg-orange-100' },
-                  { title: 'Payments', icon: IndianRupee, href: '/admin/services/payments', color: 'text-green-600', bg: 'bg-green-50 hover:bg-green-100' },
-                  { title: 'Notifications', icon: Activity, href: '/admin/communication/notifications', color: 'text-pink-600', bg: 'bg-pink-50 hover:bg-pink-100' },
-                ].map((action, idx) => {
+                  { title: 'Products', icon: Package, href: '/admin/inventory/products', cls: 'text-blue-600 bg-blue-50 hover:bg-blue-100' },
+                  { title: 'Orders', icon: ShoppingCart, href: '/admin/orders', cls: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' },
+                  { title: 'Customers', icon: Users, href: '/admin/users/customers', cls: 'text-violet-600 bg-violet-50 hover:bg-violet-100' },
+                  { title: 'Services', icon: Wrench, href: '/admin/services/requests', cls: 'text-orange-600 bg-orange-50 hover:bg-orange-100' },
+                  { title: 'Members', icon: Crown, href: '/admin/subscriptions/memberships', cls: 'text-purple-600 bg-purple-50 hover:bg-purple-100' },
+                  { title: 'Support', icon: Phone, href: '/admin/communication/support', cls: 'text-pink-600 bg-pink-50 hover:bg-pink-100' },
+                ].map((action) => {
                   const ActionIcon = action.icon
                   return (
-                    <Link key={idx} href={action.href}>
-                      <div className={`${action.bg} rounded-xl p-4 flex items-center gap-3 transition-colors cursor-pointer`}>
-                        <ActionIcon className={`h-5 w-5 ${action.color} shrink-0`} />
-                        <span className="text-sm font-medium text-[#1A1D29]">{action.title}</span>
+                    <Link key={action.title} href={action.href}>
+                      <div className={`flex flex-col items-center gap-2 rounded-xl p-4 text-center transition-colors ${action.cls}`}>
+                        <ActionIcon className="h-5 w-5" />
+                        <span className="text-[12.5px] font-semibold text-[#1A1D29]">{action.title}</span>
                       </div>
                     </Link>
                   )
