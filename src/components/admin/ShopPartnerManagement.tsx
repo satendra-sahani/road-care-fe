@@ -431,71 +431,101 @@ export function ShopPartnerManagement() {
 
       {/* Create Dialog */}
       {showCreateDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#FF6B35]/10">
-                <Store className="h-5 w-5 text-[#FF6B35]" />
-              </div>
-              <h3 className="text-lg font-bold text-[#1A1D29]">Add Shop Partner</h3>
-            </div>
-
-            <div className="border-b border-gray-100 pb-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Owner Details</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500">Full Name *</label>
-                  <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Owner name" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Gradient header */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-5">
+              <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
+              <div className="absolute -right-2 top-10 h-16 w-16 rounded-full bg-white/[0.05]" />
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 backdrop-blur">
+                    <Store className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Add Shop Partner</h3>
+                    <p className="text-[12px] text-white/60">Create the owner login &amp; shop profile in one step</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs text-gray-500">Phone *</label>
-                  <input type="tel" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Phone number" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Email (optional)</label>
-                  <input type="email" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Email address" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Password</label>
-                  <input type="text" value={ownerPassword} onChange={e => setOwnerPassword(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Leave empty = phone number" />
-                </div>
+                <button onClick={() => setShowCreateDialog(false)} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             </div>
 
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Shop Details</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="text-xs text-gray-500">Shop Name *</label>
-                  <input type="text" value={shopName} onChange={e => setShopName(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop name" />
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+              {/* Owner Details */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="grid h-6 w-6 place-items-center rounded-md bg-indigo-50">
+                    <Users className="h-3.5 w-3.5 text-indigo-600" />
+                  </div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Owner Details</p>
                 </div>
-                <div>
-                  <label className="text-xs text-gray-500">City</label>
-                  <input type="text" value={shopCity} onChange={e => setShopCity(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="City" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Commission Rate (%)</label>
-                  <input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="25" min={0} max={50} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Full Name <span className="text-[#FF6B35]">*</span></label>
+                    <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Owner name" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Phone <span className="text-[#FF6B35]">*</span></label>
+                    <input type="tel" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Phone number" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Email <span className="text-gray-300">(optional)</span></label>
+                    <input type="email" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Email address" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Password</label>
+                    <input type="text" value={ownerPassword} onChange={e => setOwnerPassword(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Leave empty = phone number" />
+                  </div>
                 </div>
               </div>
+
+              {/* Shop Details */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="grid h-6 w-6 place-items-center rounded-md bg-[#FF6B35]/10">
+                    <Store className="h-3.5 w-3.5 text-[#FF6B35]" />
+                  </div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Shop Details</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-medium text-gray-600">Shop Name <span className="text-[#FF6B35]">*</span></label>
+                    <input type="text" value={shopName} onChange={e => setShopName(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop name" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">City</label>
+                    <input type="text" value={shopCity} onChange={e => setShopCity(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="City" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Commission Rate (%)</label>
+                    <input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="25" min={0} max={50} />
+                  </div>
+                </div>
+              </div>
+
+              <p className="flex items-start gap-2 text-xs text-gray-500 bg-blue-50/60 border border-blue-100 rounded-lg p-2.5">
+                <Shield className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
+                If password is empty, the phone number will be used as the default password.
+              </p>
             </div>
 
-            <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">
-              If password is empty, phone number will be used as default password.
-            </p>
-
-            <div className="flex gap-3 justify-end pt-2">
+            {/* Footer */}
+            <div className="border-t border-gray-100 px-6 py-4 flex gap-3 justify-end bg-white">
               <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-              <Button className="bg-[#FF6B35] hover:bg-[#e55a28] text-white"
+              <Button className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm"
                 onClick={handleCreate} disabled={actionLoading}>
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
                 Create Shop Partner
               </Button>
             </div>
@@ -508,19 +538,24 @@ export function ShopPartnerManagement() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
             {/* Header */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50">
-                  <UserPlus className="h-5 w-5 text-indigo-600" />
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-5 py-5">
+              <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 backdrop-blur">
+                    <UserPlus className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Manage Mechanics</h3>
+                    <p className="text-[12px] text-white/60 flex items-center gap-1.5">
+                      <Store className="h-3 w-3" /> {mechanicShop.shopName}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[#1A1D29]">Manage Mechanics</h3>
-                  <p className="text-sm text-gray-500">{mechanicShop.shopName}</p>
-                </div>
+                <button onClick={() => setShowMechanicDialog(false)} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button onClick={() => setShowMechanicDialog(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
@@ -704,21 +739,24 @@ export function ShopPartnerManagement() {
       {showKycDialog && kycShop && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl">
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50">
-                  <Shield className="h-5 w-5 text-violet-600" />
+            <div className="sticky top-0 z-10 overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-4 rounded-t-2xl">
+              <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 backdrop-blur">
+                    <Shield className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">KYC Review — {kycShop.shopName}</h3>
+                    <p className="text-[12px] text-white/60">
+                      Submitted {kycShop.kyc?.submittedAt ? new Date(kycShop.kyc.submittedAt).toLocaleString() : '—'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[#1A1D29]">KYC Review — {kycShop.shopName}</h3>
-                  <p className="text-xs text-gray-400">
-                    Submitted {kycShop.kyc?.submittedAt ? new Date(kycShop.kyc.submittedAt).toLocaleString() : '—'}
-                  </p>
-                </div>
+                <button onClick={() => { setShowKycDialog(false); setKycShop(null); setKycRejectReason('') }} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button onClick={() => { setShowKycDialog(false); setKycShop(null); setKycRejectReason('') }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                <X className="h-5 w-5" />
-              </button>
             </div>
 
             <div className="p-6 space-y-5">
