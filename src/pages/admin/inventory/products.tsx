@@ -1067,7 +1067,7 @@ export default function AdminInventoryProductsPage() {
 
           {/* ─── Add Product Dialog ──────────────────────────── */}
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 overflow-hidden flex flex-col max-h-[92vh]">
+            <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 overflow-hidden flex flex-col h-[88vh] max-h-[720px]">
               {/* Gradient header */}
               <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-5 shrink-0">
                 <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
@@ -1109,7 +1109,7 @@ export default function AdminInventoryProductsPage() {
 
           {/* ─── Edit Product Dialog ─────────────────────────── */}
           <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-            <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 overflow-hidden flex flex-col max-h-[92vh]">
+            <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 overflow-hidden flex flex-col h-[88vh] max-h-[720px]">
               {/* Gradient header */}
               <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-5 shrink-0">
                 <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
