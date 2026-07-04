@@ -644,6 +644,15 @@ export const adminMembershipsAPI = {
     api.put(`/admin/memberships/${id}`, data),
 };
 
+// ─── Admin Coupons ──────────────────────────────────────────────────
+export const adminCouponsAPI = {
+  getAll: (params?: { search?: string; status?: string }) =>
+    api.get('/admin/coupons', { params }),
+  create: (data: any) => api.post('/admin/coupons', data),
+  update: (id: string, data: any) => api.put(`/admin/coupons/${id}`, data),
+  remove: (id: string) => api.delete(`/admin/coupons/${id}`),
+};
+
 // ─── Admin GPS Tracker devices/subscriptions ────────────────────────
 export const adminTrackerAPI = {
   getDevices: (params?: { status?: string; search?: string; page?: number; limit?: number }) =>

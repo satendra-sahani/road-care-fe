@@ -28,6 +28,7 @@ import {
   Sparkles,
   Gift,
   Coins,
+  Ticket,
   Crown,
   MessageSquare,
   Satellite,
@@ -102,6 +103,7 @@ const NAV_GROUPS: SidebarGroup[] = [
       { id: 'spin-wheel', title: 'Spin & Win', icon: Sparkles, href: '/admin/growth/spin-wheel' },
       { id: 'referrals', title: 'Referrals', icon: Gift, href: '/admin/growth/referrals' },
       { id: 'rewards-wallet', title: 'Rewards Wallet', icon: Coins, href: '/admin/growth/rewards-wallet' },
+      { id: 'coupons', title: 'Coupons', icon: Ticket, href: '/admin/growth/coupons' },
     ],
   },
   {
