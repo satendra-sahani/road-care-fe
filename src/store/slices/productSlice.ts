@@ -55,6 +55,7 @@ export interface ProductItem {
   tags: string[];
   isActive: boolean;
   isFeatured: boolean;
+  isDraft?: boolean;
   reviewsSummary?: {
     averageRating: number;
     totalReviews: number;

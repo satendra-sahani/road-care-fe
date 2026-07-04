@@ -39,6 +39,11 @@ import {
   Power,
   PlusCircle,
   Layers,
+  IndianRupee,
+  Image as ImageIcon,
+  Save,
+  Rocket,
+  FileText,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -78,8 +83,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatDate } from '@/lib/utils'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { cn, formatDate } from '@/lib/utils'
 
 // ─── helpers ───────────────────────────────────────────
 const formatCurrency = (n: number) =>
@@ -96,16 +101,27 @@ const catParentId = (c: any): string | null => {
 
 // Left-edge row stripe — surfaces stock urgency (and active/inactive) at a glance.
 const STATUS_STRIPE: Record<string, string> = {
+  draft: '#8b5cf6',
   outOfStock: '#ef4444',
   lowStock: '#f59e0b',
   active: '#22c55e',
   inactive: '#94a3b8',
 }
+const isDraftProduct = (p: ProductItem) => !!p.isDraft && !p.isActive
 const getStripeKey = (p: ProductItem) => {
+  if (isDraftProduct(p)) return 'draft'
   if (p.inventory.quantity <= 0) return 'outOfStock'
   if (p.inventory.quantity <= p.inventory.minStock) return 'lowStock'
   return p.isActive ? 'active' : 'inactive'
 }
+
+// Sections shown in the editor's left rail (replaces cramped top tabs).
+const SECTIONS = [
+  { id: 'basic', label: 'Basic Info', desc: 'Name, category & brand', icon: Package },
+  { id: 'pricing', label: 'Pricing & Stock', desc: 'Cost, price & inventory', icon: IndianRupee },
+  { id: 'media', label: 'Images', desc: 'Thumbnail & gallery', icon: ImageIcon },
+  { id: 'variants', label: 'Variants', desc: 'Sizes, colours & specs', icon: Layers },
+] as const
 
 // A single product variant as held in form state (all scalars are strings for inputs).
 type VariantForm = {
@@ -274,13 +290,21 @@ export default function AdminInventoryProductsPage() {
     setIsAddOpen(true)
   }
 
-  const handleSaveNew = () => {
+  // Generate a valid, unique-ish SKU from the name so quick creates don't trip
+  // the backend's required-SKU rule. Matches /^[A-Z0-9-_]+$/.
+  const autoSku = (name: string) => {
+    const base = (name || 'PRODUCT').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 14) || 'PRODUCT'
+    return `${base}-${Date.now().toString(36).toUpperCase().slice(-5)}`
+  }
+
+  const handleSaveNew = (asDraft = false) => {
     if (!formData.name || !formData.category || !formData.brand || !formData.priceCost || !formData.priceSelling) {
       toast.error('Please fill required fields: Name, Category, Brand, Cost, Selling Price')
       return
     }
     const payload: any = {
       name: formData.name,
+      sku: formData.sku || autoSku(formData.name),
       description: formData.description,
       category: formData.category,
       brand: formData.brand,
@@ -295,8 +319,9 @@ export default function AdminInventoryProductsPage() {
         minStock: Number(formData.inventoryMinStock || 5),
       },
       isFeatured: formData.isFeatured,
+      isActive: !asDraft,
+      isDraft: asDraft,
     }
-    if (formData.sku) payload.sku = formData.sku
     if (formData.partNumber) payload.partNumber = formData.partNumber
     if (formData.tags) payload.tags = formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
     if (formData.thumbnailUrl) payload.thumbnail = { url: formData.thumbnailUrl }
@@ -305,7 +330,7 @@ export default function AdminInventoryProductsPage() {
     if (variants.length > 0) payload.variants = variants
 
     dispatch(createProductRequest(payload))
-    toast.success('Product created successfully')
+    toast.success(asDraft ? 'Saved as draft' : 'Product published')
     setIsAddOpen(false)
   }
 
@@ -350,7 +375,7 @@ export default function AdminInventoryProductsPage() {
     setIsEditOpen(true)
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = (asDraft = false) => {
     if (!selectedProduct) return
     const payload: any = {
       name: formData.name,
@@ -375,8 +400,18 @@ export default function AdminInventoryProductsPage() {
     if (formData.thumbnailUrl) payload.thumbnail = { url: formData.thumbnailUrl }
     payload.variants = buildVariantsPayload()
 
+    // Draft → hide from store. Publish → go live. Plain "Save Changes" on an
+    // already-published product leaves its active state untouched.
+    if (asDraft) {
+      payload.isDraft = true
+      payload.isActive = false
+    } else {
+      payload.isDraft = false
+      if (selectedProduct.isDraft) payload.isActive = true
+    }
+
     dispatch(updateProductRequest({ id: selectedProduct._id, data: payload }))
-    toast.success('Product updated successfully')
+    toast.success(asDraft ? 'Saved as draft' : selectedProduct.isDraft ? 'Product published' : 'Changes saved')
     setIsEditOpen(false)
   }
 
@@ -450,14 +485,49 @@ export default function AdminInventoryProductsPage() {
 
   // ─── Product Form (shared by Add & Edit) ─────────────
   const ProductForm = () => (
-    <Tabs value={formTab} onValueChange={setFormTab}>
-      <TabsList className="grid grid-cols-4 w-full mb-4">
-        <TabsTrigger value="basic">Basic Info</TabsTrigger>
-        <TabsTrigger value="pricing">Pricing & Stock</TabsTrigger>
-        <TabsTrigger value="media">Images</TabsTrigger>
-        <TabsTrigger value="variants">Variants{formData.variants.length > 0 ? ` (${formData.variants.length})` : ''}</TabsTrigger>
-      </TabsList>
+    <div className="flex flex-1 min-h-0">
+      {/* Left section rail (desktop) */}
+      <nav className="hidden sm:flex w-56 shrink-0 flex-col gap-1 border-r border-gray-100 bg-gray-50/60 p-3">
+        {SECTIONS.map((s) => {
+          const active = formTab === s.id
+          const Icon = s.icon
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setFormTab(s.id)}
+              className={cn(
+                'flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors border',
+                active ? 'bg-white shadow-sm border-gray-100' : 'border-transparent hover:bg-white/70'
+              )}
+            >
+              <div className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg', active ? 'bg-[#1B3B6F] text-white' : 'bg-gray-200/70 text-gray-500')}>
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className={cn('text-sm font-semibold leading-tight', active ? 'text-[#1A1D29]' : 'text-gray-600')}>
+                  {s.label}{s.id === 'variants' && formData.variants.length > 0 ? ` (${formData.variants.length})` : ''}
+                </p>
+                <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{s.desc}</p>
+              </div>
+            </button>
+          )
+        })}
+      </nav>
 
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6 scrollbar-ultra-narrow">
+        {/* Mobile section switcher */}
+        <div className="sm:hidden mb-4">
+          <Select value={formTab} onValueChange={setFormTab}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {SECTIONS.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Tabs value={formTab} onValueChange={setFormTab}>
       <TabsContent value="basic" className="space-y-4">
         <div className="grid gap-2">
           <Label>Product Name *</Label>
@@ -733,7 +803,9 @@ export default function AdminInventoryProductsPage() {
           </div>
         )}
       </TabsContent>
-    </Tabs>
+        </Tabs>
+      </div>
+    </div>
   )
 
   return (
@@ -925,9 +997,13 @@ export default function AdminInventoryProductsPage() {
                             </Button>
                           </TableCell>
                           <TableCell>
-                            <Badge className={product.isActive ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-gray-100 text-gray-600 border-0'}>
-                              {product.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
+                            {isDraftProduct(product) ? (
+                              <Badge className="bg-violet-100 text-violet-700 border-0">Draft</Badge>
+                            ) : (
+                              <Badge className={product.isActive ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-gray-100 text-gray-600 border-0'}>
+                                {product.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -991,47 +1067,91 @@ export default function AdminInventoryProductsPage() {
 
           {/* ─── Add Product Dialog ──────────────────────────── */}
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-[#1B3B6F]/10 flex items-center justify-center">
-                    <Plus className="h-4 w-4 text-[#1B3B6F]" />
+            <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 overflow-hidden flex flex-col max-h-[92vh]">
+              {/* Gradient header */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-5 shrink-0">
+                <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
+                <div className="absolute -right-2 top-10 h-16 w-16 rounded-full bg-white/[0.05]" />
+                <div className="relative flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 backdrop-blur">
+                      <Plus className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-lg font-bold text-white">Add New Product</DialogTitle>
+                      <DialogDescription className="text-[12px] text-white/60">Fill in the sections, then save as draft or publish to the store.</DialogDescription>
+                    </div>
                   </div>
-                  Add New Product
-                </DialogTitle>
-                <DialogDescription>Create a new product in your inventory</DialogDescription>
-              </DialogHeader>
+                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/80">
+                    <FileText className="h-3 w-3" /> Not saved yet
+                  </span>
+                </div>
+              </div>
+
               {ProductForm()}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                <Button onClick={handleSaveNew} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#1B3B6F]/90">
-                  {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Create Product
-                </Button>
-              </DialogFooter>
+
+              {/* Sticky footer */}
+              <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between gap-3 shrink-0 bg-white">
+                <Button variant="ghost" onClick={() => setIsAddOpen(false)} className="text-gray-500 hover:text-gray-700">Cancel</Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => handleSaveNew(true)} disabled={actionLoading} className="border-gray-300 text-gray-700">
+                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save as Draft
+                  </Button>
+                  <Button onClick={() => handleSaveNew(false)} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
+                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Rocket className="h-4 w-4 mr-2" />}
+                    Publish Product
+                  </Button>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
 
           {/* ─── Edit Product Dialog ─────────────────────────── */}
           <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ultra-narrow">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Edit className="h-4 w-4 text-blue-600" />
+            <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 overflow-hidden flex flex-col max-h-[92vh]">
+              {/* Gradient header */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-5 shrink-0">
+                <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
+                <div className="absolute -right-2 top-10 h-16 w-16 rounded-full bg-white/[0.05]" />
+                <div className="relative flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 backdrop-blur">
+                      <Edit className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <DialogTitle className="text-lg font-bold text-white truncate">Edit Product</DialogTitle>
+                      <DialogDescription className="text-[12px] text-white/60 truncate">{selectedProduct?.name}</DialogDescription>
+                    </div>
                   </div>
-                  Edit Product
-                </DialogTitle>
-                <DialogDescription>Update product details</DialogDescription>
-              </DialogHeader>
+                  {selectedProduct && (
+                    <span className={cn(
+                      'shrink-0 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold',
+                      isDraftProduct(selectedProduct) ? 'bg-violet-400/20 text-violet-100'
+                        : selectedProduct.isActive ? 'bg-emerald-400/20 text-emerald-100' : 'bg-white/10 text-white/70'
+                    )}>
+                      {isDraftProduct(selectedProduct) ? 'Draft' : selectedProduct.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {ProductForm()}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-                <Button onClick={handleSaveEdit} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#1B3B6F]/90">
-                  {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Update Product
-                </Button>
-              </DialogFooter>
+
+              {/* Sticky footer */}
+              <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between gap-3 shrink-0 bg-white">
+                <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="text-gray-500 hover:text-gray-700">Cancel</Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => handleSaveEdit(true)} disabled={actionLoading} className="border-gray-300 text-gray-700">
+                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save as Draft
+                  </Button>
+                  <Button onClick={() => handleSaveEdit(false)} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
+                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : (selectedProduct?.isDraft ? <Rocket className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />)}
+                    {selectedProduct?.isDraft ? 'Publish' : 'Save Changes'}
+                  </Button>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
 
