@@ -8,6 +8,19 @@ export interface ProductImage {
   sortOrder?: number;
 }
 
+export interface ProductVariant {
+  _id?: string;
+  name?: string;
+  sku?: string;
+  brand?: { _id: string; name: string } | string;
+  price?: { cost?: number; selling?: number; mrp?: number };
+  inventory?: { quantity?: number; minStock?: number };
+  thumbnail?: { url: string; alt?: string };
+  images?: ProductImage[];
+  attributes?: Array<{ key: string; value: string }>;
+  isActive?: boolean;
+}
+
 export interface ProductItem {
   _id: string;
   name: string;
@@ -31,6 +44,7 @@ export interface ProductItem {
   };
   thumbnail?: { url: string; alt?: string };
   images: ProductImage[];
+  variants?: ProductVariant[];
   compatibility: Array<{
     vehicleBrand: string;
     vehicleModel: string;

@@ -38,6 +38,7 @@ import {
   ChevronRight,
   Power,
   PlusCircle,
+  Layers,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -86,6 +87,12 @@ const formatCurrency = (n: number) =>
 
 const getCatName = (cat: any) => (typeof cat === 'object' && cat ? cat.name : '—')
 const getBrandName = (b: any) => (typeof b === 'object' && b ? b.name : '—')
+// parentCategory can be a populated object, a raw id string, or null.
+const catParentId = (c: any): string | null => {
+  const p = c?.parentCategory
+  if (!p) return null
+  return typeof p === 'object' ? p._id : p
+}
 
 // Left-edge row stripe — surfaces stock urgency (and active/inactive) at a glance.
 const STATUS_STRIPE: Record<string, string> = {
@@ -100,12 +107,31 @@ const getStripeKey = (p: ProductItem) => {
   return p.isActive ? 'active' : 'inactive'
 }
 
+// A single product variant as held in form state (all scalars are strings for inputs).
+type VariantForm = {
+  name: string
+  sku: string
+  brand: string
+  priceCost: string
+  priceSelling: string
+  priceMrp: string
+  stock: string
+  thumbnailUrl: string
+  imageUrls: string[]
+  attributes: { key: string; value: string }[]
+}
+const emptyVariant = (): VariantForm => ({
+  name: '', sku: '', brand: '', priceCost: '', priceSelling: '', priceMrp: '',
+  stock: '', thumbnailUrl: '', imageUrls: [], attributes: [],
+})
+
 const emptyProductForm = {
   name: '',
   sku: '',
   partNumber: '',
   description: '',
-  category: '',
+  category: '',          // effective (leaf) category id sent to backend
+  categoryParent: '',    // selected parent category id (UI only)
   brand: '',
   vehicleType: 'Car',
   priceCost: '',
@@ -117,6 +143,7 @@ const emptyProductForm = {
   isFeatured: false,
   thumbnailUrl: '',
   imageUrls: [] as string[],
+  variants: [] as VariantForm[],
 }
 
 export default function AdminInventoryProductsPage() {
@@ -176,6 +203,70 @@ export default function AdminInventoryProductsPage() {
     return { total: pagination.total, active, lowStock, outOfStock }
   }, [products, pagination.total])
 
+  // ─── Category tree (parent → sub-category) ───────────
+  const activeCategories = categories.filter((c) => c.isActive)
+  const parentCategories = activeCategories.filter((c) => !catParentId(c))
+  const subCategories = activeCategories.filter((c) => catParentId(c) === formData.categoryParent)
+  const isSubSelected = subCategories.some((c) => c._id === formData.category)
+
+  // ─── Variant helpers ─────────────────────────────────
+  const addVariant = () => setFormData((prev) => ({ ...prev, variants: [...prev.variants, emptyVariant()] }))
+  const removeVariant = (idx: number) => setFormData((prev) => ({ ...prev, variants: prev.variants.filter((_, i) => i !== idx) }))
+  const updateVariant = (idx: number, patch: Partial<VariantForm>) =>
+    setFormData((prev) => ({ ...prev, variants: prev.variants.map((v, i) => (i === idx ? { ...v, ...patch } : v)) }))
+  const mutateVariant = (idx: number, fn: (v: VariantForm) => VariantForm) =>
+    setFormData((prev) => ({ ...prev, variants: prev.variants.map((v, i) => (i === idx ? fn(v) : v)) }))
+  const addVariantAttr = (idx: number) => mutateVariant(idx, (v) => ({ ...v, attributes: [...v.attributes, { key: '', value: '' }] }))
+  const updateVariantAttr = (idx: number, ai: number, patch: Partial<{ key: string; value: string }>) =>
+    mutateVariant(idx, (v) => ({ ...v, attributes: v.attributes.map((a, i) => (i === ai ? { ...a, ...patch } : a)) }))
+  const removeVariantAttr = (idx: number, ai: number) =>
+    mutateVariant(idx, (v) => ({ ...v, attributes: v.attributes.filter((_, i) => i !== ai) }))
+  const removeVariantImage = (idx: number, imgIdx: number) =>
+    mutateVariant(idx, (v) => ({ ...v, imageUrls: v.imageUrls.filter((_, i) => i !== imgIdx) }))
+
+  const handleVariantThumbUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      setUploading(true)
+      const res = await uploadAPI.uploadImage(file, 'products')
+      updateVariant(idx, { thumbnailUrl: res.data.data.url })
+      toast.success('Variant thumbnail uploaded')
+    } catch { toast.error('Upload failed') } finally { setUploading(false) }
+  }
+  const handleVariantImagesUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    try {
+      setUploading(true)
+      const res = await uploadAPI.uploadImages(files, 'products')
+      const urls = res.data.data.map((img: any) => img.url)
+      mutateVariant(idx, (v) => ({ ...v, imageUrls: [...v.imageUrls, ...urls] }))
+      toast.success(`${urls.length} images uploaded`)
+    } catch { toast.error('Upload failed') } finally { setUploading(false) }
+  }
+
+  // Map form variants → API payload (drops blank rows & empty fields).
+  const buildVariantsPayload = () =>
+    formData.variants
+      .filter((v) => v.name.trim() || v.sku.trim() || v.priceSelling)
+      .map((v) => {
+        const out: any = { name: v.name.trim() }
+        if (v.sku.trim()) out.sku = v.sku.trim()
+        if (v.brand) out.brand = v.brand
+        const price: any = {}
+        if (v.priceCost) price.cost = Number(v.priceCost)
+        if (v.priceSelling) price.selling = Number(v.priceSelling)
+        if (v.priceMrp) price.mrp = Number(v.priceMrp)
+        if (Object.keys(price).length) out.price = price
+        if (v.stock) out.inventory = { quantity: Number(v.stock) }
+        if (v.thumbnailUrl) out.thumbnail = { url: v.thumbnailUrl }
+        if (v.imageUrls.length) out.images = v.imageUrls.map((url) => ({ url }))
+        const attrs = v.attributes.filter((a) => a.key.trim()).map((a) => ({ key: a.key.trim(), value: a.value.trim() }))
+        if (attrs.length) out.attributes = attrs
+        return out
+      })
+
   // ─── Add Product ─────────────────────────────────────
   const handleOpenAdd = () => {
     setFormData(emptyProductForm)
@@ -210,6 +301,8 @@ export default function AdminInventoryProductsPage() {
     if (formData.tags) payload.tags = formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
     if (formData.thumbnailUrl) payload.thumbnail = { url: formData.thumbnailUrl }
     if (formData.imageUrls.length > 0) payload.images = formData.imageUrls.map((url) => ({ url }))
+    const variants = buildVariantsPayload()
+    if (variants.length > 0) payload.variants = variants
 
     dispatch(createProductRequest(payload))
     toast.success('Product created successfully')
@@ -219,12 +312,16 @@ export default function AdminInventoryProductsPage() {
   // ─── Edit Product ────────────────────────────────────
   const handleOpenEdit = (p: ProductItem) => {
     setSelectedProduct(p)
+    const catId = typeof p.category === 'object' ? p.category._id : (p.category as string)
+    const catObj = categories.find((c) => c._id === catId)
+    const parentId = catObj ? catParentId(catObj) : null
     setFormData({
       name: p.name,
       sku: p.sku || '',
       partNumber: p.partNumber || '',
       description: p.description || '',
-      category: typeof p.category === 'object' ? p.category._id : (p.category as string),
+      category: catId || '',
+      categoryParent: parentId || catId || '',
       brand: typeof p.brand === 'object' ? p.brand._id : (p.brand as string),
       vehicleType: p.vehicleType || 'Car',
       priceCost: String(p.price.cost),
@@ -236,6 +333,18 @@ export default function AdminInventoryProductsPage() {
       isFeatured: p.isFeatured,
       thumbnailUrl: p.thumbnail?.url || '',
       imageUrls: p.images?.map((i) => i.url) || [],
+      variants: (p.variants || []).map((v) => ({
+        name: v.name || '',
+        sku: v.sku || '',
+        brand: typeof v.brand === 'object' && v.brand ? v.brand._id : ((v.brand as string) || ''),
+        priceCost: v.price?.cost != null ? String(v.price.cost) : '',
+        priceSelling: v.price?.selling != null ? String(v.price.selling) : '',
+        priceMrp: v.price?.mrp != null ? String(v.price.mrp) : '',
+        stock: v.inventory?.quantity != null ? String(v.inventory.quantity) : '',
+        thumbnailUrl: v.thumbnail?.url || '',
+        imageUrls: (v.images || []).map((i) => i.url),
+        attributes: (v.attributes || []).map((a) => ({ key: a.key || '', value: a.value || '' })),
+      })),
     })
     setFormTab('basic')
     setIsEditOpen(true)
@@ -264,6 +373,7 @@ export default function AdminInventoryProductsPage() {
     if (formData.partNumber) payload.partNumber = formData.partNumber
     if (formData.tags) payload.tags = formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
     if (formData.thumbnailUrl) payload.thumbnail = { url: formData.thumbnailUrl }
+    payload.variants = buildVariantsPayload()
 
     dispatch(updateProductRequest({ id: selectedProduct._id, data: payload }))
     toast.success('Product updated successfully')
@@ -341,10 +451,11 @@ export default function AdminInventoryProductsPage() {
   // ─── Product Form (shared by Add & Edit) ─────────────
   const ProductForm = () => (
     <Tabs value={formTab} onValueChange={setFormTab}>
-      <TabsList className="grid grid-cols-3 w-full mb-4">
+      <TabsList className="grid grid-cols-4 w-full mb-4">
         <TabsTrigger value="basic">Basic Info</TabsTrigger>
         <TabsTrigger value="pricing">Pricing & Stock</TabsTrigger>
         <TabsTrigger value="media">Images</TabsTrigger>
+        <TabsTrigger value="variants">Variants{formData.variants.length > 0 ? ` (${formData.variants.length})` : ''}</TabsTrigger>
       </TabsList>
 
       <TabsContent value="basic" className="space-y-4">
@@ -365,15 +476,37 @@ export default function AdminInventoryProductsPage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label>Category *</Label>
-            <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+            <Select value={formData.categoryParent} onValueChange={(v) => setFormData({ ...formData, categoryParent: v, category: v })}>
               <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
               <SelectContent>
-                {categories.filter((c) => c.isActive).map((c) => (
+                {parentCategories.map((c) => (
                   <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+          <div className="grid gap-2">
+            <Label>
+              Sub-category
+              {formData.categoryParent && subCategories.length === 0 && <span className="text-gray-400 font-normal"> · none</span>}
+            </Label>
+            <Select
+              value={isSubSelected ? formData.category : ''}
+              onValueChange={(v) => setFormData({ ...formData, category: v })}
+              disabled={!formData.categoryParent || subCategories.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={!formData.categoryParent ? 'Pick a category first' : subCategories.length === 0 ? 'No sub-categories' : 'Select sub-category'} />
+              </SelectTrigger>
+              <SelectContent>
+                {subCategories.map((c) => (
+                  <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label>Brand *</Label>
             <Select value={formData.brand} onValueChange={(v) => setFormData({ ...formData, brand: v })}>
@@ -385,17 +518,17 @@ export default function AdminInventoryProductsPage() {
               </SelectContent>
             </Select>
           </div>
-        </div>
-        <div className="grid gap-2">
-          <Label>Vehicle Type</Label>
-          <Select value={formData.vehicleType} onValueChange={(v) => setFormData({ ...formData, vehicleType: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {['Car', 'Motorcycle', 'Truck', 'Bus', 'Auto Rickshaw', 'Scooter', 'Universal'].map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid gap-2">
+            <Label>Vehicle Type</Label>
+            <Select value={formData.vehicleType} onValueChange={(v) => setFormData({ ...formData, vehicleType: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {['Car', 'Motorcycle', 'Truck', 'Bus', 'Auto Rickshaw', 'Scooter', 'Universal'].map((t) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="grid gap-2">
           <Label>Description *</Label>
@@ -479,6 +612,126 @@ export default function AdminInventoryProductsPage() {
             </label>
           </div>
         </div>
+      </TabsContent>
+
+      <TabsContent value="variants" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-[#1A1D29]">Product Variants</p>
+            <p className="text-xs text-gray-500">Optional. Add size / colour / spec variations — each with its own brand, images, price &amp; stock.</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={addVariant} className="border-[#1B3B6F]/30 text-[#1B3B6F] hover:bg-[#1B3B6F]/5">
+            <Plus className="h-4 w-4 mr-1" /> Add Variant
+          </Button>
+        </div>
+
+        {formData.variants.length === 0 ? (
+          <div className="text-center py-10 border border-dashed border-gray-200 rounded-xl">
+            <Layers className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">No variants yet</p>
+            <p className="text-xs text-gray-400">This product will be sold as a single item.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {formData.variants.map((v, idx) => (
+              <div key={idx} className="rounded-xl border border-gray-200 p-4 space-y-3 bg-gray-50/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wide text-[#1B3B6F] flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5" /> Variant {idx + 1}
+                  </span>
+                  <button type="button" onClick={() => removeVariant(idx)} className="text-red-500 hover:text-red-700 text-xs flex items-center gap-1">
+                    <Trash2 className="h-3.5 w-3.5" /> Remove
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Variant Name *</Label>
+                    <Input value={v.name} onChange={(e) => updateVariant(idx, { name: e.target.value })} placeholder="e.g. Front / Ceramic" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">SKU</Label>
+                    <Input value={v.sku} onChange={(e) => updateVariant(idx, { sku: e.target.value })} placeholder="Optional" />
+                  </div>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Brand (for this variant)</Label>
+                  <Select value={v.brand || 'inherit'} onValueChange={(val) => updateVariant(idx, { brand: val === 'inherit' ? '' : val })}>
+                    <SelectTrigger><SelectValue placeholder="Same as product brand" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit">Same as product brand</SelectItem>
+                      {brands.filter((b) => b.isActive).map((b) => (
+                        <SelectItem key={b._id} value={b._id}>{b.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="grid gap-1.5"><Label className="text-xs">Cost</Label><Input type="number" value={v.priceCost} onChange={(e) => updateVariant(idx, { priceCost: e.target.value })} placeholder="0" /></div>
+                  <div className="grid gap-1.5"><Label className="text-xs">Selling</Label><Input type="number" value={v.priceSelling} onChange={(e) => updateVariant(idx, { priceSelling: e.target.value })} placeholder="0" /></div>
+                  <div className="grid gap-1.5"><Label className="text-xs">MRP</Label><Input type="number" value={v.priceMrp} onChange={(e) => updateVariant(idx, { priceMrp: e.target.value })} placeholder="0" /></div>
+                  <div className="grid gap-1.5"><Label className="text-xs">Stock</Label><Input type="number" value={v.stock} onChange={(e) => updateVariant(idx, { stock: e.target.value })} placeholder="0" /></div>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Variant Thumbnail</Label>
+                  {v.thumbnailUrl ? (
+                    <div className="relative inline-block w-20 h-20">
+                      <img src={v.thumbnailUrl} alt="variant thumb" className="w-20 h-20 rounded-lg object-cover border" />
+                      <button type="button" onClick={() => updateVariant(idx, { thumbnailUrl: '' })} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5">
+                        <XIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg hover:bg-white w-fit">
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 text-gray-500" />}
+                      <span className="text-xs text-gray-600">Upload</span>
+                      <input type="file" accept="image/*" onChange={(e) => handleVariantThumbUpload(idx, e)} className="hidden" disabled={uploading} />
+                    </label>
+                  )}
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Variant Images</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {v.imageUrls.map((url, i) => (
+                      <div key={i} className="relative w-16 h-16">
+                        <img src={url} alt={`v-${idx}-img-${i}`} className="w-16 h-16 rounded-lg object-cover border" />
+                        <button type="button" onClick={() => removeVariantImage(idx, i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5">
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <label className="cursor-pointer w-16 h-16 flex flex-col items-center justify-center border border-dashed border-gray-300 rounded-lg hover:bg-white">
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-5 w-5 text-gray-400" />}
+                      <input type="file" accept="image/*" multiple onChange={(e) => handleVariantImagesUpload(idx, e)} className="hidden" disabled={uploading} />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Properties</Label>
+                    <button type="button" onClick={() => addVariantAttr(idx)} className="text-[#1B3B6F] text-xs flex items-center gap-1">
+                      <Plus className="h-3 w-3" /> Add property
+                    </button>
+                  </div>
+                  {v.attributes.map((a, ai) => (
+                    <div key={ai} className="flex items-center gap-2">
+                      <Input value={a.key} onChange={(e) => updateVariantAttr(idx, ai, { key: e.target.value })} placeholder="e.g. Size" className="h-8 text-xs" />
+                      <Input value={a.value} onChange={(e) => updateVariantAttr(idx, ai, { value: e.target.value })} placeholder="e.g. 90/90-12" className="h-8 text-xs" />
+                      <button type="button" onClick={() => removeVariantAttr(idx, ai)} className="text-red-400 hover:text-red-600">
+                        <XIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   )
@@ -748,7 +1001,7 @@ export default function AdminInventoryProductsPage() {
                 </DialogTitle>
                 <DialogDescription>Create a new product in your inventory</DialogDescription>
               </DialogHeader>
-              <ProductForm />
+              {ProductForm()}
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
                 <Button onClick={handleSaveNew} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#1B3B6F]/90">
@@ -771,7 +1024,7 @@ export default function AdminInventoryProductsPage() {
                 </DialogTitle>
                 <DialogDescription>Update product details</DialogDescription>
               </DialogHeader>
-              <ProductForm />
+              {ProductForm()}
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
                 <Button onClick={handleSaveEdit} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#1B3B6F]/90">
@@ -804,6 +1057,36 @@ export default function AdminInventoryProductsPage() {
                       <img key={i} src={img.url} alt={`img-${i}`} className="w-20 h-20 rounded-xl object-cover border border-gray-100" />
                     ))}
                   </div>
+                  {/* Variants */}
+                  {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-[#1A1D29] mb-2 flex items-center gap-1.5">
+                        <Layers className="h-4 w-4 text-[#1B3B6F]" /> Variants ({selectedProduct.variants.length})
+                      </p>
+                      <div className="space-y-2">
+                        {selectedProduct.variants.map((v, i) => (
+                          <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-100 p-2">
+                            {v.thumbnail?.url ? (
+                              <img src={v.thumbnail.url} alt={v.name || `variant-${i}`} className="w-10 h-10 rounded object-cover border" />
+                            ) : (
+                              <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center"><Layers className="h-4 w-4 text-gray-400" /></div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{v.name || 'Variant'}</p>
+                              <p className="text-xs text-gray-500">
+                                {v.sku ? `SKU ${v.sku} · ` : ''}
+                                {v.price?.selling != null ? formatCurrency(v.price.selling) : ''}
+                                {v.inventory?.quantity != null ? ` · ${v.inventory.quantity} in stock` : ''}
+                              </p>
+                            </div>
+                            {v.images && v.images.length > 0 && (
+                              <span className="text-[11px] text-gray-400">{v.images.length} img</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-4 text-sm rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                     <div><p className="text-gray-500">Name</p><p className="font-medium">{selectedProduct.name}</p></div>
                     <div><p className="text-gray-500">SKU</p><p className="font-medium">{selectedProduct.sku}</p></div>
