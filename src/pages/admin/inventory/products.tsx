@@ -44,7 +44,12 @@ import {
   Save,
   Rocket,
   FileText,
+  Crop,
+  ZoomIn,
+  ZoomOut,
+  Check,
 } from 'lucide-react'
+import Cropper from 'react-easy-crop'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -162,6 +167,137 @@ const emptyProductForm = {
   variants: [] as VariantForm[],
 }
 
+// ─── Image cropping — a professional crop step before every image upload ───────
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const img = new Image()
+    img.addEventListener('load', () => resolve(img))
+    img.addEventListener('error', (e) => reject(e))
+    img.src = url
+  })
+
+// Render the chosen crop region to a canvas → JPEG blob (capped at 1200px).
+async function getCroppedBlob(imageSrc: string, area: { x: number; y: number; width: number; height: number }): Promise<Blob> {
+  const image = await createImage(imageSrc)
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas not supported')
+  const MAX = 1200
+  const scale = Math.min(1, MAX / Math.max(area.width, area.height))
+  canvas.width = Math.max(1, Math.round(area.width * scale))
+  canvas.height = Math.max(1, Math.round(area.height * scale))
+  ctx.drawImage(image, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height)
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not process image'))), 'image/jpeg', 0.92)
+  })
+}
+
+const readAsDataURL = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+
+const CROP_ASPECTS: { label: string; value: number }[] = [
+  { label: 'Square', value: 1 },
+  { label: '4:3', value: 4 / 3 },
+  { label: '16:9', value: 16 / 9 },
+  { label: '3:4', value: 3 / 4 },
+]
+
+// Reusable crop dialog. The parent feeds it one image src at a time (queue) and
+// receives the cropped File back via onCrop.
+function ImageCropDialog({ open, src, count, busy, onCancel, onCrop }: {
+  open: boolean
+  src: string
+  count: number
+  busy: boolean
+  onCancel: () => void
+  onCrop: (file: File) => void
+}) {
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [aspect, setAspect] = useState(1)
+  const [areaPixels, setAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+
+  // Reset the view whenever a new image comes up.
+  useEffect(() => { setCrop({ x: 0, y: 0 }); setZoom(1); setAreaPixels(null) }, [src])
+
+  const confirm = async () => {
+    if (!areaPixels) return
+    try {
+      const blob = await getCroppedBlob(src, areaPixels)
+      onCrop(new File([blob], `product-${Date.now()}.jpg`, { type: 'image/jpeg' }))
+    } catch {
+      toast.error('Could not crop image')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !busy) onCancel() }}>
+      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden flex flex-col">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-4">
+          <div className="absolute -right-6 -top-10 h-28 w-28 rounded-full bg-white/[0.06]" />
+          <div className="relative flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 backdrop-blur">
+              <Crop className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-white">Crop image</DialogTitle>
+              <DialogDescription className="text-[12px] text-white/60">
+                Drag to reposition · scroll or use the slider to zoom{count > 1 ? ` · ${count} images left` : ''}
+              </DialogDescription>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative w-full h-[320px] bg-neutral-900">
+          {src && (
+            <Cropper
+              image={src}
+              crop={crop}
+              zoom={zoom}
+              aspect={aspect}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(_area, ap) => setAreaPixels(ap as { x: number; y: number; width: number; height: number })}
+              showGrid
+            />
+          )}
+        </div>
+
+        <div className="px-6 py-3 space-y-3 border-t border-gray-100">
+          <div className="flex items-center gap-3">
+            <ZoomOut className="h-4 w-4 text-gray-400 shrink-0" />
+            <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(e) => setZoom(Number(e.target.value))}
+              className="flex-1 accent-[#1B3B6F]" aria-label="Zoom" />
+            <ZoomIn className="h-4 w-4 text-gray-400 shrink-0" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-400 mr-1">Ratio</span>
+            {CROP_ASPECTS.map((a) => (
+              <button key={a.label} type="button" onClick={() => setAspect(a.value)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${aspect === a.value ? 'bg-[#1B3B6F] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 px-6 py-3.5 flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
+          <Button onClick={confirm} disabled={busy || !areaPixels} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
+            {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
+            Crop &amp; Upload
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function AdminInventoryProductsPage() {
   const dispatch = useAppDispatch()
   const { products, loading, actionLoading, error, pagination } = useAppSelector((s) => s.product)
@@ -187,6 +323,38 @@ export default function AdminInventoryProductsPage() {
   const [uploading, setUploading] = useState(false)
   const [formTab, setFormTab] = useState('basic')
   const [pickerFor, setPickerFor] = useState<number | null>(null) // which variant's "reuse image" picker is open
+
+  // ── Image cropper queue: files are cropped one-by-one, then uploaded ──
+  const [cropFiles, setCropFiles] = useState<File[]>([])
+  const [cropSrc, setCropSrc] = useState('')
+  const [cropUpload, setCropUpload] = useState<{ fn: (f: File) => Promise<void> } | null>(null)
+  const [cropBusy, setCropBusy] = useState(false)
+
+  // Open the cropper for a batch of files; each cropped result runs through `upload`.
+  const startCrop = async (files: File[], upload: (f: File) => Promise<void>) => {
+    if (!files.length) return
+    try {
+      const src = await readAsDataURL(files[0])
+      setCropFiles(files)
+      setCropSrc(src)
+      setCropUpload({ fn: upload })
+    } catch { toast.error('Could not read image') }
+  }
+  const closeCrop = () => { setCropFiles([]); setCropSrc(''); setCropUpload(null); setCropBusy(false) }
+  const handleCropDone = async (croppedFile: File) => {
+    if (!cropUpload) return
+    setCropBusy(true)
+    try { await cropUpload.fn(croppedFile) } catch { toast.error('Upload failed') }
+    setCropBusy(false)
+    // Advance to the next queued file, or close when done.
+    const remaining = cropFiles.slice(1)
+    if (remaining.length) {
+      try { const src = await readAsDataURL(remaining[0]); setCropFiles(remaining); setCropSrc(src) }
+      catch { closeCrop() }
+    } else {
+      closeCrop()
+    }
+  }
 
   // ─── Fetch on mount & filter change ──────────────────
   useEffect(() => {
@@ -256,26 +424,23 @@ export default function AdminInventoryProductsPage() {
   const removeVariantImage = (idx: number, imgIdx: number) =>
     mutateVariant(idx, (v) => ({ ...v, imageUrls: v.imageUrls.filter((_, i) => i !== imgIdx) }))
 
-  const handleVariantThumbUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVariantThumbUpload = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    try {
-      setUploading(true)
-      const res = await uploadAPI.uploadImage(file, 'products')
+    startCrop([file], async (cropped) => {
+      const res = await uploadAPI.uploadImage(cropped, 'products')
       updateVariant(idx, { thumbnailUrl: res.data.data.url })
-      toast.success('Variant thumbnail uploaded')
-    } catch { toast.error('Upload failed') } finally { setUploading(false) }
+    })
+    e.target.value = ''
   }
-  const handleVariantImagesUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVariantImagesUpload = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
-    try {
-      setUploading(true)
-      const res = await uploadAPI.uploadImages(files, 'products')
-      const urls = res.data.data.map((img: any) => img.url)
-      mutateVariant(idx, (v) => ({ ...v, imageUrls: [...v.imageUrls, ...urls] }))
-      toast.success(`${urls.length} images uploaded`)
-    } catch { toast.error('Upload failed') } finally { setUploading(false) }
+    startCrop(files, async (cropped) => {
+      const res = await uploadAPI.uploadImage(cropped, 'products')
+      mutateVariant(idx, (v) => ({ ...v, imageUrls: [...v.imageUrls, res.data.data.url] }))
+    })
+    e.target.value = ''
   }
 
   // Map form variants → API payload (drops blank rows & empty fields).
@@ -459,35 +624,25 @@ export default function AdminInventoryProductsPage() {
   }
 
   // ─── Image Upload ────────────────────────────────────
-  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    try {
-      setUploading(true)
-      const res = await uploadAPI.uploadImage(file, 'products')
+    startCrop([file], async (cropped) => {
+      const res = await uploadAPI.uploadImage(cropped, 'products')
       setFormData((prev) => ({ ...prev, thumbnailUrl: res.data.data.url }))
-      toast.success('Thumbnail uploaded')
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setUploading(false)
-    }
+      toast.success('Thumbnail added')
+    })
+    e.target.value = ''
   }
 
-  const handleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
-    try {
-      setUploading(true)
-      const res = await uploadAPI.uploadImages(files, 'products')
-      const urls = res.data.data.map((img: any) => img.url)
-      setFormData((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, ...urls] }))
-      toast.success(`${urls.length} images uploaded`)
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setUploading(false)
-    }
+    startCrop(files, async (cropped) => {
+      const res = await uploadAPI.uploadImage(cropped, 'products')
+      setFormData((prev) => ({ ...prev, imageUrls: [...prev.imageUrls, res.data.data.url] }))
+    })
+    e.target.value = ''
   }
 
   const removeImageUrl = (idx: number) => {
@@ -1335,6 +1490,16 @@ export default function AdminInventoryProductsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* ─── Image Cropper (shared by all image uploads) ─────── */}
+          <ImageCropDialog
+            open={!!cropSrc}
+            src={cropSrc}
+            count={cropFiles.length}
+            busy={cropBusy}
+            onCancel={closeCrop}
+            onCrop={handleCropDone}
+          />
         </div>
       </main>
     </div>
