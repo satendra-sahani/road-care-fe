@@ -186,6 +186,7 @@ export default function AdminInventoryProductsPage() {
   const [stockQty, setStockQty] = useState('')
   const [uploading, setUploading] = useState(false)
   const [formTab, setFormTab] = useState('basic')
+  const [pickerFor, setPickerFor] = useState<number | null>(null) // which variant's "reuse image" picker is open
 
   // ─── Fetch on mount & filter change ──────────────────
   useEffect(() => {
@@ -225,9 +226,24 @@ export default function AdminInventoryProductsPage() {
   const subCategories = activeCategories.filter((c) => catParentId(c) === formData.categoryParent)
   const isSubSelected = subCategories.some((c) => c._id === formData.category)
 
+  // Every image already uploaded in this product form (product thumbnail +
+  // product images + all variants) — offered for reuse so the same file isn't
+  // re-uploaded for another variant/brand.
+  const productImagePool: string[] = (() => {
+    const urls: string[] = []
+    const push = (u?: string) => { if (u && !urls.includes(u)) urls.push(u) }
+    push(formData.thumbnailUrl)
+    formData.imageUrls.forEach(push)
+    formData.variants.forEach((vv) => { push(vv.thumbnailUrl); vv.imageUrls.forEach(push) })
+    return urls
+  })()
+
   // ─── Variant helpers ─────────────────────────────────
   const addVariant = () => setFormData((prev) => ({ ...prev, variants: [...prev.variants, emptyVariant()] }))
-  const removeVariant = (idx: number) => setFormData((prev) => ({ ...prev, variants: prev.variants.filter((_, i) => i !== idx) }))
+  const removeVariant = (idx: number) => { setPickerFor(null); setFormData((prev) => ({ ...prev, variants: prev.variants.filter((_, i) => i !== idx) })) }
+  // Reuse an image that's already uploaded elsewhere in this product (no re-upload).
+  const addExistingVariantImage = (idx: number, url: string) =>
+    mutateVariant(idx, (v) => (v.imageUrls.includes(url) ? v : { ...v, imageUrls: [...v.imageUrls, url] }))
   const updateVariant = (idx: number, patch: Partial<VariantForm>) =>
     setFormData((prev) => ({ ...prev, variants: prev.variants.map((v, i) => (i === idx ? { ...v, ...patch } : v)) }))
   const mutateVariant = (idx: number, fn: (v: VariantForm) => VariantForm) =>
@@ -287,6 +303,7 @@ export default function AdminInventoryProductsPage() {
   const handleOpenAdd = () => {
     setFormData(emptyProductForm)
     setFormTab('basic')
+    setPickerFor(null)
     setIsAddOpen(true)
   }
 
@@ -372,6 +389,7 @@ export default function AdminInventoryProductsPage() {
       })),
     })
     setFormTab('basic')
+    setPickerFor(null)
     setIsEditOpen(true)
   }
 
@@ -764,7 +782,14 @@ export default function AdminInventoryProductsPage() {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">Variant Images</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Variant Images</Label>
+                    {productImagePool.filter((u) => !v.imageUrls.includes(u)).length > 0 && (
+                      <button type="button" onClick={() => setPickerFor(pickerFor === idx ? null : idx)} className="text-[#1B3B6F] text-xs flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" /> {pickerFor === idx ? 'Close' : 'Reuse existing'}
+                      </button>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {v.imageUrls.map((url, i) => (
                       <div key={i} className="relative w-16 h-16">
@@ -779,6 +804,28 @@ export default function AdminInventoryProductsPage() {
                       <input type="file" accept="image/*" multiple onChange={(e) => handleVariantImagesUpload(idx, e)} className="hidden" disabled={uploading} />
                     </label>
                   </div>
+                  {pickerFor === idx && (
+                    <div className="mt-1 rounded-lg border border-gray-200 bg-white p-2">
+                      <p className="text-[11px] text-gray-500 mb-1.5">Tap an already-uploaded image to reuse it for this variant — no need to upload again.</p>
+                      {productImagePool.filter((u) => !v.imageUrls.includes(u)).length === 0 ? (
+                        <p className="text-[11px] text-gray-400 text-center py-2">No other images available yet</p>
+                      ) : (
+                        <div className="grid grid-cols-6 gap-2">
+                          {productImagePool.filter((u) => !v.imageUrls.includes(u)).map((url) => (
+                            <button
+                              key={url}
+                              type="button"
+                              onClick={() => addExistingVariantImage(idx, url)}
+                              title="Add to this variant"
+                              className="relative aspect-square rounded-md overflow-hidden border border-gray-200 hover:ring-2 hover:ring-[#1B3B6F] transition"
+                            >
+                              <img src={url} alt="existing" className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-1.5">
