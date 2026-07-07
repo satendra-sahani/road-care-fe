@@ -38,7 +38,6 @@ interface Plan {
 const TABS: { id: PlanType; label: string; icon: any }[] = [
   { id: 'membership', label: 'Membership Plans', icon: Crown },
   { id: 'gps_hardware', label: 'GPS Hardware', icon: Cpu },
-  { id: 'gps_subscription', label: 'GPS Subscription', icon: Radio },
   { id: 'addon', label: 'Family / Fleet Add-ons', icon: Users },
 ]
 
@@ -323,7 +322,6 @@ export function PlanPricingManagement() {
                     <select value={editing.planType} onChange={(e) => setEditing({ ...editing, planType: e.target.value as PlanType })} className={fieldCls}>
                       <option value="membership">Membership</option>
                       <option value="gps_hardware">GPS Hardware</option>
-                      <option value="gps_subscription">GPS Subscription</option>
                       <option value="addon">Add-on</option>
                     </select>
                   </label>
