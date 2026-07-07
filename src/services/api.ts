@@ -181,6 +181,13 @@ export const productAPI = {
   removeImage: (id: string, imageId: string) =>
     api.delete(`/admin/products/${id}/images/${imageId}`),
   getStats: () => api.get('/admin/products/stats'),
+  // Bulk import (CSV parsed client-side → JSON rows) + export + bulk ops
+  importRows: (rows: any[]) => api.post('/admin/products/import', { rows }),
+  exportAll: () => api.get('/admin/products/export'),
+  bulkUpdate: (productIds: string[], updateData: any) =>
+    api.put('/admin/products/bulk/update', { productIds, updateData }),
+  bulkDelete: (productIds: string[]) =>
+    api.delete('/admin/products/bulk/delete', { data: { productIds } }),
 };
 
 // ─── Service Request APIs (Admin) ────────────────────────────────────
@@ -660,6 +667,18 @@ export const adminTrackerAPI = {
   getDevice: (id: string) => api.get(`/admin/tracker/devices/${id}`),
   update: (id: string, data: { status?: string; extendDays?: number }) =>
     api.put(`/admin/tracker/devices/${id}`, data),
+
+  // Customer vehicles + GPS provisioning
+  getVehicles: (params?: { status?: string; search?: string; limit?: number }) =>
+    api.get('/admin/vehicles', { params }),
+  provisionVehicle: (
+    id: string,
+    data: { deviceId?: string; status?: string; simLocked?: boolean; simActivated?: boolean; note?: string },
+  ) => api.put(`/admin/vehicles/${id}`, data),
+  setUserPlan: (
+    userId: string,
+    data: { planKey?: string; vehicleLimit?: number; cycle?: string; active?: boolean; renewsAt?: string },
+  ) => api.put(`/admin/vehicles/plan/${userId}`, data),
 };
 
 // ─── Shop Partner APIs ──────────────────────────────────────────────

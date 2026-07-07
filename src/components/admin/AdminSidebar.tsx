@@ -81,6 +81,7 @@ const NAV_GROUPS: SidebarGroup[] = [
     id: 'subscriptions', title: 'Subscriptions & Plans', items: [
       { id: 'memberships', title: 'BM Care Members', icon: Crown, href: '/admin/subscriptions/memberships' },
       { id: 'trackers', title: 'GPS Trackers', icon: Satellite, href: '/admin/subscriptions/trackers' },
+      { id: 'gps-provisioning', title: 'GPS Provisioning', icon: Satellite, href: '/admin/subscriptions/provisioning' },
       { id: 'plan-pricing', title: 'Plan Pricing', icon: DollarSign, href: '/admin/services/plan-pricing' },
     ],
   },
