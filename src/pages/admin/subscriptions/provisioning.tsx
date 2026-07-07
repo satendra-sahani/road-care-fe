@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 // activate SIM → ship → mark active. The customer only wires it physically.
 // ────────────────────────────────────────────────────────────────────────────
 
-type Prov = { simLocked?: boolean; simActivated?: boolean; note?: string; configuredAt?: string; shippedAt?: string; deliveredAt?: string }
+type Prov = { simLocked?: boolean; simActivated?: boolean; note?: string; configuredAt?: string; shippedAt?: string; deliveredAt?: string; paid?: boolean; paymentId?: string; amountPaid?: number }
 type Vehicle = {
   _id: string
   name: string
@@ -31,11 +31,6 @@ const STATUS_COLOR: Record<string, string> = {
   active: 'bg-emerald-100 text-emerald-700',
   inactive: 'bg-slate-200 text-slate-600',
 }
-const PLANS = [
-  { key: 'gps_solo', name: 'Solo', vehicleLimit: 1 },
-  { key: 'gps_family', name: 'Family', vehicleLimit: 3 },
-  { key: 'gps_fleet', name: 'Fleet', vehicleLimit: 5 },
-]
 
 export default function GpsProvisioningPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -96,7 +91,7 @@ export default function GpsProvisioningPage() {
                 <tr className="border-b border-slate-100 text-left text-[12px] uppercase text-slate-400">
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Vehicle</th>
-                  <th className="px-4 py-3">Plan</th>
+                  <th className="px-4 py-3">Payment</th>
                   <th className="px-4 py-3">Device</th>
                   <th className="px-4 py-3">SIM</th>
                   <th className="px-4 py-3">Status</th>
@@ -118,8 +113,10 @@ export default function GpsProvisioningPage() {
                       <div className="font-semibold text-slate-700">{v.em} {v.name}</div>
                       <div className="text-[12px] text-slate-400">{v.regNo || v.type}</div>
                     </td>
-                    <td className="px-4 py-3 text-[12px] text-slate-500">
-                      {v.user?.gpsPlan?.active ? `${v.user.gpsPlan.planKey || 'plan'} · ${v.user.gpsPlan.vehicleLimit || 0} veh` : <span className="text-amber-600">No plan</span>}
+                    <td className="px-4 py-3 text-[12px]">
+                      {v.provisioning?.paid
+                        ? <span className="inline-block rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-1 text-[11px] font-bold">Paid{v.provisioning.amountPaid ? ` ₹${v.provisioning.amountPaid}` : ''}</span>
+                        : <span className="inline-block rounded-full bg-amber-100 text-amber-700 px-2.5 py-1 text-[11px] font-bold">Unpaid</span>}
                     </td>
                     <td className="px-4 py-3 text-[12px]">
                       {v.device?.deviceId ? <span className="font-mono text-slate-700">{v.device.deviceId}</span> : <span className="text-slate-400">—</span>}
@@ -153,7 +150,6 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
   const [simActivated, setSimActivated] = useState(!!vehicle.provisioning?.simActivated)
   const [note, setNote] = useState(vehicle.provisioning?.note || '')
   const [busy, setBusy] = useState(false)
-  const [planKey, setPlanKey] = useState(vehicle.user?.gpsPlan?.planKey || '')
 
   const save = async (nextStatus?: string) => {
     setBusy(true)
@@ -169,17 +165,6 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
     setBusy(false)
   }
 
-  const applyPlan = async () => {
-    const p = PLANS.find((x) => x.key === planKey)
-    if (!p || !vehicle.user?._id) return
-    setBusy(true)
-    try {
-      await adminTrackerAPI.setUserPlan(vehicle.user._id, { planKey: p.key, vehicleLimit: p.vehicleLimit, active: true, cycle: 'yr' })
-      toast.success(`Plan set: ${p.name} (${p.vehicleLimit} vehicles)`)
-    } catch { toast.error('Could not set plan') }
-    setBusy(false)
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
       <div className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -192,16 +177,15 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
         </div>
 
         <div className="space-y-5 p-5">
-          {/* plan */}
-          <div className="rounded-xl border border-slate-200 p-4">
-            <div className="mb-2 text-[13px] font-bold text-slate-700">Customer plan</div>
-            <div className="flex gap-2">
-              <select value={planKey} onChange={(e) => setPlanKey(e.target.value)} className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                <option value="">Select plan…</option>
-                {PLANS.map((p) => <option key={p.key} value={p.key}>{p.name} — {p.vehicleLimit} vehicles</option>)}
-              </select>
-              <button onClick={applyPlan} disabled={busy || !planKey} className="rounded-lg bg-slate-800 px-3 py-2 text-[13px] font-semibold text-white disabled:opacity-50">Set</button>
+          {/* payment status */}
+          <div className={`rounded-xl border p-4 ${vehicle.provisioning?.paid ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+            <div className="flex items-center justify-between">
+              <div className="text-[13px] font-bold text-slate-700">Payment</div>
+              {vehicle.provisioning?.paid
+                ? <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">Paid{vehicle.provisioning.amountPaid ? ` · ₹${vehicle.provisioning.amountPaid}` : ''}</span>
+                : <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">Unpaid</span>}
             </div>
+            {vehicle.provisioning?.paymentId && <div className="mt-1 text-[11px] font-mono text-slate-500">{vehicle.provisioning.paymentId}</div>}
           </div>
 
           {/* device */}
