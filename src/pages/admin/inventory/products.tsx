@@ -16,7 +16,7 @@ import {
 import { fetchCategoriesRequest } from '@/store/slices/categorySlice'
 import { fetchBrandsRequest } from '@/store/slices/brandSlice'
 import { ProductItem } from '@/store/slices/productSlice'
-import { uploadAPI } from '@/services/api'
+import { uploadAPI, productAPI } from '@/services/api'
 import { toast } from 'sonner'
 import {
   Search,
@@ -33,6 +33,8 @@ import {
   ShoppingCart,
   Loader2,
   Upload,
+  Download,
+  FileUp,
   X as XIcon,
   ChevronLeft,
   ChevronRight,
@@ -146,6 +148,42 @@ const emptyVariant = (): VariantForm => ({
   stock: '', thumbnailUrl: '', imageUrls: [], attributes: [],
 })
 
+// ─── CSV helpers (no external dependency) ─────────────────────────────────────
+const CSV_TEMPLATE_HEADERS = ['name', 'sku', 'partNumber', 'brand', 'category', 'vehicleType', 'cost', 'selling', 'mrp', 'stock', 'minStock', 'hsnCode', 'gstRate', 'tags', 'image', 'images', 'description']
+function parseCsv(text: string): Record<string, string>[] {
+  const rows: string[][] = []
+  let cur: string[] = [], field = '', inQ = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (inQ) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++ } else inQ = false }
+      else field += c
+    } else if (c === '"') inQ = true
+    else if (c === ',') { cur.push(field); field = '' }
+    else if (c === '\n') { cur.push(field); rows.push(cur); cur = []; field = '' }
+    else if (c !== '\r') field += c
+  }
+  if (field !== '' || cur.length) { cur.push(field); rows.push(cur) }
+  if (rows.length < 2) return []
+  const headers = rows[0].map((h) => h.trim())
+  return rows.slice(1)
+    .filter((r) => r.some((c) => c.trim() !== ''))
+    .map((r) => { const o: Record<string, string> = {}; headers.forEach((h, i) => { o[h] = (r[i] ?? '').trim() }); return o })
+}
+function toCsv(rows: Record<string, any>[]): string {
+  if (!rows.length) return ''
+  const headers = Object.keys(rows[0])
+  const esc = (v: any) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+  return [headers.join(','), ...rows.map((r) => headers.map((h) => esc(r[h])).join(','))].join('\n')
+}
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
+
 const emptyProductForm = {
   name: '',
   sku: '',
@@ -162,6 +200,16 @@ const emptyProductForm = {
   inventoryMinStock: '',
   tags: '',
   isFeatured: false,
+  hsnCode: '',
+  gstRate: '',
+  returnable: true,
+  returnWindowDays: '7',
+  metaTitle: '',
+  metaDescription: '',
+  supplierName: '',
+  supplierContact: '',
+  imageCompleted: false,
+  amountFinalized: false,
   thumbnailUrl: '',
   imageUrls: [] as string[],
   variants: [] as VariantForm[],
@@ -464,6 +512,106 @@ export default function AdminInventoryProductsPage() {
         return out
       })
 
+  // ─── Bulk CSV import / export ────────────────────────
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ imported: number; updated: number; failed: number; errors: { line: number; error: string }[] } | null>(null)
+
+  const refetchProducts = () => {
+    const params: Record<string, any> = { page, limit: 10 }
+    if (searchQuery) params.search = searchQuery
+    if (categoryFilter !== 'all') params.category = categoryFilter
+    if (brandFilter !== 'all') params.brand = brandFilter
+    if (statusFilter === 'active') params.isActive = true
+    if (statusFilter === 'inactive') params.isActive = false
+    dispatch(fetchProductsRequest(params))
+  }
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImporting(true); setImportResult(null)
+    try {
+      const text = await file.text()
+      const rows = parseCsv(text)
+      if (!rows.length) { toast.error('CSV has no data rows'); return }
+      let imported = 0, updated = 0, failed = 0
+      const errors: { line: number; error: string }[] = []
+      const BATCH = 500
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const res = await productAPI.importRows(rows.slice(i, i + BATCH))
+        const d = res.data?.data || {}
+        imported += d.imported || 0; updated += d.updated || 0; failed += d.failed || 0
+        if (Array.isArray(d.errors)) errors.push(...d.errors.map((er: any) => ({ line: (er.line || 0) + i, error: er.error })))
+      }
+      setImportResult({ imported, updated, failed, errors })
+      toast.success(`Import done — ${imported} added, ${updated} updated, ${failed} failed`)
+      refetchProducts()
+    } catch (err: any) {
+      toast.error('Import failed: ' + (err?.response?.data?.message || err?.message || 'error'))
+    } finally { setImporting(false) }
+  }
+
+  const handleExport = async () => {
+    try {
+      const res = await productAPI.exportAll()
+      const rows = res.data?.data || []
+      if (!rows.length) { toast.error('No products to export'); return }
+      downloadCsv(`products-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows))
+      toast.success(`Exported ${rows.length} products`)
+    } catch { toast.error('Export failed') }
+  }
+
+  const handleDownloadTemplate = () => {
+    const sample: Record<string, string> = {
+      name: 'Front Brake Pad Set', sku: 'BP-SWIFT-001', partNumber: 'OEM123456', brand: 'Bosch', category: 'Brake Pads',
+      vehicleType: 'Car', cost: '450', selling: '899', mrp: '1099', stock: '25', minStock: '5', hsnCode: '8708', gstRate: '18',
+      tags: 'brake|safety|premium', image: 'https://example.com/pad.jpg', images: '', description: 'Ceramic front brake pad for Maruti Swift',
+    }
+    const ordered: Record<string, string> = {}
+    CSV_TEMPLATE_HEADERS.forEach((h) => { ordered[h] = sample[h] ?? '' })
+    downloadCsv('product-import-template.csv', toCsv([ordered]))
+  }
+
+  // ─── Bulk select (multi-select + bulk activate/deactivate/delete) ──────────
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const toggleSelect = (id: string) =>
+    setSelectedIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
+  const allSelected = products.length > 0 && selectedIds.length === products.length
+  const toggleSelectAll = () => setSelectedIds(allSelected ? [] : products.map((p: ProductItem) => p._id))
+  const clearSelection = () => setSelectedIds([])
+  const handleBulkActive = async (isActive: boolean) => {
+    if (!selectedIds.length) return
+    try {
+      await productAPI.bulkUpdate(selectedIds, { isActive })
+      toast.success(`${selectedIds.length} product(s) ${isActive ? 'activated' : 'deactivated'}`)
+      clearSelection(); refetchProducts()
+    } catch { toast.error('Bulk update failed') }
+  }
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) return
+    if (!window.confirm(`Delete ${selectedIds.length} product(s)? This cannot be undone.`)) return
+    try {
+      await productAPI.bulkDelete(selectedIds)
+      toast.success(`${selectedIds.length} product(s) deleted`)
+      clearSelection(); refetchProducts()
+    } catch { toast.error('Bulk delete failed') }
+  }
+
+  // ─── Data-entry flag toggle (Image / Amount completed) from the list row ────
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+  const toggleFlag = async (product: ProductItem, field: 'imageCompleted' | 'amountFinalized') => {
+    setTogglingId(product._id + field)
+    try {
+      await productAPI.update(product._id, { [field]: !product[field] })
+      refetchProducts()
+    } catch {
+      toast.error('Update failed')
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
   // ─── Add Product ─────────────────────────────────────
   const handleOpenAdd = () => {
     setFormData(emptyProductForm)
@@ -478,6 +626,24 @@ export default function AdminInventoryProductsPage() {
     const base = (name || 'PRODUCT').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 14) || 'PRODUCT'
     return `${base}-${Date.now().toString(36).toUpperCase().slice(-5)}`
   }
+
+  // Shared flag checkboxes shown in the Add/Edit dialog footer
+  const renderFormFlags = () => (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+      <div className="flex items-center space-x-2">
+        <Checkbox checked={formData.isFeatured} onCheckedChange={(c) => setFormData({ ...formData, isFeatured: c as boolean })} />
+        <Label className="text-[13px] cursor-pointer">Featured Product</Label>
+      </div>
+      <div className="flex items-center space-x-2">
+        <Checkbox checked={formData.imageCompleted} onCheckedChange={(c) => setFormData({ ...formData, imageCompleted: c as boolean })} />
+        <Label className="text-[13px] cursor-pointer">Image Completed</Label>
+      </div>
+      <div className="flex items-center space-x-2">
+        <Checkbox checked={formData.amountFinalized} onCheckedChange={(c) => setFormData({ ...formData, amountFinalized: c as boolean })} />
+        <Label className="text-[13px] cursor-pointer">Amount Completed</Label>
+      </div>
+    </div>
+  )
 
   const handleSaveNew = (asDraft = false) => {
     if (!formData.name || !formData.category || !formData.brand || !formData.priceCost || !formData.priceSelling) {
@@ -505,6 +671,15 @@ export default function AdminInventoryProductsPage() {
       isDraft: asDraft,
     }
     if (formData.partNumber) payload.partNumber = formData.partNumber
+    if (formData.hsnCode) payload.hsnCode = formData.hsnCode
+    if (formData.gstRate) payload.gstRate = Number(formData.gstRate)
+    payload.returnable = formData.returnable
+    if (formData.returnWindowDays) payload.returnWindowDays = Number(formData.returnWindowDays)
+    if (formData.metaTitle) payload.metaTitle = formData.metaTitle
+    if (formData.metaDescription) payload.metaDescription = formData.metaDescription
+    if (formData.supplierName) payload.suppliers = [{ name: formData.supplierName, contact: formData.supplierContact || undefined }]
+    payload.imageCompleted = formData.imageCompleted
+    payload.amountFinalized = formData.amountFinalized
     if (formData.tags) payload.tags = formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
     if (formData.thumbnailUrl) payload.thumbnail = { url: formData.thumbnailUrl }
     if (formData.imageUrls.length > 0) payload.images = formData.imageUrls.map((url) => ({ url }))
@@ -538,6 +713,16 @@ export default function AdminInventoryProductsPage() {
       inventoryMinStock: String(p.inventory.minStock),
       tags: (p.tags || []).join(', '),
       isFeatured: p.isFeatured,
+      hsnCode: p.hsnCode || '',
+      gstRate: p.gstRate != null ? String(p.gstRate) : '',
+      returnable: p.returnable !== false,
+      returnWindowDays: p.returnWindowDays != null ? String(p.returnWindowDays) : '7',
+      metaTitle: p.metaTitle || '',
+      metaDescription: p.metaDescription || '',
+      supplierName: p.suppliers?.[0]?.name || '',
+      supplierContact: p.suppliers?.[0]?.contact || '',
+      imageCompleted: !!p.imageCompleted,
+      amountFinalized: !!p.amountFinalized,
       thumbnailUrl: p.thumbnail?.url || '',
       imageUrls: p.images?.map((i) => i.url) || [],
       variants: (p.variants || []).map((v) => ({
@@ -579,8 +764,19 @@ export default function AdminInventoryProductsPage() {
     }
     if (formData.sku) payload.sku = formData.sku
     if (formData.partNumber) payload.partNumber = formData.partNumber
+    if (formData.hsnCode) payload.hsnCode = formData.hsnCode
+    if (formData.gstRate) payload.gstRate = Number(formData.gstRate)
+    payload.returnable = formData.returnable
+    if (formData.returnWindowDays) payload.returnWindowDays = Number(formData.returnWindowDays)
+    if (formData.metaTitle) payload.metaTitle = formData.metaTitle
+    if (formData.metaDescription) payload.metaDescription = formData.metaDescription
+    if (formData.supplierName) payload.suppliers = [{ name: formData.supplierName, contact: formData.supplierContact || undefined }]
+    payload.imageCompleted = formData.imageCompleted
+    payload.amountFinalized = formData.amountFinalized
     if (formData.tags) payload.tags = formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean)
     if (formData.thumbnailUrl) payload.thumbnail = { url: formData.thumbnailUrl }
+    // Always send images so uploads (and removals) persist on edit
+    payload.images = formData.imageUrls.map((url) => ({ url }))
     payload.variants = buildVariantsPayload()
 
     // Draft → hide from store. Publish → go live. Plain "Save Changes" on an
@@ -781,9 +977,25 @@ export default function AdminInventoryProductsPage() {
           <Label>Tags (comma-separated)</Label>
           <Input value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="brake, safety, premium" />
         </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox checked={formData.isFeatured} onCheckedChange={(c) => setFormData({ ...formData, isFeatured: c as boolean })} />
-          <Label>Featured Product</Label>
+        {/* Supplier (sourcing info) */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label>Supplier Name</Label>
+            <Input value={formData.supplierName} onChange={(e) => setFormData({ ...formData, supplierName: e.target.value })} placeholder="e.g. AutoParts Distributors" />
+          </div>
+          <div className="grid gap-2">
+            <Label>Supplier Contact</Label>
+            <Input value={formData.supplierContact} onChange={(e) => setFormData({ ...formData, supplierContact: e.target.value })} placeholder="Phone / email" />
+          </div>
+        </div>
+        {/* SEO (product page ranking on Google) */}
+        <div className="grid gap-2">
+          <Label>SEO Meta Title <span className="text-gray-400 font-normal">(optional)</span></Label>
+          <Input value={formData.metaTitle} onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })} placeholder="Defaults to product name" maxLength={160} />
+        </div>
+        <div className="grid gap-2">
+          <Label>SEO Meta Description <span className="text-gray-400 font-normal">(optional)</span></Label>
+          <Textarea value={formData.metaDescription} onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })} rows={2} placeholder="Short description for Google search results" maxLength={320} />
         </div>
       </TabsContent>
 
@@ -816,6 +1028,25 @@ export default function AdminInventoryProductsPage() {
             <Label>Min Stock Alert</Label>
             <Input type="number" value={formData.inventoryMinStock} onChange={(e) => setFormData({ ...formData, inventoryMinStock: e.target.value })} placeholder="5" />
           </div>
+        </div>
+        {/* Tax & returns (India GST invoicing + per-product return policy) */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="grid gap-2">
+            <Label>HSN Code</Label>
+            <Input value={formData.hsnCode} onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })} placeholder="e.g. 8708" />
+          </div>
+          <div className="grid gap-2">
+            <Label>GST Rate (%)</Label>
+            <Input type="number" value={formData.gstRate} onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })} placeholder="18" />
+          </div>
+          <div className="grid gap-2">
+            <Label>Return Window (days)</Label>
+            <Input type="number" value={formData.returnWindowDays} onChange={(e) => setFormData({ ...formData, returnWindowDays: e.target.value })} placeholder="7" disabled={!formData.returnable} />
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox checked={formData.returnable} onCheckedChange={(c) => setFormData({ ...formData, returnable: c as boolean })} />
+          <Label>Returnable</Label>
         </div>
       </TabsContent>
 
@@ -1021,11 +1252,46 @@ export default function AdminInventoryProductsPage() {
               <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Products</h1>
               <p className="text-[#6B7280] mt-1 text-sm">Manage your product catalog and inventory</p>
             </div>
-            <Button onClick={handleOpenAdd} className="bg-[#1B3B6F] hover:bg-[#0F2545] shadow-sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Product
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                <FileUp className="h-4 w-4 mr-2" /> Template
+              </Button>
+              <label className={`inline-flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-white text-sm font-medium cursor-pointer hover:bg-gray-50 ${importing ? 'opacity-60 pointer-events-none' : ''}`}>
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {importing ? 'Importing…' : 'Import CSV'}
+                <input type="file" accept=".csv,text/csv" onChange={handleImportFile} className="hidden" disabled={importing} />
+              </label>
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" /> Export
+              </Button>
+              <Button onClick={handleOpenAdd} className="bg-[#1B3B6F] hover:bg-[#0F2545] shadow-sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
+            </div>
           </div>
+
+          {/* Bulk import result summary */}
+          {importResult && (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-4 font-medium">
+                  <span className="text-emerald-600">✓ {importResult.imported} added</span>
+                  <span className="text-blue-600">↻ {importResult.updated} updated</span>
+                  <span className={importResult.failed ? 'text-red-600' : 'text-gray-400'}>✕ {importResult.failed} failed</span>
+                </div>
+                <button onClick={() => setImportResult(null)} className="text-gray-400 hover:text-gray-600"><XIcon className="h-4 w-4" /></button>
+              </div>
+              {importResult.errors.length > 0 && (
+                <div className="mt-2 max-h-40 overflow-auto rounded-lg bg-red-50 p-2 text-[12px] text-red-700 space-y-0.5">
+                  {importResult.errors.slice(0, 100).map((er, i) => (
+                    <div key={i}>Row {er.line}: {er.error}</div>
+                  ))}
+                  {importResult.errors.length > 100 && <div className="text-red-400">…and {importResult.errors.length - 100} more</div>}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1136,16 +1402,28 @@ export default function AdminInventoryProductsPage() {
                 </div>
               ) : (
                 <>
+                  {selectedIds.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-[#1B3B6F]/[0.04] border-b border-gray-200">
+                      <span className="text-sm font-medium text-[#1B3B6F]">{selectedIds.length} selected</span>
+                      <div className="flex-1" />
+                      <Button variant="outline" size="sm" onClick={() => handleBulkActive(true)}>Activate</Button>
+                      <Button variant="outline" size="sm" onClick={() => handleBulkActive(false)}>Deactivate</Button>
+                      <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={handleBulkDelete}>Delete</Button>
+                      <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
+                    </div>
+                  )}
                   <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
+                        <TableHead className="w-10"><Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} /></TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Brand</TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Stock</TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Data Entry</TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Rating</TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Actions</TableHead>
                       </TableRow>
@@ -1157,6 +1435,9 @@ export default function AdminInventoryProductsPage() {
                           className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
                           style={{ borderLeftColor: STATUS_STRIPE[getStripeKey(product)] }}
                         >
+                          <TableCell className="w-10">
+                            <Checkbox checked={selectedIds.includes(product._id)} onCheckedChange={() => toggleSelect(product._id)} />
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-3">
                               {product.thumbnail?.url ? (
@@ -1206,6 +1487,28 @@ export default function AdminInventoryProductsPage() {
                                 {product.isActive ? 'Active' : 'Inactive'}
                               </Badge>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => toggleFlag(product, 'imageCompleted')}
+                                disabled={togglingId === product._id + 'imageCompleted'}
+                                title="Toggle Image Completed"
+                                className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-colors ${product.imageCompleted ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'}`}
+                              >
+                                {product.imageCompleted ? '✓ Image' : 'Image'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => toggleFlag(product, 'amountFinalized')}
+                                disabled={togglingId === product._id + 'amountFinalized'}
+                                title="Toggle Amount Completed"
+                                className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-colors ${product.amountFinalized ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'}`}
+                              >
+                                {product.amountFinalized ? '✓ Amount' : 'Amount'}
+                              </button>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -1293,17 +1596,20 @@ export default function AdminInventoryProductsPage() {
               {ProductForm()}
 
               {/* Sticky footer */}
-              <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between gap-3 shrink-0 bg-white">
-                <Button variant="ghost" onClick={() => setIsAddOpen(false)} className="text-gray-500 hover:text-gray-700">Cancel</Button>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={() => handleSaveNew(true)} disabled={actionLoading} className="border-gray-300 text-gray-700">
-                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                    Save as Draft
-                  </Button>
-                  <Button onClick={() => handleSaveNew(false)} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
-                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Rocket className="h-4 w-4 mr-2" />}
-                    Publish Product
-                  </Button>
+              <div className="border-t border-gray-100 px-6 py-3 flex flex-col gap-3 shrink-0 bg-white">
+                {renderFormFlags()}
+                <div className="flex items-center justify-between gap-3">
+                  <Button variant="ghost" onClick={() => setIsAddOpen(false)} className="text-gray-500 hover:text-gray-700">Cancel</Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => handleSaveNew(true)} disabled={actionLoading} className="border-gray-300 text-gray-700">
+                      {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                      Save as Draft
+                    </Button>
+                    <Button onClick={() => handleSaveNew(false)} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
+                      {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Rocket className="h-4 w-4 mr-2" />}
+                      Publish Product
+                    </Button>
+                  </div>
                 </div>
               </div>
             </DialogContent>
@@ -1341,17 +1647,20 @@ export default function AdminInventoryProductsPage() {
               {ProductForm()}
 
               {/* Sticky footer */}
-              <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between gap-3 shrink-0 bg-white">
-                <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="text-gray-500 hover:text-gray-700">Cancel</Button>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={() => handleSaveEdit(true)} disabled={actionLoading} className="border-gray-300 text-gray-700">
-                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                    Save as Draft
-                  </Button>
-                  <Button onClick={() => handleSaveEdit(false)} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
-                    {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : (selectedProduct?.isDraft ? <Rocket className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />)}
-                    {selectedProduct?.isDraft ? 'Publish' : 'Save Changes'}
-                  </Button>
+              <div className="border-t border-gray-100 px-6 py-3 flex flex-col gap-3 shrink-0 bg-white">
+                {renderFormFlags()}
+                <div className="flex items-center justify-between gap-3">
+                  <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="text-gray-500 hover:text-gray-700">Cancel</Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => handleSaveEdit(true)} disabled={actionLoading} className="border-gray-300 text-gray-700">
+                      {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                      Save as Draft
+                    </Button>
+                    <Button onClick={() => handleSaveEdit(false)} disabled={actionLoading} className="bg-[#1B3B6F] hover:bg-[#0F2545]">
+                      {actionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : (selectedProduct?.isDraft ? <Rocket className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />)}
+                      {selectedProduct?.isDraft ? 'Publish' : 'Save Changes'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </DialogContent>

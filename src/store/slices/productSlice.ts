@@ -53,6 +53,15 @@ export interface ProductItem {
   }>;
   specifications?: Record<string, any>;
   tags: string[];
+  hsnCode?: string;
+  gstRate?: number;
+  returnable?: boolean;
+  returnWindowDays?: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  suppliers?: Array<{ name: string; contact?: string; email?: string }>;
+  imageCompleted?: boolean;
+  amountFinalized?: boolean;
   isActive: boolean;
   isFeatured: boolean;
   isDraft?: boolean;
