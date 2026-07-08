@@ -553,9 +553,9 @@ export default function HomePage() {
                 <div className="flex-1 min-w-0 font-display">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-[13.5px] md:text-[15.5px] font-extrabold tracking-[-0.02em] text-white leading-[1.15]">BM Lens</span>
-                    <span className="shrink-0 rounded-full px-2 py-[3px] text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] font-sans backdrop-blur-sm bg-white/[0.08] text-[#C4B5FD] ring-1 ring-white/10">AI Scan</span>
+                    <span className="hidden sm:inline-flex shrink-0 rounded-full px-2 py-[3px] text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] font-sans backdrop-blur-sm bg-white/[0.08] text-[#C4B5FD] ring-1 ring-white/10">AI Scan</span>
                   </div>
-                  <p className="block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">Snap a part — we&apos;ll find the exact match</p>
+                  <p className="block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">Snap a part, we&apos;ll find it</p>
                 </div>
                 <span className="relative inline-flex items-center gap-1.5 bg-[#C4B5FD] text-[#2E1065] group-hover/lens:bg-white font-bold px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[11.5px] md:text-[12.5px] shrink-0 shadow-[0_4px_14px_-3px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.04] transition-colors duration-300 font-sans">
                   Try Lens
@@ -582,7 +582,7 @@ export default function HomePage() {
                 <div className="flex-1 min-w-0 font-display">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-[13.5px] md:text-[15.5px] font-extrabold tracking-[-0.02em] text-white leading-[1.15]">Live Tracker</span>
-                    <span className="shrink-0 rounded-full px-2 py-[3px] text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] font-sans backdrop-blur-sm bg-white/[0.08] text-[#6EE7B7] ring-1 ring-white/10">GPS 24×7</span>
+                    <span className="hidden sm:inline-flex shrink-0 rounded-full px-2 py-[3px] text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] font-sans backdrop-blur-sm bg-white/[0.08] text-[#6EE7B7] ring-1 ring-white/10">GPS 24×7</span>
                   </div>
                   <p className="block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">Live location + remote engine cut-off</p>
                 </div>

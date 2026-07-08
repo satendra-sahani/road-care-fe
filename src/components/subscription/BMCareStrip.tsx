@@ -38,12 +38,12 @@ export function BMCareStrip({ className = '' }: { className?: string }) {
             <span className="truncate text-[13.5px] md:text-[15.5px] font-extrabold tracking-[-0.02em] text-white leading-[1.15]">
               {isActive ? ap!.name : 'BM Care'}
             </span>
-            <span className={`shrink-0 rounded-full px-2 py-[3px] text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] font-sans backdrop-blur-sm ${isActive ? 'bg-[#FFD68A] text-[#142C52]' : 'bg-white/[0.08] text-[#FFD68A] ring-1 ring-white/10'}`}>
+            <span className={`hidden sm:inline-flex shrink-0 rounded-full px-2 py-[3px] text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] font-sans backdrop-blur-sm ${isActive ? 'bg-[#FFD68A] text-[#142C52]' : 'bg-white/[0.08] text-[#FFD68A] ring-1 ring-white/10'}`}>
               {isActive ? 'Active' : 'Membership'}
             </span>
           </div>
           <p className="block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">
-            {isActive ? 'Free services, priority & roadside — all active' : 'Free services, priority mechanics & roadside cover'}
+            {isActive ? 'All benefits active' : 'Free services, priority & roadside'}
           </p>
         </div>
 
