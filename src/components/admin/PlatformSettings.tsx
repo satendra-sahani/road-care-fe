@@ -301,6 +301,21 @@ export function PlatformSettings() {
       playStoreUrl: 'https://play.google.com/store/apps/details?id=com.bharatmechanics',
       updateTitle: 'Update Available',
       updateMessage: 'A new version of Bharat Mechanics is available. Please update to continue using the app.'
+    },
+    homePopup: {
+      enabled: true,
+      title: 'Cashback Festival',
+      subtitle: 'is LIVE · कैशबैक फेस्टिवल',
+      badge: 'Real cashback on every order',
+      body: 'Refer friends & earn ₹100 each — real cash, withdrawable to any UPI.',
+      emoji: '🎉',
+      imageUrl: '',
+      ctaText: 'Claim & Explore',
+      ctaTarget: 'Cashback',
+      secondaryText: 'Maybe later',
+      gradient: ['#FF4D8D', '#FF6B35', '#8C5CFF'] as string[],
+      accentColor: '',
+      showOnce: true,
     }
   })
   const [configLoading, setConfigLoading] = useState(false)
@@ -333,6 +348,10 @@ export function PlatformSettings() {
             androidApp: {
               ...prev.androidApp,
               ...(res.data.data.androidApp || {})
+            },
+            homePopup: {
+              ...prev.homePopup,
+              ...(res.data.data.homePopup || {})
             }
           }))
         }
@@ -1650,6 +1669,140 @@ export function PlatformSettings() {
                         })}
                       />
                     </div>
+                  </div>
+
+                  {/* ── Customer Home Popup (admin-managed content + design) ── */}
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-8 w-8 place-items-center rounded-lg bg-pink-50 shrink-0">
+                          <Bell className="h-4 w-4 text-pink-600" />
+                        </div>
+                        <div>
+                          <Label className="font-medium">Customer Home Popup</Label>
+                          <p className="text-sm text-[#6B7280]">The promo modal shown when a customer opens the app — content &amp; design are managed here.</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={(serviceConfig as any).homePopup?.enabled !== false}
+                        onCheckedChange={(checked) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, enabled: checked } } as any)}
+                      />
+                    </div>
+
+                    {((serviceConfig as any).homePopup?.enabled !== false) && (
+                      <div className="space-y-4 pt-2 border-t border-gray-100">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="hpTitle">Title</Label>
+                            <Input id="hpTitle" value={(serviceConfig as any).homePopup?.title || ''} onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, title: e.target.value } } as any)} />
+                          </div>
+                          <div>
+                            <Label htmlFor="hpSubtitle">Subtitle</Label>
+                            <Input id="hpSubtitle" value={(serviceConfig as any).homePopup?.subtitle || ''} onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, subtitle: e.target.value } } as any)} />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="hpBadge">Badge / pill text</Label>
+                          <Input id="hpBadge" value={(serviceConfig as any).homePopup?.badge || ''} onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, badge: e.target.value } } as any)} />
+                        </div>
+                        <div>
+                          <Label htmlFor="hpBody">Body</Label>
+                          <textarea
+                            id="hpBody"
+                            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            value={(serviceConfig as any).homePopup?.body || ''}
+                            onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, body: e.target.value } } as any)}
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="hpEmoji">Emoji</Label>
+                            <Input id="hpEmoji" maxLength={4} value={(serviceConfig as any).homePopup?.emoji || ''} onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, emoji: e.target.value } } as any)} />
+                          </div>
+                          <div className="md:col-span-2">
+                            <Label htmlFor="hpImage">Image URL (optional — replaces the emoji)</Label>
+                            <Input id="hpImage" placeholder="https://..." value={(serviceConfig as any).homePopup?.imageUrl || ''} onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, imageUrl: e.target.value } } as any)} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="hpCtaText">Button text</Label>
+                            <Input id="hpCtaText" value={(serviceConfig as any).homePopup?.ctaText || ''} onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, ctaText: e.target.value } } as any)} />
+                          </div>
+                          <div>
+                            <Label htmlFor="hpCtaTarget">Button action</Label>
+                            <Input id="hpCtaTarget" placeholder="Cashback" value={(serviceConfig as any).homePopup?.ctaTarget || ''} onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, ctaTarget: e.target.value } } as any)} />
+                            <p className="mt-1 text-xs text-[#6B7280]">Screen name (Cashback, Shop, Subscription, Tracker) or an https:// link.</p>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="hpSecondary">Secondary (dismiss) text</Label>
+                          <Input id="hpSecondary" value={(serviceConfig as any).homePopup?.secondaryText || ''} onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, secondaryText: e.target.value } } as any)} />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Header gradient</Label>
+                            <div className="mt-1 flex items-center gap-2">
+                              {[0, 1, 2].map((i) => (
+                                <input
+                                  key={i}
+                                  type="color"
+                                  value={(serviceConfig as any).homePopup?.gradient?.[i] || '#FF4D8D'}
+                                  onChange={(e) => {
+                                    const g = [...(((serviceConfig as any).homePopup?.gradient) || ['#FF4D8D', '#FF6B35', '#8C5CFF'])]
+                                    g[i] = e.target.value
+                                    setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, gradient: g } } as any)
+                                  }}
+                                  className="h-9 w-12 rounded border border-gray-200 bg-white p-0.5"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <Label>Button color (blank = app default)</Label>
+                            <div className="mt-1 flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={(serviceConfig as any).homePopup?.accentColor || '#F59E0B'}
+                                onChange={(e) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, accentColor: e.target.value } } as any)}
+                                className="h-9 w-12 rounded border border-gray-200 bg-white p-0.5"
+                              />
+                              <Button variant="outline" size="sm" onClick={() => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, accentColor: '' } } as any)}>Reset</Button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Show once per session</Label>
+                            <p className="text-sm text-[#6B7280]">Off = show on every Home visit.</p>
+                          </div>
+                          <Switch
+                            checked={(serviceConfig as any).homePopup?.showOnce !== false}
+                            onCheckedChange={(checked) => setServiceConfig({ ...serviceConfig, homePopup: { ...(serviceConfig as any).homePopup, showOnce: checked } } as any)}
+                          />
+                        </div>
+
+                        {/* Live preview */}
+                        <div>
+                          <Label>Preview</Label>
+                          <div className="mt-2 w-full max-w-[320px] overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="p-5 text-center" style={{ background: `linear-gradient(135deg, ${(((serviceConfig as any).homePopup?.gradient) || ['#FF4D8D', '#FF6B35', '#8C5CFF']).join(', ')})` }}>
+                              {(serviceConfig as any).homePopup?.imageUrl
+                                ? <img src={(serviceConfig as any).homePopup.imageUrl} alt="" className="mx-auto h-16 w-full max-w-[220px] rounded-lg object-cover" />
+                                : <div className="text-4xl leading-none">{(serviceConfig as any).homePopup?.emoji || '🎉'}</div>}
+                              <div className="mt-2 text-lg font-extrabold text-white">{(serviceConfig as any).homePopup?.title || 'Cashback Festival'}</div>
+                              {(serviceConfig as any).homePopup?.subtitle && <div className="text-xs font-bold text-white/90">{(serviceConfig as any).homePopup.subtitle}</div>}
+                            </div>
+                            <div className="bg-white p-4 text-center">
+                              {(serviceConfig as any).homePopup?.badge && <div className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{(serviceConfig as any).homePopup.badge}</div>}
+                              {(serviceConfig as any).homePopup?.body && <p className="mt-2 text-sm text-gray-600">{(serviceConfig as any).homePopup.body}</p>}
+                              <div className="mt-3 rounded-xl py-2 text-sm font-bold text-white" style={{ backgroundColor: (serviceConfig as any).homePopup?.accentColor || '#F59E0B' }}>{(serviceConfig as any).homePopup?.ctaText || 'Claim & Explore'}</div>
+                              {(serviceConfig as any).homePopup?.secondaryText && <div className="mt-2 text-xs font-semibold text-gray-400">{(serviceConfig as any).homePopup.secondaryText}</div>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
