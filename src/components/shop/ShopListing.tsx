@@ -240,7 +240,11 @@ export function ShopListing() {
             return (
               <button key={cat._id} onClick={() => setSelectedCategory(cat._id)} className="shrink-0 w-[84px] flex flex-col items-center gap-2 text-center group">
                 <span className={`w-[62px] h-[62px] rounded-[18px] flex items-center justify-center border overflow-hidden transition-all ${on ? 'bg-[#1B3B6F] border-[#1B3B6F]' : 'bg-[#F6F8FB] border-[#E7ECF3] group-hover:border-[#1B3B6F] group-hover:-translate-y-0.5'}`}>
-                  {img ? <img src={img} alt="" className={`h-8 w-8 object-contain ${on ? 'brightness-0 invert' : ''}`} /> : <Package className={`h-[26px] w-[26px] ${on ? 'text-white' : 'text-[#1B3B6F]'}`} />}
+                  {img
+                    ? (on
+                        ? <span className="h-[42px] w-[42px] rounded-xl bg-white flex items-center justify-center"><img src={img} alt="" className="h-7 w-7 object-contain" /></span>
+                        : <img src={img} alt="" className="h-8 w-8 object-contain" />)
+                    : <Package className={`h-[26px] w-[26px] ${on ? 'text-white' : 'text-[#1B3B6F]'}`} />}
                 </span>
                 <b className={`text-[11.5px] font-semibold leading-tight line-clamp-2 ${on ? 'text-[#1B3B6F]' : 'text-[#475569]'}`}>{cat.name}</b>
               </button>

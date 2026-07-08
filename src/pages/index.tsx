@@ -566,7 +566,7 @@ export default function HomePage() {
 
             {/* Live Vehicle Tracker — GPS */}
             <Link
-              href="/subscription"
+              href="/tracker"
               className="group/trk relative block h-full overflow-hidden rounded-2xl md:rounded-[22px] ring-1 ring-white/10 shadow-[0_12px_44px_-14px_rgba(15,37,71,0.55)] transition-all duration-300 hover:ring-white/[0.18] hover:shadow-[0_18px_54px_-14px_rgba(15,37,71,0.65)] hover:-translate-y-0.5"
               style={{ background: 'linear-gradient(115deg,#0E2042 0%,#1B3B6F 54%,#173461 100%)' }}
             >
