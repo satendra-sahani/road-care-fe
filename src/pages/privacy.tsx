@@ -58,7 +58,6 @@ export default function PrivacyPage() {
                 <li>KYC documents — Aadhaar / PAN / DL / GSTIN etc. as applicable.</li>
                 <li>Delivery &amp; service addresses, landmarks, pincode.</li>
                 <li>Content you upload — vehicle photos, damage photos, feedback, reviews.</li>
-                <li>Voice recordings (only when you explicitly use AI Voice Booking).</li>
               </ul>
 
               <h3 className="font-semibold text-[#1A1D29] mt-4">b) Collected automatically</h3>
@@ -120,8 +119,8 @@ export default function PrivacyPage() {
                       feedback, and to save downloaded invoices.
                     </Perm>
                     <Perm icon={Mic} name="Microphone">
-                      Only used for the AI Voice Booking feature — we record audio only when you tap the
-                      microphone button and stop as soon as you tap stop.
+                      Used only for in-app voice calls with your mechanic or our support team. We access
+                      the microphone during an active call and never record audio in the background.
                     </Perm>
                     <Perm icon={Phone} name="Phone (Call)" required="Optional">
                       To open your dialler with the mechanic&apos;s number when you tap &quot;Call Mechanic&quot;.

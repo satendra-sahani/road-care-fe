@@ -805,44 +805,6 @@ export const diagnosisAPI = {
   markAsPaid: (requestId: string) => api.post(`/admin/service-requests/${requestId}/mark-paid`),
 };
 
-// ─── AI Booking APIs (Customer-facing) ─────────────────────────────
-export const aiBookingAPI = {
-  chat: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) =>
-    api.post('/user/ai-booking/chat', { messages }),
-  confirm: (data: {
-    collectedData: {
-      vehicleType: string;
-      problem: string;
-      problemDetails?: string;
-      preferredDate?: string;
-      preferredTimeSlot?: string;
-      paymentMethod?: 'online' | 'cod';
-      newAddress?: string | null;
-    };
-    address?: string;
-    landmark?: string;
-    city?: string;
-    state?: string;
-    pincode?: string;
-    latitude?: number;
-    longitude?: number;
-  }) => api.post('/user/ai-booking/confirm', data),
-  confirmOrder: (data: {
-    productId: string;
-    quantity: number;
-    paymentMethod: 'online' | 'cod';
-    address?: string;
-    landmark?: string;
-    city?: string;
-    state?: string;
-    pincode?: string;
-    latitude?: number;
-    longitude?: number;
-  }) => api.post('/user/ai-booking/confirm-order', data),
-  tts: (text: string, language: string = 'hindi') =>
-    api.post('/user/ai-booking/tts', { text, language }),
-};
-
 // ─── Mechanic Location API (Customer-facing) ───────────────────────
 export const mechanicLocationAPI = {
   get: (requestId: string) =>

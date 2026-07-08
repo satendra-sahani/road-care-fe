@@ -88,7 +88,6 @@ export default function ServicesLandingPage() {
                 <label className="block text-[12.5px] font-bold text-[#475569] mb-1.5">Service location</label>
                 <div className="flex items-center gap-2.5 h-12 border border-[#E7ECF3] rounded-xl px-3.5 bg-[#F6F8FB] text-sm text-[#475569] mb-4"><MapPin className="h-[18px] w-[18px] text-[#7B8AA3]" /> Detected automatically at booking</div>
                 <Link href="/service" className="flex items-center justify-center gap-2 w-full bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold py-3.5 rounded-full transition-colors">Check available slots <ArrowRight className="h-4 w-4" /></Link>
-                <p className="text-center mt-3 text-xs text-[#7B8AA3]">🎙️ Or <Link href="/ai-booking" className="text-[#FF6B35] font-bold">book by voice</Link> in Hindi / English</p>
               </div>
             </div>
           </section>

@@ -11,7 +11,7 @@ import { BMCareStrip } from '@/components/subscription/BMCareStrip'
 import Link from 'next/link'
 import Head from 'next/head'
 import {
-  Wrench, ShoppingBag, Bike, Headphones, Mic,
+  Wrench, ShoppingBag, Bike, Headphones,
   ChevronRight, ChevronLeft, ShieldCheck, Award, Clock,
   List, Calendar, Home as HomeIcon, Package, Star, X, Check,
   ShoppingCart, Zap, Users, Heart, ArrowRight,
@@ -83,7 +83,7 @@ const TESTIMONIALS = [
   {
     name: 'Priya Patel', profession: 'Architect', city: 'Ahmedabad',
     rating: 5, initials: 'PP', bg: '#FF6B35', verified: true,
-    quote: 'Ordered brake pads for my Activa. Genuine Bosch parts arrived next day, packed properly. The voice booking feature in Hindi is a game changer for my dad.',
+    quote: 'Ordered brake pads for my Activa. Genuine Bosch parts arrived next day, packed properly.',
   },
   {
     name: 'Karthik Reddy', profession: 'Account Manager', city: 'Hyderabad',
@@ -530,75 +530,11 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
-            SECTION 1A2 — BM Care membership + AI Voice Booking (one row on
-            desktop, stacked on mobile)
+            SECTION 1A2 — BM Care membership
            ══════════════════════════════════════════════════════════════ */}
         <section className="px-3 md:px-6 lg:px-8 mt-3 md:mt-4">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-stretch">
-            <BMCareStrip className="h-full" />
-            <Link
-              href="/ai-booking"
-              className="group/ai relative block h-full overflow-hidden rounded-2xl md:rounded-[22px] ring-1 ring-white/10 shadow-[0_12px_44px_-14px_rgba(15,37,71,0.55)] transition-all duration-300 hover:ring-white/[0.18] hover:shadow-[0_18px_54px_-14px_rgba(15,37,71,0.65)] hover:-translate-y-0.5"
-              style={{ background: 'linear-gradient(115deg,#0E2042 0%,#1B3B6F 54%,#173461 100%)' }}
-            >
-              {/* Material: top inner highlight, brand glow, right sheen, fine grain */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-              <div className="pointer-events-none absolute -left-10 top-1/2 -translate-y-1/2 w-48 h-48 bg-[#FF6B35]/[0.18] rounded-full blur-3xl" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-[#FF6B35]/[0.07] to-transparent" />
-              <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,.9) 0.8px,transparent 0.8px)', backgroundSize: '14px 14px' }} />
-
-              <div className="relative flex h-full items-center gap-3 md:gap-4 px-3.5 py-2 md:px-5 md:py-2.5 lg:px-6">
-                {/* Mic orb with listening sonar */}
-                <div className="relative shrink-0 grid place-items-center">
-                  <span className="absolute h-8 w-8 md:h-9 md:w-9 rounded-full ring-1 ring-[#FF6B35]/50 animate-ping" aria-hidden />
-                  <span className="absolute inset-0 m-auto h-8 w-8 md:h-9 md:w-9 rounded-full bg-[#FF6B35]/25 blur-md" aria-hidden />
-                  <div className="relative h-8 w-8 md:h-9 md:w-9 rounded-full bg-gradient-to-br from-[#FF8A5C] to-[#FF5A1F] flex items-center justify-center ring-2 ring-white/25 shadow-[0_4px_14px_-2px_rgba(255,107,53,0.65)]">
-                    <Mic className="h-4 w-4 text-white" strokeWidth={2.4} />
-                  </div>
-                  {/* Live dot */}
-                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 ring-2 ring-[#0E2042]" />
-                  </span>
-                </div>
-
-                {/* Copy */}
-                <div className="flex-1 min-w-0 font-display">
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] text-[#FFC2A6] bg-white/[0.08] ring-1 ring-white/10 rounded-full px-2 py-[3px] font-sans backdrop-blur-sm mb-1">
-                    <Sparkles className="h-2.5 w-2.5 text-[#FF8A5C]" /> AI Powered · हिंदी में
-                  </span>
-                  <p className="text-[13.5px] md:text-[15.5px] font-extrabold tracking-[-0.02em] text-white leading-[1.15] truncate">
-                    {/* Short on mobile to stay one tight line, full headline on sm+ */}
-                    <span className="sm:hidden">AI <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF8A5C] to-[#FFC2A6]">Voice</span> Booking</span>
-                    <span className="hidden sm:inline">Book a service just by <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF8A5C] to-[#FFC2A6]">speaking</span></span>
-                  </p>
-                  <p className="hidden sm:block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">
-                    Baat karein, booking ho jayegi — in Hindi or English, hands-free.
-                  </p>
-                </div>
-
-                {/* Live equalizer (roomy widths only) */}
-                <div className="hidden md:flex lg:hidden xl:flex items-center gap-[3px] h-6 mr-0.5" aria-hidden>
-                  {[0.4, 0.78, 1, 0.55, 0.9, 0.5, 0.82, 0.62, 0.95, 0.45].map((h, i) => (
-                    <span
-                      key={i}
-                      className="w-[3px] rounded-full bg-gradient-to-t from-[#FF6B35] to-[#FFD0B8]"
-                      style={{
-                        height: `${h * 100}%`,
-                        animation: 'fadeUp 1.1s ease-in-out infinite alternate',
-                        animationDelay: `${i * 0.09}s`,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* CTA */}
-                <span className="relative inline-flex items-center gap-1.5 bg-white text-[#0F2547] group-hover/ai:bg-[#FF6B35] group-hover/ai:text-white font-bold px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[11.5px] md:text-[12.5px] shrink-0 shadow-[0_4px_14px_-3px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.04] transition-colors duration-300">
-                  Try Now
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover/ai:translate-x-1" />
-                </span>
-              </div>
-            </Link>
+          <div className="max-w-7xl mx-auto">
+            <BMCareStrip />
           </div>
         </section>
 
@@ -1046,7 +982,6 @@ export default function HomePage() {
 
                   {/* Feature chips — refined accent dots, glassy hover */}
                   <ul className="anim-fade-up anim-delay-2 mt-5 md:mt-6 grid grid-cols-2 gap-x-3 gap-y-2 max-w-md font-sans">
-                    <AppFeatureItem text="AI Voice Booking" />
                     <AppFeatureItem text="Live Mechanic Tracking" />
                     <AppFeatureItem text="Wallet Cashback" />
                     <AppFeatureItem text="App-only Coupons" />

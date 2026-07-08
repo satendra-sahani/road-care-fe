@@ -48,7 +48,7 @@ const shopPublicPaths = ['/shop-partner/login'];
 // only when the user actually books. The specific booking detail/track pages
 // ('/service/[id]', '/service/[id]/track') stay protected since they load a
 // user-specific request.
-const customerProtectedPaths = ['/cart', '/checkout', '/orders', '/profile', '/service/[id]', '/addresses', '/wallet', '/notifications', '/reviews', '/ai-booking', '/emergency', '/spin', '/refer'];
+const customerProtectedPaths = ['/cart', '/checkout', '/orders', '/profile', '/service/[id]', '/addresses', '/wallet', '/notifications', '/reviews', '/emergency', '/spin', '/refer'];
 
 function needsAdminAuth(pathname: string) {
   return pathname.startsWith('/admin') && !adminPublicPaths.includes(pathname);
