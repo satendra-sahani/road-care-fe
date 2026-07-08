@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/router'
 import { authAPI } from '@/services/api'
 import Cookies from 'js-cookie'
-import { Store, Loader2, Phone, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Loader2, Phone, ArrowRight, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 
 export default function ShopLoginPage() {
@@ -55,10 +56,16 @@ export default function ShopLoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#FF6B35] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Store className="h-8 w-8 text-white" />
+          <div className="inline-flex items-center justify-center mb-3">
+            <Image
+              src="/white-logo-bm.png"
+              alt="Bharat Mechanics"
+              width={220}
+              height={56}
+              className="h-14 w-auto object-contain"
+              priority
+            />
           </div>
-          <h1 className="text-2xl font-bold text-white">BharatMechanics</h1>
           <p className="text-gray-400 text-sm mt-1">Shop Partner Portal</p>
         </div>
 

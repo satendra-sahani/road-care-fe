@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
             <Image
-              src="/brand-logo-v3.png"
+              src="/white-logo-bm.png"
               alt="Bharat Mechanics"
               width={220}
               height={56}
@@ -62,8 +62,7 @@ export default function AdminLoginPage() {
               priority
             />
           </div>
-          <h1 className="text-3xl font-bold text-white">Bharat Mechanics</h1>
-          <p className="text-gray-400 mt-1">Admin Panel</p>
+          <p className="text-gray-400 mt-3 text-sm font-medium tracking-wide">Admin Panel</p>
         </div>
 
         {/* Login Card */}
