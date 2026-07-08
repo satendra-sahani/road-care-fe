@@ -172,6 +172,7 @@ export const productAPI = {
   update: (id: string, data: any) => api.put(`/admin/products/${id}`, data),
   delete: (id: string) => api.delete(`/admin/products/${id}`),
   toggleStatus: (id: string) => api.put(`/admin/products/${id}/toggle-status`),
+  togglePublished: (id: string, published?: boolean) => api.put(`/admin/products/${id}/toggle-published`, { published }),
   addStock: (id: string, data: { quantity: number }) =>
     api.put(`/admin/products/${id}/add-stock`, data),
   addImages: (id: string, data: { images: string[] }) =>

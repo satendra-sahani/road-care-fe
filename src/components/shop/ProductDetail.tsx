@@ -186,6 +186,7 @@ export function ProductDetail() {
   const images = product.images?.map((img: any) => (typeof img === 'string' ? img : img.url) || '') || []
   if (product.thumbnail?.url && !images.includes(product.thumbnail.url)) images.unshift(product.thumbnail.url)
   const stockQty = product.inventory?.quantity ?? product.quantity ?? 0
+  const comingSoon = !!product.comingSoon
   const inStock = stockQty > 0
   const ratingVal = product.avgRating || 0
   const reviewCount = product.reviewCount || reviews.length
@@ -257,14 +258,16 @@ export function ProductDetail() {
               <p className="text-[12.5px] text-[#7B8AA3] mt-0.5">Inclusive of all taxes</p>
 
               <div className="mt-3.5">
-                {inStock ? (
+                {comingSoon ? (
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#5B6B85] bg-[#EEF2F7] px-2.5 py-1 rounded-full">Coming soon</span>
+                ) : inStock ? (
                   <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#15936B] bg-[#E7F6F0] px-2.5 py-1 rounded-full"><Check className="h-3.5 w-3.5" /> In stock ({stockQty} available)</span>
                 ) : (
                   <span className="inline-flex items-center text-[13px] font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">Out of stock</span>
                 )}
               </div>
 
-              {inStock && (
+              {!comingSoon && inStock && (
                 <div className="mt-5 flex items-center gap-4">
                   <span className="text-sm font-medium text-[#475569]">Quantity</span>
                   <div className="flex items-center border border-[#E7ECF3] rounded-lg">
@@ -276,7 +279,11 @@ export function ProductDetail() {
               )}
 
               {/* Desktop actions */}
-              {inStock && (
+              {comingSoon ? (
+                <div className="hidden lg:flex mt-5">
+                  <div className="flex-1 h-12 rounded-md bg-[#EEF2F7] text-[#5B6B85] font-semibold flex items-center justify-center cursor-not-allowed">Coming Soon</div>
+                </div>
+              ) : inStock && (
                 <div className="hidden lg:flex gap-3 mt-5">
                   <Button onClick={handleAddToCart} disabled={addingToCart} className="flex-1 h-12 bg-white hover:bg-[#F2F6FC] text-[#1B3B6F] border border-[#1B3B6F] gap-2">
                     {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />} Add to cart
@@ -408,7 +415,11 @@ export function ProductDetail() {
         </div>
 
         {/* Sticky buy bar (mobile) */}
-        {inStock && (
+        {comingSoon ? (
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E7ECF3] px-4 py-3 z-30">
+            <div className="w-full h-12 rounded-md bg-[#EEF2F7] text-[#5B6B85] font-semibold flex items-center justify-center cursor-not-allowed">Coming Soon</div>
+          </div>
+        ) : inStock && (
           <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E7ECF3] px-4 py-3 flex gap-2.5 z-30">
             <Button onClick={handleAddToCart} disabled={addingToCart} className="flex-1 h-12 bg-white hover:bg-[#F2F6FC] text-[#1B3B6F] border border-[#1B3B6F] gap-2">
               {addingToCart ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />} Add to cart

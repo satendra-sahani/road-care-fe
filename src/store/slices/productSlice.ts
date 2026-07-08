@@ -65,6 +65,8 @@ export interface ProductItem {
   isActive: boolean;
   isFeatured: boolean;
   isDraft?: boolean;
+  published?: boolean;
+  comingSoon?: boolean;
   reviewsSummary?: {
     averageRating: number;
     totalReviews: number;

@@ -612,6 +612,22 @@ export default function AdminInventoryProductsPage() {
     }
   }
 
+  // ─── Publish toggle (Coming Soon ↔ live) from the list row ──────────────────
+  // Unpublished (default) = customers see placeholder image + ₹0 + "Coming Soon"
+  // and can't order. Published = real image/price + orderable.
+  const togglePublish = async (product: ProductItem) => {
+    setTogglingId(product._id + 'published')
+    try {
+      await productAPI.togglePublished(product._id, !product.published)
+      toast.success(!product.published ? 'Published — now live for customers' : 'Set to Coming Soon')
+      refetchProducts()
+    } catch {
+      toast.error('Update failed')
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
   // ─── Add Product ─────────────────────────────────────
   const handleOpenAdd = () => {
     setFormData(emptyProductForm)
@@ -1507,6 +1523,15 @@ export default function AdminInventoryProductsPage() {
                                 className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-colors ${product.amountFinalized ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'}`}
                               >
                                 {product.amountFinalized ? '✓ Amount' : 'Amount'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => togglePublish(product)}
+                                disabled={togglingId === product._id + 'published'}
+                                title={product.published ? 'Live — click to set Coming Soon' : 'Coming Soon — click to publish (go live)'}
+                                className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-colors ${product.published ? 'bg-[#FF6B35] text-white border-[#FF6B35] hover:bg-[#F2541B]' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'}`}
+                              >
+                                {product.published ? '● Published' : 'Coming Soon'}
                               </button>
                             </div>
                           </TableCell>

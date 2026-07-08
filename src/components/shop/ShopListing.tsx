@@ -320,6 +320,7 @@ export function ShopListing() {
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                   {displayed.map((p) => {
                     const price = priceOf(p), mrp = mrpOf(p), disc = discOf(p), image = imgOf(p), qty = qtyOf(p)
+                    const comingSoon = !!p.comingSoon
                     const inStock = qty > 0, low = inStock && qty <= 5, wished = wishlist.has(p._id)
                     return (
                       <div key={p._id} className="relative bg-white border border-[#E7ECF3] rounded-2xl overflow-hidden flex flex-col transition-all hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_rgba(15,37,71,0.32)] hover:border-[#dbe4f1]">
@@ -327,7 +328,9 @@ export function ShopListing() {
                         <Link href={`/shop/${p._id}`} className="relative h-[172px] bg-[linear-gradient(150deg,#eef3f9_0%,#e1e9f4_100%)] flex items-center justify-center overflow-hidden">
                           {disc > 0 && <span className="absolute top-0 left-3 bg-[#FF6B35] text-white text-[10.5px] font-extrabold px-2 py-1 rounded-b-md z-[2]">{disc}% OFF</span>}
                           {image ? <img src={image} alt={p.name} className="relative z-[1] max-h-[78%] max-w-[78%] object-contain" /> : <Package className="h-16 w-16 text-[#1B3B6F]/40" />}
-                          {inStock ? (
+                          {comingSoon ? (
+                            <span className="absolute bottom-2.5 left-3 text-[10.5px] font-bold px-2 py-1 rounded-full bg-[#EEF2F7] text-[#5B6B85]">Coming soon</span>
+                          ) : inStock ? (
                             <span className={`absolute bottom-2.5 left-3 inline-flex items-center gap-1.5 text-[10.5px] font-bold px-2 py-1 rounded-full ${low ? 'bg-[#FEF3E2] text-[#D97706]' : 'bg-[#E7F6F0] text-[#15936B]'}`}><span className={`h-1.5 w-1.5 rounded-full ${low ? 'bg-[#D97706]' : 'bg-[#15936B]'}`} />{low ? 'Few left' : 'In stock'}</span>
                           ) : <span className="absolute bottom-2.5 left-3 text-[10.5px] font-bold px-2 py-1 rounded-full bg-red-50 text-red-600">Out of stock</span>}
                         </Link>
@@ -340,7 +343,11 @@ export function ShopListing() {
                             <span className="text-[22px] font-extrabold text-[#1B3B6F] leading-none">₹{price.toLocaleString('en-IN')}</span>
                             {disc > 0 && <span className="text-[12px] text-[#7B8AA3] line-through">₹{mrp.toLocaleString('en-IN')}</span>}
                           </div>
-                          <button onClick={() => handleAddToCart(p._id, inStock)} disabled={!inStock} className={`mt-3 w-full h-10 rounded-lg font-semibold text-sm flex items-center justify-center gap-1.5 transition-colors ${inStock ? 'bg-[#FF6B35] hover:bg-[#F2541B] text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>{inStock ? <><Plus className="h-4 w-4" /> Add to Cart</> : 'Out of Stock'}</button>
+                          {comingSoon ? (
+                            <div className="mt-3 w-full h-10 rounded-lg font-semibold text-sm flex items-center justify-center gap-1.5 bg-[#EEF2F7] text-[#5B6B85] cursor-not-allowed">Coming Soon</div>
+                          ) : (
+                            <button onClick={() => handleAddToCart(p._id, inStock)} disabled={!inStock} className={`mt-3 w-full h-10 rounded-lg font-semibold text-sm flex items-center justify-center gap-1.5 transition-colors ${inStock ? 'bg-[#FF6B35] hover:bg-[#F2541B] text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>{inStock ? <><Plus className="h-4 w-4" /> Add to Cart</> : 'Out of Stock'}</button>
+                          )}
                         </div>
                       </div>
                     )
