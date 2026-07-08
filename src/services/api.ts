@@ -191,6 +191,17 @@ export const productAPI = {
     api.delete('/admin/products/bulk/delete', { data: { productIds } }),
 };
 
+// ─── Shared live-location (public — recipient view) ──────────────────
+export const shareAPI = {
+  meta: (token: string) => api.get(`/common/share/${token}`),
+  requestOtp: (token: string, name: string, phone: string) =>
+    api.post(`/common/share/${token}/otp`, { name, phone }),
+  verify: (token: string, name: string, phone: string, otp: string) =>
+    api.post(`/common/share/${token}/verify`, { name, phone, otp }),
+  location: (token: string, at: string) =>
+    api.get(`/common/share/${token}/location`, { params: { at } }),
+};
+
 // ─── Service Request APIs (Admin) ────────────────────────────────────
 export const serviceRequestAPI = {
   getAll: (params?: Record<string, any>) =>
