@@ -26,7 +26,7 @@ export function BMCareStrip({ className = '' }: { className?: string }) {
       <div className="pointer-events-none absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-[#FFD68A]/[0.06] to-transparent" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,.9) 0.8px,transparent 0.8px)', backgroundSize: '14px 14px' }} />
 
-      <div className="relative flex h-full items-center gap-3 md:gap-4 px-3.5 py-2 md:px-5 md:py-2.5 lg:px-6">
+      <div className="relative flex h-full items-center gap-3 md:gap-4 px-3.5 py-2.5 md:px-5 md:py-3 lg:px-6">
         {/* Shield orb — same footprint as the AI banner's mic orb */}
         <div className="relative h-8 w-8 md:h-9 md:w-9 shrink-0 grid place-items-center rounded-full bg-gradient-to-br from-[#FFE3B0] to-[#FFC96B] ring-2 ring-white/25 shadow-[0_4px_14px_-2px_rgba(255,214,138,0.5)] text-base md:text-lg">
           {isActive ? ap!.em : '🛡️'}
@@ -42,7 +42,7 @@ export function BMCareStrip({ className = '' }: { className?: string }) {
               {isActive ? 'Active' : 'Membership'}
             </span>
           </div>
-          <p className="hidden sm:block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">
+          <p className="block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">
             {isActive ? 'Free services, priority & roadside — all active' : 'Free services, priority mechanics & roadside cover'}
           </p>
         </div>

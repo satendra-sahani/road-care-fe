@@ -546,7 +546,7 @@ export default function HomePage() {
               <div className="pointer-events-none absolute -left-10 top-1/2 -translate-y-1/2 w-48 h-48 bg-[#C4B5FD]/[0.16] rounded-full blur-3xl" />
               <div className="pointer-events-none absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-[#C4B5FD]/[0.06] to-transparent" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,.9) 0.8px,transparent 0.8px)', backgroundSize: '14px 14px' }} />
-              <div className="relative flex h-full items-center gap-3 md:gap-4 px-3.5 py-2 md:px-5 md:py-2.5 lg:px-6">
+              <div className="relative flex h-full items-center gap-3 md:gap-4 px-3.5 py-2.5 md:px-5 md:py-3 lg:px-6">
                 <div className="relative h-8 w-8 md:h-9 md:w-9 shrink-0 grid place-items-center rounded-full bg-gradient-to-br from-[#DDD6FE] to-[#A78BFA] ring-2 ring-white/25 shadow-[0_4px_14px_-2px_rgba(167,139,250,0.5)]">
                   <ScanLine className="h-4 w-4 text-[#2E1065]" strokeWidth={2.4} />
                 </div>
@@ -555,7 +555,7 @@ export default function HomePage() {
                     <span className="truncate text-[13.5px] md:text-[15.5px] font-extrabold tracking-[-0.02em] text-white leading-[1.15]">BM Lens</span>
                     <span className="shrink-0 rounded-full px-2 py-[3px] text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] font-sans backdrop-blur-sm bg-white/[0.08] text-[#C4B5FD] ring-1 ring-white/10">AI Scan</span>
                   </div>
-                  <p className="hidden sm:block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">Snap a part — we&apos;ll find the exact match</p>
+                  <p className="block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">Snap a part — we&apos;ll find the exact match</p>
                 </div>
                 <span className="relative inline-flex items-center gap-1.5 bg-[#C4B5FD] text-[#2E1065] group-hover/lens:bg-white font-bold px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[11.5px] md:text-[12.5px] shrink-0 shadow-[0_4px_14px_-3px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.04] transition-colors duration-300 font-sans">
                   Try Lens
@@ -574,7 +574,7 @@ export default function HomePage() {
               <div className="pointer-events-none absolute -left-10 top-1/2 -translate-y-1/2 w-48 h-48 bg-[#6EE7B7]/[0.16] rounded-full blur-3xl" />
               <div className="pointer-events-none absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-[#6EE7B7]/[0.06] to-transparent" />
               <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,.9) 0.8px,transparent 0.8px)', backgroundSize: '14px 14px' }} />
-              <div className="relative flex h-full items-center gap-3 md:gap-4 px-3.5 py-2 md:px-5 md:py-2.5 lg:px-6">
+              <div className="relative flex h-full items-center gap-3 md:gap-4 px-3.5 py-2.5 md:px-5 md:py-3 lg:px-6">
                 <div className="relative h-8 w-8 md:h-9 md:w-9 shrink-0 grid place-items-center rounded-full bg-gradient-to-br from-[#A7F3D0] to-[#34D399] ring-2 ring-white/25 shadow-[0_4px_14px_-2px_rgba(52,211,153,0.5)]">
                   <span className="absolute inset-0 rounded-full ring-1 ring-[#6EE7B7]/60 animate-ping" aria-hidden />
                   <MapPin className="relative h-4 w-4 text-[#052E2B]" strokeWidth={2.4} />
@@ -584,7 +584,7 @@ export default function HomePage() {
                     <span className="truncate text-[13.5px] md:text-[15.5px] font-extrabold tracking-[-0.02em] text-white leading-[1.15]">Live Tracker</span>
                     <span className="shrink-0 rounded-full px-2 py-[3px] text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-[0.16em] font-sans backdrop-blur-sm bg-white/[0.08] text-[#6EE7B7] ring-1 ring-white/10">GPS 24×7</span>
                   </div>
-                  <p className="hidden sm:block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">Live location + remote engine cut-off</p>
+                  <p className="block text-[11px] md:text-[11.5px] text-white/55 font-medium mt-0.5 truncate font-sans">Live location + remote engine cut-off</p>
                 </div>
                 <span className="relative inline-flex items-center gap-1.5 bg-[#6EE7B7] text-[#052E2B] group-hover/trk:bg-white font-bold px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[11.5px] md:text-[12.5px] shrink-0 shadow-[0_4px_14px_-3px_rgba(0,0,0,0.28)] ring-1 ring-black/[0.04] transition-colors duration-300 font-sans">
                   Explore
