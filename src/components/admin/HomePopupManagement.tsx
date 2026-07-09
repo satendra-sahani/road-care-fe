@@ -21,6 +21,8 @@ type Popup = {
   title: string
   subtitle: string
   badge: string
+  offerPrice: number
+  originalPrice: number
   body: string
   emoji: string
   imageUrl: string
@@ -37,6 +39,8 @@ const DEFAULTS: Popup = {
   title: 'Cashback Festival',
   subtitle: 'is LIVE · कैशबैक फेस्टिवल',
   badge: 'Real cashback on every order',
+  offerPrice: 0,
+  originalPrice: 0,
   body: 'Refer friends & earn ₹100 each — real cash, withdrawable to any UPI.',
   emoji: '🎉',
   imageUrl: '',
@@ -194,6 +198,17 @@ export function HomePopupManagement() {
                 <Label htmlFor="hpBadge">Badge / pill text</Label>
                 <Input id="hpBadge" value={cfg.badge} onChange={(e) => set('badge', e.target.value)} />
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="hpOffer">Offer price (₹) — 0 to hide</Label>
+                  <Input id="hpOffer" type="number" min={0} value={cfg.offerPrice || 0} onChange={(e) => set('offerPrice', Math.max(0, parseInt(e.target.value) || 0))} />
+                </div>
+                <div>
+                  <Label htmlFor="hpOrig">Original price (₹) — struck through</Label>
+                  <Input id="hpOrig" type="number" min={0} value={cfg.originalPrice || 0} onChange={(e) => set('originalPrice', Math.max(0, parseInt(e.target.value) || 0))} />
+                  <p className="mt-1 text-xs text-[#6B7280]">Crossed out next to the offer price (only when higher).</p>
+                </div>
+              </div>
               <div>
                 <Label htmlFor="hpBody">Body</Label>
                 <textarea
@@ -322,6 +337,13 @@ export function HomePopupManagement() {
                     </div>
                     <div className="p-5 text-center">
                       {cfg.badge && <div className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{cfg.badge}</div>}
+                      {cfg.offerPrice > 0 && (
+                        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                          <span className="text-2xl font-extrabold" style={{ color: accent }}>₹{cfg.offerPrice.toLocaleString('en-IN')}</span>
+                          {cfg.originalPrice > cfg.offerPrice && <span className="text-sm font-semibold text-gray-400 line-through">₹{cfg.originalPrice.toLocaleString('en-IN')}</span>}
+                          {cfg.originalPrice > cfg.offerPrice && <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-700">SAVE ₹{(cfg.originalPrice - cfg.offerPrice).toLocaleString('en-IN')}</span>}
+                        </div>
+                      )}
                       {cfg.body && <p className="mt-2 text-sm text-gray-600">{cfg.body}</p>}
                       <div className="mt-4 rounded-xl py-2.5 text-sm font-bold text-white shadow" style={{ backgroundColor: accent }}>{cfg.ctaText || 'Claim'}</div>
                       {cfg.secondaryText && <div className="mt-2 text-xs font-semibold text-gray-400">{cfg.secondaryText}</div>}
