@@ -85,29 +85,16 @@ export default function TrainingPage() {
                 </div>
               </div>
 
-              {/* Certificate showcase */}
-              <div className="relative bg-white rounded-2xl shadow-2xl p-6 md:p-7 text-[#13203A] ring-[6px] ring-white/10">
-                <div className="border-2 border-[#1B3B6F]/15 rounded-xl p-5 md:p-6 text-center relative">
-                  <Image src="/brand-logo-v3.png" alt="Bharat Mechanics" width={130} height={42} className="h-7 w-auto object-contain mx-auto mb-3" />
-                  <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#7B8AA3]">Certificate of Completion</div>
-                  <div className="h-px bg-gradient-to-r from-transparent via-[#D97706] to-transparent my-3" />
-                  <div className="text-[12px] text-[#7B8AA3]">This is proudly presented to</div>
-                  <div className="text-2xl md:text-[28px] font-extrabold text-[#1B3B6F] my-1" style={{ fontFamily: 'Georgia, serif' }}>Ramesh Kumar</div>
-                  <div className="h-px bg-gradient-to-r from-transparent via-[#D97706] to-transparent my-3" />
-                  <p className="text-[12.5px] text-[#475569] leading-relaxed">for successfully completing the <b className="text-[#13203A]">Advanced Car Diagnostics &amp; Repair</b> program with the Bharat Mechanics Academy.</p>
-                  <div className="flex items-end justify-between mt-5">
-                    <div className="text-center"><div className="text-[#1B3B6F] font-bold italic" style={{ fontFamily: 'Georgia, serif' }}>A. Sharma</div><div className="border-t border-[#E7ECF3] mt-1 pt-1 text-[10px] text-[#7B8AA3]">Director, BM Academy</div></div>
-                    <div className="flex flex-col items-center -mt-2">
-                      <div className="h-12 w-12 rounded-full bg-[#15936B] text-white flex flex-col items-center justify-center"><ShieldCheck className="h-4 w-4" /><span className="text-[7px] font-extrabold">VERIFIED</span></div>
-                    </div>
-                    <div className="text-center"><div className="text-[#1B3B6F] font-bold italic" style={{ fontFamily: 'Georgia, serif' }}>R. Verma</div><div className="border-t border-[#E7ECF3] mt-1 pt-1 text-[10px] text-[#7B8AA3]">Lead Instructor</div></div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-[#EFF2F7] text-[11px] text-[#7B8AA3]">
-                    <div>Issued<br /><b className="text-[#13203A]">Jun 2026</b></div>
-                    <div>Grade<br /><b className="text-[#13203A]">Distinction</b></div>
-                    <div>Cert ID<br /><b className="text-[#13203A]">BM-AC-4821</b></div>
-                  </div>
-                </div>
+              {/* Certificate showcase — real sample certificate image */}
+              <div className="relative rounded-2xl shadow-2xl ring-[6px] ring-white/10 overflow-hidden">
+                <Image
+                  src="/academy-certificate.png"
+                  alt="Bharat Mechanics Academy — Certificate of Completion (sample)"
+                  width={1492}
+                  height={1054}
+                  className="w-full h-auto block"
+                  priority
+                />
               </div>
             </div>
           </section>
