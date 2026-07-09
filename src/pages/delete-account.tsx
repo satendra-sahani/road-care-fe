@@ -6,8 +6,8 @@ import {
 } from 'lucide-react'
 
 const LAST_UPDATED = 'April 2026'
-const SUPPORT_EMAIL = 'support@bharatmechanics.in'
-const GRIEVANCE_EMAIL = 'grievance@bharatmechanics.in'
+const SUPPORT_EMAIL = 'support@bharatmechanics.com'
+const GRIEVANCE_EMAIL = 'grievance@bharatmechanics.com'
 
 export default function DeleteAccountPage() {
   return (
@@ -101,7 +101,7 @@ export default function DeleteAccountPage() {
                 <li>Referral history, reward points and spin-to-win entries.</li>
                 <li>Notification preferences and FCM device tokens.</li>
                 <li>Service requests, booking notes, chat / call history with mechanics, delivery partners and shops.</li>
-                <li>Vehicle photos and damage photos you uploaded.</li>
+                <li>Vehicle photos and damage photos you uploaded.</li>
                 <li>Ratings and reviews you posted (personal identifiers removed; the rating itself may be retained in aggregate form).</li>
               </ul>
             </Section>

@@ -271,8 +271,8 @@ export default function PrivacyPage() {
               </p>
               <div className="mt-3 rounded-xl bg-gray-50 border border-gray-200 p-4 text-sm space-y-1">
                 <p><strong>Name:</strong> Grievance Officer, Bharat Mechanics</p>
-                <p><strong>Email:</strong> grievance@bharatmechanics.in</p>
-                <p><strong>Support:</strong> support@bharatmechanics.in</p>
+                <p><strong>Email:</strong> grievance@bharatmechanics.com</p>
+                <p><strong>Support:</strong> support@bharatmechanics.com</p>
                 <p><strong>Phone:</strong> +91 1800-123-4567 (Mon–Sat, 9 AM – 7 PM IST)</p>
                 <p><strong>Response time:</strong> Acknowledgement within 24 hours, resolution within 15 days.</p>
               </div>
