@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import Image from 'next/image'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { partnerAPI } from '@/services/api'
 import {
   Globe, LayoutDashboard, Truck, Banknote, TrendingUp, ShieldCheck,
-  Receipt, CheckCircle2, ArrowRight,
+  CheckCircle2, ArrowRight,
 } from 'lucide-react'
 
 const BENEFITS = [
@@ -28,8 +29,6 @@ const FEES: [string, string][] = [
   ['2–8%', 'Low commission, only on sales'],
   ['T+2', 'Guaranteed payout to your bank'],
 ]
-
-const CHART = [45, 62, 50, 78, 66, 90, 72]
 
 const inputCls = 'w-full h-12 border border-[#E7ECF3] rounded-xl px-3.5 text-sm bg-[#F6F8FB] text-[#13203A] focus:outline-none focus:border-[#D97706] focus:bg-white'
 
@@ -65,36 +64,16 @@ export default function ListYourShopPage() {
                 </div>
               </div>
 
-              {/* Dashboard mock */}
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden text-[#13203A]">
-                <div className="bg-[#F6F8FB] border-b border-[#E7ECF3] px-4 py-3.5 flex items-center gap-2">
-                  <span className="h-[11px] w-[11px] rounded-full bg-[#FF5F57]" /><span className="h-[11px] w-[11px] rounded-full bg-[#FEBC2E]" /><span className="h-[11px] w-[11px] rounded-full bg-[#28C840]" />
-                  <span className="ml-2 text-xs font-semibold text-[#7B8AA3]">Seller Dashboard · Sharma Auto Parts</span>
-                </div>
-                <div className="p-5">
-                  <div className="flex gap-3 mb-3.5">
-                    {[['Today’s sales', '₹18,450', '▲ 12% vs yesterday'], ['Orders', '34', '▲ 6 new'], ['Rating', '4.8★', '312 reviews']].map(([l, v, u]) => (
-                      <div key={l} className="flex-1 bg-[#F6F8FB] rounded-xl p-3.5">
-                        <div className="text-[11px] text-[#7B8AA3] font-semibold">{l}</div>
-                        <div className="text-[22px] font-extrabold text-[#1B3B6F] mt-0.5">{v}</div>
-                        <div className="text-[11px] text-[#15936B] font-bold">{u}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-xs text-[#7B8AA3] font-bold mb-1">This week</div>
-                  <div className="h-[90px] flex items-end gap-1.5">
-                    {CHART.map((h, i) => (
-                      <i key={i} className="flex-1 rounded-t-md bg-gradient-to-b from-[#D97706] to-[#F4B860]" style={{ height: `${h}%` }} />
-                    ))}
-                  </div>
-                  {[['Brake Pad Set · Bosch', 'Order #BM-20418 · Indore', '₹1,250'], ['Engine Oil 1L · MOTUL', 'Order #BM-20417 · Bhopal', '₹490']].map(([t, s, a]) => (
-                    <div key={s} className="flex items-center gap-3 p-3 border border-[#E7ECF3] rounded-xl mt-2.5">
-                      <div className="h-[38px] w-[38px] rounded-lg bg-[#F6F8FB] flex items-center justify-center"><Receipt className="h-5 w-5 text-[#D97706]" /></div>
-                      <div className="min-w-0"><b className="block text-[13px]">{t}</b><span className="text-[11.5px] text-[#7B8AA3]">{s}</span></div>
-                      <div className="ml-auto font-extrabold text-[#1B3B6F]">{a}</div>
-                    </div>
-                  ))}
-                </div>
+              {/* Seller dashboard promo image */}
+              <div className="relative rounded-2xl shadow-2xl ring-1 ring-white/10 overflow-hidden bg-white">
+                <Image
+                  src="/seller-dashboard.png"
+                  alt="Bharat Mechanics Seller Dashboard — Manage, Track & Grow your auto-parts business"
+                  width={1536}
+                  height={1024}
+                  className="w-full h-auto block"
+                  priority
+                />
               </div>
             </div>
           </section>
