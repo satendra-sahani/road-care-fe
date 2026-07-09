@@ -113,6 +113,58 @@ export default function HomePage() {
   const bmActive = !!bmSub?.active
   const bmPlan = bmActive ? planById(bmSub!.plan) : null
 
+  /* "More from Bharat Mechanics" — compact feature cards (3-up on desktop) */
+  const FEATURE_CARDS = [
+    {
+      key: 'care', href: '/subscription',
+      title: bmActive ? bmPlan!.name : 'BM Care',
+      sub: bmActive ? 'All benefits active' : 'Free services, priority & roadside',
+      cta: bmActive ? 'Manage' : 'From ₹99',
+      Icon: ShieldCheck, accent: '#2563EB', tint: '#EDF2FF',
+      chips: [
+        { Icon: Zap, label: 'Priority Service' },
+        { Icon: Truck, label: 'Roadside Help' },
+        { Icon: Tag, label: 'Best Value' },
+      ],
+      illo: (
+        <svg viewBox="0 0 100 112" fill="none" className="h-28 w-28">
+          <path d="M50 6 L88 22 L88 56 C88 82 50 104 50 104 C50 104 12 82 12 56 L12 22 Z" fill="#2563EB" />
+        </svg>
+      ),
+    },
+    {
+      key: 'lens', href: '/shop',
+      title: 'BM Lens', sub: "Snap a part — we'll find it", cta: 'Try Lens',
+      Icon: ScanLine, accent: '#7C3AED', tint: '#F2EEFE',
+      chips: [
+        { Icon: Camera, label: 'Snap Photo' },
+        { Icon: Search, label: 'Find Match' },
+        { Icon: BadgeCheck, label: 'Right Part' },
+      ],
+      illo: (
+        <svg viewBox="0 0 112 112" fill="none" className="h-28 w-28">
+          <circle cx="56" cy="56" r="40" fill="#7C3AED" />
+          <circle cx="56" cy="56" r="18" fill="#4C1D95" />
+        </svg>
+      ),
+    },
+    {
+      key: 'tracker', href: '/tracker',
+      title: 'Live Tracker', sub: 'Live GPS + remote engine cut-off', cta: 'Explore',
+      Icon: MapPin, accent: '#16A34A', tint: '#E9F7EF',
+      chips: [
+        { Icon: MapPin, label: 'Live Location' },
+        { Icon: Lock, label: 'Anti-Theft' },
+        { Icon: Bell, label: 'Instant Alerts' },
+      ],
+      illo: (
+        <svg viewBox="0 0 100 118" fill="none" className="h-28 w-28">
+          <path d="M50 8 C30 8 14 24 14 44 C14 72 50 108 50 108 C50 108 86 72 86 44 C86 24 70 8 50 8 Z" fill="#16A34A" />
+        </svg>
+      ),
+    },
+  ]
+
   /* ─── Data state ─── */
   const [mainCategories, setMainCategories] = useState<any[]>([
     { _id: 'auto-accessories', name: 'Auto Accessories', icon: 'construct-outline', description: 'Car parts & accessories' },
@@ -541,133 +593,59 @@ export default function HomePage() {
         <section className="px-3 md:px-6 lg:px-8 mt-5 md:mt-8">
           <div className="max-w-7xl mx-auto">
             {/* Section heading */}
-            <div className="mb-4 md:mb-6 px-0.5">
+            <div className="mb-3.5 md:mb-5 px-0.5">
               <div className="flex items-center gap-3">
                 <span className="text-[11px] md:text-[12px] font-extrabold uppercase tracking-[0.24em] text-[#FF6B35] font-sans">Explore</span>
                 <span className="h-[2px] w-8 md:w-12 rounded-full bg-[#FF6B35]/50" />
               </div>
-              <h2 className="mt-2 text-[27px] md:text-[40px] font-extrabold text-slate-900 tracking-[-0.03em] font-display leading-[1.04]">More from Bharat Mechanics</h2>
-              <p className="mt-1.5 text-[13.5px] md:text-[16px] text-slate-500 font-medium font-sans">Smart solutions for every vehicle need</p>
+              <h2 className="mt-2 text-[24px] md:text-[32px] font-extrabold text-slate-900 tracking-[-0.03em] font-display leading-[1.05]">More from Bharat Mechanics</h2>
+              <p className="mt-1 text-[13px] md:text-[15px] text-slate-500 font-medium font-sans">Smart solutions for every vehicle need</p>
             </div>
 
-            <div className="space-y-3 md:space-y-4">
-              {/* ── BM Care ── */}
-              <Link
-                href="/subscription"
-                className="group relative flex flex-col gap-4 overflow-hidden rounded-[20px] md:rounded-[26px] border border-[#2563EB]/15 border-l-4 border-l-[#2563EB] bg-[#EDF2FF] px-4 py-4 md:px-7 md:py-6 shadow-[0_4px_20px_-10px_rgba(37,99,235,0.25)] transition-all duration-300 hover:shadow-[0_16px_38px_-14px_rgba(37,99,235,0.35)] hover:-translate-y-0.5 sm:flex-row sm:items-center"
-              >
-                <div className="flex items-start gap-3.5 md:gap-5 flex-1 min-w-0">
-                  <div className="grid h-14 w-14 md:h-[72px] md:w-[72px] shrink-0 place-items-center rounded-[16px] md:rounded-[20px] bg-white shadow-[0_10px_22px_-8px_rgba(37,99,235,0.4)] ring-1 ring-black/[0.04]">
-                    <ShieldCheck className="h-7 w-7 md:h-9 md:w-9 text-[#2563EB]" strokeWidth={2.2} />
-                  </div>
-                  <div className="min-w-0 pt-0.5">
-                    <h3 className="text-[21px] md:text-[27px] font-extrabold tracking-[-0.02em] text-slate-900 leading-[1.08] font-display">{bmActive ? bmPlan!.name : 'BM Care'}</h3>
-                    <p className="mt-0.5 md:mt-1 text-[13px] md:text-[16px] font-medium text-slate-500 font-sans">{bmActive ? 'All benefits active' : 'Free services, priority & roadside'}</p>
-                    <div className="mt-2.5 md:mt-3.5 flex flex-wrap gap-1.5 md:gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><Zap className="h-3.5 w-3.5 text-[#2563EB]" />Priority Service</span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><Truck className="h-3.5 w-3.5 text-[#2563EB]" />Roadside Help</span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><Tag className="h-3.5 w-3.5 text-[#2563EB]" />Best Value</span>
-                    </div>
-                  </div>
-                </div>
-                {/* Illustration */}
-                <div className="pointer-events-none hidden lg:flex shrink-0 items-center justify-center pr-2 xl:pr-10" aria-hidden>
-                  <svg viewBox="0 0 120 128" fill="none" className="h-24 w-24 xl:h-28 xl:w-28">
-                    <path d="M60 6 L104 24 L104 62 C104 92 60 120 60 120 C60 120 16 92 16 62 L16 24 Z" fill="#DBE7FF" stroke="#2563EB" strokeOpacity="0.35" strokeWidth="2.5" />
-                    <path d="M60 20 L92 33 L92 62 C92 83 60 101 60 101 C60 101 28 83 28 62 L28 33 Z" fill="#2563EB" fillOpacity="0.1" />
-                    <path d="M49 63 l8 8 17 -21" stroke="#2563EB" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                {/* CTA */}
-                <div className="shrink-0 sm:self-center">
-                  <span className="inline-flex items-center justify-center gap-1.5 md:gap-2 rounded-full bg-[#2563EB] text-white font-extrabold px-5 py-2.5 md:px-7 md:py-3.5 text-[14px] md:text-[16px] shadow-[0_10px_24px_-8px_rgba(37,99,235,0.6)] transition-transform duration-300 group-hover:scale-[1.03]">
-                    {bmActive ? 'Manage' : 'From ₹99'}
-                    <ChevronRight className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-x-0.5" />
-                  </span>
-                </div>
-              </Link>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              {FEATURE_CARDS.map((c) => (
+                <Link
+                  key={c.key}
+                  href={c.href}
+                  className="group relative flex flex-col overflow-hidden rounded-[18px] md:rounded-[20px] border p-4 md:p-[18px] shadow-[0_4px_18px_-10px_rgba(15,23,42,0.2)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-14px_rgba(15,23,42,0.28)]"
+                  style={{ backgroundColor: c.tint, borderColor: `${c.accent}20`, borderLeftWidth: 4, borderLeftColor: c.accent }}
+                >
+                  {/* Corner watermark */}
+                  <div className="pointer-events-none absolute -right-5 -top-6 opacity-[0.13]" aria-hidden>{c.illo}</div>
 
-              {/* ── BM Lens ── */}
-              <Link
-                href="/shop"
-                className="group relative flex flex-col gap-4 overflow-hidden rounded-[20px] md:rounded-[26px] border border-[#7C3AED]/15 border-l-4 border-l-[#7C3AED] bg-[#F2EEFE] px-4 py-4 md:px-7 md:py-6 shadow-[0_4px_20px_-10px_rgba(124,58,237,0.25)] transition-all duration-300 hover:shadow-[0_16px_38px_-14px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 sm:flex-row sm:items-center"
-              >
-                <div className="flex items-start gap-3.5 md:gap-5 flex-1 min-w-0">
-                  <div className="grid h-14 w-14 md:h-[72px] md:w-[72px] shrink-0 place-items-center rounded-[16px] md:rounded-[20px] bg-white shadow-[0_10px_22px_-8px_rgba(124,58,237,0.4)] ring-1 ring-black/[0.04]">
-                    <ScanLine className="h-7 w-7 md:h-9 md:w-9 text-[#7C3AED]" strokeWidth={2.2} />
-                  </div>
-                  <div className="min-w-0 pt-0.5">
-                    <h3 className="text-[21px] md:text-[27px] font-extrabold tracking-[-0.02em] text-slate-900 leading-[1.08] font-display">BM Lens</h3>
-                    <p className="mt-0.5 md:mt-1 text-[13px] md:text-[16px] font-medium text-slate-500 font-sans">Snap a part — we&apos;ll find it</p>
-                    <div className="mt-2.5 md:mt-3.5 flex flex-wrap gap-1.5 md:gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><Camera className="h-3.5 w-3.5 text-[#7C3AED]" />Snap Photo</span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><Search className="h-3.5 w-3.5 text-[#7C3AED]" />Find Match</span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><BadgeCheck className="h-3.5 w-3.5 text-[#7C3AED]" />Right Part</span>
+                  {/* Header */}
+                  <div className="relative flex items-center gap-3">
+                    <div className="grid h-11 w-11 md:h-[52px] md:w-[52px] shrink-0 place-items-center rounded-[13px] md:rounded-[15px] bg-white shadow-[0_6px_16px_-6px_rgba(15,23,42,0.3)] ring-1 ring-black/[0.04]">
+                      <c.Icon className="h-[22px] w-[22px] md:h-6 md:w-6" style={{ color: c.accent }} strokeWidth={2.2} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-[16.5px] md:text-[18.5px] font-extrabold tracking-[-0.01em] text-slate-900 leading-[1.15] font-display truncate">{c.title}</h3>
+                      <p className="mt-0.5 text-[12px] md:text-[12.5px] text-slate-500 font-medium font-sans leading-snug truncate">{c.sub}</p>
                     </div>
                   </div>
-                </div>
-                {/* Illustration */}
-                <div className="pointer-events-none hidden lg:flex shrink-0 items-center justify-center pr-2 xl:pr-10" aria-hidden>
-                  <svg viewBox="0 0 128 128" fill="none" className="h-24 w-24 xl:h-28 xl:w-28">
-                    <path d="M22 36 L22 24 L34 24" stroke="#7C3AED" strokeOpacity="0.55" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M94 24 L106 24 L106 36" stroke="#7C3AED" strokeOpacity="0.55" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M106 92 L106 104 L94 104" stroke="#7C3AED" strokeOpacity="0.55" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M34 104 L22 104 L22 92" stroke="#7C3AED" strokeOpacity="0.55" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="64" cy="64" r="33" fill="#EDE7FE" stroke="#7C3AED" strokeOpacity="0.3" strokeWidth="2" />
-                    <circle cx="64" cy="64" r="21" fill="#7C3AED" fillOpacity="0.9" />
-                    <circle cx="64" cy="64" r="11" fill="#4C1D95" />
-                    <circle cx="57" cy="57" r="4.5" fill="#fff" fillOpacity="0.7" />
-                  </svg>
-                </div>
-                {/* CTA */}
-                <div className="shrink-0 sm:self-center">
-                  <span className="inline-flex items-center justify-center gap-1.5 md:gap-2 rounded-full bg-[#7C3AED] text-white font-extrabold px-5 py-2.5 md:px-7 md:py-3.5 text-[14px] md:text-[16px] shadow-[0_10px_24px_-8px_rgba(124,58,237,0.6)] transition-transform duration-300 group-hover:scale-[1.03]">
-                    Try Lens
-                    <ChevronRight className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-x-0.5" />
-                  </span>
-                </div>
-              </Link>
 
-              {/* ── Live Tracker ── */}
-              <Link
-                href="/tracker"
-                className="group relative flex flex-col gap-4 overflow-hidden rounded-[20px] md:rounded-[26px] border border-[#16A34A]/15 border-l-4 border-l-[#16A34A] bg-[#E9F7EF] px-4 py-4 md:px-7 md:py-6 shadow-[0_4px_20px_-10px_rgba(22,163,74,0.25)] transition-all duration-300 hover:shadow-[0_16px_38px_-14px_rgba(22,163,74,0.35)] hover:-translate-y-0.5 sm:flex-row sm:items-center"
-              >
-                <div className="flex items-start gap-3.5 md:gap-5 flex-1 min-w-0">
-                  <div className="grid h-14 w-14 md:h-[72px] md:w-[72px] shrink-0 place-items-center rounded-[16px] md:rounded-[20px] bg-white shadow-[0_10px_22px_-8px_rgba(22,163,74,0.4)] ring-1 ring-black/[0.04]">
-                    <MapPin className="h-7 w-7 md:h-9 md:w-9 text-[#16A34A]" strokeWidth={2.2} />
+                  {/* Chips */}
+                  <div className="relative mt-3 flex flex-wrap gap-1.5">
+                    {c.chips.map((ch) => (
+                      <span key={ch.label} className="inline-flex items-center gap-1 rounded-full bg-white/85 ring-1 ring-black/[0.05] px-2 py-[3px] text-[10.5px] md:text-[11px] font-semibold text-slate-600 backdrop-blur-sm">
+                        <ch.Icon className="h-3 w-3" style={{ color: c.accent }} />
+                        {ch.label}
+                      </span>
+                    ))}
                   </div>
-                  <div className="min-w-0 pt-0.5">
-                    <h3 className="text-[21px] md:text-[27px] font-extrabold tracking-[-0.02em] text-slate-900 leading-[1.08] font-display">Live Tracker</h3>
-                    <p className="mt-0.5 md:mt-1 text-[13px] md:text-[16px] font-medium text-slate-500 font-sans">Live GPS + remote engine cut-off</p>
-                    <div className="mt-2.5 md:mt-3.5 flex flex-wrap gap-1.5 md:gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><MapPin className="h-3.5 w-3.5 text-[#16A34A]" />Live Location</span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><Lock className="h-3.5 w-3.5 text-[#16A34A]" />Anti-Theft</span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white ring-1 ring-black/[0.05] px-2.5 py-1 md:px-3 md:py-1.5 text-[11px] md:text-[12.5px] font-semibold text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"><Bell className="h-3.5 w-3.5 text-[#16A34A]" />Instant Alerts</span>
-                    </div>
+
+                  {/* CTA */}
+                  <div className="relative mt-3.5">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] md:text-[13.5px] font-bold text-white shadow-[0_8px_18px_-8px_rgba(15,23,42,0.55)] transition-transform duration-300 group-hover:scale-[1.03]"
+                      style={{ backgroundColor: c.accent }}
+                    >
+                      {c.cta}
+                      <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-                </div>
-                {/* Illustration */}
-                <div className="pointer-events-none hidden lg:flex shrink-0 items-center justify-center pr-2 xl:pr-10" aria-hidden>
-                  <svg viewBox="0 0 144 120" fill="none" className="h-24 w-28 xl:h-28 xl:w-32">
-                    <g stroke="#16A34A" strokeOpacity="0.16" strokeWidth="2">
-                      <path d="M8 34 H136" /><path d="M8 64 H136" /><path d="M8 94 H136" />
-                      <path d="M44 8 V112" /><path d="M84 8 V112" /><path d="M116 8 V112" />
-                    </g>
-                    <path d="M22 98 C 46 80 44 56 82 50" stroke="#16A34A" strokeWidth="4" strokeLinecap="round" strokeDasharray="1 9" />
-                    <circle cx="22" cy="98" r="5" fill="#16A34A" />
-                    <path d="M96 34 C96 22 105 13 117 13 C129 13 138 22 138 34 C138 50 117 70 117 70 C117 70 96 50 96 34 Z" fill="#16A34A" />
-                    <circle cx="117" cy="34" r="8" fill="#fff" />
-                  </svg>
-                </div>
-                {/* CTA */}
-                <div className="shrink-0 sm:self-center">
-                  <span className="inline-flex items-center justify-center gap-1.5 md:gap-2 rounded-full bg-[#16A34A] text-white font-extrabold px-5 py-2.5 md:px-7 md:py-3.5 text-[14px] md:text-[16px] shadow-[0_10px_24px_-8px_rgba(22,163,74,0.6)] transition-transform duration-300 group-hover:scale-[1.03]">
-                    Explore
-                    <ChevronRight className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-x-0.5" />
-                  </span>
-                </div>
-              </Link>
+                </Link>
+              ))}
             </div>
           </div>
         </section>
