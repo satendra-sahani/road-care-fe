@@ -6,7 +6,7 @@ import {
   MessageSquare, Wifi, UserCog,
 } from 'lucide-react'
 
-const LAST_UPDATED = 'April 2026'
+const LAST_UPDATED = 'July 2026'
 
 export default function PrivacyPage() {
   return (
@@ -66,14 +66,16 @@ export default function PrivacyPage() {
                 <li>App usage analytics — screens visited, taps, crash logs, performance metrics.</li>
                 <li>IP address, network type, approximate location from IP.</li>
                 <li>Precise GPS location (only when the app is open or with your explicit background-location consent, for live tracking of a mechanic visit).</li>
+                <li>If you buy our GPS tracker hardware — continuous real-time vehicle location, speed, ignition/engine status, battery and trip history transmitted from the device over its mobile-network SIM (see the &quot;GPS Tracker &amp; Vehicle Location Data&quot; section).</li>
                 <li>Cookies &amp; similar technologies on the website (see Cookies section).</li>
               </ul>
 
               <h3 className="font-semibold text-[#1A1D29] mt-4">c) From third parties</h3>
               <ul className="list-disc pl-5 space-y-1 mt-1">
-                <li>Payment status &amp; transaction ID from the payment gateway (e.g. Razorpay).</li>
-                <li>Map &amp; reverse-geocoding data from map providers (e.g. OpenStreetMap / Google Maps).</li>
-                <li>SMS delivery status from SMS gateway (for OTPs and transactional alerts).</li>
+                <li>Payment status &amp; transaction ID from our payment gateway, <strong>Razorpay</strong>.</li>
+                <li>Map &amp; reverse-geocoding data from map providers (OpenStreetMap / Google Maps).</li>
+                <li>SMS delivery status from our <strong>DLT-registered SMS provider (routed via Airtel)</strong>, for OTPs and transactional alerts sent through TRAI DLT-approved headers &amp; templates.</li>
+                <li>Message delivery status from the <strong>WhatsApp Business API (Meta)</strong>, for transactional/notification messages you have opted into.</li>
               </ul>
 
               <p className="mt-3 font-semibold text-[#1A1D29]">We do NOT collect:</p>
@@ -167,12 +169,16 @@ export default function PrivacyPage() {
 
             {/* 5. Sharing */}
             <Section id="5" title="5. Sharing Your Data">
-              <p>We share only the minimum data needed, and only with:</p>
+              <p>We share only the minimum data needed, and only with the following processors / recipients:</p>
               <ul className="list-disc pl-5 space-y-1.5 mt-2">
                 <li><strong>Assigned mechanics / shop partners</strong> — your name, mobile, service address and issue description, to deliver the service you booked.</li>
-                <li><strong>Payment gateways</strong> — transaction amount, order ID, and basic customer details, to process payments and refunds.</li>
-                <li><strong>Logistics / courier partners</strong> — for delivery of physical parts you order.</li>
-                <li><strong>SMS, email and push-notification providers</strong> — to deliver messages you have subscribed to.</li>
+                <li><strong>Razorpay (payments)</strong> — transaction amount, order ID and basic customer details to process payments, refunds and partner settlements. Your card / UPI credentials are entered directly on Razorpay&apos;s PCI-DSS environment and never reach our servers.</li>
+                <li><strong>DLT-registered SMS provider (routed via Airtel)</strong> — your mobile number, to deliver OTPs and transactional SMS through TRAI DLT-approved sender headers and message templates.</li>
+                <li><strong>WhatsApp Business API (Meta Platforms)</strong> — your name and mobile number, to send transactional / notification messages on WhatsApp where you have opted in.</li>
+                <li><strong>Agora (in-app voice / video calling &amp; recording)</strong> — calls between you and mechanics, shops or support are carried over Agora and may be recorded for quality, safety and dispute resolution; recordings are stored securely on AWS.</li>
+                <li><strong>Amazon Web Services (AWS) — hosting &amp; storage</strong> — to host the platform and securely store data, including uploaded images and call recordings.</li>
+                <li><strong>Logistics / courier partners</strong> — for delivery of physical parts and GPS devices you order.</li>
+                <li><strong>Push-notification &amp; email providers</strong> — to deliver messages you have subscribed to.</li>
                 <li><strong>Analytics &amp; crash-reporting services</strong> — on an anonymised / aggregated basis wherever possible.</li>
                 <li><strong>Law-enforcement agencies</strong> — where required by law, pursuant to a valid written notice / court order under Indian law.</li>
               </ul>
@@ -181,8 +187,27 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            {/* 6. Retention */}
-            <Section id="6" title="6. Data Retention">
+            {/* 6. GPS tracker */}
+            <Section id="6" title="6. GPS Tracker &amp; Vehicle Location Data" accent>
+              <p>
+                If you purchase and install our GPS tracker hardware (the &quot;Device&quot;), the Device
+                continuously collects and transmits the following about the fitted vehicle, over its built-in
+                mobile-network SIM:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 mt-2">
+                <li>Real-time location (latitude / longitude), speed, heading and route / trip history.</li>
+                <li>Ignition / engine on-off status, battery level, and device health / signal strength.</li>
+                <li>Event alerts — e.g. overspeed, geo-fence entry / exit, tow or unexpected movement, low battery.</li>
+              </ul>
+              <p className="mt-3"><strong>How we use it:</strong> to show you live location on the map, trip history and alerts, and — <em>only when you request it</em> — to remotely immobilise the engine for anti-theft protection. This data is linked to your account and the vehicle you registered.</p>
+              <p className="mt-3"><strong>Sharing a live location:</strong> you can generate a link to share your vehicle&apos;s live location with a person you choose. The recipient identifies themselves (name + mobile) and can view the vehicle&apos;s live location <em>only</em> for the duration you set. You can see your sharing history and <strong>stop any share at any time</strong>. We never make your vehicle location public.</p>
+              <p className="mt-3"><strong>Who can access it:</strong> only you (the owner) and the people you actively choose to share with. Our staff access location data only where strictly necessary for support, safety, or a legal obligation.</p>
+              <p className="mt-3"><strong>Retention:</strong> live location and trip history are retained for the period needed to provide the tracking service, then aggregated or deleted. Removing a vehicle / device from your account stops further collection.</p>
+              <p className="mt-3"><strong>Your responsibility:</strong> install the Device only on a vehicle you own or are authorised to track, and inform drivers / occupants that the vehicle is tracked, as required by applicable law.</p>
+            </Section>
+
+            {/* 7. Retention */}
+            <Section id="7" title="7. Data Retention">
               <p>
                 We retain your data only as long as required to provide the service, for as long as your account
                 is active, or as mandated by Indian law (e.g. GST records are kept for at least 8 years under the
@@ -190,8 +215,8 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            {/* 7. Security */}
-            <Section id="7" title="7. Security">
+            {/* 8. Security */}
+            <Section id="8" title="8. Security">
               <p className="flex items-start gap-2">
                 <Lock className="h-4 w-4 mt-1 shrink-0 text-[#1B3B6F]" />
                 <span>
@@ -206,8 +231,8 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            {/* 8. Your rights */}
-            <Section id="8" title="8. Your Rights under DPDPA 2023">
+            {/* 9. Your rights */}
+            <Section id="9" title="9. Your Rights under DPDPA 2023">
               <ul className="list-disc pl-5 space-y-1.5">
                 <li><strong>Right to access</strong> — obtain a summary of personal data we hold about you.</li>
                 <li><strong>Right to correction &amp; erasure</strong> — ask us to correct inaccurate data or delete data that is no longer needed.</li>
@@ -221,16 +246,16 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            {/* 9. Cookies */}
-            <Section id="9" title="9. Cookies &amp; Similar Technologies (Web)">
+            {/* 10. Cookies */}
+            <Section id="10" title="10. Cookies &amp; Similar Technologies (Web)">
               <p>
                 The website uses a limited number of strictly-necessary cookies (authentication, cart) and
                 optional analytics cookies. You can clear cookies from your browser settings at any time.
               </p>
             </Section>
 
-            {/* 10. Children */}
-            <Section id="10" title="10. Children's Data">
+            {/* 11. Children */}
+            <Section id="11" title="11. Children's Data">
               <p>
                 Bharat Mechanics is not intended for children under 18 years of age. We do not knowingly collect
                 data from minors. If you believe a minor has created an account, please contact the Grievance
@@ -238,8 +263,8 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            {/* 11. Grievance officer */}
-            <Section id="11" title="11. Grievance Officer">
+            {/* 12. Grievance officer */}
+            <Section id="12" title="12. Grievance Officer">
               <p>
                 In accordance with Rule 3(11) of the IT (Intermediary Guidelines) Rules, 2021 and Section 10 of
                 the DPDPA, 2023, the details of the Grievance Officer are:
@@ -254,7 +279,7 @@ export default function PrivacyPage() {
             </Section>
 
             {/* 12. Changes */}
-            <Section id="12" title="12. Updates to this Policy">
+            <Section id="13" title="13. Updates to this Policy">
               <p>
                 We may update this Privacy Policy from time to time. The &quot;Last updated&quot; date reflects
                 the latest version. Material changes will be notified via email or in-app notification.
