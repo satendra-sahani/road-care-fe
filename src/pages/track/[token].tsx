@@ -24,6 +24,25 @@ const distanceKm = (aLat: number, aLng: number, bLat: number, bLng: number) => {
   return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
 }
 
+// Defined at module scope (NOT inside the component) — otherwise it is a new
+// component type on every render, so React remounts the whole subtree and the
+// name/phone inputs lose focus after each keystroke.
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ minHeight: '100vh', background: '#F3F5F9' }} className="flex flex-col">
+      <Head><title>Live Location — Bharat Mechanics</title></Head>
+      <div className="px-4 py-3 text-white flex items-center gap-2" style={{ background: 'linear-gradient(120deg,#0E2042,#1B3B6F)' }}>
+        <ShieldCheck className="h-5 w-5 text-[#6EE7B7]" />
+        <span className="font-extrabold tracking-tight">Bharat Mechanics</span>
+        <span className="ml-auto text-[11px] text-white/60 font-semibold uppercase tracking-wider">Live Location</span>
+      </div>
+      <div className="flex-1 flex items-start justify-center p-4">
+        <div className="w-full max-w-md mt-6">{children}</div>
+      </div>
+    </div>
+  )
+}
+
 export default function ShareTrackPage() {
   const router = useRouter()
   const token = (router.query.token as string) || ''
@@ -180,20 +199,6 @@ export default function ShareTrackPage() {
       else setErr(r.data?.message || 'Invalid OTP.')
     } catch (e: any) { setErr(e?.response?.data?.message || 'Invalid OTP.') } finally { setBusy(false) }
   }
-
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ minHeight: '100vh', background: '#F3F5F9' }} className="flex flex-col">
-      <Head><title>Live Location — Bharat Mechanics</title></Head>
-      <div className="px-4 py-3 text-white flex items-center gap-2" style={{ background: 'linear-gradient(120deg,#0E2042,#1B3B6F)' }}>
-        <ShieldCheck className="h-5 w-5 text-[#6EE7B7]" />
-        <span className="font-extrabold tracking-tight">Bharat Mechanics</span>
-        <span className="ml-auto text-[11px] text-white/60 font-semibold uppercase tracking-wider">Live Location</span>
-      </div>
-      <div className="flex-1 flex items-start justify-center p-4">
-        <div className="w-full max-w-md mt-6">{children}</div>
-      </div>
-    </div>
-  )
 
   if (phase === 'loading') {
     return <Shell><div className="flex flex-col items-center gap-3 py-20 text-[#5B6B85]"><Loader2 className="h-7 w-7 animate-spin text-[#1B3B6F]" /> Loading…</div></Shell>
