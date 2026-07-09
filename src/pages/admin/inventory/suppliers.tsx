@@ -1,13 +1,12 @@
-import { AdminSidebar } from '@/components/admin/AdminSidebar'
-import { InventoryManagement } from '@/components/admin/InventoryManagement'
+import type { GetServerSideProps } from 'next'
 
-export default function AdminInventorySuppliersPage() {
-  return (
-    <div className="min-h-screen bg-[#F5F7FA]">
-      <AdminSidebar currentPath="/admin/inventory/suppliers" />
-      <main className="ml-0 lg:ml-72 transition-all duration-300">
-        <InventoryManagement />
-      </main>
-    </div>
-  )
+// This page previously rendered a mock-data inventory screen (not in the admin
+// nav). Redirect to the live Purchase Ledger (real supplier/purchase data) so
+// placeholder numbers are never shown.
+export const getServerSideProps: GetServerSideProps = async () => ({
+  redirect: { destination: '/admin/inventory/purchases', permanent: false },
+})
+
+export default function AdminInventorySuppliersRedirect() {
+  return null
 }

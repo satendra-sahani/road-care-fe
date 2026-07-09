@@ -1,13 +1,12 @@
-import { AdminSidebar } from '@/components/admin/AdminSidebar'
-import { InventoryManagement } from '@/components/admin/InventoryManagement'
+import type { GetServerSideProps } from 'next'
 
-export default function AdminInventoryStockPage() {
-  return (
-    <div className="min-h-screen bg-[#F5F7FA]">
-      <AdminSidebar currentPath="/admin/inventory/stock" />
-      <main className="lg:pl-72 transition-all duration-300">
-        <InventoryManagement />
-      </main>
-    </div>
-  )
+// This page previously rendered a mock-data inventory screen (not in the admin
+// nav). Until a real stock screen is built, redirect to the live, API-backed
+// Products page so placeholder numbers are never shown.
+export const getServerSideProps: GetServerSideProps = async () => ({
+  redirect: { destination: '/admin/inventory/products', permanent: false },
+})
+
+export default function AdminInventoryStockRedirect() {
+  return null
 }
