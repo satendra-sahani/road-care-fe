@@ -16,6 +16,14 @@ const fmtTime = (d?: string | null) => {
   try { return new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) } catch { return '—' }
 }
 
+// Straight-line distance (km) between two lat/lng points — for the "X km away" hint.
+const distanceKm = (aLat: number, aLng: number, bLat: number, bLng: number) => {
+  const R = 6371, toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(bLat - aLat), dLng = toRad(bLng - aLng)
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
+}
+
 export default function ShareTrackPage() {
   const router = useRouter()
   const token = (router.query.token as string) || ''
@@ -28,7 +36,21 @@ export default function ShareTrackPage() {
   const [err, setErr] = useState('')
   const [accessToken, setAccessToken] = useState('')
   const [loc, setLoc] = useState<Loc | null>(null)
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Once viewing, ask the viewer's browser for their own location so we can draw
+  // the route to the vehicle and offer turn-by-turn navigation. Best-effort — if
+  // they decline, we still show the vehicle location as before.
+  useEffect(() => {
+    if (phase !== 'view' || typeof navigator === 'undefined' || !navigator.geolocation) return
+    const id = navigator.geolocation.watchPosition(
+      (p) => setMe({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => { /* permission denied / unavailable — ignore */ },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 20000 },
+    )
+    return () => { try { navigator.geolocation.clearWatch(id) } catch { /* noop */ } }
+  }, [phase])
 
   useEffect(() => {
     if (!token) return
@@ -156,7 +178,18 @@ export default function ShareTrackPage() {
 
   // phase === 'view'
   const hasFix = loc && typeof loc.lat === 'number' && typeof loc.lng === 'number'
-  const mapSrc = hasFix ? `https://maps.google.com/maps?q=${loc!.lat},${loc!.lng}&z=16&output=embed` : ''
+  const vLat = loc?.lat as number, vLng = loc?.lng as number
+  // With the viewer's location we draw a route (their point → vehicle); without
+  // it we just center on the vehicle.
+  const mapSrc = hasFix
+    ? (me
+        ? `https://maps.google.com/maps?saddr=${me.lat},${me.lng}&daddr=${vLat},${vLng}&z=14&output=embed`
+        : `https://maps.google.com/maps?q=${vLat},${vLng}&z=16&output=embed`)
+    : ''
+  const navUrl = hasFix
+    ? `https://www.google.com/maps/dir/?api=1&destination=${vLat},${vLng}${me ? `&origin=${me.lat},${me.lng}` : ''}&travelmode=driving`
+    : ''
+  const distKm = hasFix && me ? distanceKm(me.lat, me.lng, vLat, vLng) : null
   return (
     <Shell>
       <div className="bg-white rounded-2xl ring-1 ring-black/[0.06] shadow-sm overflow-hidden">
@@ -164,7 +197,7 @@ export default function ShareTrackPage() {
           <div className="h-9 w-9 rounded-xl bg-[#E7F6F0] text-[#15936B] flex items-center justify-center"><Navigation2 className="h-5 w-5" /></div>
           <div className="flex-1 min-w-0">
             <div className="font-extrabold text-[15.5px] text-[#13203A] truncate">{loc?.label || meta?.label || 'Vehicle'}</div>
-            <div className="text-[12px] text-[#15936B] font-semibold flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#15936B] animate-pulse" /> Live</div>
+            <div className="text-[12px] text-[#15936B] font-semibold flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#15936B] animate-pulse" /> Live{distKm != null ? ` · ${distKm < 1 ? Math.round(distKm * 1000) + ' m' : distKm.toFixed(1) + ' km'} away` : ''}</div>
           </div>
         </div>
         <div className="relative bg-[#eef3f9]" style={{ height: 340 }}>
@@ -177,6 +210,22 @@ export default function ShareTrackPage() {
             </div>
           )}
         </div>
+        {hasFix && (
+          <div className="px-4 py-3 border-t border-[#EFF2F7]">
+            <a
+              href={navUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full h-11 rounded-xl bg-[#1B3B6F] text-white font-bold text-[14px] hover:bg-[#0F2545] transition-colors"
+            >
+              <Navigation2 className="h-4 w-4" />
+              Navigate to vehicle
+            </a>
+            <p className="mt-2 text-center text-[11px] text-[#7B8AA3]">
+              {me ? 'Route shown from your current location' : 'Allow location access to see the route from where you are'}
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-3 divide-x divide-[#EFF2F7] border-t border-[#EFF2F7]">
           <div className="p-3 text-center"><div className="text-[11px] text-[#7B8AA3] font-semibold uppercase tracking-wide">Status</div><div className="text-[13.5px] font-bold text-[#13203A] capitalize mt-0.5">{loc?.status || '—'}</div></div>
           <div className="p-3 text-center"><div className="text-[11px] text-[#7B8AA3] font-semibold uppercase tracking-wide">Speed</div><div className="text-[13.5px] font-bold text-[#13203A] mt-0.5">{Math.round(loc?.speed || 0)} km/h</div></div>
