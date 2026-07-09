@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { shareAPI } from '@/services/api'
-import { MapPin, ShieldCheck, Loader2, Clock, AlertCircle, Navigation2, Phone, User } from 'lucide-react'
+import { MapPin, ShieldCheck, Loader2, Clock, AlertCircle, Navigation2, Phone, User, Crosshair } from 'lucide-react'
 
 type Loc = {
   label: string; lat: number | null; lng: number | null
@@ -51,6 +51,82 @@ export default function ShareTrackPage() {
     )
     return () => { try { navigator.geolocation.clearWatch(id) } catch { /* noop */ } }
   }, [phase])
+
+  // ── Interactive, zoomable map (Leaflet + OpenStreetMap) — stays inside the
+  // page, no Google redirect. Shows the vehicle AND the viewer, with a line
+  // between them; users can pinch/scroll/±-zoom freely.
+  const mapDivRef = useRef<HTMLDivElement | null>(null)
+  const LRef = useRef<any>(null)
+  const mapRef = useRef<any>(null)
+  const vehMarkerRef = useRef<any>(null)
+  const meMarkerRef = useRef<any>(null)
+  const lineRef = useRef<any>(null)
+  const fittedRef = useRef(false)
+
+  const loadLeaflet = () => new Promise<any>((resolve) => {
+    const w = window as any
+    if (w.L) return resolve(w.L)
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link')
+      link.id = 'leaflet-css'; link.rel = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      document.head.appendChild(link)
+    }
+    const existing = document.getElementById('leaflet-js') as HTMLScriptElement | null
+    if (existing) { existing.addEventListener('load', () => resolve((window as any).L)); return }
+    const s = document.createElement('script')
+    s.id = 'leaflet-js'; s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    s.onload = () => resolve((window as any).L)
+    document.head.appendChild(s)
+  })
+
+  const fitBoth = useCallback(() => {
+    const L = LRef.current, map = mapRef.current
+    if (!L || !map) return
+    const hasV = loc && typeof loc.lat === 'number' && typeof loc.lng === 'number'
+    if (hasV && me) map.fitBounds([[me.lat, me.lng], [loc!.lat, loc!.lng]], { padding: [55, 55], maxZoom: 16 })
+    else if (hasV) map.setView([loc!.lat as number, loc!.lng as number], 16)
+    else if (me) map.setView([me.lat, me.lng], 15)
+  }, [loc, me])
+
+  useEffect(() => {
+    if (phase !== 'view') return
+    let cancelled = false
+    loadLeaflet().then((L) => {
+      if (cancelled) return
+      LRef.current = L
+      if (!mapRef.current && mapDivRef.current) {
+        const map = L.map(mapDivRef.current, { zoomControl: true, attributionControl: false }).setView([20.5937, 78.9629], 5)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }).addTo(map)
+        mapRef.current = map
+        setTimeout(() => { try { map.invalidateSize() } catch { /* noop */ } }, 60)
+      }
+      const map = mapRef.current
+      if (!map) return
+      const vehIcon = L.divIcon({ className: '', iconSize: [40, 40], iconAnchor: [20, 20], html: '<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center"><div style="position:absolute;width:40px;height:40px;border-radius:50%;background:rgba(255,107,53,.22)"></div><div style="width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #FF6B35;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.25)">🚗</div></div>' })
+      const meIcon = L.divIcon({ className: '', iconSize: [24, 24], iconAnchor: [12, 12], html: '<div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center"><div style="position:absolute;width:24px;height:24px;border-radius:50%;background:rgba(37,99,235,.22)"></div><div style="width:14px;height:14px;border-radius:50%;background:#2563EB;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div></div>' })
+      const hasV = loc && typeof loc.lat === 'number' && typeof loc.lng === 'number'
+      if (hasV) {
+        const vp: [number, number] = [loc!.lat as number, loc!.lng as number]
+        if (vehMarkerRef.current) vehMarkerRef.current.setLatLng(vp)
+        else vehMarkerRef.current = L.marker(vp, { icon: vehIcon }).addTo(map)
+      }
+      if (me) {
+        const mp: [number, number] = [me.lat, me.lng]
+        if (meMarkerRef.current) meMarkerRef.current.setLatLng(mp)
+        else meMarkerRef.current = L.marker(mp, { icon: meIcon }).addTo(map)
+      }
+      if (hasV && me) {
+        const pts: [number, number][] = [[me.lat, me.lng], [loc!.lat as number, loc!.lng as number]]
+        if (lineRef.current) lineRef.current.setLatLngs(pts)
+        else lineRef.current = L.polyline(pts, { color: '#1B3B6F', weight: 3, dashArray: '6 9', opacity: 0.7 }).addTo(map)
+      }
+      if (!fittedRef.current && (hasV || me)) { fitBoth(); fittedRef.current = true }
+    })
+    return () => { cancelled = true }
+  }, [phase, loc, me, fitBoth])
+
+  useEffect(() => () => { try { mapRef.current?.remove() } catch { /* noop */ } mapRef.current = null }, [])
 
   useEffect(() => {
     if (!token) return
@@ -178,18 +254,7 @@ export default function ShareTrackPage() {
 
   // phase === 'view'
   const hasFix = loc && typeof loc.lat === 'number' && typeof loc.lng === 'number'
-  const vLat = loc?.lat as number, vLng = loc?.lng as number
-  // With the viewer's location we draw a route (their point → vehicle); without
-  // it we just center on the vehicle.
-  const mapSrc = hasFix
-    ? (me
-        ? `https://maps.google.com/maps?saddr=${me.lat},${me.lng}&daddr=${vLat},${vLng}&z=14&output=embed`
-        : `https://maps.google.com/maps?q=${vLat},${vLng}&z=16&output=embed`)
-    : ''
-  const navUrl = hasFix
-    ? `https://www.google.com/maps/dir/?api=1&destination=${vLat},${vLng}${me ? `&origin=${me.lat},${me.lng}` : ''}&travelmode=driving`
-    : ''
-  const distKm = hasFix && me ? distanceKm(me.lat, me.lng, vLat, vLng) : null
+  const distKm = hasFix && me ? distanceKm(me.lat, me.lng, loc!.lat as number, loc!.lng as number) : null
   return (
     <Shell>
       <div className="bg-white rounded-2xl ring-1 ring-black/[0.06] shadow-sm overflow-hidden">
@@ -199,31 +264,25 @@ export default function ShareTrackPage() {
             <div className="font-extrabold text-[15.5px] text-[#13203A] truncate">{loc?.label || meta?.label || 'Vehicle'}</div>
             <div className="text-[12px] text-[#15936B] font-semibold flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#15936B] animate-pulse" /> Live{distKm != null ? ` · ${distKm < 1 ? Math.round(distKm * 1000) + ' m' : distKm.toFixed(1) + ' km'} away` : ''}</div>
           </div>
+          <button onClick={fitBoth} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#EEF3F9] hover:bg-[#E2E9F2] text-[#1B3B6F] font-bold text-[12px] px-2.5 py-1.5 transition-colors">
+            <Crosshair className="h-3.5 w-3.5" /> Recenter
+          </button>
         </div>
-        <div className="relative bg-[#eef3f9]" style={{ height: 340 }}>
-          {hasFix ? (
-            <iframe title="Live location" src={mapSrc} className="w-full h-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-[#5B6B85] gap-2 px-6 text-center">
-              <Loader2 className="h-6 w-6 animate-spin text-[#1B3B6F]" />
-              <span className="text-[13px]">Waiting for the vehicle's first location fix…</span>
+        <div className="relative bg-[#eef3f9]" style={{ height: 360 }}>
+          <div ref={mapDivRef} className="absolute inset-0 w-full h-full" />
+          {!hasFix && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] bg-white/95 rounded-full shadow px-3 py-1.5 text-[12px] font-semibold text-[#5B6B85] flex items-center gap-2 pointer-events-none">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#1B3B6F]" /> Waiting for vehicle location…
             </div>
           )}
+          <div className="absolute left-3 bottom-3 z-[500] bg-white/95 rounded-lg shadow px-2.5 py-1.5 text-[11px] font-semibold text-[#475569] flex flex-col gap-1 pointer-events-none">
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: '#FF6B35' }} /> Vehicle</span>
+            {me && <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: '#2563EB' }} /> You</span>}
+          </div>
         </div>
-        {hasFix && (
-          <div className="px-4 py-3 border-t border-[#EFF2F7]">
-            <a
-              href={navUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full h-11 rounded-xl bg-[#1B3B6F] text-white font-bold text-[14px] hover:bg-[#0F2545] transition-colors"
-            >
-              <Navigation2 className="h-4 w-4" />
-              Navigate to vehicle
-            </a>
-            <p className="mt-2 text-center text-[11px] text-[#7B8AA3]">
-              {me ? 'Route shown from your current location' : 'Allow location access to see the route from where you are'}
-            </p>
+        {!me && hasFix && (
+          <div className="px-4 py-2 border-t border-[#EFF2F7] text-center text-[11.5px] text-[#7B8AA3]">
+            Allow location access to see yourself on the map and the distance.
           </div>
         )}
         <div className="grid grid-cols-3 divide-x divide-[#EFF2F7] border-t border-[#EFF2F7]">
