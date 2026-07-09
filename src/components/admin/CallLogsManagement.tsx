@@ -747,7 +747,10 @@ export function CallLogsManagement() {
                                   <><Play className="h-3.5 w-3.5" /> Play</>
                                 )}
                               </Button>
-                            ) : call.recording?.status === 'recording' ? (
+                            ) : (call.recording?.status === 'recording' && ['initiated', 'ringing', 'answered'].includes(call.status)) ? (
+                              // Only show the live "Recording" badge while the call is actually in
+                              // progress — a completed/ended call with a stuck 'recording' status
+                              // has no recording, so show a dash instead.
                               <Badge variant="outline" className="text-[10px] gap-1 text-red-500 border-red-200">
                                 <Volume2 className="h-3 w-3 animate-pulse" /> Recording
                               </Badge>
