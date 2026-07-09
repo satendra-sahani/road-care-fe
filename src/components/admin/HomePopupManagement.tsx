@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Save, RefreshCw, Megaphone, Smartphone, CheckCircle2, Info } from 'lucide-react'
 
 // Admin management for the customer app's Home popup — the promotional modal
@@ -47,7 +48,22 @@ const DEFAULTS: Popup = {
   showOnce: true,
 }
 
-const CTA_TARGETS = ['Cashback', 'Shop', 'Subscription', 'Tracker']
+// Real customer-app screens the button can open (value = navigation route name).
+const CTA_SCREENS: { label: string; value: string }[] = [
+  { label: 'GPS Tracker Plans', value: 'GpsPlans' },
+  { label: 'BM Care Membership', value: 'Subscription' },
+  { label: 'Shop / Browse Products', value: 'Categories' },
+  { label: 'Cart', value: 'Cart' },
+  { label: 'Cashback', value: 'Cashback' },
+  { label: 'Refer & Earn', value: 'ReferAndEarn' },
+  { label: 'Spin & Win', value: 'SpinWin' },
+  { label: 'Wallet', value: 'Wallet' },
+  { label: 'Emergency Help', value: 'Emergency' },
+  { label: 'Support', value: 'Support' },
+  { label: 'Notifications', value: 'Notifications' },
+  { label: 'Home', value: 'Home' },
+]
+const CUSTOM = '__custom__'
 
 export function HomePopupManagement() {
   const [cfg, setCfg] = useState<Popup>(DEFAULTS)
@@ -109,6 +125,7 @@ export function HomePopupManagement() {
 
   const accent = cfg.accentColor || '#F59E0B'
   const grad = cfg.gradient?.length >= 2 ? cfg.gradient : DEFAULTS.gradient
+  const isCustomTarget = !CTA_SCREENS.some((s) => s.value === cfg.ctaTarget)
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -212,12 +229,26 @@ export function HomePopupManagement() {
                   <Input id="hpCtaText" value={cfg.ctaText} onChange={(e) => set('ctaText', e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="hpCtaTarget">Button action</Label>
-                  <Input id="hpCtaTarget" list="cta-targets" placeholder="Cashback" value={cfg.ctaTarget} onChange={(e) => set('ctaTarget', e.target.value)} />
-                  <datalist id="cta-targets">
-                    {CTA_TARGETS.map((t) => <option key={t} value={t} />)}
-                  </datalist>
-                  <p className="mt-1 text-xs text-[#6B7280]">Screen name ({CTA_TARGETS.join(', ')}) or an https:// link.</p>
+                  <Label>Button action — where it opens</Label>
+                  <Select
+                    value={isCustomTarget ? CUSTOM : cfg.ctaTarget}
+                    onValueChange={(v) => set('ctaTarget', v === CUSTOM ? '' : v)}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select a screen" /></SelectTrigger>
+                    <SelectContent>
+                      {CTA_SCREENS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                      <SelectItem value={CUSTOM}>Custom link / URL…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {isCustomTarget && (
+                    <Input
+                      className="mt-2"
+                      placeholder="https://…  or an app screen name"
+                      value={cfg.ctaTarget}
+                      onChange={(e) => set('ctaTarget', e.target.value)}
+                    />
+                  )}
+                  <p className="mt-1 text-xs text-[#6B7280]">Pick an in-app screen, or choose <span className="font-medium">Custom</span> for an https:// link.</p>
                 </div>
               </div>
               <div>
