@@ -9,6 +9,7 @@ import { ShopLayout } from "@/components/shop-partner/ShopLayout";
 import { LoginModalProvider } from "@/components/auth/LoginModalProvider";
 import { IncomingCallProvider } from "@/components/calls/IncomingCallProvider";
 import { AdminCallProvider } from "@/components/calls/AdminCallProvider";
+import { CookieConsent } from "@/components/CookieConsent";
 import { useRouter } from "next/router";
 import { Toaster } from "sonner";
 import { Manrope, Bricolage_Grotesque } from "next/font/google";
@@ -98,6 +99,7 @@ export default function App({ Component, pageProps }: AppProps) {
         ) : (
           <Component {...pageProps} />
         )}
+        <CookieConsent />
       </div>
       </IncomingCallProvider>
       </AdminCallProvider>
