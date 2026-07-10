@@ -655,6 +655,12 @@ export const adminCallLogsAPI = {
   getById: (id: string) => api.get(`/admin/calls/${id}`),
 };
 
+// ─── Admin OTP Helpdesk (live OTPs for support) ──────────────────────
+export const adminOtpAPI = {
+  getAll: (params?: { search?: string; purpose?: string; limit?: number }) =>
+    api.get('/admin/otps', { params }),
+};
+
 // ─── Admin Memberships (BM Care subscriptions) ──────────────────────
 export const adminMembershipsAPI = {
   getAll: (params?: { status?: string; planKey?: string; search?: string; page?: number; limit?: number }) =>

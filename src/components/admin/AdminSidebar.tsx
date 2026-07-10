@@ -34,6 +34,7 @@ import {
   MessageSquare,
   Satellite,
   ChevronDown,
+  KeyRound,
 } from 'lucide-react'
 import NextImage from 'next/image'
 import { cn } from '@/lib/utils'
@@ -113,6 +114,7 @@ const NAV_GROUPS: SidebarGroup[] = [
       { id: 'notifications', title: 'Notifications', icon: Bell, href: '/admin/communication/notifications' },
       { id: 'support', title: 'Help & Support', icon: MessageSquare, href: '/admin/communication/support' },
       { id: 'call-logs', title: 'Call Logs', icon: Phone, href: '/admin/communication/call-logs' },
+      { id: 'otp-helpdesk', title: 'OTP Helpdesk', icon: KeyRound, href: '/admin/communication/otp-helpdesk' },
       { id: 'banners', title: 'Banners', icon: ImageIcon, href: '/admin/banners' },
       { id: 'home-popup', title: 'Home Popup', icon: Megaphone, href: '/admin/home-popup' },
       { id: 'locations', title: 'Locations', icon: MapPin, href: '/admin/locations' },

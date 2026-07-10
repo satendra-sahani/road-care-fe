@@ -10,6 +10,7 @@ import { LoginModalProvider } from "@/components/auth/LoginModalProvider";
 import { IncomingCallProvider } from "@/components/calls/IncomingCallProvider";
 import { AdminCallProvider } from "@/components/calls/AdminCallProvider";
 import { CookieConsent } from "@/components/CookieConsent";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { Toaster } from "sonner";
 import { Manrope, Bricolage_Grotesque } from "next/font/google";
@@ -68,6 +69,17 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <Provider store={store}>
+      {/* Site-wide DEFAULT title + description. Any page that renders its own
+          <SEOHead> / next-head <title> overrides these (next/head dedupes and
+          the deeper page-level tag wins), so this is purely a safety net that
+          guarantees no page is ever served "Untitled" to Google. */}
+      <Head>
+        <title>Bharat Mechanics – Auto Parts & Doorstep Vehicle Service</title>
+        <meta
+          name="description"
+          content="India's trusted auto parts and vehicle service platform. Genuine car & bike parts, certified mechanics, doorstep repair, and GPS vehicle tracking."
+        />
+      </Head>
       {/* Expose the fonts at :root so PORTALED content (dialogs, toasts,
           dropdowns) — which mounts on document.body, outside the wrapper div —
           uses the app font instead of falling back to a system serif/sans. */}
