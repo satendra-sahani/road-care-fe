@@ -99,6 +99,7 @@ export function SubscriptionPage() {
         amount: rzp.amount,
         currency: rzp.currency || 'INR',
         name: 'Bharat Mechanics · BM Care',
+        image: 'https://bharatmechanics.com/favicon.png',
         description: `${plan.name} membership · ${cycle === 'yr' ? 'yearly' : 'monthly'}`,
         order_id: rzp.orderId,
         handler: async (response: any) => {

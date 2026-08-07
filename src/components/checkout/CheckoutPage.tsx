@@ -204,7 +204,8 @@ export function CheckoutPage() {
           key: order.razorpay.keyId,
           amount: order.razorpay.amount,
           currency: order.razorpay.currency || 'INR',
-          name: 'Bharat Mechanics Auto Parts',
+          name: 'Bharat Mechanics',
+          image: 'https://bharatmechanics.com/favicon.png',
           description: 'Product Order Payment',
           order_id: order.razorpay.orderId,
           handler: async (response: any) => {

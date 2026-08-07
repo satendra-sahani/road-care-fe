@@ -75,6 +75,7 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
         amount: order.amount,
         currency: order.currency || 'INR',
         name: 'Bharat Mechanics',
+        image: 'https://bharatmechanics.com/favicon.png',
         description: `Vehicle owner call · ₹${fee}`,
         theme: { color: '#1B3B6F' },
         handler: (r: any) => resolve({

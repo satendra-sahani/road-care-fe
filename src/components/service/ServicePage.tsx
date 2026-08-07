@@ -374,6 +374,7 @@ export function ServicePage() {
           amount: orderResult.amount,
           currency: orderResult.currency || 'INR',
           name: 'Bharat Mechanics',
+          image: 'https://bharatmechanics.com/favicon.png',
           description: `${serviceType === 'roadside' ? 'Emergency' : serviceType === 'walkin' ? 'Walk-in' : 'Home'} Service`,
           order_id: orderResult.orderId,
           handler: async (response: any) => {
