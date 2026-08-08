@@ -96,6 +96,7 @@ import { cn } from '@/lib/utils'
 
 const roleConfig = {
   customer: { color: 'bg-blue-100 text-blue-800', iconBg: 'bg-blue-50 text-blue-600', icon: Users, label: 'Customer' },
+  user: { color: 'bg-blue-100 text-blue-800', iconBg: 'bg-blue-50 text-blue-600', icon: Users, label: 'Customer' },
   mechanic: { color: 'bg-green-100 text-green-800', iconBg: 'bg-green-50 text-green-600', icon: Wrench, label: 'Mechanic' },
   delivery: { color: 'bg-purple-100 text-purple-800', iconBg: 'bg-purple-50 text-purple-600', icon: Truck, label: 'Delivery' },
   admin: { color: 'bg-red-100 text-red-800', iconBg: 'bg-red-50 text-red-600', icon: Shield, label: 'Admin' },
@@ -162,10 +163,14 @@ export function UserManagement() {
       limit: pagination.limit,
       search: searchQuery || undefined,
     }
-    if (roleFilter !== 'all') params.role = roleFilter
+    // The active tab is the primary role selector; the Role dropdown refines
+    // results on the "All Users" tab. Previously only the dropdown drove the
+    // server query, so switching tabs merely filtered the current page.
+    const effectiveRole = activeTab !== 'all' ? activeTab : (roleFilter !== 'all' ? roleFilter : undefined)
+    if (effectiveRole) params.role = effectiveRole
     if (statusFilter !== 'all') params.isActive = statusFilter === 'active'
     dispatch(fetchUsersRequest(params))
-  }, [dispatch, pagination.currentPage, pagination.limit, roleFilter, statusFilter, searchQuery])
+  }, [dispatch, pagination.currentPage, pagination.limit, roleFilter, statusFilter, searchQuery, activeTab])
 
   useEffect(() => {
     dispatch(fetchUserStatsRequest())
@@ -185,7 +190,9 @@ export function UserManagement() {
 
   const filteredUsersByTab = useMemo(() => {
     if (activeTab === 'all') return users
-    return users.filter(user => user.role === activeTab)
+    // Customers are stored with role 'user' in the backend.
+    const wanted = activeTab === 'customer' ? 'user' : activeTab
+    return users.filter(user => user.role === wanted)
   }, [users, activeTab])
 
   const toggleSpecialization = (spec: string) => {
