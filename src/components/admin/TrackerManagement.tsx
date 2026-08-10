@@ -19,7 +19,12 @@ const STATUS_STRIPE: Record<string, string> = {
   inactive: '#f59e0b',
   deactivated: '#94a3b8',
 }
-const fmt = (iso?: string) => { try { return new Date(iso || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) } catch { return '—' } }
+const fmt = (iso?: string) => {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 const rel = (iso?: string) => {
   if (!iso) return 'never'
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
