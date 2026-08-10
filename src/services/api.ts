@@ -685,6 +685,8 @@ export const adminTrackerAPI = {
   getDevice: (id: string) => api.get(`/admin/tracker/devices/${id}`),
   update: (id: string, data: { status?: string; extendDays?: number }) =>
     api.put(`/admin/tracker/devices/${id}`, data),
+  assign: (data: { imei: string; simNumber?: string; userPhone: string; vehicleName?: string; regNo?: string }) =>
+    api.post('/admin/tracker/assign', data),
 
   // Customer vehicles + GPS provisioning
   getVehicles: (params?: { status?: string; search?: string; limit?: number }) =>

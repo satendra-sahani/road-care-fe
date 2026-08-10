@@ -32,8 +32,10 @@ const rel = (iso?: string) => {
 interface Device {
   _id: string
   deviceId: string
+  imei?: string
   user?: { fullName?: string; phone?: string }
   hardwareKey?: string
+  sim?: { number?: string }
   vehicle?: { name?: string; regNo?: string }
   status: string
   cycle?: string
@@ -50,6 +52,8 @@ export function TrackerManagement() {
   const [status, setStatus] = useState('all')
   const [q, setQ] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [assign, setAssign] = useState({ imei: '', simNumber: '', userPhone: '', vehicleName: '', regNo: '' })
+  const [assigning, setAssigning] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -67,6 +71,19 @@ export function TrackerManagement() {
       const r = await adminTrackerAPI.update(id, data)
       if (r.data?.success) { toast.success(ok); load() } else toast.error(r.data?.message || 'Failed')
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed') } finally { setBusyId(null) }
+  }
+
+  const doAssign = async () => {
+    if (!assign.imei.trim() || !assign.userPhone.trim()) { toast.error('GPS IMEI and app user phone are required'); return }
+    setAssigning(true)
+    try {
+      const r = await adminTrackerAPI.assign(assign)
+      if (r.data?.success) {
+        toast.success(r.data.message || 'GPS assigned to user')
+        setAssign({ imei: '', simNumber: '', userPhone: '', vehicleName: '', regNo: '' })
+        load()
+      } else toast.error(r.data?.message || 'Failed to assign')
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Failed to assign') } finally { setAssigning(false) }
   }
 
   // Quick-filter stat cards — reuse the existing `status` filter state/setter,
@@ -117,6 +134,25 @@ export function TrackerManagement() {
         </div>
       )}
 
+      {/* Assign GPS device to an app user (by phone) */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <Satellite className="h-4 w-4 text-[#1B3B6F]" />
+          <h3 className="text-sm font-bold text-slate-700">Assign GPS device to a user</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
+          <input value={assign.imei} onChange={(e) => setAssign(p => ({ ...p, imei: e.target.value }))} placeholder="GPS IMEI *" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
+          <input value={assign.simNumber} onChange={(e) => setAssign(p => ({ ...p, simNumber: e.target.value }))} placeholder="SIM number" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
+          <input value={assign.userPhone} onChange={(e) => setAssign(p => ({ ...p, userPhone: e.target.value }))} placeholder="App user phone *" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
+          <input value={assign.vehicleName} onChange={(e) => setAssign(p => ({ ...p, vehicleName: e.target.value }))} placeholder="Vehicle name" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
+          <input value={assign.regNo} onChange={(e) => setAssign(p => ({ ...p, regNo: e.target.value }))} placeholder="Bike number" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
+          <button onClick={doAssign} disabled={assigning} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#1B3B6F] px-3 text-sm font-bold text-white transition-colors hover:bg-[#16305c] disabled:opacity-50">
+            {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Satellite className="h-4 w-4" />} Assign
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">Enter the GPS IMEI + the customer&apos;s app login phone number. The device links to that user so it appears in their app.</p>
+      </div>
+
       {/* filters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 transition-colors focus-within:border-[#1B3B6F]/40 focus-within:ring-2 focus-within:ring-[#1B3B6F]/10">
@@ -161,7 +197,8 @@ export function TrackerManagement() {
                 >
                   <td className="px-4 py-3">
                     <div className="font-bold text-slate-800">{d.deviceId}</div>
-                    <div className="text-[11px] text-slate-400">{d.hardwareKey || ''} · {d.cycle === 'mo' ? 'monthly' : 'yearly'}</div>
+                    {d.sim?.number ? <div className="text-[11px] font-semibold text-slate-500">SIM: {d.sim.number}</div> : null}
+                    <div className="text-[11px] text-slate-400">{d.hardwareKey || (d.imei ? `IMEI ${d.imei}` : '')} · {d.cycle === 'mo' ? 'monthly' : 'yearly'}</div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-slate-700">{d.user?.fullName || '—'}</div>
