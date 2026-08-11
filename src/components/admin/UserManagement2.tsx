@@ -929,6 +929,42 @@ export function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* KYC Documents — uploaded by mechanics/partners to ImageKit */}
+              {(() => {
+                const su = selectedUser as any
+                const docs: { label: string; url?: string }[] = [
+                  { label: 'Photo', url: su.profileImage },
+                  { label: 'Aadhaar', url: su.aadharImage },
+                  { label: 'PAN', url: su.panImage },
+                ]
+                const hasAny = docs.some(d => d.url)
+                return (
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-xs font-medium">KYC Documents</Label>
+                    {hasAny ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {docs.map(d => (
+                          <div key={d.label} className="space-y-1">
+                            {d.url ? (
+                              <a href={d.url} target="_blank" rel="noreferrer" className="block">
+                                <img src={d.url} alt={d.label} className="h-20 w-full rounded-lg border border-gray-200 object-cover hover:opacity-90" />
+                              </a>
+                            ) : (
+                              <div className="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-gray-200 text-[10px] text-gray-400">
+                                Not uploaded
+                              </div>
+                            )}
+                            <p className="text-center text-[11px] text-gray-500">{d.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="rounded-lg bg-gray-50 px-3 py-2 text-[12px] text-gray-400">No documents uploaded yet.</p>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
           <DialogFooter className="border-t pt-4 gap-2">
