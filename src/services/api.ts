@@ -682,7 +682,7 @@ export const adminCouponsAPI = {
 export const adminWhatsappAPI = {
   getSenders: () => api.get('/admin/whatsapp/senders'),
   getTemplates: () => api.get('/admin/whatsapp/templates'),
-  send: (data: { phoneNumberId: string; templateName: string; languageCode?: string; toPhone: string }) =>
+  send: (data: { phoneNumberId: string; templateName: string; languageCode?: string; toPhone: string; variables?: string[] }) =>
     api.post('/admin/whatsapp/send', data),
 }
 

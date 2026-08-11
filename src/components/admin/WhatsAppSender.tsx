@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { Loader2, Send, MessageSquare, RefreshCw } from 'lucide-react'
 
 interface Sender { id: string; display: string; name: string }
-interface Template { id: string; name: string; language: string; category?: string }
+interface Template { id: string; name: string; language: string; category?: string; bodyText?: string; varCount?: number }
 
 export function WhatsAppSender() {
   const [senders, setSenders] = useState<Sender[]>([])
@@ -17,9 +17,16 @@ export function WhatsAppSender() {
   const [senderId, setSenderId] = useState('')
   const [templateKey, setTemplateKey] = useState('') // `${name}::${language}`
   const [toPhone, setToPhone] = useState('')
+  const [vars, setVars] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+
+  const selectedTemplate = templates.find((t) => `${t.name}::${t.language}` === templateKey)
+  const varCount = selectedTemplate?.varCount || 0
+
+  // Reset the variable inputs whenever the chosen template changes.
+  useEffect(() => { setVars(Array(varCount).fill('')) }, [templateKey, varCount])
 
   const load = async () => {
     setLoading(true); setError('')
@@ -44,10 +51,11 @@ export function WhatsAppSender() {
     if (!senderId) { toast.error('Select a WhatsApp sender number'); return }
     if (!templateKey) { toast.error('Select a template'); return }
     if (!toPhone.trim()) { toast.error('Enter the recipient phone number'); return }
+    if (varCount > 0 && vars.slice(0, varCount).some((v) => !v.trim())) { toast.error('Fill all template values'); return }
     const [templateName, languageCode] = templateKey.split('::')
     setSending(true)
     try {
-      const r = await adminWhatsappAPI.send({ phoneNumberId: senderId, templateName, languageCode, toPhone: toPhone.trim() })
+      const r = await adminWhatsappAPI.send({ phoneNumberId: senderId, templateName, languageCode, toPhone: toPhone.trim(), variables: varCount > 0 ? vars.slice(0, varCount) : undefined })
       if (r.data?.success) { toast.success(r.data.message || 'Template sent'); setToPhone('') }
       else toast.error(r.data?.message || 'Failed to send')
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed to send') } finally { setSending(false) }
@@ -96,6 +104,24 @@ export function WhatsAppSender() {
                 </select>
               </div>
             </div>
+
+            {/* Template variables ({{1}}, {{2}} …) — shown only if the template needs them */}
+            {varCount > 0 && (
+              <div className="mt-4">
+                <label className="mb-1 block text-[12px] font-bold text-slate-600">Template values</label>
+                {selectedTemplate?.bodyText && (
+                  <p className="mb-2 rounded-lg bg-slate-50 px-3 py-2 text-[12px] leading-relaxed text-slate-500">{selectedTemplate.bodyText}</p>
+                )}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {Array.from({ length: varCount }).map((_, i) => (
+                    <input key={i} value={vars[i] || ''}
+                      onChange={(e) => setVars((p) => { const n = [...p]; n[i] = e.target.value; return n })}
+                      placeholder={`Value for {{${i + 1}}}`}
+                      className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Recipient */}
             <div className="mt-4">
