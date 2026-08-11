@@ -111,6 +111,7 @@ const NAV_GROUPS: SidebarGroup[] = [
   },
   {
     id: 'communication', title: 'Communication', items: [
+      { id: 'whatsapp', title: 'WhatsApp', icon: MessageSquare, href: '/admin/communication/whatsapp' },
       { id: 'notifications', title: 'Notifications', icon: Bell, href: '/admin/communication/notifications' },
       { id: 'support', title: 'Help & Support', icon: MessageSquare, href: '/admin/communication/support' },
       { id: 'call-logs', title: 'Call Logs', icon: Phone, href: '/admin/communication/call-logs' },

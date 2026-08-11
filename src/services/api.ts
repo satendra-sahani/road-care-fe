@@ -679,6 +679,13 @@ export const adminCouponsAPI = {
 };
 
 // ─── Admin GPS Tracker devices/subscriptions ────────────────────────
+export const adminWhatsappAPI = {
+  getSenders: () => api.get('/admin/whatsapp/senders'),
+  getTemplates: () => api.get('/admin/whatsapp/templates'),
+  send: (data: { phoneNumberId: string; templateName: string; languageCode?: string; toPhone: string }) =>
+    api.post('/admin/whatsapp/send', data),
+}
+
 export const adminTrackerAPI = {
   getDevices: (params?: { status?: string; search?: string; page?: number; limit?: number }) =>
     api.get('/admin/tracker/devices', { params }),
