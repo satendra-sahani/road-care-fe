@@ -688,8 +688,14 @@ export const adminWhatsappAPI = {
   // Two-way chat (inbox)
   getChats: () => api.get('/admin/whatsapp/chats'),
   getMessages: (phone: string) => api.get(`/admin/whatsapp/chats/${encodeURIComponent(phone)}/messages`),
-  reply: (data: { toPhone: string; text: string; phoneNumberId?: string }) =>
+  reply: (data: { toPhone: string; text: string; phoneNumberId?: string; contextMessageId?: string }) =>
     api.post('/admin/whatsapp/chats/reply', data),
+  react: (data: { toPhone: string; messageId: string; emoji: string; phoneNumberId?: string }) =>
+    api.post('/admin/whatsapp/chats/react', data),
+  sendMedia: (form: FormData) =>
+    api.post('/admin/whatsapp/chats/send-media', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  // Media is auth-protected, so fetch it as a blob (img/video can't send headers).
+  mediaBlob: (id: string) => api.get(`/admin/whatsapp/media/${encodeURIComponent(id)}`, { responseType: 'blob' }),
 }
 
 export const adminTrackerAPI = {
