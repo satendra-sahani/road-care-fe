@@ -684,6 +684,12 @@ export const adminWhatsappAPI = {
   getTemplates: () => api.get('/admin/whatsapp/templates'),
   send: (data: { phoneNumberId: string; templateName: string; languageCode?: string; toPhone: string; variables?: string[] }) =>
     api.post('/admin/whatsapp/send', data),
+
+  // Two-way chat (inbox)
+  getChats: () => api.get('/admin/whatsapp/chats'),
+  getMessages: (phone: string) => api.get(`/admin/whatsapp/chats/${encodeURIComponent(phone)}/messages`),
+  reply: (data: { toPhone: string; text: string; phoneNumberId?: string }) =>
+    api.post('/admin/whatsapp/chats/reply', data),
 }
 
 export const adminTrackerAPI = {
