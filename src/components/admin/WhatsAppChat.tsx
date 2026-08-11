@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import {
   Loader2, Send, Search, RefreshCw, MessageSquare, Check, CheckCheck, AlertTriangle,
   Paperclip, X, Reply, SmilePlus, FileText, Download, Play, Bell, BellOff,
+  Maximize2, ExternalLink,
 } from 'lucide-react'
 
 interface Chat {
@@ -56,21 +57,23 @@ const previewText = (t: string, type: string) => {
 
 // Cache media object-URLs by mediaId so re-polling doesn't refetch/flicker.
 const mediaUrlCache = new Map<string, string>()
+type LightboxItem = { url: string; type: 'image' | 'video'; name?: string }
+
+async function fetchMediaUrl(mediaId: string): Promise<string> {
+  const cached = mediaUrlCache.get(mediaId)
+  if (cached) return cached
+  const r = await adminWhatsappAPI.mediaBlob(mediaId)
+  const url = URL.createObjectURL(r.data)
+  mediaUrlCache.set(mediaId, url)
+  return url
+}
 
 function useMediaUrl(mediaId?: string) {
   const [url, setUrl] = useState<string>(() => (mediaId && mediaUrlCache.get(mediaId)) || '')
   useEffect(() => {
     let alive = true
-    if (!mediaId) return
-    const cached = mediaUrlCache.get(mediaId)
-    if (cached) { setUrl(cached); return }
-    adminWhatsappAPI.mediaBlob(mediaId)
-      .then((r) => {
-        const objUrl = URL.createObjectURL(r.data)
-        mediaUrlCache.set(mediaId, objUrl)
-        if (alive) setUrl(objUrl)
-      })
-      .catch(() => {})
+    if (!mediaId || mediaUrlCache.get(mediaId)) return
+    fetchMediaUrl(mediaId).then((u) => { if (alive) setUrl(u) }).catch(() => {})
     return () => { alive = false }
   }, [mediaId])
   return url
@@ -93,32 +96,92 @@ const playPing = () => {
   } catch { /* ignore */ }
 }
 
-// ── Media bubble ──────────────────────────────────────────────────────────
-function MediaContent({ m }: { m: Message }) {
+// ── Media bubbles (consistent thumbnail size + full-view) ───────────────────
+const THUMB = 'block h-auto max-h-[280px] w-full max-w-[260px] rounded-lg object-cover'
+const loadingBox = (w = 'w-[220px]', h = 'h-[160px]') =>
+  <div className={`flex ${w} ${h} items-center justify-center rounded-lg bg-black/5`}><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+
+function ImageMsg({ m, onOpen }: { m: Message; onOpen?: (i: LightboxItem) => void }) {
   const url = useMediaUrl(m.mediaId)
-  if (!m.mediaId) return null
-  if (m.type === 'image' || m.type === 'sticker') {
-    return url
-      ? <img src={url} alt="" className="max-h-64 rounded-lg object-cover" />
-      : <div className="flex h-40 w-40 items-center justify-center rounded-lg bg-black/5"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
-  }
-  if (m.type === 'video') {
-    return url
-      ? <video src={url} controls className="max-h-64 rounded-lg" />
-      : <div className="flex h-40 w-56 items-center justify-center rounded-lg bg-black/5"><Play className="h-6 w-6 text-slate-400" /></div>
-  }
-  if (m.type === 'audio') {
-    return url ? <audio src={url} controls className="w-56" /> : <div className="text-xs text-slate-400">Loading audio…</div>
-  }
-  // document
+  if (!url) return loadingBox('w-[200px]', 'h-[200px]')
   return (
-    <a href={url || undefined} download={m.mediaFilename || 'document'} target="_blank" rel="noreferrer"
-      className="flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-[13px] text-slate-700 hover:bg-black/10">
-      <FileText className="h-5 w-5 text-[#1B3B6F]" />
-      <span className="max-w-[180px] truncate">{m.mediaFilename || 'Document'}</span>
-      <Download className="h-4 w-4 text-slate-400" />
-    </a>
+    <div className="group/img relative w-fit cursor-pointer" onClick={() => onOpen?.({ url, type: 'image', name: m.mediaFilename || 'photo.jpg' })}>
+      <img src={url} alt="" className={THUMB} />
+      <span className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover/img:opacity-100">
+        <Maximize2 className="h-3.5 w-3.5" />
+      </span>
+    </div>
   )
+}
+
+function VideoMsg({ m, onOpen }: { m: Message; onOpen?: (i: LightboxItem) => void }) {
+  const url = useMediaUrl(m.mediaId)
+  if (!url) return loadingBox('w-[240px]', 'h-[160px]')
+  return (
+    <div className="group/vid relative w-fit">
+      <video src={url} className={THUMB} />
+      <button onClick={() => onOpen?.({ url, type: 'video', name: m.mediaFilename || 'video.mp4' })}
+        className="absolute inset-0 m-auto grid h-12 w-12 place-items-center rounded-full bg-black/55 text-white transition-transform hover:scale-110">
+        <Play className="h-6 w-6 fill-white" />
+      </button>
+      <span className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover/vid:opacity-100">
+        <Maximize2 className="h-3.5 w-3.5" />
+      </span>
+    </div>
+  )
+}
+
+function AudioMsg({ m }: { m: Message }) {
+  const url = useMediaUrl(m.mediaId)
+  return url ? <audio src={url} controls className="w-[240px]" /> : <div className="text-xs text-slate-400">Loading audio…</div>
+}
+
+// Documents load lazily — only fetched when the admin opens/downloads them.
+function DocMsg({ m }: { m: Message }) {
+  const [busy, setBusy] = useState<'open' | 'download' | null>(null)
+  const act = async (mode: 'open' | 'download') => {
+    if (!m.mediaId) return
+    setBusy(mode)
+    try {
+      const url = await fetchMediaUrl(m.mediaId)
+      if (mode === 'open') {
+        window.open(url, '_blank', 'noopener')
+      } else {
+        const a = document.createElement('a')
+        a.href = url; a.download = m.mediaFilename || 'document'
+        document.body.appendChild(a); a.click(); a.remove()
+      }
+    } catch { /* ignore */ } finally { setBusy(null) }
+  }
+  return (
+    <div className="w-[240px] rounded-lg bg-black/5 p-2.5">
+      <div className="flex items-center gap-2">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white"><FileText className="h-5 w-5 text-[#1B3B6F]" /></div>
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-medium text-slate-700">{m.mediaFilename || 'Document'}</p>
+          <p className="text-[11px] uppercase text-slate-400">{(m.mediaMime || '').split('/')[1] || 'file'}</p>
+        </div>
+      </div>
+      <div className="mt-2 flex gap-1.5">
+        <button onClick={() => act('open')} disabled={!!busy}
+          className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2 py-1.5 text-[12px] font-semibold text-[#1B3B6F] hover:bg-slate-50 disabled:opacity-50">
+          {busy === 'open' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />} Open
+        </button>
+        <button onClick={() => act('download')} disabled={!!busy}
+          className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2 py-1.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+          {busy === 'download' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function MediaContent({ m, onOpen }: { m: Message; onOpen?: (i: LightboxItem) => void }) {
+  if (!m.mediaId) return null
+  if (m.type === 'image' || m.type === 'sticker') return <ImageMsg m={m} onOpen={onOpen} />
+  if (m.type === 'video') return <VideoMsg m={m} onOpen={onOpen} />
+  if (m.type === 'audio') return <AudioMsg m={m} />
+  return <DocMsg m={m} />
 }
 
 export function WhatsAppChat() {
@@ -135,6 +198,7 @@ export function WhatsAppChat() {
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [reactionFor, setReactionFor] = useState<string | null>(null)
   const [notifOn, setNotifOn] = useState(false)
+  const [lightbox, setLightbox] = useState<LightboxItem | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -412,7 +476,7 @@ export function WhatsAppChat() {
                                   <p className="truncate text-[12px] text-slate-500">{previewText(quoted.body, quoted.type)}</p>
                                 </div>
                               )}
-                              {(m.mediaId) && <div className="mb-1"><MediaContent m={m} /></div>}
+                              {(m.mediaId) && <div className="mb-1"><MediaContent m={m} onOpen={setLightbox} /></div>}
                               {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
                               <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10.5px] ${out ? 'text-emerald-800/60' : 'text-slate-400'}`}>
                                 {fmtTime(m.createdAt)}
@@ -501,6 +565,25 @@ export function WhatsAppChat() {
           )}
         </div>
       </div>
+
+      {/* Full-screen media viewer */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4" onClick={() => setLightbox(null)}>
+          <div className="absolute right-4 top-4 flex gap-2">
+            <a href={lightbox.url} download={lightbox.name || 'file'} onClick={(e) => e.stopPropagation()}
+              title="Download" className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25">
+              <Download className="h-5 w-5" />
+            </a>
+            <button onClick={() => setLightbox(null)} title="Close"
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          {lightbox.type === 'video'
+            ? <video src={lightbox.url} controls autoPlay className="max-h-[90vh] max-w-[92vw] rounded-lg" onClick={(e) => e.stopPropagation()} />
+            : <img src={lightbox.url} alt="" className="max-h-[90vh] max-w-[92vw] rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />}
+        </div>
+      )}
     </div>
   )
 }
