@@ -6,7 +6,7 @@ import {
   Store, Plus, Search, Shield, ShieldCheck, ToggleLeft, ToggleRight,
   DollarSign, Users, Star, MapPin, Phone, Mail, Loader2, Eye,
   CheckCircle, XCircle, Package, TrendingUp, IndianRupee, ArrowRight,
-  UserPlus, Wrench, X, UserMinus
+  UserPlus, Wrench, X, UserMinus, Pencil, Trash2, Save, AlertTriangle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -46,6 +46,14 @@ export function ShopPartnerManagement() {
   const [showKycDialog, setShowKycDialog] = useState(false)
   const [kycShop, setKycShop] = useState<any>(null)
   const [kycRejectReason, setKycRejectReason] = useState('')
+
+  // Edit shop
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editShop, setEditShop] = useState<any>(null)
+  const [editForm, setEditForm] = useState({ shopName: '', shopPhone: '', shopEmail: '', city: '', commissionRate: '', ownerName: '', ownerPhone: '', ownerEmail: '' })
+
+  // Delete shop
+  const [deleteShop, setDeleteShop] = useState<any>(null)
 
   const fetchData = async () => {
     try {
@@ -153,6 +161,72 @@ export function ShopPartnerManagement() {
       fetchData()
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const openEditDialog = (shop: any) => {
+    setEditShop(shop)
+    setEditForm({
+      shopName: shop.shopName || '',
+      shopPhone: shop.shopPhone || shop.user?.phone || '',
+      shopEmail: shop.shopEmail || '',
+      city: shop.address?.city || '',
+      commissionRate: String(shop.commissionRate ?? ''),
+      ownerName: shop.user?.fullName || '',
+      ownerPhone: shop.user?.phone || '',
+      ownerEmail: shop.user?.email || '',
+    })
+    setShowEditDialog(true)
+  }
+
+  const handleUpdate = async () => {
+    if (!editShop) return
+    if (!editForm.shopName.trim()) return alert('Shop name is required')
+    setActionLoading(true)
+    try {
+      const res = await adminShopAPI.update(editShop._id, {
+        shopData: {
+          shopName: editForm.shopName.trim(),
+          shopPhone: editForm.shopPhone.trim(),
+          shopEmail: editForm.shopEmail.trim(),
+          commissionRate: editForm.commissionRate === '' ? undefined : Number(editForm.commissionRate),
+          address: { city: editForm.city.trim() },
+        },
+        ownerData: {
+          fullName: editForm.ownerName.trim(),
+          phone: editForm.ownerPhone.trim(),
+          email: editForm.ownerEmail.trim() || undefined,
+        },
+      })
+      if (res.data?.success) {
+        setShowEditDialog(false)
+        setEditShop(null)
+        fetchData()
+      } else {
+        alert(res.data?.message || 'Failed to update')
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteShop) return
+    setActionLoading(true)
+    try {
+      const res = await adminShopAPI.remove(deleteShop._id)
+      if (res.data?.success) {
+        setDeleteShop(null)
+        fetchData()
+      } else {
+        alert(res.data?.message || 'Failed to delete')
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete')
     } finally {
       setActionLoading(false)
     }
@@ -416,6 +490,14 @@ export function ShopPartnerManagement() {
                   onClick={() => handleToggleStatus(shop._id)} disabled={actionLoading}>
                   {shop.isActive ? <ToggleRight className="h-3 w-3 mr-1" /> : <ToggleLeft className="h-3 w-3 mr-1" />}
                   {shop.isActive ? 'Disable' : 'Enable'}
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs flex-1 rounded-lg border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => openEditDialog(shop)} disabled={actionLoading}>
+                  <Pencil className="h-3 w-3 mr-1" /> Edit
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs flex-1 rounded-lg border-red-200 text-red-600 hover:bg-red-50"
+                  onClick={() => setDeleteShop(shop)} disabled={actionLoading}>
+                  <Trash2 className="h-3 w-3 mr-1" /> Delete
                 </Button>
                 {shop.pendingSettlement > 0 && (
                   <Button size="sm" variant="outline" className="text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 flex-1 rounded-lg"
@@ -907,6 +989,134 @@ export function ShopPartnerManagement() {
                   </Button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Edit Shop Dialog ──────────────────────────────────── */}
+      {showEditDialog && editShop && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-5">
+              <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 backdrop-blur">
+                    <Pencil className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Edit Shop Partner</h3>
+                    <p className="text-[12px] text-white/60">{editShop.shopName}</p>
+                  </div>
+                </div>
+                <button onClick={() => { setShowEditDialog(false); setEditShop(null) }} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+              {/* Owner */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="grid h-6 w-6 place-items-center rounded-md bg-indigo-50"><Users className="h-3.5 w-3.5 text-indigo-600" /></div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Owner Details</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Full Name</label>
+                    <input type="text" value={editForm.ownerName} onChange={e => setEditForm(f => ({ ...f, ownerName: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Owner name" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Phone</label>
+                    <input type="tel" value={editForm.ownerPhone} onChange={e => setEditForm(f => ({ ...f, ownerPhone: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Phone number" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-medium text-gray-600">Email <span className="text-gray-300">(optional)</span></label>
+                    <input type="email" value={editForm.ownerEmail} onChange={e => setEditForm(f => ({ ...f, ownerEmail: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Email address" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Shop */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="grid h-6 w-6 place-items-center rounded-md bg-[#FF6B35]/10"><Store className="h-3.5 w-3.5 text-[#FF6B35]" /></div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Shop Details</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-medium text-gray-600">Shop Name <span className="text-[#FF6B35]">*</span></label>
+                    <input type="text" value={editForm.shopName} onChange={e => setEditForm(f => ({ ...f, shopName: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop name" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Shop Phone</label>
+                    <input type="tel" value={editForm.shopPhone} onChange={e => setEditForm(f => ({ ...f, shopPhone: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop phone" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">City</label>
+                    <input type="text" value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="City" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Shop Email <span className="text-gray-300">(optional)</span></label>
+                    <input type="email" value={editForm.shopEmail} onChange={e => setEditForm(f => ({ ...f, shopEmail: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop email" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Commission Rate (%)</label>
+                    <input type="number" value={editForm.commissionRate} onChange={e => setEditForm(f => ({ ...f, commissionRate: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="25" min={0} max={50} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 px-6 py-4 flex gap-3 justify-end bg-white">
+              <Button variant="outline" onClick={() => { setShowEditDialog(false); setEditShop(null) }}>Cancel</Button>
+              <Button className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm" onClick={handleUpdate} disabled={actionLoading}>
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Delete Confirmation ───────────────────────────────── */}
+      {deleteShop && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-red-100 shrink-0">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#1A1D29]">Delete shop partner?</h3>
+                <p className="text-sm text-gray-500">This cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">
+              <b>{deleteShop.shopName}</b>{deleteShop.user?.fullName ? ` (${deleteShop.user.fullName})` : ''} will be removed. Assigned mechanics are unassigned and the owner login is demoted to a normal user. Past order history is kept for records.
+            </p>
+            {deleteShop.pendingSettlement > 0 && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5 flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                This shop has {formatCurrency(deleteShop.pendingSettlement)} pending settlement. Consider settling before deleting.
+              </p>
+            )}
+            <div className="flex gap-3 justify-end pt-1">
+              <Button variant="outline" onClick={() => setDeleteShop(null)} disabled={actionLoading}>Cancel</Button>
+              <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={actionLoading}>
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                Delete
+              </Button>
             </div>
           </div>
         </div>

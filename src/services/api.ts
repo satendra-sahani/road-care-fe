@@ -781,6 +781,8 @@ export const adminShopAPI = {
   getStats: () => api.get('/admin/shops/stats'),
   getById: (id: string) => api.get(`/admin/shops/${id}`),
   create: (data: { ownerData: any; shopData: any }) => api.post('/admin/shops', data),
+  update: (id: string, data: { shopData?: any; ownerData?: any }) => api.put(`/admin/shops/${id}`, data),
+  remove: (id: string) => api.delete(`/admin/shops/${id}`),
   verify: (id: string) => api.put(`/admin/shops/${id}/verify`),
   rejectKyc: (id: string, reason: string) =>
     api.put(`/admin/shops/${id}/reject-kyc`, { reason }),
