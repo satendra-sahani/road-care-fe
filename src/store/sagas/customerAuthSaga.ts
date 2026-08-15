@@ -1,8 +1,7 @@
 // @ts-nocheck
-import { call, put, select, takeLatest } from 'redux-saga/effects';
+import { call, put, takeLatest } from 'redux-saga/effects';
 import Cookies from 'js-cookie';
 import { otpAuthAPI, userProfileAPI } from '@/services/api';
-import { firebaseAuth, firebaseAuthErrorMessage } from '@/services/firebaseAuth';
 import {
   sendOtpRequest, sendOtpSuccess, sendOtpFailure,
   verifyOtpRequest, verifyOtpSuccess, verifyOtpFailure,
@@ -11,62 +10,13 @@ import {
   customerLogout,
 } from '../slices/customerAuthSlice';
 
-// ─── Send OTP (Firebase Phone Auth + legacy fallback) ─────────────────────
-// Matches Android: tries Firebase signInWithPhoneNumber first so the SMS is
-// sent directly by Google. If Firebase is unconfigured (NEXT_PUBLIC_FIREBASE_*
-// env vars missing or apiKey invalid) we fall back to the legacy backend
-// /common/auth/send-otp route — which currently uses the dev static OTP
-// `123456` since MSG91 is paused. This guarantees the login form keeps
-// working in environments where the Web Firebase config hasn't been
-// wired up yet, while transparently switching to real Firebase SMS the
-// moment those env vars are set.
-//
-// The provider used is recorded in Redux state so handleVerifyOtp branches
-// to the matching verification path.
-// Errors that should be surfaced to the user instead of silently falling
-// back. These are user-input or rate-limit problems where the legacy
-// backend would also fail — letting the user fix and retry.
-const FIREBASE_USER_FACING_CODES = new Set([
-  'auth/invalid-phone-number',
-  'auth/missing-phone-number',
-  'auth/too-many-requests',
-  'auth/quota-exceeded',
-  'auth/missing-verification-code',
-  'auth/invalid-verification-code',
-]);
-
-// Anything OTHER than a known user-facing error → fall back to the legacy
-// backend OTP path. This includes: API_KEY_INVALID (from Android-only
-// restriction), missing config, network errors, configuration-not-found,
-// reCAPTCHA failures, missing Web app, etc. — all environment problems
-// the user can't fix from the login screen.
-const FIREBASE_FALLBACK_TO_LEGACY = (err) => {
-  const code = err?.code || '';
-  if (code && FIREBASE_USER_FACING_CODES.has(code)) return false;
-  return true;
-};
-
+// ─── Send OTP (Hanu SMS OTP via backend) ──────────────────────────────────
+// The SMS is sent by the backend /common/auth/send-otp route (Hanu SMS
+// gateway). It auto-detects login vs registration so new users can sign up:
+// we first try 'login', and if the number isn't registered we retry as
+// 'registration'.
 function* handleSendOtp(action) {
   const phone = action.payload;
-  // ── Stage 1: try Firebase ───────────────────────────────────────────
-  try {
-    yield call(firebaseAuth.sendOtp, phone);
-    yield put(sendOtpSuccess({ purpose: 'auto', provider: 'firebase' }));
-    return;
-  } catch (firebaseError) {
-    if (!FIREBASE_FALLBACK_TO_LEGACY(firebaseError)) {
-      // It's a real user-facing error (invalid number, rate-limited, etc.)
-      // — surface it instead of silently falling back.
-      yield put(sendOtpFailure(firebaseAuthErrorMessage(firebaseError)));
-      return;
-    }
-    console.warn(
-      '[auth] Firebase send-OTP failed (', firebaseError?.code || firebaseError?.message,
-      ') — falling back to legacy backend OTP'
-    );
-  }
-
-  // ── Stage 2: legacy backend OTP (auto-detects login vs registration) ──
   try {
     let response;
     let purpose = 'login';
@@ -93,34 +43,13 @@ function* handleSendOtp(action) {
   }
 }
 
-// ─── Verify OTP (provider-aware: Firebase or legacy) ──────────────────────
-// Branches on the provider that handleSendOtp recorded in state. Firebase
-// path: confirm with Firebase → exchange ID token at /firebase-signin.
-// Legacy path: POST phone+otp to /common/auth/verify-otp directly.
-// Both endpoints return the same response shape, so the rest of the saga
-// (set cookie, dispatch verifyOtpSuccess) is unchanged.
+// ─── Verify OTP (Hanu SMS OTP via backend) ────────────────────────────────
+// POST phone+otp to /common/auth/verify-otp. Returns either an existing
+// user (token + user) or a verificationToken for new-user registration.
 function* handleVerifyOtp(action) {
   try {
     const { phone, otp, purpose } = action.payload;
-    // Read the provider that handleSendOtp stored in state — it tells us
-    // whether to verify against Firebase or the legacy backend endpoint.
-    const provider = yield select((s) => s.customerAuth.otpProvider);
-
-    let response;
-    if (provider === 'legacy') {
-      response = yield call(otpAuthAPI.verifyOtp, phone, otp, purpose || 'login');
-    } else {
-      // Firebase path — confirm with Firebase → mint ID token → exchange
-      let idToken;
-      try {
-        const confirmed = yield call(firebaseAuth.verifyOtp, otp);
-        idToken = confirmed.idToken;
-      } catch (firebaseError) {
-        yield put(verifyOtpFailure(firebaseAuthErrorMessage(firebaseError)));
-        return;
-      }
-      response = yield call(otpAuthAPI.firebaseSignIn, idToken, 'auto');
-    }
+    const response = yield call(otpAuthAPI.verifyOtp, phone, otp, purpose || 'login');
 
     const data = response.data;
 

@@ -22,7 +22,6 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { toast } from 'sonner'
 import Link from 'next/link'
 import Cookies from 'js-cookie'
-import { firebaseAuth } from '@/services/firebaseAuth'
 
 type Step = 'phone' | 'otp' | 'register'
 
@@ -128,14 +127,6 @@ export default function CustomerLoginPage() {
       dispatch(verifyOtpRequest({ phone, otp, purpose: otpPurpose }))
     }
   }, [otp, step])
-
-  // Reset Firebase pending confirmation when leaving the page so a stale
-  // ConfirmationResult doesn't survive into the next visit.
-  useEffect(() => {
-    return () => {
-      firebaseAuth.reset().catch(() => { /* noop */ })
-    }
-  }, [])
 
   // Prefill phone from the last successful sign-in on this device. The
   // most recently used customer_token may already imply a logged-in user
@@ -297,11 +288,6 @@ export default function CustomerLoginPage() {
       keywords="Bharat Mechanics login, auto parts account, mechanic booking login"
     />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center p-4">
-      {/* Invisible reCAPTCHA host for Firebase Phone Auth.
-          MUST be present in the DOM before firebaseAuth.sendOtp() runs.
-          The widget renders inside this div on first send. */}
-      <div id="firebase-recaptcha-container" />
-
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">

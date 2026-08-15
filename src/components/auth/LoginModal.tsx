@@ -10,14 +10,13 @@ import { Button } from '@/components/ui/button'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { firebaseAuth } from '@/services/firebaseAuth'
 import { X, ArrowLeft, Loader2, Locate, MapPin } from 'lucide-react'
 
 type Step = 'phone' | 'otp' | 'register'
 
 /**
  * Global login modal that mirrors the handoff bma-card design (phone → OTP →
- * profile) but is wired to the real Redux OTP/Firebase auth flow. It does NOT
+ * profile) but is wired to the real Redux OTP auth flow. It does NOT
  * redirect — the LoginModalProvider closes it (and runs any pending action)
  * the moment auth succeeds.
  */
@@ -43,7 +42,6 @@ export function LoginModal({ onClose, dismissable = true }: { onClose: () => voi
   useEffect(() => { if (otpVerified && isNewUser) setStep('register') }, [otpVerified, isNewUser])
   useEffect(() => { if (error) { toast.error(error); dispatch(clearError()) } }, [error])
   useEffect(() => { if (step === 'otp' && otp.length === 6 && !otpVerifying && !otpVerified) dispatch(verifyOtpRequest({ phone, otp, purpose: otpPurpose })) }, [otp, step])
-  useEffect(() => () => { firebaseAuth.reset().catch(() => {}) }, [])
 
   const sendOtp = (e: React.FormEvent) => { e.preventDefault(); if (phone.length < 10) { toast.error('Please enter a valid 10-digit number'); return } dispatch(sendOtpRequest(phone)) }
   const verify = (e: React.FormEvent) => { e.preventDefault(); if (otp.length === 6) dispatch(verifyOtpRequest({ phone, otp, purpose: otpPurpose })) }
@@ -76,7 +74,6 @@ export function LoginModal({ onClose, dismissable = true }: { onClose: () => voi
 
   return (
     <div className="fixed inset-0 z-[90] bg-[#0F2547]/30 backdrop-blur-md flex items-center justify-center p-4" onClick={dismissable ? onClose : undefined}>
-      <div id="firebase-recaptcha-container" />
       <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="relative px-6 pt-6 pb-4 text-center border-b border-[#EFF2F7]">
           {step !== 'phone' && <button onClick={back} className="absolute left-4 top-4 h-9 w-9 rounded-lg hover:bg-gray-100 flex items-center justify-center"><ArrowLeft className="h-5 w-5 text-gray-600" /></button>}

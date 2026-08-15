@@ -84,6 +84,17 @@ import { orderAPI } from '@/services/api'
 import { CreateOrderDialog } from './CreateOrderDialog'
 import { AdminHeader } from './AdminHeader'
 
+// The stat/quick-filter cards (Pending, Processing, Shipped) each aggregate several
+// underlying order statuses — but the real order status is never literally "pending"
+// (orders start as "placed"). Map each card key to the exact statuses it represents so
+// the list query matches the count shown on the card. Keys absent here (delivered,
+// cancelled, returned, confirmed, packed) are already real statuses and pass through.
+const STATUS_FILTER_MAP: Record<string, string> = {
+  pending: 'placed,pending,confirmed',
+  processing: 'processing',
+  shipped: 'shipped,out_for_delivery',
+}
+
 export function OrderManagement() {
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrders, setSelectedOrders] = useState<string[]>([])
@@ -254,7 +265,10 @@ export function OrderManagement() {
         page: currentPage,
         limit: itemsPerPage,
       }
-      if (selectedStatus !== 'all') params.status = selectedStatus
+      // The quick-filter cards use group keys ("pending"/"shipped") that each cover
+      // several real order statuses, so expand them to the comma-separated set the
+      // backend understands. Individual dropdown statuses pass through unchanged.
+      if (selectedStatus !== 'all') params.status = STATUS_FILTER_MAP[selectedStatus] || selectedStatus
       if (selectedPaymentStatus !== 'all') params.paymentStatus = selectedPaymentStatus
       if (selectedPaymentMethod !== 'all') params.paymentMethod = selectedPaymentMethod
       if (searchTerm) params.search = searchTerm
