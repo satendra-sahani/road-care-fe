@@ -702,18 +702,26 @@ export const adminTrackerAPI = {
   getDevices: (params?: { status?: string; search?: string; page?: number; limit?: number }) =>
     api.get('/admin/tracker/devices', { params }),
   getDevice: (id: string) => api.get(`/admin/tracker/devices/${id}`),
-  update: (id: string, data: { status?: string; extendDays?: number }) =>
+  update: (id: string, data: { status?: string; extendDays?: number; warrantyMonths?: number }) =>
     api.put(`/admin/tracker/devices/${id}`, data),
-  assign: (data: { imei: string; simNumber?: string; userPhone: string; vehicleName?: string; regNo?: string }) =>
+  assign: (data: { imei: string; simNumber?: string; userPhone: string; vehicleName?: string; regNo?: string; warrantyMonths?: number }) =>
     api.post('/admin/tracker/assign', data),
+  getDeviceInvoice: (id: string) =>
+    api.get(`/admin/tracker/devices/${id}/invoice`, { responseType: 'text' }),
+  getDeviceLabel: (id: string) =>
+    api.get(`/admin/tracker/devices/${id}/label`, { responseType: 'text' }),
 
   // Customer vehicles + GPS provisioning
   getVehicles: (params?: { status?: string; search?: string; limit?: number }) =>
     api.get('/admin/vehicles', { params }),
   provisionVehicle: (
     id: string,
-    data: { deviceId?: string; status?: string; simLocked?: boolean; simActivated?: boolean; note?: string },
+    data: { deviceId?: string; status?: string; simLocked?: boolean; simActivated?: boolean; note?: string; warrantyMonths?: number },
   ) => api.put(`/admin/vehicles/${id}`, data),
+  getVehicleInvoice: (id: string) =>
+    api.get(`/admin/vehicles/${id}/invoice`, { responseType: 'text' }),
+  getVehicleLabel: (id: string) =>
+    api.get(`/admin/vehicles/${id}/label`, { responseType: 'text' }),
   setUserPlan: (
     userId: string,
     data: { planKey?: string; vehicleLimit?: number; cycle?: string; active?: boolean; renewsAt?: string },
