@@ -716,7 +716,10 @@ export const adminTrackerAPI = {
     api.get('/admin/vehicles', { params }),
   provisionVehicle: (
     id: string,
-    data: { deviceId?: string; status?: string; simLocked?: boolean; simActivated?: boolean; note?: string; warrantyMonths?: number },
+    data: {
+      deviceId?: string; status?: string; simLocked?: boolean; simActivated?: boolean; note?: string; warrantyMonths?: number;
+      deliveryPartner?: string; deliveryTracking?: string; deliveryStatus?: string;
+    },
   ) => api.put(`/admin/vehicles/${id}`, data),
   getVehicleInvoice: (id: string) =>
     api.get(`/admin/vehicles/${id}/invoice`, { responseType: 'text' }),

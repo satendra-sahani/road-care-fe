@@ -4,12 +4,18 @@ import { adminTrackerAPI } from '@/services/api'
 import { toast } from 'sonner'
 
 // ────────────────────────────────────────────────────────────────────────────
-// GPS Provisioning — admin sees every customer's registered vehicle and drives
-// the provisioning: assign a device (software level) → lock SIM to our server →
-// activate SIM → ship → mark active. The customer only wires it physically.
+// GPS Provisioning — admin sees every customer's GPS order and drives the
+// DELIVERY: pick a delivery partner, walk the order through the chain
+// (prepared → shipped → out for delivery → delivered). Only after it's
+// delivered does the admin "Go live" and fit the actual GPS device (IMEI, SIM,
+// vehicle) — which creates the tracker record shown on the GPS Trackers page.
 // ────────────────────────────────────────────────────────────────────────────
 
-type Prov = { simLocked?: boolean; simActivated?: boolean; note?: string; configuredAt?: string; shippedAt?: string; deliveredAt?: string; paid?: boolean; paymentId?: string; amountPaid?: number }
+type Prov = {
+  paid?: boolean; paymentId?: string; amountPaid?: number
+  warrantyMonths?: number
+  deliveryPartner?: string; deliveryTracking?: string; deliveryStatus?: string; deliveryUpdatedAt?: string
+}
 type Vehicle = {
   _id: string
   name: string
@@ -22,7 +28,7 @@ type Vehicle = {
   device?: { deviceId?: string; imei?: string; status?: string } | null
 }
 
-const STATUS_TABS = ['all', 'pending', 'assigned', 'configured', 'shipped', 'active', 'inactive']
+const STATUS_TABS = ['all', 'pending', 'assigned', 'shipped', 'active', 'inactive']
 const STATUS_COLOR: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
   assigned: 'bg-blue-100 text-blue-700',
@@ -31,6 +37,19 @@ const STATUS_COLOR: Record<string, string> = {
   active: 'bg-emerald-100 text-emerald-700',
   inactive: 'bg-slate-200 text-slate-600',
 }
+
+// Delivery chain (order matters — buttons advance through it)
+const DELIVERY_STEPS = [
+  { id: 'prepared', label: 'Prepared', color: 'bg-blue-600' },
+  { id: 'shipped', label: 'Shipped', color: 'bg-cyan-600' },
+  { id: 'out_for_delivery', label: 'Out for delivery', color: 'bg-violet-600' },
+  { id: 'delivered', label: 'Delivered', color: 'bg-emerald-600' },
+]
+const DELIVERY_LABEL: Record<string, string> = {
+  prepared: 'Prepared', shipped: 'Shipped', out_for_delivery: 'Out for delivery', delivered: 'Delivered',
+}
+const DELIVERY_PARTNERS = ['Own delivery boy', 'DTDC', 'Delhivery', 'Blue Dart', 'India Post', 'Professional Couriers', 'Ekart', 'Self pickup', 'Other']
+const WARRANTY_OPTIONS = [3, 6, 9, 12, 15, 18, 24]
 
 export default function GpsProvisioningPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -61,7 +80,7 @@ export default function GpsProvisioningPage() {
       <main className="lg:pl-72 transition-all duration-300">
         <div className="border-b border-slate-200 bg-white px-6 py-4">
           <h1 className="text-xl font-extrabold text-slate-800">GPS Provisioning</h1>
-          <p className="text-[13px] text-slate-500">Customer vehicles · assign device · lock &amp; activate SIM · ship · go live</p>
+          <p className="text-[13px] text-slate-500">Customer GPS orders · pick delivery partner · track delivery · go live &amp; fit the device</p>
         </div>
 
         <div className="p-6 space-y-4">
@@ -92,8 +111,8 @@ export default function GpsProvisioningPage() {
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Vehicle</th>
                   <th className="px-4 py-3">Payment</th>
-                  <th className="px-4 py-3">Device</th>
-                  <th className="px-4 py-3">SIM</th>
+                  <th className="px-4 py-3">Delivery partner</th>
+                  <th className="px-4 py-3">Delivery status</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -118,18 +137,20 @@ export default function GpsProvisioningPage() {
                         ? <span className="inline-block rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-1 text-[11px] font-bold">Paid{v.provisioning.amountPaid ? ` ₹${v.provisioning.amountPaid}` : ''}</span>
                         : <span className="inline-block rounded-full bg-amber-100 text-amber-700 px-2.5 py-1 text-[11px] font-bold">Unpaid</span>}
                     </td>
-                    <td className="px-4 py-3 text-[12px]">
-                      {v.device?.deviceId ? <span className="font-mono text-slate-700">{v.device.deviceId}</span> : <span className="text-slate-400">—</span>}
+                    <td className="px-4 py-3 text-[12px] text-slate-600">
+                      {v.provisioning?.deliveryPartner || <span className="text-slate-400">—</span>}
+                      {v.provisioning?.deliveryTracking ? <div className="text-[11px] font-mono text-slate-400">{v.provisioning.deliveryTracking}</div> : null}
                     </td>
                     <td className="px-4 py-3 text-[12px]">
-                      <span className={v.provisioning?.simLocked ? 'text-emerald-600' : 'text-slate-400'}>🔒{v.provisioning?.simLocked ? '' : '✗'}</span>{' '}
-                      <span className={v.provisioning?.simActivated ? 'text-emerald-600' : 'text-slate-400'}>📶{v.provisioning?.simActivated ? '' : '✗'}</span>
+                      {v.provisioning?.deliveryStatus
+                        ? <span className="inline-block rounded-full bg-slate-100 text-slate-700 px-2.5 py-1 text-[11px] font-bold">{DELIVERY_LABEL[v.provisioning.deliveryStatus] || v.provisioning.deliveryStatus}</span>
+                        : <span className="text-slate-400">Not started</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${STATUS_COLOR[v.status] || 'bg-slate-100 text-slate-600'}`}>{v.status}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => setSel(v)} className="rounded-lg bg-[#1B3B6F] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#0F2545]">Provision</button>
+                      <button onClick={() => setSel(v)} className="rounded-lg bg-[#1B3B6F] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#0F2545]">Manage</button>
                     </td>
                   </tr>
                 ))}
@@ -145,30 +166,72 @@ export default function GpsProvisioningPage() {
 }
 
 function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onClose: () => void; onSaved: () => void }) {
-  const [deviceId, setDeviceId] = useState(vehicle.device?.deviceId || '')
-  const [simLocked, setSimLocked] = useState(!!vehicle.provisioning?.simLocked)
-  const [simActivated, setSimActivated] = useState(!!vehicle.provisioning?.simActivated)
-  const [note, setNote] = useState(vehicle.provisioning?.note || '')
+  const prov = vehicle.provisioning || {}
+  const [partner, setPartner] = useState(prov.deliveryPartner || '')
+  const [tracking, setTracking] = useState(prov.deliveryTracking || '')
+  const [deliveryStatus, setDeliveryStatus] = useState(prov.deliveryStatus || '')
   const [busy, setBusy] = useState(false)
 
-  const save = async (nextStatus?: string) => {
+  // Go-live (assign device) form
+  const [showGoLive, setShowGoLive] = useState(vehicle.status === 'active')
+  const [imei, setImei] = useState('')
+  const [simNumber, setSimNumber] = useState('')
+  const [userPhone, setUserPhone] = useState(vehicle.user?.phone || '')
+  const [vehicleName, setVehicleName] = useState(vehicle.name || '')
+  const [regNo, setRegNo] = useState(vehicle.regNo || '')
+  const [warranty, setWarranty] = useState(prov.warrantyMonths ? String(prov.warrantyMonths) : '')
+
+  const savePartner = async () => {
     setBusy(true)
     try {
-      await adminTrackerAPI.provisionVehicle(vehicle._id, {
-        deviceId: deviceId.trim() || undefined,
-        simLocked, simActivated, note,
-        status: nextStatus,
-      })
-      toast.success(nextStatus ? `Marked ${nextStatus}` : 'Saved')
+      await adminTrackerAPI.provisionVehicle(vehicle._id, { deliveryPartner: partner, deliveryTracking: tracking })
+      toast.success('Delivery details saved')
       onSaved()
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
     setBusy(false)
   }
 
+  const setStep = async (step: string) => {
+    if (!partner) { toast.error('Pick a delivery partner first'); return }
+    setBusy(true)
+    try {
+      await adminTrackerAPI.provisionVehicle(vehicle._id, { deliveryPartner: partner, deliveryTracking: tracking, deliveryStatus: step })
+      setDeliveryStatus(step)
+      toast.success(`Marked ${DELIVERY_LABEL[step] || step}`)
+      if (step !== 'delivered') onSaved()
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
+    setBusy(false)
+  }
+
+  const goLive = async () => {
+    if (!imei.trim() || !userPhone.trim()) { toast.error('GPS IMEI and app user phone are required'); return }
+    setBusy(true)
+    try {
+      // 1) create/link the physical GPS device to the app user → shows on GPS Trackers
+      const r = await adminTrackerAPI.assign({
+        imei: imei.trim(), simNumber: simNumber.trim(), userPhone: userPhone.trim(),
+        vehicleName: vehicleName.trim(), regNo: regNo.trim(),
+        warrantyMonths: warranty ? Number(warranty) : undefined,
+      })
+      if (!r.data?.success) { toast.error(r.data?.message || 'Could not assign device'); setBusy(false); return }
+      // 2) mark this order live + carry the warranty onto the order record
+      await adminTrackerAPI.provisionVehicle(vehicle._id, {
+        status: 'active',
+        warrantyMonths: warranty ? Number(warranty) : undefined,
+      })
+      toast.success('Device fitted & live — now shows on GPS Trackers')
+      onSaved()
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed to go live') }
+    setBusy(false)
+  }
+
+  const currentIdx = DELIVERY_STEPS.findIndex((s) => s.id === deliveryStatus)
+  const delivered = deliveryStatus === 'delivered'
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
       <div className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-[#1B3B6F] px-5 py-4 text-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-[#1B3B6F] px-5 py-4 text-white">
           <div>
             <div className="text-base font-extrabold">{vehicle.em} {vehicle.name}</div>
             <div className="text-[12px] text-white/70">{vehicle.user?.fullName} · {vehicle.user?.phone}</div>
@@ -178,41 +241,93 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
 
         <div className="space-y-5 p-5">
           {/* payment status */}
-          <div className={`rounded-xl border p-4 ${vehicle.provisioning?.paid ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+          <div className={`rounded-xl border p-4 ${prov.paid ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
             <div className="flex items-center justify-between">
               <div className="text-[13px] font-bold text-slate-700">Payment</div>
-              {vehicle.provisioning?.paid
-                ? <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">Paid{vehicle.provisioning.amountPaid ? ` · ₹${vehicle.provisioning.amountPaid}` : ''}</span>
+              {prov.paid
+                ? <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">Paid{prov.amountPaid ? ` · ₹${prov.amountPaid}` : ''}</span>
                 : <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">Unpaid</span>}
             </div>
-            {vehicle.provisioning?.paymentId && <div className="mt-1 text-[11px] font-mono text-slate-500">{vehicle.provisioning.paymentId}</div>}
+            {prov.paymentId && <div className="mt-1 text-[11px] font-mono text-slate-500">{prov.paymentId}</div>}
           </div>
 
-          {/* device */}
+          {/* delivery partner */}
           <div className="rounded-xl border border-slate-200 p-4 space-y-3">
-            <div className="text-[13px] font-bold text-slate-700">Device (software level)</div>
-            <input value={deviceId} onChange={(e) => setDeviceId(e.target.value.toUpperCase())} placeholder="Device ID e.g. BMG-DECA1B" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono" />
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={simLocked} onChange={(e) => setSimLocked(e.target.checked)} /> SIM locked to our server
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={simActivated} onChange={(e) => setSimActivated(e.target.checked)} /> SIM activated (data plan on)
-            </label>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Internal note (optional)" rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-            <button onClick={() => save()} disabled={busy} className="w-full rounded-lg border border-slate-300 py-2 text-[13px] font-semibold text-slate-700 disabled:opacity-50">Save details</button>
+            <div className="text-[13px] font-bold text-slate-700">Delivery partner</div>
+            <select value={partner} onChange={(e) => setPartner(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <option value="">Select partner…</option>
+              {DELIVERY_PARTNERS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking / AWB number (optional)" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+            <button onClick={savePartner} disabled={busy} className="w-full rounded-lg border border-slate-300 py-2 text-[13px] font-semibold text-slate-700 disabled:opacity-50">Save delivery details</button>
           </div>
 
-          {/* lifecycle */}
+          {/* delivery chain */}
           <div className="rounded-xl border border-slate-200 p-4">
-            <div className="mb-3 text-[13px] font-bold text-slate-700">Provisioning steps</div>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => save('assigned')} disabled={busy || !deviceId.trim()} className="rounded-lg bg-blue-600 py-2 text-[13px] font-semibold text-white disabled:opacity-40">1 · Assign device</button>
-              <button onClick={() => save('configured')} disabled={busy} className="rounded-lg bg-violet-600 py-2 text-[13px] font-semibold text-white disabled:opacity-40">2 · Configured</button>
-              <button onClick={() => save('shipped')} disabled={busy} className="rounded-lg bg-cyan-600 py-2 text-[13px] font-semibold text-white disabled:opacity-40">3 · Shipped</button>
-              <button onClick={() => save('active')} disabled={busy} className="rounded-lg bg-emerald-600 py-2 text-[13px] font-semibold text-white disabled:opacity-40">4 · Go live</button>
+            <div className="mb-3 text-[13px] font-bold text-slate-700">Delivery status</div>
+            <div className="space-y-2">
+              {DELIVERY_STEPS.map((step, i) => {
+                const done = currentIdx >= i && currentIdx >= 0
+                const isCurrent = deliveryStatus === step.id
+                return (
+                  <button
+                    key={step.id}
+                    onClick={() => setStep(step.id)}
+                    disabled={busy}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-semibold disabled:opacity-50 ${isCurrent ? `${step.color} text-white` : done ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                  >
+                    <span className={`grid h-6 w-6 place-items-center rounded-full text-[11px] ${isCurrent ? 'bg-white/25' : done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                      {done && !isCurrent ? '✓' : i + 1}
+                    </span>
+                    {step.label}
+                  </button>
+                )
+              })}
             </div>
-            <button onClick={() => save('inactive')} disabled={busy} className="mt-2 w-full rounded-lg border border-red-200 py-2 text-[12px] font-semibold text-red-600 disabled:opacity-40">Deactivate</button>
+            {!delivered && (
+              <p className="mt-3 text-[11px] text-slate-400">Mark the order <b>Delivered</b> to unlock &ldquo;Go live&rdquo; and fit the GPS device.</p>
+            )}
           </div>
+
+          {/* go live — assign the physical device (only after delivered) */}
+          {(delivered || vehicle.status === 'active') && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-[13px] font-bold text-slate-700">Go live · fit GPS device</div>
+                {vehicle.status === 'active' && <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">Live</span>}
+              </div>
+
+              {vehicle.status === 'active' ? (
+                <p className="text-[12px] text-slate-500">This order is live. The fitted device appears on the <b>GPS Trackers</b> page.</p>
+              ) : !showGoLive ? (
+                <button onClick={() => setShowGoLive(true)} className="w-full rounded-lg bg-emerald-600 py-2.5 text-[13px] font-bold text-white hover:bg-emerald-700">Go live &amp; assign device</button>
+              ) : (
+                <div className="space-y-2.5">
+                  <input value={imei} onChange={(e) => setImei(e.target.value)} placeholder="GPS IMEI *" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                  <input value={simNumber} onChange={(e) => setSimNumber(e.target.value)} placeholder="SIM number" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                  <input value={userPhone} onChange={(e) => setUserPhone(e.target.value)} placeholder="App user phone *" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                  <input value={vehicleName} onChange={(e) => setVehicleName(e.target.value)} placeholder="Vehicle name" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                  <input value={regNo} onChange={(e) => setRegNo(e.target.value)} placeholder="Bike number" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                  <select value={warranty} onChange={(e) => setWarranty(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                    <option value="">Warranty…</option>
+                    {WARRANTY_OPTIONS.map((m) => <option key={m} value={m}>{m} months</option>)}
+                  </select>
+                  <button onClick={goLive} disabled={busy} className="w-full rounded-lg bg-emerald-600 py-2.5 text-[13px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50">Fit device &amp; go live</button>
+                  <p className="text-[11px] text-slate-400">Enter the GPS IMEI + the customer&apos;s app login phone. The device links to that user and appears on the GPS Trackers page.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* deactivate */}
+          {vehicle.status === 'active' && (
+            <button
+              onClick={async () => { setBusy(true); try { await adminTrackerAPI.provisionVehicle(vehicle._id, { status: 'inactive' }); toast.success('Deactivated'); onSaved() } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') } setBusy(false) }}
+              disabled={busy}
+              className="w-full rounded-lg border border-red-200 py-2 text-[12px] font-semibold text-red-600 disabled:opacity-40">
+              Deactivate
+            </button>
+          )}
         </div>
       </div>
     </div>
