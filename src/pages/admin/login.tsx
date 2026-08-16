@@ -84,8 +84,8 @@ export default function AdminLoginPage() {
                 <Label htmlFor="email" className="text-gray-700">Email Address</Label>
                 <Input
                   id="email"
-                  type="email"
-                  placeholder="admin@roadcare.com"
+                  type="text"
+                  placeholder="Enter email or username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
