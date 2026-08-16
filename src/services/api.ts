@@ -718,7 +718,7 @@ export const adminTrackerAPI = {
     id: string,
     data: {
       deviceId?: string; status?: string; simLocked?: boolean; simActivated?: boolean; note?: string; warrantyMonths?: number;
-      deliveryPartner?: string; deliveryTracking?: string; deliveryStatus?: string;
+      deliveryPartner?: string; deliveryTracking?: string; deliveryStatus?: string; deliveryAddress?: string;
     },
   ) => api.put(`/admin/vehicles/${id}`, data),
   getVehicleInvoice: (id: string) =>

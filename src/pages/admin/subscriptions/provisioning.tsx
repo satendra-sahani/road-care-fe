@@ -15,6 +15,7 @@ type Prov = {
   paid?: boolean; paymentId?: string; amountPaid?: number
   warrantyMonths?: number
   deliveryPartner?: string; deliveryTracking?: string; deliveryStatus?: string; deliveryUpdatedAt?: string
+  deliveryAddress?: string
 }
 type Vehicle = {
   _id: string
@@ -25,6 +26,7 @@ type Vehicle = {
   status: string
   provisioning?: Prov
   user?: { _id: string; fullName?: string; username?: string; phone?: string; gpsPlan?: any }
+  customerAddress?: string
   device?: { deviceId?: string; imei?: string; status?: string } | null
 }
 
@@ -169,6 +171,7 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
   const prov = vehicle.provisioning || {}
   const [partner, setPartner] = useState(prov.deliveryPartner || '')
   const [tracking, setTracking] = useState(prov.deliveryTracking || '')
+  const [address, setAddress] = useState(prov.deliveryAddress || '')
   const [deliveryStatus, setDeliveryStatus] = useState(prov.deliveryStatus || '')
   const [busy, setBusy] = useState(false)
 
@@ -184,7 +187,7 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
   const savePartner = async () => {
     setBusy(true)
     try {
-      await adminTrackerAPI.provisionVehicle(vehicle._id, { deliveryPartner: partner, deliveryTracking: tracking })
+      await adminTrackerAPI.provisionVehicle(vehicle._id, { deliveryPartner: partner, deliveryTracking: tracking, deliveryAddress: address })
       toast.success('Delivery details saved')
       onSaved()
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
@@ -195,7 +198,7 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
     if (!partner) { toast.error('Pick a delivery partner first'); return }
     setBusy(true)
     try {
-      await adminTrackerAPI.provisionVehicle(vehicle._id, { deliveryPartner: partner, deliveryTracking: tracking, deliveryStatus: step })
+      await adminTrackerAPI.provisionVehicle(vehicle._id, { deliveryPartner: partner, deliveryTracking: tracking, deliveryAddress: address, deliveryStatus: step })
       setDeliveryStatus(step)
       toast.success(`Marked ${DELIVERY_LABEL[step] || step}`)
       if (step !== 'delivered') onSaved()
@@ -249,6 +252,35 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
                 : <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">Unpaid</span>}
             </div>
             {prov.paymentId && <div className="mt-1 text-[11px] font-mono text-slate-500">{prov.paymentId}</div>}
+          </div>
+
+          {/* delivery address */}
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div className="text-[13px] font-bold text-slate-700">Delivery address</div>
+            {vehicle.customerAddress ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-blue-600">Customer wants delivery at</div>
+                  <button
+                    onClick={() => setAddress(vehicle.customerAddress || '')}
+                    className="rounded-md bg-blue-600 px-2 py-0.5 text-[10.5px] font-bold text-white hover:bg-blue-700">
+                    Use this
+                  </button>
+                </div>
+                <div className="text-[12.5px] leading-snug text-slate-700">{vehicle.customerAddress}</div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-[12px] text-slate-400">
+                Customer hasn&apos;t saved a delivery address — enter it manually below.
+              </div>
+            )}
+            <textarea
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Delivery address (admin can edit)…"
+              rows={3}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            />
           </div>
 
           {/* delivery partner */}
