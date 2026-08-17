@@ -734,6 +734,11 @@ export const adminTrackerAPI = {
   ) => api.put(`/admin/vehicles/${id}`, data),
   getVehicleInvoice: (id: string) =>
     api.get(`/admin/vehicles/${id}/invoice`, { responseType: 'text' }),
+  // Courier-style tracking chain — "where has the device reached"
+  addDeliveryUpdate: (id: string, data: { location: string; note?: string; status?: string }) =>
+    api.post(`/admin/vehicles/${id}/delivery-update`, data),
+  removeDeliveryUpdate: (id: string, updateId: string) =>
+    api.delete(`/admin/vehicles/${id}/delivery-update/${updateId}`),
   getVehicleLabel: (id: string) =>
     api.get(`/admin/vehicles/${id}/label`, { responseType: 'text' }),
   setUserPlan: (

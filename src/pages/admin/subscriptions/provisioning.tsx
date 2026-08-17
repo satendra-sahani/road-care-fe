@@ -11,11 +11,13 @@ import { toast } from 'sonner'
 // vehicle) — which creates the tracker record shown on the GPS Trackers page.
 // ────────────────────────────────────────────────────────────────────────────
 
+type DeliveryUpdate = { _id?: string; location: string; note?: string; status?: string; at?: string }
 type Prov = {
   paid?: boolean; paymentId?: string; amountPaid?: number
   warrantyMonths?: number
   deliveryPartner?: string; deliveryTracking?: string; deliveryStatus?: string; deliveryUpdatedAt?: string
   deliveryAddress?: string
+  deliveryUpdates?: DeliveryUpdate[]
 }
 type Vehicle = {
   _id: string
@@ -175,6 +177,41 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
   const [deliveryStatus, setDeliveryStatus] = useState(prov.deliveryStatus || '')
   const [busy, setBusy] = useState(false)
 
+  // Courier-style tracking chain — where the device has reached so far
+  const [updates, setUpdates] = useState<DeliveryUpdate[]>(prov.deliveryUpdates || [])
+  const [newLoc, setNewLoc] = useState('')
+  const [newNote, setNewNote] = useState('')
+  const [newStep, setNewStep] = useState('')
+
+  const addUpdate = async () => {
+    if (!newLoc.trim()) { toast.error('Enter where the device has reached'); return }
+    setBusy(true)
+    try {
+      const r = await adminTrackerAPI.addDeliveryUpdate(vehicle._id, {
+        location: newLoc.trim(),
+        note: newNote.trim() || undefined,
+        status: newStep || undefined,
+      })
+      const p = r.data?.data?.provisioning || {}
+      setUpdates(p.deliveryUpdates || [])
+      if (p.deliveryStatus) setDeliveryStatus(p.deliveryStatus)
+      setNewLoc(''); setNewNote(''); setNewStep('')
+      toast.success('Tracking update added — customer can see it')
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
+    setBusy(false)
+  }
+
+  const removeUpdate = async (updateId?: string) => {
+    if (!updateId) return
+    setBusy(true)
+    try {
+      const r = await adminTrackerAPI.removeDeliveryUpdate(vehicle._id, updateId)
+      setUpdates(r.data?.data?.provisioning?.deliveryUpdates || [])
+      toast.success('Update removed')
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Failed') }
+    setBusy(false)
+  }
+
   // Go-live (assign device) form
   const [showGoLive, setShowGoLive] = useState(vehicle.status === 'active')
   const [imei, setImei] = useState('')
@@ -332,6 +369,60 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
             {!delivered && (
               <p className="mt-3 text-[11px] text-slate-400">Mark the order <b>Delivered</b> to unlock &ldquo;Go live&rdquo; and fit the GPS device.</p>
             )}
+          </div>
+
+          {/* WHERE HAS THE DEVICE REACHED — courier-style tracking chain */}
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div>
+              <div className="text-[13px] font-bold text-slate-700">Where has the device reached?</div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Add each location as the device moves — the customer sees this chain live in their app.
+              </p>
+            </div>
+
+            {/* existing chain (newest first) */}
+            {updates.length > 0 ? (
+              <div className="space-y-2">
+                {[...updates].sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime()).map((u, i) => (
+                  <div key={u._id || i} className="flex items-start gap-2.5 rounded-lg bg-slate-50 border border-slate-200 p-2.5">
+                    <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${i === 0 ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12.5px] font-semibold text-slate-700">{u.location}</div>
+                      {u.note && <div className="text-[11px] text-slate-500">{u.note}</div>}
+                      <div className="text-[10.5px] text-slate-400">
+                        {u.at ? new Date(u.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''}
+                        {u.status ? ` · ${DELIVERY_LABEL[u.status] || u.status}` : ''}
+                      </div>
+                    </div>
+                    <button onClick={() => removeUpdate(u._id)} disabled={busy}
+                      className="text-[11px] font-semibold text-red-500 hover:text-red-600 disabled:opacity-40">Remove</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[12px] text-slate-400">No location updates yet.</p>
+            )}
+
+            {/* add a new location */}
+            <div className="space-y-2 rounded-lg border border-dashed border-slate-300 p-3">
+              <input value={newLoc} onChange={(e) => setNewLoc(e.target.value)}
+                placeholder="Reached where? e.g. Left Noida hub / Reached Gorakhpur"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+              <input value={newNote} onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Note (optional) — e.g. expected delivery tomorrow"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+              <div className="flex gap-2">
+                <select value={newStep} onChange={(e) => setNewStep(e.target.value)}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                  <option value="">Keep current status</option>
+                  {DELIVERY_STEPS.map((st) => <option key={st.id} value={st.id}>Also mark: {st.label}</option>)}
+                </select>
+                <button onClick={addUpdate} disabled={busy}
+                  className="rounded-lg bg-[#1B3B6F] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#0F2545] disabled:opacity-50">
+                  Add update
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* go live — assign the physical device (only after delivered) */}
