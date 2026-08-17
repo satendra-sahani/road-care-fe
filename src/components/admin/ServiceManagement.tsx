@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useState, useMemo, useEffect } from 'react'
+import { toast } from 'sonner'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import {
@@ -402,6 +403,15 @@ export function ServiceManagement() {
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null)
   const [activeTab, setActiveTab] = useState('requests')
 
+  // Submit-diagnosis-on-behalf dialog (used when the mechanic can't operate the app)
+  const [diagDialogOpen, setDiagDialogOpen] = useState(false)
+  const [diagRequest, setDiagRequest] = useState<ServiceRequest | null>(null)
+  const [diagSaving, setDiagSaving] = useState(false)
+  const [diagForm, setDiagForm] = useState<{
+    laborCost: string; additionalCharges: string; discount: string; notes: string; estimatedTime: string
+    parts: { name: string; cost: string; quantity: string }[]
+  }>({ laborCost: '', additionalCharges: '', discount: '', notes: '', estimatedTime: '', parts: [] })
+
   // Assign mechanic dialog
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
   const [assigningRequest, setAssigningRequest] = useState<ServiceRequest | null>(null)
@@ -694,6 +704,70 @@ export function ServiceManagement() {
 
   const handleUpdateStatus = (requestId: string, status: ServiceRequest['status']) => {
     dispatch(updateStatusRequest({ id: requestId, status }))
+  }
+
+  // ── Submit diagnosis on the mechanic's behalf ────────────────────────────
+  // Only offered while the request is accepted/on_way (same window the mechanic
+  // app allows) or in diagnosis (revise the quotation).
+  const handleOpenDiagnosis = (request: ServiceRequest) => {
+    const cb: any = (request as any).diagnosis?.costBreakdown || {}
+    setDiagRequest(request)
+    setDiagForm({
+      laborCost: cb.laborCost != null ? String(cb.laborCost) : '',
+      additionalCharges: cb.additionalCharges ? String(cb.additionalCharges) : '',
+      discount: cb.discount ? String(cb.discount) : '',
+      notes: (request as any).diagnosis?.notes || '',
+      estimatedTime: (request as any).diagnosis?.estimatedTime ? String((request as any).diagnosis.estimatedTime) : '',
+      parts: (cb.parts || []).map((p: any) => ({ name: p.name || '', cost: String(p.cost ?? ''), quantity: String(p.quantity ?? 1) })),
+    })
+    setDiagDialogOpen(true)
+  }
+
+  const diagPartsTotal = diagForm.parts.reduce(
+    (sum, p) => sum + (parseFloat(p.cost) || 0) * (parseInt(p.quantity) || 1), 0,
+  )
+  const diagTotalEstimate =
+    (parseFloat(diagForm.laborCost) || 0) + diagPartsTotal +
+    (parseFloat(diagForm.additionalCharges) || 0) - (parseFloat(diagForm.discount) || 0)
+
+  const handleSubmitDiagnosis = async () => {
+    if (!diagRequest) return
+    if (diagForm.laborCost === '' || isNaN(parseFloat(diagForm.laborCost))) {
+      toast.error('Enter the labour cost'); return
+    }
+    if (diagForm.parts.some((p) => !p.name.trim() || p.cost === '' || isNaN(parseFloat(p.cost)))) {
+      toast.error('Every part needs a name and a cost'); return
+    }
+    setDiagSaving(true)
+    try {
+      const payload = {
+        laborCost: parseFloat(diagForm.laborCost) || 0,
+        parts: diagForm.parts.map((p) => ({
+          name: p.name.trim(),
+          cost: parseFloat(p.cost) || 0,
+          quantity: parseInt(p.quantity) || 1,
+        })),
+        additionalCharges: parseFloat(diagForm.additionalCharges) || 0,
+        discount: parseFloat(diagForm.discount) || 0,
+        notes: diagForm.notes.trim(),
+        ...(diagForm.estimatedTime ? { estimatedTime: parseInt(diagForm.estimatedTime) } : {}),
+      }
+      const isRevise = diagRequest.status === 'diagnosis'
+      const res = isRevise
+        ? await serviceRequestAPI.updateDiagnosis(diagRequest._id, payload)
+        : await serviceRequestAPI.submitDiagnosis(diagRequest._id, payload)
+      if (res.data?.success) {
+        toast.success(isRevise ? 'Quotation revised — customer notified' : 'Diagnosis submitted — sent to customer for approval')
+        setDiagDialogOpen(false)
+        setDiagRequest(null)
+        dispatch(fetchServiceRequestsRequest())
+        setSelectedRequest(null)
+      } else {
+        toast.error(res.data?.message || 'Could not submit diagnosis')
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not submit diagnosis')
+    } finally { setDiagSaving(false) }
   }
 
   const handleOpenAssignDialog = async (request: ServiceRequest) => {
@@ -1746,6 +1820,121 @@ export function ServiceManagement() {
         </DialogContent>
       </Dialog>
 
+      {/* ============ SUBMIT DIAGNOSIS ON MECHANIC'S BEHALF ============ */}
+      <Dialog open={diagDialogOpen} onOpenChange={(open) => {
+        setDiagDialogOpen(open)
+        if (!open) setDiagRequest(null)
+      }}>
+        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {diagRequest?.status === 'diagnosis' ? 'Revise quotation' : 'Submit diagnosis'}
+            </DialogTitle>
+            <DialogDescription>
+              {diagRequest?.mechanic?.name
+                ? <>On behalf of <b>{diagRequest.mechanic.name}</b> · </>
+                : null}
+              The customer receives this quotation for approval, exactly like a mechanic-submitted one.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* labour + time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Labour cost (₹) *</Label>
+                <Input type="number" min="0" value={diagForm.laborCost} placeholder="0"
+                  onChange={(e) => setDiagForm((f) => ({ ...f, laborCost: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Estimated time (mins)</Label>
+                <Input type="number" min="0" value={diagForm.estimatedTime} placeholder="e.g. 45"
+                  onChange={(e) => setDiagForm((f) => ({ ...f, estimatedTime: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* parts */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-xs">Parts</Label>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-[11px]"
+                  onClick={() => setDiagForm((f) => ({ ...f, parts: [...f.parts, { name: '', cost: '', quantity: '1' }] }))}>
+                  + Add part
+                </Button>
+              </div>
+              {diagForm.parts.length === 0 && (
+                <p className="text-[11px] text-[#9CA3AF]">No parts — labour only.</p>
+              )}
+              <div className="space-y-2">
+                {diagForm.parts.map((p, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input className="flex-1" placeholder="Part name" value={p.name}
+                      onChange={(e) => setDiagForm((f) => {
+                        const parts = [...f.parts]; parts[i] = { ...parts[i], name: e.target.value }; return { ...f, parts }
+                      })} />
+                    <Input className="w-24" type="number" min="0" placeholder="Cost" value={p.cost}
+                      onChange={(e) => setDiagForm((f) => {
+                        const parts = [...f.parts]; parts[i] = { ...parts[i], cost: e.target.value }; return { ...f, parts }
+                      })} />
+                    <Input className="w-16" type="number" min="1" placeholder="Qty" value={p.quantity}
+                      onChange={(e) => setDiagForm((f) => {
+                        const parts = [...f.parts]; parts[i] = { ...parts[i], quantity: e.target.value }; return { ...f, parts }
+                      })} />
+                    <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500"
+                      onClick={() => setDiagForm((f) => ({ ...f, parts: f.parts.filter((_, j) => j !== i) }))}>
+                      ✕
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* extras */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Additional charges (₹)</Label>
+                <Input type="number" min="0" value={diagForm.additionalCharges} placeholder="0"
+                  onChange={(e) => setDiagForm((f) => ({ ...f, additionalCharges: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Discount (₹)</Label>
+                <Input type="number" min="0" value={diagForm.discount} placeholder="0"
+                  onChange={(e) => setDiagForm((f) => ({ ...f, discount: e.target.value }))} />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">Diagnosis notes</Label>
+              <Textarea rows={3} value={diagForm.notes} placeholder="What's wrong with the vehicle / what will be done…"
+                onChange={(e) => setDiagForm((f) => ({ ...f, notes: e.target.value }))} />
+            </div>
+
+            {/* running total */}
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">
+              <div className="flex justify-between text-xs text-[#6B7280]">
+                <span>Labour</span><span>₹{parseFloat(diagForm.laborCost) || 0}</span>
+              </div>
+              <div className="flex justify-between text-xs text-[#6B7280]">
+                <span>Parts</span><span>₹{diagPartsTotal}</span>
+              </div>
+              <div className="flex justify-between font-bold border-t border-slate-200 mt-2 pt-2">
+                <span>Estimate</span><span className="text-[#1B3B6F]">₹{diagTotalEstimate}</span>
+              </div>
+              <p className="text-[10.5px] text-[#9CA3AF] mt-1.5">
+                Membership discounts, free-service waiver and any booking fee already paid are applied automatically by the server.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiagDialogOpen(false)} disabled={diagSaving}>Cancel</Button>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleSubmitDiagnosis} disabled={diagSaving}>
+              {diagSaving ? 'Submitting…' : diagRequest?.status === 'diagnosis' ? 'Save revision' : 'Submit & notify customer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ==================== CANCEL REQUEST DIALOG ==================== */}
       <Dialog open={cancelDialogOpen} onOpenChange={(open) => {
         setCancelDialogOpen(open)
@@ -2376,6 +2565,29 @@ export function ServiceManagement() {
                     {selectedRequest.notes && (
                       <p className="text-xs text-[#6B7280] mt-2 italic border-t border-blue-200 pt-2">{selectedRequest.notes}</p>
                     )}
+                  </div>
+                )}
+
+                {/* Submit diagnosis on the mechanic's behalf — shown while the
+                    request is in the window the mechanic app allows. */}
+                {['accepted', 'on_way', 'diagnosis'].includes(selectedRequest.status) && (
+                  <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+                    <h4 className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Search className="h-3 w-3" /> Diagnosis (on mechanic&apos;s behalf)
+                    </h4>
+                    <p className="text-xs text-[#6B7280] mb-3">
+                      {selectedRequest.status === 'diagnosis'
+                        ? 'Quotation already sent to the customer. You can revise it here if the mechanic asks.'
+                        : "If the mechanic can't submit the quotation from the app, enter it here — the customer gets it for approval exactly as normal."}
+                    </p>
+                    <Button
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      onClick={() => handleOpenDiagnosis(selectedRequest)}
+                    >
+                      <Search className="h-3.5 w-3.5 mr-1.5" />
+                      {selectedRequest.status === 'diagnosis' ? 'Revise quotation' : 'Submit diagnosis'}
+                    </Button>
                   </div>
                 )}
 

@@ -225,6 +225,17 @@ export const serviceRequestAPI = {
   }) => api.put(`/admin/service-requests/${id}/cost`, data),
   delete: (id: string) => api.delete(`/admin/service-requests/${id}`),
   downloadInvoice: (id: string) => api.get(`/admin/service-requests/${id}/invoice`, { responseType: 'blob' }),
+  // Submit / revise a diagnosis on the mechanic's behalf (mechanic can't use the app)
+  submitDiagnosis: (id: string, data: {
+    laborCost: number;
+    parts?: { name: string; cost: number; quantity?: number }[];
+    additionalCharges?: number;
+    discount?: number;
+    notes?: string;
+    estimatedTime?: number;
+  }) => api.post(`/admin/service-requests/${id}/diagnosis`, data),
+  updateDiagnosis: (id: string, data: Record<string, any>) =>
+    api.put(`/admin/service-requests/${id}/diagnosis`, data),
 };
 
 // ─── Mechanic APIs (Admin) ──────────────────────────────────────────
