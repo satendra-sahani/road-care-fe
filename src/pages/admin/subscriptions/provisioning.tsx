@@ -281,6 +281,19 @@ function ProvisionDrawer({ vehicle, onClose, onSaved }: { vehicle: Vehicle; onCl
               rows={3}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
+            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-[11.5px] text-emerald-700">
+              <span>👁️</span>
+              <span>The customer sees this address (and the delivery steps) in their app under GPS order status.</span>
+            </div>
+            {/* Once shipped, the address matters most — nudge the admin to fill it */}
+            {['shipped', 'out_for_delivery'].includes(deliveryStatus) && !address.trim() && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] font-semibold text-amber-700">
+                Order is {DELIVERY_LABEL[deliveryStatus]} — please add the delivery address so the customer can see where it&apos;s going.
+              </div>
+            )}
+            <button onClick={savePartner} disabled={busy} className="w-full rounded-lg border border-slate-300 py-2 text-[13px] font-semibold text-slate-700 disabled:opacity-50">
+              Save address
+            </button>
           </div>
 
           {/* delivery partner */}
