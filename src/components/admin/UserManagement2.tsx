@@ -190,9 +190,11 @@ export function UserManagement() {
 
   const filteredUsersByTab = useMemo(() => {
     if (activeTab === 'all') return users
-    // Customers are stored with role 'user' in the backend.
-    const wanted = activeTab === 'customer' ? 'user' : activeTab
-    return users.filter(user => user.role === wanted)
+    // The server already filters by role, and the fetch saga maps the backend
+    // 'user' role to the display role 'customer'. So the tab value (customer /
+    // mechanic / delivery / admin / staff) matches user.role directly — the old
+    // customer→'user' remap here double-mapped and matched nothing.
+    return users.filter(user => user.role === activeTab)
   }, [users, activeTab])
 
   const toggleSpecialization = (spec: string) => {
