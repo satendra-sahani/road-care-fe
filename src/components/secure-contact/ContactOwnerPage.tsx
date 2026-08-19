@@ -8,10 +8,10 @@ import { useSelector } from 'react-redux'
 import Cookies from 'js-cookie'
 import { toast } from 'sonner'
 import { UserLayout } from '@/components/layout/UserLayout'
-import { useLoginModal } from '@/components/auth/LoginModalProvider'
-import { userVehicleQrAPI } from '@/services/api'
+import { userVehicleQrAPI, guestCallAPI } from '@/services/api'
 import type { RootState } from '@/store'
 import { resolveCode, maskPlate, type ScanResult } from '@/lib/secureContact'
+import { getGuestSession } from '@/lib/guestSession'
 import { GuestCallFlow } from '@/components/calls/GuestCallFlow'
 import { Shield, Phone, Send, Check, ChevronRight, Info } from 'lucide-react'
 
@@ -27,7 +27,6 @@ const DEMO = { em: '🚗', name: 'Maruti Swift VXi', plate: 'DL 8C XY 4821' }
 export function ContactOwnerPage() {
   const router = useRouter()
   const code = typeof router.query.code === 'string' ? router.query.code : undefined
-  const { openLogin } = useLoginModal()
   const isAuthenticated = useSelector((s: RootState) => s.customerAuth?.isAuthenticated)
 
   // Server-resolved vehicle (masked). Falls back to the demo vehicle only when
@@ -57,27 +56,45 @@ export function ContactOwnerPage() {
   const [sent, setSent] = useState<string | null>(null)
   const [sending, setSending] = useState<string | null>(null)
   const [calling, setCalling] = useState(false)
+  const [msgVerify, setMsgVerify] = useState<string | null>(null) // guest verify-then-send
 
-  // Real anonymous message via the platform (owner gets an app notification).
-  // Requires login; the demo (no code) keeps the old toast behaviour.
+  // Send an anonymous message to the owner (they get an app notification).
+  //   • logged-in customer → authenticated endpoint
+  //   • guest with a verified session → guest endpoint (no login)
+  //   • guest with no session → one-time OTP verify, then send (GuestCallFlow)
+  // The demo (no code) keeps the old toast behaviour.
   const sendQuickMsg = async (m: string) => {
     if (sending) return
     if (notFound) { toast.error('This QR code is no longer active'); return }
     if (!code) { setSent(m); toast.success('Message sent anonymously'); return }
-    if (!isAuthenticated && !Cookies.get('customer_token')) {
-      openLogin(() => { sendQuickMsg(m) })
+
+    const loggedIn = isAuthenticated || !!Cookies.get('customer_token')
+    if (loggedIn) {
+      setSending(m)
+      try {
+        const res = await userVehicleQrAPI.message(code, m)
+        if (res.data?.success) { setSent(m); toast.success('Message sent anonymously') }
+        else toast.error(res.data?.message || 'Could not send the message')
+      } catch (e: any) {
+        toast.error(e?.response?.data?.message || 'Could not send the message')
+      } finally { setSending(null) }
       return
     }
-    setSending(m)
-    try {
-      const res = await userVehicleQrAPI.message(code, m)
-      if (res.data?.success) { setSent(m); toast.success('Message sent anonymously') }
-      else toast.error(res.data?.message || 'Could not send the message')
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Could not send the message')
-    } finally {
-      setSending(null)
+
+    // Guest: reuse an existing verified session, else verify once via OTP.
+    const gs = getGuestSession()
+    if (gs) {
+      setSending(m)
+      try {
+        const res = await guestCallAPI.message(code, m, gs.token)
+        if (res.data?.success) { setSent(m); toast.success('Message sent anonymously') }
+        else toast.error(res.data?.message || 'Could not send the message')
+      } catch (e: any) {
+        toast.error(e?.response?.data?.message || 'Could not send the message')
+      } finally { setSending(null) }
+      return
     }
+    setMsgVerify(m) // opens the guest verify-and-send sheet
   }
 
   return (
@@ -125,6 +142,17 @@ export function ContactOwnerPage() {
 
       {calling && code && !notFound && (
         <GuestCallFlow code={code} peerName={`Owner of ${masked}`} onClose={() => setCalling(false)} />
+      )}
+
+      {msgVerify && code && !notFound && (
+        <GuestCallFlow
+          code={code}
+          peerName={`Owner of ${masked}`}
+          mode="message"
+          messageText={msgVerify}
+          onSent={() => setSent(msgVerify)}
+          onClose={() => setMsgVerify(null)}
+        />
       )}
     </UserLayout>
   )

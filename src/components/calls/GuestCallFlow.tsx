@@ -4,12 +4,13 @@
 // scanner enters name + phone + OTP, then talks to the vehicle owner over
 // Agora (numbers hidden both ways). If the visitor is already logged in as a
 // customer, the OTP step is skipped and the authenticated call path is used.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Cookies from 'js-cookie'
 import { toast } from 'sonner'
 import { guestCallAPI, userCallAPI } from '@/services/api'
+import { saveGuestSession, getGuestSession } from '@/lib/guestSession'
 import { WebCall, type CallHandle } from './WebCall'
-import { Shield, Phone, X, Loader2, ArrowRight } from 'lucide-react'
+import { Shield, Phone, X, Loader2, ArrowRight, Send } from 'lucide-react'
 
 // Friendlier text for the common failure modes (a bare axios "Network Error"
 // means the phone couldn't reach the API server).
@@ -34,12 +35,19 @@ interface Props {
   code: string
   peerName: string // e.g. "Owner of DL 8C XY ••21"
   onClose: () => void
+  // 'call' (default) verifies then places a call; 'message' verifies then sends
+  // an anonymous message (messageText) to the owner. Both reuse a saved guest
+  // session so a re-scan within its lifetime skips the OTP.
+  mode?: 'call' | 'message'
+  messageText?: string
+  onSent?: () => void
 }
 
 type Step = 'form' | 'otp' | 'placing' | 'incall'
 interface Live { callId: string; appId: string; channelName: string; token: string; uid: number; api: CallHandle }
 
-export function GuestCallFlow({ code, peerName, onClose }: Props) {
+export function GuestCallFlow({ code, peerName, onClose, mode = 'call', messageText, onSent }: Props) {
+  const isMessage = mode === 'message'
   const loggedIn = typeof window !== 'undefined' && !!Cookies.get('customer_token')
   const [step, setStep] = useState<Step>('form')
   const [name, setName] = useState('')
@@ -48,6 +56,30 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
   const [guestToken, setGuestToken] = useState('')
   const [busy, setBusy] = useState(false)
   const [live, setLive] = useState<Live | null>(null)
+
+  // Reuse an existing guest session (verified within the last ~2h) so we don't
+  // re-prompt for OTP on every scan. Runs once on open, guests only.
+  useEffect(() => {
+    if (loggedIn) return
+    const s = getGuestSession()
+    if (!s) return
+    setGuestToken(s.token)
+    if (isMessage) sendGuestMessage(s.token)
+    else placeGuestCall(s.token)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Send the anonymous message with a verified guest token, then close.
+  const sendGuestMessage = async (token: string) => {
+    setStep('placing')
+    try {
+      const res = await guestCallAPI.message(code, messageText || '', token)
+      if (res.data?.success) { toast.success('Message sent anonymously'); onSent?.(); onClose() }
+      else { toast.error(res.data?.message || 'Could not send the message'); onClose() }
+    } catch (e: any) {
+      toast.error(errMsg(e, 'Could not send the message')); onClose()
+    }
+  }
 
   const sendOtp = async () => {
     if (busy) return
@@ -126,8 +158,12 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
     try {
       const res = await guestCallAPI.verifyOtp(phone.trim(), name.trim(), otp.trim())
       if (res.data?.success && res.data.data?.guestToken) {
-        setGuestToken(res.data.data.guestToken)
-        await placeGuestCall(res.data.data.guestToken)
+        const token = res.data.data.guestToken
+        setGuestToken(token)
+        // Remember the verified guest so a re-scan skips OTP (call OR message).
+        saveGuestSession({ token, name: name.trim(), phone: phone.trim() })
+        if (isMessage) await sendGuestMessage(token)
+        else await placeGuestCall(token)
       } else {
         toast.error(res.data?.message || 'Invalid OTP')
       }
@@ -176,13 +212,13 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
           </div>
           <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full bg-slate-100 text-slate-500"><X className="h-4 w-4" /></button>
         </div>
-        <h2 className="font-display text-xl font-extrabold text-[#0F2545]">Call {peerName}</h2>
+        <h2 className="font-display text-xl font-extrabold text-[#0F2545]">{isMessage ? 'Message' : 'Call'} {peerName}</h2>
         <p className="mt-1 text-[12.5px] font-semibold text-slate-500">Your number stays private — the owner never sees it.</p>
 
         {step === 'placing' ? (
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-[#1B3B6F]" />
-            <p className="text-sm font-bold text-slate-600">Connecting your call…</p>
+            <p className="text-sm font-bold text-slate-600">{isMessage ? 'Sending your message…' : 'Connecting your call…'}</p>
           </div>
         ) : loggedIn ? (
           <div className="mt-5">
@@ -201,7 +237,7 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
               className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] font-extrabold text-white disabled:opacity-60">
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />} Send OTP
             </button>
-            <p className="text-center text-[11px] font-semibold text-slate-400">We verify your number once to stop spam calls.</p>
+            <p className="text-center text-[11px] font-semibold text-slate-400">We verify your number once to stop spam.</p>
           </div>
         ) : (
           <div className="mt-5 space-y-3">
@@ -210,7 +246,7 @@ export function GuestCallFlow({ code, peerName, onClose }: Props) {
               className="h-12 w-full rounded-xl border-[1.5px] border-slate-200 px-4 text-center text-lg font-extrabold tracking-[0.4em] text-[#0F2545] outline-none focus:border-[#1B3B6F]" />
             <button onClick={verifyAndCall} disabled={busy}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1BA672] font-extrabold text-white disabled:opacity-60">
-              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Phone className="h-5 w-5" fill="currentColor" />} Verify &amp; call
+              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : (isMessage ? <Send className="h-5 w-5" /> : <Phone className="h-5 w-5" fill="currentColor" />)} Verify &amp; {isMessage ? 'send' : 'call'}
             </button>
             <button onClick={() => setStep('form')} className="w-full text-center text-[12px] font-bold text-slate-500">Change number</button>
           </div>

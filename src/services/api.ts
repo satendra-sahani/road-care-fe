@@ -629,6 +629,10 @@ export const guestCallAPI = {
     api.get(`/common/guest/calls/${callId}/status`, guestHeaders(guestToken)),
   updateStatus: (callId: string, status: string, duration: number, guestToken: string) =>
     api.post(`/common/guest/calls/${callId}/status`, { status, duration }, guestHeaders(guestToken)),
+  // Anonymous message to the owner using the same one-time guest verification
+  // as calls — lets a scanner message without creating an account.
+  message: (code: string, message: string, guestToken: string) =>
+    api.post('/common/guest/vehicle-owner/message', { code, message }, guestHeaders(guestToken)),
 };
 
 // ─── User Wallet APIs (Customer-facing) ─────────────────────────────
