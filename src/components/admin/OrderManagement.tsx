@@ -36,7 +36,8 @@ import {
   ArrowUpRight,
   FileDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -93,6 +94,20 @@ const STATUS_FILTER_MAP: Record<string, string> = {
   pending: 'placed,pending,confirmed',
   processing: 'processing',
   shipped: 'shipped,out_for_delivery',
+}
+
+// Valid next statuses per current status — mirrors the backend's
+// updateOrderStatus() transition rules so the inline (click-to-update) status
+// picker only ever offers moves the server will accept. Statuses not listed
+// here (cancelled, returned) are terminal → shown as a plain, non-clickable badge.
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  placed: ['confirmed', 'cancelled'],
+  confirmed: ['processing', 'cancelled'],
+  processing: ['shipped', 'cancelled'],
+  shipped: ['out_for_delivery'],
+  out_for_delivery: ['delivered'],
+  delivered: ['return_requested'],
+  return_requested: ['returned'],
 }
 
 export function OrderManagement() {
@@ -389,6 +404,24 @@ export function OrderManagement() {
 
   // The orders are already paginated from the server
   const paginatedOrders = orders
+
+  // Inline status change from the clickable status badge in the table. Uses the
+  // same endpoint as the Update Status dialog; refreshes the list + stats after.
+  const [inlineStatusOrderId, setInlineStatusOrderId] = useState<string | null>(null)
+  const handleInlineStatusChange = async (order: Order, newStatus: string) => {
+    const id = order.id || order._id
+    if (newStatus === order.status) return
+    setInlineStatusOrderId(id)
+    try {
+      await orderAPI.updateStatus(id, { status: newStatus })
+      fetchOrders()
+      fetchStats()
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to update order status')
+    } finally {
+      setInlineStatusOrderId(null)
+    }
+  }
 
   // Order Management Operations
   const handleUpdateOrderStatus = async () => {
@@ -809,10 +842,44 @@ export function OrderManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`text-xs font-medium ${statusConfig[order.status]?.className || 'bg-gray-100 text-gray-800'}`}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {statusConfig[order.status]?.label || order.status}
-                          </Badge>
+                          {(STATUS_TRANSITIONS[order.status]?.length) ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="focus:outline-none"
+                                  title="Click to update status"
+                                  disabled={inlineStatusOrderId === (order.id || order._id)}
+                                >
+                                  <Badge className={`text-xs font-medium cursor-pointer hover:ring-2 hover:ring-[#1B3B6F]/25 transition-shadow ${statusConfig[order.status]?.className || 'bg-gray-100 text-gray-800'}`}>
+                                    {inlineStatusOrderId === (order.id || order._id)
+                                      ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      : <StatusIcon className="h-3 w-3 mr-1" />}
+                                    {statusConfig[order.status]?.label || order.status}
+                                    <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
+                                  </Badge>
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="w-44">
+                                <DropdownMenuLabel className="text-xs">Move order to</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {STATUS_TRANSITIONS[order.status].map((s) => {
+                                  const Ic = statusConfig[s]?.icon || Clock
+                                  return (
+                                    <DropdownMenuItem key={s} className="text-sm" onClick={() => handleInlineStatusChange(order, s)}>
+                                      <Ic className="h-4 w-4 mr-2" />
+                                      {statusConfig[s]?.label || s}
+                                    </DropdownMenuItem>
+                                  )
+                                })}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : (
+                            <Badge className={`text-xs font-medium ${statusConfig[order.status]?.className || 'bg-gray-100 text-gray-800'}`}>
+                              <StatusIcon className="h-3 w-3 mr-1" />
+                              {statusConfig[order.status]?.label || order.status}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge className={`text-xs ${paymentStatusConfig[order.paymentStatus]?.className || 'bg-gray-100 text-gray-800'}`}>
