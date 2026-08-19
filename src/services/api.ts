@@ -697,8 +697,11 @@ export const adminCouponsAPI = {
 export const adminWhatsappAPI = {
   getSenders: () => api.get('/admin/whatsapp/senders'),
   getTemplates: () => api.get('/admin/whatsapp/templates'),
-  send: (data: { phoneNumberId: string; templateName: string; languageCode?: string; toPhone: string; variables?: string[] }) =>
+  send: (data: { phoneNumberId: string; templateName: string; languageCode?: string; toPhone: string; variables?: string[]; headerMediaId?: string; headerMediaKind?: string }) =>
     api.post('/admin/whatsapp/send', data),
+  // Upload a header media file (image/video/document) → Meta media id for templates.
+  uploadMedia: (form: FormData) =>
+    api.post('/admin/whatsapp/upload-media', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
   // Two-way chat (inbox)
   getChats: () => api.get('/admin/whatsapp/chats'),
