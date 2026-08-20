@@ -103,6 +103,12 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
     socketService.ensureConnected()
     const handler = (data: any) => {
       if (!data?.callId) return
+      // The socket authenticates with the CUSTOMER token cookie, so on the
+      // admin/shop panels (often the same browser) a customer's incoming call
+      // would ring over the wrong dashboard. Suppress it there — the call
+      // still rings on the customer's app/customer-facing web pages.
+      const path = typeof window !== 'undefined' ? window.location.pathname : ''
+      if (path.startsWith('/admin') || path.startsWith('/shop-partner')) return
       if (incomingRef.current || activeRef.current) return // already busy
       setIncoming({
         callId: String(data.callId),
