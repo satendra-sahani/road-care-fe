@@ -466,6 +466,13 @@ export const userAddressAPI = {
   setDefault: (id: string) => api.patch(`/user/addresses/${id}/default`),
 };
 
+// ─── User GPS tracker orders (Customer-facing) ────────────────────────
+// Mirrors the app's Orders → GPS tab: each entry is a vehicle with its GPS
+// provisioning chain (steps, payment, delivery updates).
+export const userTrackerAPI = {
+  getGpsOrders: () => api.get('/user/tracker/orders'),
+};
+
 // ─── User Service Request APIs (Customer-facing) ─────────────────────
 export const userServiceAPI = {
   create: (data: any) => api.post('/user/service-requests', data),
