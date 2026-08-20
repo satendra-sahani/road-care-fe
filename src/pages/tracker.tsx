@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
+import { GpsOrderFlow } from '@/components/tracker/GpsOrderFlow'
+import { userTrackerAPI } from '@/services/api'
 import {
   MapPin, Power, Bell, Route, Cpu, ShieldOff,
-  Check, ArrowRight, Satellite, Mail, Smartphone,
+  Check, ArrowRight, Satellite, Smartphone, ShoppingCart,
 } from 'lucide-react'
 
 const FEATURES = [
@@ -15,13 +18,25 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { n: '1', title: 'Order the device', desc: 'One-time ₹1,999 (+GST). We provision the SIM and cloud for you.' },
+  { n: '1', title: 'Order the device', desc: 'One-time all-inclusive price. We provision the SIM and cloud for you.' },
   { n: '2', title: 'We configure & ship', desc: 'Our team activates and dispatches your tracker, ready to fit.' },
   { n: '3', title: 'Fit & wire it', desc: 'A quick install on your vehicle by you or any technician.' },
   { n: '4', title: 'Track live', desc: 'Open the app — live location, alerts and engine cut-off are on.' },
 ]
 
+const fmtInr = (n: number) => Number(n || 0).toLocaleString('en-IN')
+
 export default function TrackerPage() {
+  const [ordering, setOrdering] = useState(false)
+  // Live device pricing (admin-editable). Guests aren't logged in, so a 401
+  // simply keeps these defaults — which mirror the backend's launch offer.
+  const [price, setPrice] = useState({ payToday: 2999, originalPrice: 10995, serviceMonthly: 99 })
+  useEffect(() => {
+    userTrackerAPI.getDeviceConfig()
+      .then((r) => { if (r.data?.success && r.data.data) setPrice((p) => ({ ...p, ...r.data.data })) })
+      .catch(() => { /* guest / offline — keep defaults */ })
+  }, [])
+
   return (
     <>
       <SEOHead
@@ -51,25 +66,30 @@ export default function TrackerPage() {
                 remotely — from anywhere. SIM &amp; cloud included, no hidden charges.
               </p>
 
-              {/* Pricing pills */}
+              {/* Pricing pills — live admin-set pricing */}
               <div className="mt-5 flex flex-wrap items-center gap-2.5">
                 <span className="inline-flex items-baseline gap-1.5 rounded-xl bg-white/[0.08] ring-1 ring-white/10 px-3.5 py-2 text-white">
-                  <span className="text-[19px] font-extrabold">₹1,999</span>
+                  <span className="text-[19px] font-extrabold">₹{fmtInr(price.payToday)}</span>
+                  {price.originalPrice > price.payToday && (
+                    <span className="text-[12px] font-bold text-white/45 line-through">₹{fmtInr(price.originalPrice)}</span>
+                  )}
                   <span className="text-[11.5px] text-white/60 font-semibold">one-time device</span>
                 </span>
                 <span className="inline-flex items-baseline gap-1.5 rounded-xl bg-white/[0.08] ring-1 ring-white/10 px-3.5 py-2 text-white">
-                  <span className="text-[19px] font-extrabold">₹99</span>
+                  <span className="text-[19px] font-extrabold">₹{fmtInr(price.serviceMonthly)}</span>
                   <span className="text-[11.5px] text-white/60 font-semibold">/ month service</span>
                 </span>
-                <span className="inline-flex items-center rounded-xl bg-white/[0.06] ring-1 ring-white/10 px-3 py-2 text-[11.5px] font-semibold text-white/60">+ 18% GST</span>
+                {price.originalPrice > price.payToday && (
+                  <span className="inline-flex items-center rounded-xl bg-[#6EE7B7]/15 ring-1 ring-[#6EE7B7]/30 px-3 py-2 text-[11.5px] font-extrabold text-[#6EE7B7]">SAVE ₹{fmtInr(price.originalPrice - price.payToday)}</span>
+                )}
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <a href="mailto:support@bharatmechanics.com?subject=GPS%20Vehicle%20Tracker%20enquiry" className="inline-flex items-center gap-2 bg-[#6EE7B7] hover:bg-white text-[#052E2B] font-bold px-5 py-2.5 rounded-full text-[13.5px] transition-colors">
-                  Get the tracker <ArrowRight className="h-4 w-4" />
-                </a>
+                <button onClick={() => setOrdering(true)} className="inline-flex items-center gap-2 bg-[#6EE7B7] hover:bg-white text-[#052E2B] font-bold px-5 py-2.5 rounded-full text-[13.5px] transition-colors">
+                  <ShoppingCart className="h-4 w-4" /> Order now <ArrowRight className="h-4 w-4" />
+                </button>
                 <span className="inline-flex items-center gap-2 text-white/70 text-[12.5px] font-semibold px-2 py-2.5">
-                  <Smartphone className="h-4 w-4 text-[#6EE7B7]" /> Order &amp; manage live on the Bharat Mechanics app
+                  <Smartphone className="h-4 w-4 text-[#6EE7B7]" /> Also on the Bharat Mechanics app
                 </span>
               </div>
             </div>
@@ -109,11 +129,13 @@ export default function TrackerPage() {
                 <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[#6EE7B7]" /> Family safety</span>
               </p>
             </div>
-            <a href="mailto:support@bharatmechanics.com?subject=GPS%20Vehicle%20Tracker%20enquiry" className="inline-flex items-center justify-center gap-2 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-bold px-5 py-3 rounded-full text-[14px] transition-colors shrink-0">
-              <Mail className="h-4 w-4" /> Enquire now
-            </a>
+            <button onClick={() => setOrdering(true)} className="inline-flex items-center justify-center gap-2 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-bold px-5 py-3 rounded-full text-[14px] transition-colors shrink-0">
+              <ShoppingCart className="h-4 w-4" /> Order now — ₹{fmtInr(price.payToday)}
+            </button>
           </div>
         </div>
+
+        {ordering && <GpsOrderFlow onClose={() => setOrdering(false)} />}
       </UserLayout>
     </>
   )

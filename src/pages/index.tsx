@@ -7,6 +7,7 @@ import { SEOHead } from '@/components/SEOHead'
 import { loadUserRequest } from '@/store/slices/customerAuthSlice'
 import { catalogAPI, userCartAPI, bannerAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
+import { HomeOfferPopup } from '@/components/home/HomeOfferPopup'
 import { useBmCareSub, planById } from '@/lib/bmCare'
 import Link from 'next/link'
 import Head from 'next/head'
@@ -354,6 +355,8 @@ export default function HomePage() {
 
   return (
     <UserLayout>
+      {/* Admin-managed offer popup (same appConfig.homePopup the app shows) */}
+      <HomeOfferPopup />
       <SEOHead
         title="Auto Parts & Doorstep Mechanic Service"
         description="Bharat Mechanics – Buy genuine auto parts online, book certified mechanics for doorstep vehicle repair and servicing. Car parts, bike parts, engine oil, brake pads, filters & more. Fast delivery across India."

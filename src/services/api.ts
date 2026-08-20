@@ -471,6 +471,17 @@ export const userAddressAPI = {
 // provisioning chain (steps, payment, delivery updates).
 export const userTrackerAPI = {
   getGpsOrders: () => api.get('/user/tracker/orders'),
+  // GPS device ordering — same endpoints the app's GpsPlans flow uses.
+  getDeviceConfig: () => api.get('/user/tracker/device-config'),
+  deviceOrder: (vehicleId: string) => api.post('/user/tracker/device-order', { vehicleId }),
+  deviceVerify: (data: { vehicleId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    api.post('/user/tracker/device-verify', data),
+  requestDevice: (vehicleId: string) => api.post('/user/tracker/request-device', { vehicleId }),
+};
+
+// ─── Public app config (home popup etc. — same source as the app) ─────
+export const publicConfigAPI = {
+  getConfig: () => api.get('/common/config'),
 };
 
 // ─── User Service Request APIs (Customer-facing) ─────────────────────
@@ -566,7 +577,7 @@ export const userReferralAPI = {
 // ─── User Vehicle QR APIs (SecureContact) ────────────────────────────
 export const userVehicleQrAPI = {
   getMine: () => api.get('/user/vehicle-qr'),
-  register: (data: { name: string; em?: string; plate: string }) =>
+  register: (data: { name: string; em?: string; plate: string; type?: string }) =>
     api.post('/user/vehicle-qr', data),
   update: (id: string, data: { name?: string; em?: string; plate?: string; isActive?: boolean }) =>
     api.put(`/user/vehicle-qr/${id}`, data),
