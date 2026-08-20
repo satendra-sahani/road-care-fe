@@ -88,7 +88,7 @@ const mockGeneralSettings = {
   siteName: 'Bharat Machenics Auto Parts',
   siteDescription: 'Your trusted partner for genuine auto parts and vehicle services',
   contactEmail: 'support@roadcare.com',
-  contactPhone: '+91 1800-ROADCARE',
+  contactPhone: '+91 93106 94349',
   address: '123 Auto Street, Mumbai, Maharashtra 400001',
   timezone: 'Asia/Kolkata',
   language: 'en',

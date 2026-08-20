@@ -191,7 +191,7 @@ export default function ServicesLandingPage() {
               <p className="relative text-white/80 mt-2 max-w-xl mx-auto text-sm">Our 24/7 emergency roadside assistance reaches you in under 30 minutes across 40+ cities.</p>
               <div className="relative mt-6 flex gap-3 justify-center flex-wrap">
                 <Link href="/emergency" className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors"><Zap className="h-4 w-4" /> Get emergency help</Link>
-                <a href="tel:18001234567" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors"><Phone className="h-4 w-4" /> Call 1800-123-4567</a>
+                <a href="tel:+919310694349" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors"><Phone className="h-4 w-4" /> Call +91 93106 94349</a>
               </div>
             </div>
           </section>

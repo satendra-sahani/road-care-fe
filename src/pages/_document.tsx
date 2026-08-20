@@ -33,7 +33,7 @@ export default function Document() {
                 "Bharatmechanics Private Limited (\"Bharat Mechanics\") is India's trusted, tech-driven platform for doorstep and workshop vehicle care. We connect car and two-wheeler owners with verified mechanics and shop partners for on-site repairs, servicing, roadside assistance, and maintenance — booked in minutes through our app. Alongside services, we run an online marketplace for genuine automobile spare parts and accessories, delivered fast and priced upfront. Our network of trained, background-verified experts ensures reliable, transparent, professional care for every drive. We also invest in mechanic skill-development programs and build our own software to power seamless bookings, live tracking, and payments — making quality vehicle care accessible and hassle-free across India.",
               contactPoint: {
                 "@type": "ContactPoint",
-                telephone: "+91-1800-123-4567",
+                telephone: "+91-9310694349",
                 contactType: "customer service",
                 availableLanguage: ["English", "Hindi"],
               },

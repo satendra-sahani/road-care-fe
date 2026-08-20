@@ -216,7 +216,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
         <div className="px-4 md:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto py-2 flex items-center justify-between text-primary-foreground text-sm">
             <div className="flex items-center gap-4 lg:gap-6">
-              <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> +91 1800-123-4567</span>
+              <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> +91 93106 94349</span>
               <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Deliver to: India</span>
             </div>
             <div className="flex items-center gap-4 lg:gap-6">

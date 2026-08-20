@@ -208,7 +208,7 @@ export default function TrainingPage() {
               <p className="relative text-white/80 mt-2 max-w-xl mx-auto text-sm">Join 12,000+ mechanics who upgraded their skills and earnings with Bharat Mechanics Academy.</p>
               <div className="relative mt-6 flex gap-3 justify-center flex-wrap">
                 <a href="#courses" className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors">Enroll today <ArrowRight className="h-4 w-4" /></a>
-                <a href="tel:18001234567" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors">Talk to a counsellor</a>
+                <a href="tel:+919310694349" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors">Talk to a counsellor</a>
               </div>
             </div>
           </section>

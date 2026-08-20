@@ -266,7 +266,7 @@ export default function RefundPolicyPage() {
               <p>
                 For any questions about this policy, please reach out via in-app Help, email us at
                 <span className="font-semibold"> support@bharatmechanics.com</span>, or call
-                <span className="font-semibold"> +91 1800-123-4567</span> (Mon–Sat, 9 AM – 7 PM IST).
+                <span className="font-semibold"> +91 93106 94349</span> (Mon–Sat, 9 AM – 7 PM IST).
               </p>
             </Section>
 
