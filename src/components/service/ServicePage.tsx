@@ -156,7 +156,10 @@ export function ServicePage() {
   const [gpsLoading, setGpsLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitProgress, setSubmitProgress] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('cod')
+  // COD is temporarily disabled for service bookings — online payment only.
+  // The COD card stays visible but locked with a "not eligible" message.
+  const COD_DISABLED = true
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('online')
 
   // Success modal — shown after successful booking, mirrors Android behaviour
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -352,12 +355,12 @@ export function ServicePage() {
           const orderRes = await userPaymentAPI.createOrder(serviceRequestId, bookingFee)
           orderResult = orderRes.data?.data || orderRes.data
         } catch (e: any) {
-          toast.error(e.response?.data?.message || 'Payment setup failed. Try COD instead.')
+          toast.error(e.response?.data?.message || 'Payment setup failed. Please try again.')
           setSubmitting(false); setSubmitProgress(''); return
         }
 
         if (!orderResult?.orderId || !orderResult?.keyId) {
-          toast.error('Payment gateway not configured. Try COD instead.')
+          toast.error('Payment gateway not available right now. Please try again shortly.')
           setSubmitting(false); setSubmitProgress(''); return
         }
 
@@ -397,7 +400,7 @@ export function ServicePage() {
           theme: { color: '#1B3B6F' },
           modal: {
             ondismiss: () => {
-              toast.info('Payment cancelled. Your request is saved - you can pay later or switch to COD.')
+              toast.info('Payment cancelled. Your request is saved — you can pay from the request page anytime.')
               setSubmitProgress('')
             },
           },
@@ -798,12 +801,19 @@ export function ServicePage() {
                   </div>
                   {([
                     { id: 'online' as const, icon: CreditCard, label: 'Pay Online', sub: 'UPI, Card, Net Banking via Razorpay' },
-                    { id: 'cod' as const, icon: Banknote, label: 'Cash on Delivery', sub: 'Pay the booking fee after the mechanic arrives' },
-                  ]).map(p => { const on = paymentMethod === p.id; return (
-                    <button key={p.id} onClick={() => setPaymentMethod(p.id)}
-                      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[13px] border-[1.5px] mb-2.5 text-left transition ${on ? 'border-[#1B3B6F] bg-[#EEF3FB]' : 'border-[#E7ECF3] hover:border-[#c7d6ed]'}`}>
+                    { id: 'cod' as const, icon: Banknote, label: 'Cash on Delivery', sub: COD_DISABLED ? 'You are not eligible for COD' : 'Pay the booking fee after the mechanic arrives' },
+                  ]).map(p => {
+                    const disabled = p.id === 'cod' && COD_DISABLED
+                    const on = paymentMethod === p.id && !disabled
+                    return (
+                    <button key={p.id}
+                      onClick={() => {
+                        if (disabled) { toast.error('You are not eligible for COD'); return }
+                        setPaymentMethod(p.id)
+                      }}
+                      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[13px] border-[1.5px] mb-2.5 text-left transition ${disabled ? 'border-[#E7ECF3] opacity-55 cursor-not-allowed' : on ? 'border-[#1B3B6F] bg-[#EEF3FB]' : 'border-[#E7ECF3] hover:border-[#c7d6ed]'}`}>
                       <div className="h-10 w-10 rounded-[10px] bg-[#F6F8FB] flex items-center justify-center shrink-0"><p.icon className="h-5 w-5 text-[#1B3B6F]" /></div>
-                      <div className="flex-1 min-w-0"><b className="block text-sm text-[#13203A]">{p.label}</b><span className="text-[12px] text-[#7B8AA3]">{p.sub}</span></div>
+                      <div className="flex-1 min-w-0"><b className="block text-sm text-[#13203A]">{p.label}</b><span className={`text-[12px] ${disabled ? 'font-bold text-[#FF6B35]' : 'text-[#7B8AA3]'}`}>{p.sub}</span></div>
                       <div className={`h-5 w-5 rounded-full border-2 shrink-0 ${on ? 'border-[#1B3B6F] bg-[#1B3B6F] ring-2 ring-inset ring-white' : 'border-[#E7ECF3]'}`} />
                     </button>
                   )})}
