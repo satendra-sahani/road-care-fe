@@ -711,6 +711,12 @@ export const adminCouponsAPI = {
   remove: (id: string) => api.delete(`/admin/coupons/${id}`),
 };
 
+// ─── Admin API Key Management ───────────────────────────────────────
+export const adminApiKeysAPI = {
+  list: () => api.get('/admin/api-keys'),
+  set: (name: string, value: string) => api.put(`/admin/api-keys/${encodeURIComponent(name)}`, { value }),
+};
+
 // ─── Admin GPS Tracker devices/subscriptions ────────────────────────
 export const adminWhatsappAPI = {
   getSenders: () => api.get('/admin/whatsapp/senders'),

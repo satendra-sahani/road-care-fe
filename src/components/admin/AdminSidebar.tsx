@@ -126,6 +126,7 @@ const NAV_GROUPS: SidebarGroup[] = [
   {
     id: 'system', title: '', items: [
       { id: 'settings', title: 'Settings', icon: Settings, href: '/admin/settings/general' },
+      { id: 'api-keys', title: 'API Keys', icon: KeyRound, href: '/admin/settings/api-keys' },
     ],
   },
 ]
