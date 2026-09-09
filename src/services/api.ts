@@ -744,8 +744,19 @@ export const adminTrackerAPI = {
   getDevices: (params?: { status?: string; search?: string; page?: number; limit?: number }) =>
     api.get('/admin/tracker/devices', { params }),
   getDevice: (id: string) => api.get(`/admin/tracker/devices/${id}`),
-  update: (id: string, data: { status?: string; extendDays?: number; warrantyMonths?: number }) =>
-    api.put(`/admin/tracker/devices/${id}`, data),
+  update: (
+    id: string,
+    data: {
+      // Existing controls
+      status?: string; extendDays?: number; warrantyMonths?: number;
+      // Editable hardware / SIM / vehicle / owner fields (added so admin
+      // can fix records after a customer swaps SIM, replaces GPS unit, or
+      // transfers the device to a different app user).
+      imei?: string; simNumber?: string; simProvider?: string;
+      vehicleName?: string; regNo?: string; vehicleType?: string;
+      userPhone?: string;
+    },
+  ) => api.put(`/admin/tracker/devices/${id}`, data),
   assign: (data: { imei: string; simNumber?: string; userPhone: string; vehicleName?: string; regNo?: string; warrantyMonths?: number }) =>
     api.post('/admin/tracker/assign', data),
   getDeviceInvoice: (id: string) =>
