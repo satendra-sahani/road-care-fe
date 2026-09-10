@@ -57,6 +57,15 @@ interface Device {
 // Warranty presets offered in the Assign form + Devices table (months).
 const WARRANTY_OPTIONS = [3, 6, 9, 12, 15, 18, 24]
 
+// Vehicle types. Emoji on the right matches what the backend now
+// stores on vehicle.em (mobile app renders it on the tracker map).
+const VEHICLE_TYPES: { value: string; label: string; em: string }[] = [
+  { value: 'bike',    label: 'Bike',    em: '🏍' },
+  { value: 'scooter', label: 'Scooter', em: '🛵' },
+  { value: 'car',     label: 'Car',     em: '🚗' },
+  { value: 'auto',    label: 'Auto',    em: '🛺' },
+]
+
 // Open the print window SYNCHRONOUSLY on click (before any await) so pop-up
 // blockers don't kill it, then fill it with the receipt once the fetch returns.
 function openPrintWindow(): Window | null {
@@ -84,7 +93,7 @@ export function TrackerManagement() {
   const [status, setStatus] = useState('all')
   const [q, setQ] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [assign, setAssign] = useState({ imei: '', simNumber: '', userPhone: '', vehicleName: '', regNo: '', warrantyMonths: '' })
+  const [assign, setAssign] = useState({ imei: '', simNumber: '', userPhone: '', vehicleName: '', regNo: '', vehicleType: '', warrantyMonths: '' })
   const [assigning, setAssigning] = useState(false)
 
   const load = useCallback(async () => {
@@ -216,6 +225,7 @@ export function TrackerManagement() {
     simProvider: '',
     vehicleName: '',
     regNo: '',
+    vehicleType: '',
     userPhone: '',
   })
   const openEdit = (d: Device) => {
@@ -226,6 +236,7 @@ export function TrackerManagement() {
       simProvider: (d as any).sim?.provider || '',
       vehicleName: d.vehicle?.name || '',
       regNo: d.vehicle?.regNo || '',
+      vehicleType: (d.vehicle as any)?.type || '',
       userPhone: d.user?.phone || '',
     })
   }
@@ -240,6 +251,7 @@ export function TrackerManagement() {
     if (editDraft.simProvider !== ((editing as any).sim?.provider || '')) payload.simProvider = editDraft.simProvider.trim()
     if (editDraft.vehicleName !== (editing.vehicle?.name || '')) payload.vehicleName = editDraft.vehicleName.trim()
     if (editDraft.regNo !== (editing.vehicle?.regNo || '')) payload.regNo = editDraft.regNo.trim()
+    if (editDraft.vehicleType !== ((editing.vehicle as any)?.type || '')) payload.vehicleType = editDraft.vehicleType.trim()
     if (editDraft.userPhone !== (editing.user?.phone || '')) payload.userPhone = editDraft.userPhone.trim()
 
     if (Object.keys(payload).length === 0) { toast.info('No changes to save'); closeEdit(); return }
@@ -279,11 +291,12 @@ export function TrackerManagement() {
       const r = await adminTrackerAPI.assign({
         imei: assign.imei, simNumber: assign.simNumber, userPhone: assign.userPhone,
         vehicleName: assign.vehicleName, regNo: assign.regNo,
+        vehicleType: assign.vehicleType || undefined,
         warrantyMonths: assign.warrantyMonths ? Number(assign.warrantyMonths) : undefined,
       })
       if (r.data?.success) {
         toast.success(r.data.message || 'GPS assigned to user')
-        setAssign({ imei: '', simNumber: '', userPhone: '', vehicleName: '', regNo: '', warrantyMonths: '' })
+        setAssign({ imei: '', simNumber: '', userPhone: '', vehicleName: '', regNo: '', vehicleType: '', warrantyMonths: '' })
         load()
       } else toast.error(r.data?.message || 'Failed to assign')
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed to assign') } finally { setAssigning(false) }
@@ -350,12 +363,16 @@ export function TrackerManagement() {
           <Satellite className="h-4 w-4 text-[#1B3B6F]" />
           <h3 className="text-sm font-bold text-slate-700">Assign GPS device to a user</h3>
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-8">
           <input value={assign.imei} onChange={(e) => setAssign(p => ({ ...p, imei: e.target.value }))} placeholder="GPS IMEI *" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
           <input value={assign.simNumber} onChange={(e) => setAssign(p => ({ ...p, simNumber: e.target.value }))} placeholder="SIM number" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
           <input value={assign.userPhone} onChange={(e) => setAssign(p => ({ ...p, userPhone: e.target.value }))} placeholder="App user phone *" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
           <input value={assign.vehicleName} onChange={(e) => setAssign(p => ({ ...p, vehicleName: e.target.value }))} placeholder="Vehicle name" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
           <input value={assign.regNo} onChange={(e) => setAssign(p => ({ ...p, regNo: e.target.value }))} placeholder="Bike number" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
+          <select value={assign.vehicleType} onChange={(e) => setAssign(p => ({ ...p, vehicleType: e.target.value }))} className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-[#1B3B6F]/50">
+            <option value="">Vehicle type…</option>
+            {VEHICLE_TYPES.map((v) => <option key={v.value} value={v.value}>{v.em} {v.label}</option>)}
+          </select>
           <select value={assign.warrantyMonths} onChange={(e) => setAssign(p => ({ ...p, warrantyMonths: e.target.value }))} className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-[#1B3B6F]/50">
             <option value="">Warranty…</option>
             {WARRANTY_OPTIONS.map((m) => <option key={m} value={m}>{m} months</option>)}
@@ -649,6 +666,20 @@ export function TrackerManagement() {
                     className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50"
                   />
                 </div>
+              </div>
+
+              {/* Vehicle type — drives the emoji shown on the tracker map in the mobile app */}
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Vehicle type</label>
+                <select
+                  value={editDraft.vehicleType}
+                  onChange={(e) => setEditDraft((p) => ({ ...p, vehicleType: e.target.value }))}
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#1B3B6F]/50"
+                >
+                  <option value="">— select —</option>
+                  {VEHICLE_TYPES.map((v) => <option key={v.value} value={v.value}>{v.em} {v.label}</option>)}
+                </select>
+                <p className="mt-1 text-[10.5px] text-slate-400">Sets the map-marker icon shown in the mobile app (bike / scooter / car / auto).</p>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

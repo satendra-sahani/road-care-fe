@@ -757,7 +757,7 @@ export const adminTrackerAPI = {
       userPhone?: string;
     },
   ) => api.put(`/admin/tracker/devices/${id}`, data),
-  assign: (data: { imei: string; simNumber?: string; userPhone: string; vehicleName?: string; regNo?: string; warrantyMonths?: number }) =>
+  assign: (data: { imei: string; simNumber?: string; userPhone: string; vehicleName?: string; regNo?: string; vehicleType?: string; warrantyMonths?: number }) =>
     api.post('/admin/tracker/assign', data),
   getDeviceInvoice: (id: string) =>
     api.get(`/admin/tracker/devices/${id}/invoice`, { responseType: 'text' }),
