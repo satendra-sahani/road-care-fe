@@ -421,7 +421,7 @@ export function ServicePage() {
     setPreferredDate(''); setPreferredTime('')
     setAddress(''); setCity(''); setLandmark(''); setAddrState(''); setPincode('')
     setLatitude(null); setLongitude(null)
-    setPaymentMethod('cod')
+    setPaymentMethod('online')
     // Note: contactNumber stays — auto-filled from user profile, no point re-clearing it
   }
 
@@ -801,19 +801,19 @@ export function ServicePage() {
                   </div>
                   {([
                     { id: 'online' as const, icon: CreditCard, label: 'Pay Online', sub: 'UPI, Card, Net Banking via Razorpay' },
-                    { id: 'cod' as const, icon: Banknote, label: 'Cash on Delivery', sub: COD_DISABLED ? 'You are not eligible for COD' : 'Pay the booking fee after the mechanic arrives' },
+                    // COD tile intentionally omitted on web — pay online only.
+                    // If COD_DISABLED is ever flipped off, uncomment the tile below.
+                    // { id: 'cod' as const, icon: Banknote, label: 'Cash on Delivery', sub: 'Pay the booking fee after the mechanic arrives' },
                   ]).map(p => {
-                    const disabled = p.id === 'cod' && COD_DISABLED
-                    const on = paymentMethod === p.id && !disabled
+                    // Only 'online' remains after removing the COD tile above,
+                    // so no per-item disabled logic is needed anymore.
+                    const on = paymentMethod === p.id
                     return (
                     <button key={p.id}
-                      onClick={() => {
-                        if (disabled) { toast.error('You are not eligible for COD'); return }
-                        setPaymentMethod(p.id)
-                      }}
-                      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[13px] border-[1.5px] mb-2.5 text-left transition ${disabled ? 'border-[#E7ECF3] opacity-55 cursor-not-allowed' : on ? 'border-[#1B3B6F] bg-[#EEF3FB]' : 'border-[#E7ECF3] hover:border-[#c7d6ed]'}`}>
+                      onClick={() => setPaymentMethod(p.id)}
+                      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[13px] border-[1.5px] mb-2.5 text-left transition ${on ? 'border-[#1B3B6F] bg-[#EEF3FB]' : 'border-[#E7ECF3] hover:border-[#c7d6ed]'}`}>
                       <div className="h-10 w-10 rounded-[10px] bg-[#F6F8FB] flex items-center justify-center shrink-0"><p.icon className="h-5 w-5 text-[#1B3B6F]" /></div>
-                      <div className="flex-1 min-w-0"><b className="block text-sm text-[#13203A]">{p.label}</b><span className={`text-[12px] ${disabled ? 'font-bold text-[#FF6B35]' : 'text-[#7B8AA3]'}`}>{p.sub}</span></div>
+                      <div className="flex-1 min-w-0"><b className="block text-sm text-[#13203A]">{p.label}</b><span className="text-[12px] text-[#7B8AA3]">{p.sub}</span></div>
                       <div className={`h-5 w-5 rounded-full border-2 shrink-0 ${on ? 'border-[#1B3B6F] bg-[#1B3B6F] ring-2 ring-inset ring-white' : 'border-[#E7ECF3]'}`} />
                     </button>
                   )})}

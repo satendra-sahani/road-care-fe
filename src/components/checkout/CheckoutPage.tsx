@@ -442,19 +442,15 @@ export function CheckoutPage() {
                   <CreditCard className="h-5 w-5 text-[#FF6B35]" /> Payment Method
                 </h2>
 
+                {/* COD intentionally removed on web — pay online only.
+                    The `paymentMethod` state stays typed as 'online' | 'cod' for
+                    backwards compat with legacy orders viewed elsewhere. */}
                 <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'online' | 'cod')} className="space-y-3">
                   <label className={`flex items-center gap-3 border rounded-lg p-4 cursor-pointer ${paymentMethod === 'online' ? 'border-[#1B3B6F] bg-blue-50' : ''}`}>
                     <RadioGroupItem value="online" />
                     <div>
                       <p className="font-medium">Online Payment</p>
                       <p className="text-sm text-muted-foreground">UPI, Debit/Credit Card, Net Banking via Razorpay</p>
-                    </div>
-                  </label>
-                  <label className={`flex items-center gap-3 border rounded-lg p-4 cursor-pointer ${paymentMethod === 'cod' ? 'border-[#1B3B6F] bg-blue-50' : ''}`}>
-                    <RadioGroupItem value="cod" />
-                    <div>
-                      <p className="font-medium">Cash on Delivery</p>
-                      <p className="text-sm text-muted-foreground">Pay when your order is delivered</p>
                     </div>
                   </label>
                 </RadioGroup>
