@@ -228,13 +228,21 @@ export default function HomePage() {
 
   // ─── Fetch home data (same parallel calls as mobile) ───
   useEffect(() => {
+    // Banners render the moment they arrive — independent of categories /
+    // products, so a slow catalog query can't keep the hero on the skeleton.
+    bannerAPI.getActive('web')
+      .then((res) => {
+        const apiBanners = res?.data?.data || res?.data?.banners || []
+        setBannerSlides(Array.isArray(apiBanners) && apiBanners.length > 0 ? apiBanners : DEFAULT_BANNERS)
+      })
+      .catch(() => setBannerSlides(DEFAULT_BANNERS))
+
     const fetchData = async () => {
       try {
-        const [catRes, parentRes, prodRes, bannerRes] = await Promise.all([
+        const [catRes, parentRes, prodRes] = await Promise.all([
           catalogAPI.getCategories().catch(() => null),
           catalogAPI.getParentCategories().catch(() => null),
           catalogAPI.getProducts({ featured: true, limit: 10 }).catch(() => null),
-          bannerAPI.getActive('web').catch(() => null),
         ])
 
         if (parentRes?.data?.success && parentRes.data.data?.length) {
@@ -247,10 +255,6 @@ export default function HomePage() {
           const prods = prodRes.data.data?.products || prodRes.data.data || []
           setFeaturedProducts(prods)
         }
-        const apiBanners = bannerRes?.data?.data || bannerRes?.data?.banners || []
-        setBannerSlides(
-          Array.isArray(apiBanners) && apiBanners.length > 0 ? apiBanners : DEFAULT_BANNERS
-        )
       } catch (err) {
         console.error('Failed to load home data:', err)
       } finally {
