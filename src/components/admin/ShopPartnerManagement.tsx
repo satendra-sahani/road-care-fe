@@ -8,6 +8,7 @@ import {
   CheckCircle, XCircle, Package, TrendingUp, IndianRupee, ArrowRight,
   UserPlus, Wrench, X, UserMinus, Pencil, Trash2, Save, AlertTriangle
 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -337,12 +338,19 @@ export function ShopPartnerManagement() {
           <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Shop Partners</h1>
           <p className="text-[#6B7280] text-sm mt-1">Manage your partner shop network</p>
         </div>
-        <Button
-          className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm"
-          onClick={() => { resetForm(); setShowCreateDialog(true) }}
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add Shop Partner
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="border-[#1B3B6F] text-[#1B3B6F] hover:bg-[#1B3B6F]/5">
+            <Link href="/admin/shops/register">
+              <Store className="h-4 w-4 mr-2" /> Full Registration Form
+            </Link>
+          </Button>
+          <Button
+            className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm"
+            onClick={() => { resetForm(); setShowCreateDialog(true) }}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Shop Partner
+          </Button>
+        </div>
       </div>
 
       {/* Stats: commission hero + metric cards */}

@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useState, useMemo, useEffect } from 'react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import {
@@ -54,6 +55,7 @@ import {
   ImageIcon,
   Loader2,
   Store,
+  ClipboardList,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -770,6 +772,29 @@ export function ServiceManagement() {
     } finally { setDiagSaving(false) }
   }
 
+  // ── Accept on the mechanic's behalf (mechanic has no smartphone) ─────────
+  // Backend reuses ServiceRequestService.acceptRequest → same 'accepted'
+  // transition and the same "Mechanic Accepted" push to the customer.
+  const [acceptingId, setAcceptingId] = useState<string | null>(null)
+  const handleAcceptOnBehalf = async (request: ServiceRequest) => {
+    if (!request.mechanic) { toast.error('Assign a mechanic first'); return }
+    const label = `#${(request as any).requestId || request._id}`
+    if (typeof window !== 'undefined' && !window.confirm(`Accept request ${label} on behalf of ${request.mechanic.name}? The customer will be notified that the mechanic accepted.`)) return
+    setAcceptingId(request._id)
+    try {
+      const res = await serviceRequestAPI.acceptOnBehalf(request._id)
+      if (res.data?.success) {
+        toast.success('Accepted on mechanic\'s behalf — customer notified')
+        dispatch(fetchServiceRequestsRequest())
+        setSelectedRequest(null)
+      } else {
+        toast.error(res.data?.message || 'Could not accept request')
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not accept request')
+    } finally { setAcceptingId(null) }
+  }
+
   const handleOpenAssignDialog = async (request: ServiceRequest) => {
     setAssigningRequest(request)
     setAssignMechanicId(request.mechanic?._id || '')
@@ -1296,6 +1321,19 @@ export function ServiceManagement() {
                               <User className="h-4 w-4 mr-2" />
                               {request.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic'}
                             </DropdownMenuItem>
+                            {/* Proxy actions — for mechanics who don't use the app */}
+                            {['assigned', 'mechanic_assigned'].includes(request.status) && request.mechanic && (
+                              <DropdownMenuItem onClick={() => handleAcceptOnBehalf(request)} disabled={acceptingId === request._id}>
+                                <CheckCircle className="h-4 w-4 mr-2 text-indigo-600" />
+                                Accept on mechanic&apos;s behalf
+                              </DropdownMenuItem>
+                            )}
+                            {['accepted', 'on_way', 'diagnosis'].includes(request.status) && (
+                              <DropdownMenuItem onClick={() => handleOpenDiagnosis(request)}>
+                                <Search className="h-4 w-4 mr-2 text-indigo-600" />
+                                {request.status === 'diagnosis' ? 'Revise quotation (on behalf)' : 'Submit quotation (on behalf)'}
+                              </DropdownMenuItem>
+                            )}
                             {request.customer.phone && (
                               <DropdownMenuItem asChild>
                                 <a href={`tel:${request.customer.phone}`}>
@@ -1355,6 +1393,12 @@ export function ServiceManagement() {
                   <Badge variant="outline" className="text-sm py-1.5 px-3">
                     {filteredMechanics.length} mechanic{filteredMechanics.length !== 1 ? 's' : ''}
                   </Badge>
+                  <Button asChild variant="outline" className="border-[#1B3B6F] text-[#1B3B6F] hover:bg-[#1B3B6F]/5">
+                    <Link href="/admin/mechanics/register">
+                      <ClipboardList className="h-4 w-4 mr-2" />
+                      Full Registration
+                    </Link>
+                  </Button>
                   <Button
                     className="bg-[#1B3B6F] hover:bg-[#0F2545]"
                     onClick={() => { setEditingMechanic(false); setNewMechanic(emptyMechanic); setSelectedSpecs([]); setAddMechanicOpen(true); }}
@@ -2565,6 +2609,31 @@ export function ServiceManagement() {
                     {selectedRequest.notes && (
                       <p className="text-xs text-[#6B7280] mt-2 italic border-t border-blue-200 pt-2">{selectedRequest.notes}</p>
                     )}
+                  </div>
+                )}
+
+                {/* Accept on the mechanic's behalf — for mechanics without a smartphone. */}
+                {['assigned', 'mechanic_assigned'].includes(selectedRequest.status) && selectedRequest.mechanic && (
+                  <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+                    <h4 className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <CheckCircle className="h-3 w-3" /> Accept (on mechanic&apos;s behalf)
+                    </h4>
+                    <p className="text-xs text-[#6B7280] mb-3">
+                      <b>{selectedRequest.mechanic.name}</b> doesn&apos;t use the app? Accept here — the customer gets the same
+                      &quot;Mechanic Accepted&quot; notification as normal. Then use <b>Mark On Way</b> from the actions menu and
+                      submit the quotation from this panel when the mechanic tells you the estimate.
+                    </p>
+                    <Button
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      onClick={() => handleAcceptOnBehalf(selectedRequest)}
+                      disabled={acceptingId === selectedRequest._id}
+                    >
+                      {acceptingId === selectedRequest._id
+                        ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
+                      Accept on behalf
+                    </Button>
                   </div>
                 )}
 
