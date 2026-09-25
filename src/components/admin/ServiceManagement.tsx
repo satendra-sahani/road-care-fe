@@ -368,6 +368,11 @@ const STATUS_FLOW: ServiceRequest['status'][] = [
   'pending', 'assigned', 'accepted', 'on_way', 'diagnosis', 'approved', 'in_progress', 'completed', 'payment_pending', 'paid'
 ];
 
+// Quotation can be revised while awaiting approval AND after approval (items
+// added/removed during work) — the latter sends it back to the customer.
+const DIAG_REVISE_STATUSES: string[] = ['diagnosis', 'approved', 'in_progress']
+const DIAG_AFTER_APPROVAL_STATUSES: string[] = ['approved', 'in_progress']
+
 // Empty mechanic template
 // emptyMechanicState is the same as emptyMechanic — use emptyMechanic directly
 
@@ -411,8 +416,11 @@ export function ServiceManagement() {
   const [diagSaving, setDiagSaving] = useState(false)
   const [diagForm, setDiagForm] = useState<{
     laborCost: string; additionalCharges: string; discount: string; notes: string; estimatedTime: string
-    parts: { name: string; cost: string; quantity: string }[]
-  }>({ laborCost: '', additionalCharges: '', discount: '', notes: '', estimatedTime: '', parts: [] })
+    serviceWarranty: string; reason: string
+    parts: { name: string; cost: string; quantity: string; warranty: string }[]
+  }>({ laborCost: '', additionalCharges: '', discount: '', notes: '', estimatedTime: '', serviceWarranty: '', reason: '', parts: [] })
+  // Proxy actions on the customer's / mechanic's behalf (see handlers below)
+  const [proxyBusy, setProxyBusy] = useState<string | null>(null)
 
   // Assign mechanic dialog
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
@@ -720,7 +728,9 @@ export function ServiceManagement() {
       discount: cb.discount ? String(cb.discount) : '',
       notes: (request as any).diagnosis?.notes || '',
       estimatedTime: (request as any).diagnosis?.estimatedTime ? String((request as any).diagnosis.estimatedTime) : '',
-      parts: (cb.parts || []).map((p: any) => ({ name: p.name || '', cost: String(p.cost ?? ''), quantity: String(p.quantity ?? 1) })),
+      serviceWarranty: (request as any).diagnosis?.serviceWarranty || '',
+      reason: '',
+      parts: (cb.parts || []).map((p: any) => ({ name: p.name || '', cost: String(p.cost ?? ''), quantity: String(p.quantity ?? 1), warranty: p.warranty || '' })),
     })
     setDiagDialogOpen(true)
   }
@@ -742,24 +752,32 @@ export function ServiceManagement() {
     }
     setDiagSaving(true)
     try {
+      const isRevise = DIAG_REVISE_STATUSES.includes(diagRequest.status)
+      const afterApproval = DIAG_AFTER_APPROVAL_STATUSES.includes(diagRequest.status)
       const payload = {
         laborCost: parseFloat(diagForm.laborCost) || 0,
         parts: diagForm.parts.map((p) => ({
           name: p.name.trim(),
           cost: parseFloat(p.cost) || 0,
           quantity: parseInt(p.quantity) || 1,
+          ...(p.warranty.trim() ? { warranty: p.warranty.trim() } : {}),
         })),
         additionalCharges: parseFloat(diagForm.additionalCharges) || 0,
         discount: parseFloat(diagForm.discount) || 0,
         notes: diagForm.notes.trim(),
+        serviceWarranty: diagForm.serviceWarranty.trim(),
         ...(diagForm.estimatedTime ? { estimatedTime: parseInt(diagForm.estimatedTime) } : {}),
+        ...(afterApproval && diagForm.reason.trim() ? { reason: diagForm.reason.trim() } : {}),
       }
-      const isRevise = diagRequest.status === 'diagnosis'
       const res = isRevise
         ? await serviceRequestAPI.updateDiagnosis(diagRequest._id, payload)
         : await serviceRequestAPI.submitDiagnosis(diagRequest._id, payload)
       if (res.data?.success) {
-        toast.success(isRevise ? 'Quotation revised — customer notified' : 'Diagnosis submitted — sent to customer for approval')
+        toast.success(
+          afterApproval ? 'Quotation revised — customer must approve again before work continues'
+            : isRevise ? 'Quotation revised — customer notified'
+            : 'Diagnosis submitted — sent to customer for approval',
+        )
         setDiagDialogOpen(false)
         setDiagRequest(null)
         dispatch(fetchServiceRequestsRequest())
@@ -793,6 +811,68 @@ export function ServiceManagement() {
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Could not accept request')
     } finally { setAcceptingId(null) }
+  }
+
+  // ── Customer decision recorded by admin (customer confirmed on phone / in person) ──
+  const handleApproveQuoteOnBehalf = async (request: ServiceRequest) => {
+    const total = request.diagnosis?.costBreakdown?.totalEstimate ?? 0
+    const who = (request.customer as any)?.name || (request.customer as any)?.fullName || 'the customer'
+    if (typeof window !== 'undefined' && !window.confirm(`Approve the ₹${total} quotation on behalf of ${who}?\n\nOnly do this after the customer confirmed (phone / in person). Work will be marked as started and the mechanic notified.`)) return
+    setProxyBusy(request._id)
+    try {
+      const res = await serviceRequestAPI.approveQuoteOnBehalf(request._id)
+      if (res.data?.success) {
+        toast.success('Quotation approved for the customer — mechanic notified')
+        dispatch(fetchServiceRequestsRequest())
+        setSelectedRequest(null)
+      } else toast.error(res.data?.message || 'Could not approve quotation')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not approve quotation')
+    } finally { setProxyBusy(null) }
+  }
+
+  const handleRejectQuoteOnBehalf = async (request: ServiceRequest) => {
+    if (typeof window === 'undefined') return
+    const hasPendingRevision = (request.diagnosis?.revisions || []).some((r) => r.outcome === 'pending')
+    const reason = window.prompt(
+      hasPendingRevision
+        ? 'Reason the customer declined the revised quote (work continues on the previously approved quote):'
+        : 'Reason the customer rejected the quote (the request will be closed as "quote rejected"):',
+      '',
+    )
+    if (reason === null) return
+    setProxyBusy(request._id)
+    try {
+      const res = await serviceRequestAPI.rejectQuoteOnBehalf(request._id, reason.trim() || undefined)
+      if (res.data?.success) {
+        toast.success(res.data?.message || 'Quotation rejected for the customer')
+        dispatch(fetchServiceRequestsRequest())
+        setSelectedRequest(null)
+      } else toast.error(res.data?.message || 'Could not reject quotation')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not reject quotation')
+    } finally { setProxyBusy(null) }
+  }
+
+  // ── Complete the job on the mechanic's behalf (no customer OTP) ──
+  const handleCompleteOnBehalf = async (request: ServiceRequest) => {
+    if (typeof window === 'undefined') return
+    const note = window.prompt(
+      `Mark service #${(request as any).requestId || request._id} as COMPLETED on behalf of ${request.mechanic?.name || 'the mechanic'}?\n\nThe customer is notified to pay. Optional note:`,
+      '',
+    )
+    if (note === null) return
+    setProxyBusy(request._id)
+    try {
+      const res = await serviceRequestAPI.completeOnBehalf(request._id, note.trim() || undefined)
+      if (res.data?.success) {
+        toast.success('Marked completed — customer notified to pay. Use "Mark Paid" once payment is collected.')
+        dispatch(fetchServiceRequestsRequest())
+        setSelectedRequest(null)
+      } else toast.error(res.data?.message || 'Could not complete request')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not complete request')
+    } finally { setProxyBusy(null) }
   }
 
   const handleOpenAssignDialog = async (request: ServiceRequest) => {
@@ -1334,6 +1414,32 @@ export function ServiceManagement() {
                                 {request.status === 'diagnosis' ? 'Revise quotation (on behalf)' : 'Submit quotation (on behalf)'}
                               </DropdownMenuItem>
                             )}
+                            {request.status === 'diagnosis' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleApproveQuoteOnBehalf(request)} disabled={proxyBusy === request._id}>
+                                  <CheckCircle className="h-4 w-4 mr-2 text-emerald-600" />
+                                  Approve quote (for customer)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleRejectQuoteOnBehalf(request)} disabled={proxyBusy === request._id}>
+                                  <XCircle className="h-4 w-4 mr-2 text-rose-600" />
+                                  Reject quote (for customer)
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {DIAG_AFTER_APPROVAL_STATUSES.includes(request.status) && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleOpenDiagnosis(request)}>
+                                  <Edit className="h-4 w-4 mr-2 text-indigo-600" />
+                                  Add/remove items (re-approval)
+                                </DropdownMenuItem>
+                                {request.status === 'in_progress' && (
+                                  <DropdownMenuItem onClick={() => handleCompleteOnBehalf(request)} disabled={proxyBusy === request._id}>
+                                    <CheckCircle className="h-4 w-4 mr-2 text-indigo-600" />
+                                    Complete work (on behalf)
+                                  </DropdownMenuItem>
+                                )}
+                              </>
+                            )}
                             {request.customer.phone && (
                               <DropdownMenuItem asChild>
                                 <a href={`tel:${request.customer.phone}`}>
@@ -1872,7 +1978,9 @@ export function ServiceManagement() {
         <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {diagRequest?.status === 'diagnosis' ? 'Revise quotation' : 'Submit diagnosis'}
+              {diagRequest && DIAG_AFTER_APPROVAL_STATUSES.includes(diagRequest.status)
+                ? 'Add / remove items (customer re-approval)'
+                : diagRequest?.status === 'diagnosis' ? 'Revise quotation' : 'Submit diagnosis'}
             </DialogTitle>
             <DialogDescription>
               {diagRequest?.mechanic?.name
@@ -1902,7 +2010,7 @@ export function ServiceManagement() {
               <div className="flex items-center justify-between mb-1.5">
                 <Label className="text-xs">Parts</Label>
                 <Button type="button" size="sm" variant="outline" className="h-7 text-[11px]"
-                  onClick={() => setDiagForm((f) => ({ ...f, parts: [...f.parts, { name: '', cost: '', quantity: '1' }] }))}>
+                  onClick={() => setDiagForm((f) => ({ ...f, parts: [...f.parts, { name: '', cost: '', quantity: '1', warranty: '' }] }))}>
                   + Add part
                 </Button>
               </div>
@@ -1923,6 +2031,10 @@ export function ServiceManagement() {
                     <Input className="w-16" type="number" min="1" placeholder="Qty" value={p.quantity}
                       onChange={(e) => setDiagForm((f) => {
                         const parts = [...f.parts]; parts[i] = { ...parts[i], quantity: e.target.value }; return { ...f, parts }
+                      })} />
+                    <Input className="w-28" placeholder="Warranty" title="Guarantee / warranty on this part, e.g. 6 months" value={p.warranty}
+                      onChange={(e) => setDiagForm((f) => {
+                        const parts = [...f.parts]; parts[i] = { ...parts[i], warranty: e.target.value }; return { ...f, parts }
                       })} />
                     <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500"
                       onClick={() => setDiagForm((f) => ({ ...f, parts: f.parts.filter((_, j) => j !== i) }))}>
@@ -1945,6 +2057,21 @@ export function ServiceManagement() {
                 <Input type="number" min="0" value={diagForm.discount} placeholder="0"
                   onChange={(e) => setDiagForm((f) => ({ ...f, discount: e.target.value }))} />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Service guarantee</Label>
+                <Input value={diagForm.serviceWarranty} placeholder="e.g. 15 days on labour"
+                  onChange={(e) => setDiagForm((f) => ({ ...f, serviceWarranty: e.target.value }))} />
+              </div>
+              {diagRequest && DIAG_AFTER_APPROVAL_STATUSES.includes(diagRequest.status) && (
+                <div>
+                  <Label className="text-xs">Reason for change</Label>
+                  <Input value={diagForm.reason} placeholder="e.g. brake pads also worn"
+                    onChange={(e) => setDiagForm((f) => ({ ...f, reason: e.target.value }))} />
+                </div>
+              )}
             </div>
 
             <div>
@@ -1973,7 +2100,10 @@ export function ServiceManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDiagDialogOpen(false)} disabled={diagSaving}>Cancel</Button>
             <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleSubmitDiagnosis} disabled={diagSaving}>
-              {diagSaving ? 'Submitting…' : diagRequest?.status === 'diagnosis' ? 'Save revision' : 'Submit & notify customer'}
+              {diagSaving ? 'Submitting…'
+                : diagRequest && DIAG_AFTER_APPROVAL_STATUSES.includes(diagRequest.status) ? 'Send revised quote for approval'
+                : diagRequest?.status === 'diagnosis' ? 'Save revision'
+                : 'Submit & notify customer'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2637,26 +2767,88 @@ export function ServiceManagement() {
                   </div>
                 )}
 
-                {/* Submit diagnosis on the mechanic's behalf — shown while the
-                    request is in the window the mechanic app allows. */}
-                {['accepted', 'on_way', 'diagnosis'].includes(selectedRequest.status) && (
+                {/* Submit / revise the quotation on the mechanic's behalf. After
+                    approval, adding/removing items sends it back to the customer. */}
+                {['accepted', 'on_way', 'diagnosis', 'approved', 'in_progress'].includes(selectedRequest.status) && (
                   <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
                     <h4 className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Search className="h-3 w-3" /> Diagnosis (on mechanic&apos;s behalf)
+                      <Search className="h-3 w-3" /> Quotation (on mechanic&apos;s behalf)
                     </h4>
                     <p className="text-xs text-[#6B7280] mb-3">
-                      {selectedRequest.status === 'diagnosis'
-                        ? 'Quotation already sent to the customer. You can revise it here if the mechanic asks.'
-                        : "If the mechanic can't submit the quotation from the app, enter it here — the customer gets it for approval exactly as normal."}
+                      {DIAG_AFTER_APPROVAL_STATUSES.includes(selectedRequest.status)
+                        ? 'Customer already approved. Add or remove parts/labour here — the customer must approve the revised quote again before work continues (if they decline, the earlier approved quote stays).'
+                        : selectedRequest.status === 'diagnosis'
+                          ? 'Quotation already sent to the customer. You can revise it here if the mechanic asks.'
+                          : "If the mechanic can't submit the quotation from the app, enter it here — the customer gets it for approval exactly as normal."}
                     </p>
-                    <Button
-                      size="sm"
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                      onClick={() => handleOpenDiagnosis(selectedRequest)}
-                    >
-                      <Search className="h-3.5 w-3.5 mr-1.5" />
-                      {selectedRequest.status === 'diagnosis' ? 'Revise quotation' : 'Submit diagnosis'}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                        onClick={() => handleOpenDiagnosis(selectedRequest)}
+                      >
+                        {DIAG_AFTER_APPROVAL_STATUSES.includes(selectedRequest.status)
+                          ? <Edit className="h-3.5 w-3.5 mr-1.5" />
+                          : <Search className="h-3.5 w-3.5 mr-1.5" />}
+                        {DIAG_AFTER_APPROVAL_STATUSES.includes(selectedRequest.status)
+                          ? 'Add / remove items'
+                          : selectedRequest.status === 'diagnosis' ? 'Revise quotation' : 'Submit diagnosis'}
+                      </Button>
+                      {selectedRequest.status === 'in_progress' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-indigo-300 text-indigo-700 hover:bg-indigo-100"
+                          onClick={() => handleCompleteOnBehalf(selectedRequest)}
+                          disabled={proxyBusy === selectedRequest._id}
+                        >
+                          {proxyBusy === selectedRequest._id
+                            ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
+                          Complete work (on behalf)
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Customer decision recorded by admin — when the customer confirms
+                    on the phone / in person instead of tapping in the app. */}
+                {selectedRequest.status === 'diagnosis' && selectedRequest.diagnosis?.diagnosedAt && (
+                  <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                    <h4 className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <User className="h-3 w-3" /> Customer decision (on customer&apos;s behalf)
+                    </h4>
+                    <p className="text-xs text-[#6B7280] mb-3">
+                      Quote of <b>₹{selectedRequest.diagnosis.costBreakdown?.totalEstimate ?? 0}</b> is waiting for the customer.
+                      If they confirmed with you directly, record it here — same flow and notifications as the app.
+                      {(selectedRequest.diagnosis.revisions || []).some((r) => r.outcome === 'pending') && (
+                        <> This is a <b>revised</b> quote — declining keeps the earlier approved quote and work continues.</>
+                      )}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => handleApproveQuoteOnBehalf(selectedRequest)}
+                        disabled={proxyBusy === selectedRequest._id}
+                      >
+                        {proxyBusy === selectedRequest._id
+                          ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
+                        Approve for customer
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-rose-300 text-rose-700 hover:bg-rose-50"
+                        onClick={() => handleRejectQuoteOnBehalf(selectedRequest)}
+                        disabled={proxyBusy === selectedRequest._id}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                        Reject for customer
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -2671,13 +2863,27 @@ export function ServiceManagement() {
                     )}
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs">
-                        <span className="text-[#6B7280]">Labor Cost</span>
+                        <span className="text-[#6B7280]">
+                          Labor Cost
+                          {selectedRequest.diagnosis.serviceWarranty && (
+                            <span className="ml-1.5 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-1 py-0.5">
+                              Guarantee: {selectedRequest.diagnosis.serviceWarranty}
+                            </span>
+                          )}
+                        </span>
                         <span className="font-medium">₹{selectedRequest.diagnosis.costBreakdown?.laborCost || 0}</span>
                       </div>
                       {selectedRequest.diagnosis.costBreakdown?.parts?.map((part: any, i: number) => (
-                        <div key={i} className="flex justify-between text-xs">
-                          <span className="text-[#6B7280]">{part.name} x{part.quantity || 1}</span>
-                          <span className="font-medium">₹{part.cost * (part.quantity || 1)}</span>
+                        <div key={i} className="flex justify-between text-xs gap-2">
+                          <span className="text-[#6B7280] min-w-0">
+                            {part.name} x{part.quantity || 1}
+                            {part.warranty && (
+                              <span className="ml-1.5 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-1 py-0.5">
+                                Warranty: {part.warranty}
+                              </span>
+                            )}
+                          </span>
+                          <span className="font-medium shrink-0">₹{part.cost * (part.quantity || 1)}</span>
                         </div>
                       ))}
                       {(selectedRequest.diagnosis.costBreakdown?.additionalCharges || 0) > 0 && (
@@ -2731,6 +2937,27 @@ export function ServiceManagement() {
                         {selectedRequest.customerApproval.rejectionReason && (
                           <p className="text-xs text-red-600 mt-1">Reason: {selectedRequest.customerApproval.rejectionReason}</p>
                         )}
+                      </div>
+                    )}
+                    {(selectedRequest.diagnosis.revisions || []).length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-amber-200 space-y-1.5">
+                        <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Changes after approval</p>
+                        {selectedRequest.diagnosis.revisions!.map((r, i) => (
+                          <div key={i} className="flex items-start justify-between gap-2 text-[11px]">
+                            <span className="text-[#6B7280] min-w-0">
+                              {new Date(r.revisedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })} · by {r.revisedBy}
+                              {r.reason ? ` · ${r.reason}` : ''}
+                              {r.outcome === 'declined' && r.declineReason ? ` · declined: ${r.declineReason}` : ''}
+                            </span>
+                            <span className={`shrink-0 font-semibold px-1.5 py-0.5 rounded ${
+                              r.outcome === 'approved' ? 'bg-green-100 text-green-700'
+                                : r.outcome === 'declined' ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              ₹{r.previousTotal} → ₹{r.newTotal} · {r.outcome}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

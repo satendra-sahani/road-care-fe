@@ -104,7 +104,7 @@ export default function ShopWalletPage() {
   if (loading) return <div className="flex items-center justify-center h-72"><Loader2 className="h-8 w-8 animate-spin" style={{ color: DIST }} /></div>
 
   const balance = wallet?.balance || 0
-  const minBalance = wallet?.minBalance ?? 2000
+  const minBalance = wallet?.minBalance ?? 1000
   const belowMin = wallet?.belowMinimum ?? (balance < minBalance)
   const shortfall = wallet?.shortfall ?? Math.max(0, minBalance - balance)
   const earnings = dash?.earnings || {}

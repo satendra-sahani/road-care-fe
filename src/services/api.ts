@@ -219,6 +219,14 @@ export const serviceRequestAPI = {
   // Same transition + customer notification as the mechanic-app accept.
   acceptOnBehalf: (id: string) =>
     api.put(`/admin/service-requests/${id}/accept`),
+  // Customer decision recorded by admin (customer confirmed on phone / in person)
+  approveQuoteOnBehalf: (id: string) =>
+    api.post(`/admin/service-requests/${id}/approve-quote`),
+  rejectQuoteOnBehalf: (id: string, reason?: string) =>
+    api.post(`/admin/service-requests/${id}/reject-quote`, { reason }),
+  // Mark the job completed on the mechanic's behalf (no customer OTP)
+  completeOnBehalf: (id: string, note?: string) =>
+    api.post(`/admin/service-requests/${id}/complete`, { note }),
   cancel: (id: string, reason: string) =>
     api.put(`/admin/service-requests/${id}/cancel`, { reason }),
   updateCost: (id: string, data: {

@@ -30,7 +30,7 @@ const SETTLEMENT_CYCLES: { value: ShopFormValues['settlementCycle']; label: stri
   { value: 'monthly', label: 'Monthly' },
 ]
 /** Platform-wide minimum wallet balance (MIN_WALLET_BALANCE in backend routes/shop/index.js) */
-const PLATFORM_MIN_WALLET = 2000
+const PLATFORM_MIN_WALLET = 1000
 const MAX_SHOP_PHOTOS = 4
 
 export type ShopFormValues = {

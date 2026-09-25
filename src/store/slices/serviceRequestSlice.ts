@@ -44,7 +44,7 @@ export interface ServiceRequest {
     photos?: string[];
     costBreakdown?: {
       laborCost: number;
-      parts: Array<{ name: string; cost: number; quantity: number }>;
+      parts: Array<{ name: string; cost: number; quantity: number; warranty?: string }>;
       additionalCharges: number;
       discount: number;
       totalEstimate: number;
@@ -53,6 +53,17 @@ export interface ServiceRequest {
       amountDue?: number;
     };
     estimatedTime?: string;
+    serviceWarranty?: string;
+    revisions?: Array<{
+      revisedAt: string;
+      revisedBy: 'mechanic' | 'admin';
+      reason?: string;
+      previousStatus?: string;
+      previousTotal: number;
+      newTotal: number;
+      outcome: 'pending' | 'approved' | 'declined';
+      declineReason?: string;
+    }>;
     diagnosedAt?: string;
     diagnosedBy?: string;
   };
