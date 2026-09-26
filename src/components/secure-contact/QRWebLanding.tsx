@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { resolveCode, type ScanResult } from '@/lib/secureContact'
+import { PLAY_STORE_URL, APP_STORE_URL } from '@/lib/appLinks'
 import { GuestCallFlow } from '@/components/calls/GuestCallFlow'
 import { Shield, Phone, Send, Check, Apple, Play, Wrench, Loader2, SearchX } from 'lucide-react'
 
@@ -108,8 +109,8 @@ export function QRWebLanding({ code }: { code: string }) {
             </div>
           </div>
           <div className="mt-3.5 grid grid-cols-2 gap-2.5">
-            <div className="flex h-[46px] items-center justify-center gap-2 rounded-xl bg-black text-xs font-bold"><Apple className="h-4 w-4" /> App Store</div>
-            <div className="flex h-[46px] items-center justify-center gap-2 rounded-xl bg-black text-xs font-bold"><Play className="h-4 w-4" /> Google Play</div>
+            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="flex h-[46px] items-center justify-center gap-2 rounded-xl bg-black text-xs font-bold text-white hover:text-white"><Apple className="h-4 w-4" /> App Store</a>
+            <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="flex h-[46px] items-center justify-center gap-2 rounded-xl bg-black text-xs font-bold text-white hover:text-white"><Play className="h-4 w-4" /> Google Play</a>
           </div>
         </div>
         <button onClick={() => router.push('/')} className="mt-3 h-11 w-full text-[13px] font-bold text-slate-500">Continue on web instead</button>

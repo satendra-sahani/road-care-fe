@@ -37,7 +37,7 @@ export default function DeleteAccountPage() {
               </div>
               <p className="text-xs md:text-sm text-white/80 max-w-2xl leading-relaxed">
                 You can request deletion of your <strong>Bharat Mechanics</strong> account
-                (app package <code className="bg-white/10 px-1.5 py-0.5 rounded text-[11px]">com.bharatmechanics.app</code>)
+                (app package <code className="bg-white/10 px-1.5 py-0.5 rounded text-[11px]">com.bharatmechanics</code>)
                 and all associated personal data at any time, free of cost. This page explains how to request deletion,
                 what data we delete, what we are legally required to retain, and how long the process takes.
               </p>

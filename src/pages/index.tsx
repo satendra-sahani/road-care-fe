@@ -19,6 +19,7 @@ const HomeOfferPopup = dynamic(() => import('@/components/home/HomeOfferPopup').
 import { useBmCareSub, planById } from '@/lib/bmCare'
 import { ScaledStage } from '@/components/home/ScaledStage'
 import { DImg, ikUrl } from '@/components/ui/DImg'
+import { PLAY_STORE_URL, APP_STORE_URL } from '@/lib/appLinks'
 import Link from 'next/link'
 import Head from 'next/head'
 // sonner is only needed after an "Add to cart" click — load it then, not with the page.
@@ -1094,9 +1095,9 @@ function AppBannerCopy({ compact = false }: { compact?: boolean }) {
         ))}
       </div>
       <div className={`flex flex-wrap items-center gap-[13px] ${compact ? 'mt-5' : 'mt-[26px]'}`}>
-        <a href="https://play.google.com/store/apps/details?id=com.bharatmechanics.app" target="_blank" rel="noopener noreferrer" aria-label="Get it on Google Play" className="block leading-none"><DImg sizes="190px" src="/design/ap-gp.webp" alt="Get it on Google Play" className={`w-auto ${compact ? 'h-11' : 'h-[62px]'}`} /></a>
-        <span aria-label="App Store — coming soon" className="block cursor-not-allowed leading-none opacity-80"><DImg sizes="180px" src="/design/ap-as.webp" alt="Download on the App Store" className={`w-auto ${compact ? 'h-11' : 'h-[62px]'}`} /></span>
-        <DImg sizes="80px" src="/design/ap-qr.webp" alt="QR code to download the app" className={`ml-2 object-contain ${compact ? 'h-14 w-14' : 'h-20 w-20'}`} />
+        <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" aria-label="Get it on Google Play" className="block leading-none"><DImg sizes="190px" src="/design/ap-gp.webp" alt="Get it on Google Play" className={`w-auto ${compact ? 'h-11' : 'h-[62px]'}`} /></a>
+        <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store" className="block leading-none"><DImg sizes="180px" src="/design/ap-as.webp" alt="Download on the App Store" className={`w-auto ${compact ? 'h-11' : 'h-[62px]'}`} /></a>
+        <DImg sizes="80px" src="/design/app-qr.png" alt="QR code to download the Bharat Mechanics app" className={`ml-2 object-contain ${compact ? 'h-14 w-14' : 'h-20 w-20'}`} />
         <span className={`leading-[1.35] text-[#41586F] ${compact ? 'text-[13px]' : 'text-[20px]'}`}>Scan QR code<br />to download</span>
       </div>
     </div>
@@ -1181,16 +1182,16 @@ function ProductCard({ product, price, mrp, discount, image, rating, reviews, on
 function StoreBadges({ dark }: { dark: boolean }) {
   return (
     <div className="mt-5 flex flex-wrap items-center gap-3">
-      <a href="https://play.google.com/store/apps/details?id=com.bharatmechanics.app" target="_blank" rel="noopener noreferrer" className={`flex items-center gap-[9px] rounded-[10px] px-4 py-2 ${dark ? 'bg-white text-[#0E2B4C]' : 'bg-black text-white'}`}>
+      <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-[9px] rounded-[10px] px-4 py-2 ${dark ? 'bg-white text-[#0E2B4C]' : 'bg-black text-white'}`}>
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2.5 13.5 12 3 21.5Z" fill="#34A853"/><path d="M3 2.5 17 10.5l-3.5 1.5Z" fill="#EA4335"/><path d="M3 21.5 13.5 12l3.5 1.5Z" fill="#FBBC04"/><path d="M17 10.5 21 12l-4 1.5Z" fill="#4285F4"/></svg>
         <span className="leading-[1.15]"><span className="block text-[7.5px] tracking-[0.9px]">GET IT ON</span><span className="block text-[14px] font-semibold">Google Play</span></span>
       </a>
-      <span aria-label="App Store — coming soon" className={`flex cursor-not-allowed items-center gap-[9px] rounded-[10px] px-4 py-2 opacity-80 ${dark ? 'border border-white/25 bg-black text-white' : 'bg-black text-white'}`}>
+      <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-[9px] rounded-[10px] px-4 py-2 ${dark ? 'border border-white/25 bg-black text-white' : 'bg-black text-white'}`}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.7 3-.7s1.7.7 2.9.7 2-1.1 2.8-2.2c.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.5-1-2.5-3.8ZM14.3 5.3c.6-.8 1-1.8.9-2.9-.9.1-2 .6-2.7 1.4-.6.7-1.1 1.8-.9 2.8 1 .1 2-.5 2.7-1.3Z"/></svg>
-        <span className="leading-[1.15]"><span className="block text-[7.5px]">COMING SOON</span><span className="block text-[14px] font-semibold">App Store</span></span>
-      </span>
+        <span className="leading-[1.15]"><span className="block text-[7.5px] tracking-[0.4px]">Download on the</span><span className="block text-[14px] font-semibold">App Store</span></span>
+      </a>
       <div className="flex items-center gap-2.5">
-        <DImg sizes="52px" src="/design/qr.png" alt="QR code to download the app" className={`h-[52px] w-[52px] rounded-md object-contain ${dark ? 'bg-white p-[3px]' : ''}`} />
+        <DImg sizes="52px" src="/design/app-qr.png" alt="QR code to download the Bharat Mechanics app" className={`h-[52px] w-[52px] rounded-md object-contain ${dark ? 'bg-white p-[3px]' : ''}`} />
         <div className={`whitespace-nowrap text-[11.5px] leading-[1.35] ${dark ? 'text-[#C3D4E6]' : 'text-[#41586F]'}`}>Scan QR code<br />to download</div>
       </div>
     </div>

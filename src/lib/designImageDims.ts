@@ -14,6 +14,7 @@ export const DESIGN_DIMS: Record<string, [number, number]> = {
   '/design/ap-phones.webp': [440, 570],
   '/design/ap-phones2.webp': [440, 570],
   '/design/ap-qr.webp': [110, 108],
+  '/design/app-qr.png': [300, 300],
   '/design/ap-swoosh.webp': [445, 250],
   '/design/app-banner-v10.webp': [1100, 920],
   '/design/app-banner-v2.webp': [1100, 733],
