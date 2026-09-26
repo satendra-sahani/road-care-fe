@@ -112,13 +112,13 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        // `font-sans` (default) → Manrope for body and UI.
-        // `font-display` → Bricolage Grotesque for headings / hero copy.
+        // `font-sans` (default) → Poppins for body and UI.
+        // `font-display` → Poppins as well (same next/font family).
         // Fallback chain runs through system fonts so we never get an
         // invisible flash if next/font fails to load.
         sans: [
           'var(--font-body)',
-          'Manrope',
+          'Poppins',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
@@ -131,7 +131,7 @@ module.exports = {
         display: [
           'var(--font-display)',
           'var(--font-body)',
-          'Manrope',
+          'Poppins',
           'system-ui',
           'sans-serif',
         ],

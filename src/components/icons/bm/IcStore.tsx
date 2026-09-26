@@ -1,0 +1,3 @@
+import { mk } from "./mk"
+
+export const IcStore = /*#__PURE__*/ mk(["M20 4H4V6H20V4ZM21 14V12L20 7H4L3 12V14H4V20H14V14H18V20H20V14H21ZM12 18H6V14H12V18Z"], "IcStore")

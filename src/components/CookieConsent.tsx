@@ -2,25 +2,34 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Cookie, X } from 'lucide-react'
+import { IcClose } from '@/components/icons/BmIcons'
 
 const KEY = 'bm_cookie_consent'
 
 /**
- * Site-wide cookie consent banner. Shows once until the visitor chooses; the
+ * Site-wide cookie consent bar. Shows once until the visitor chooses; the
  * choice is stored in localStorage. "Only essential" (and the dismiss X) is the
  * privacy-preserving default — non-essential/analytics cookies should only be
  * loaded when the stored choice is 'accepted'.
+ *
+ * Kept compact and shown once the page is idle, so it never competes with the
+ * page's own content for first paint (it used to become the page's LCP element).
  */
 export function CookieConsent() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    try {
-      if (!localStorage.getItem(KEY)) setVisible(true)
-    } catch {
-      /* storage blocked — do not show */
+    let seen = true
+    try { seen = !!localStorage.getItem(KEY) } catch { /* storage blocked — do not show */ }
+    if (seen) return
+    const show = () => setVisible(true)
+    const w = window as any
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(show, { timeout: 3000 })
+      return () => w.cancelIdleCallback?.(id)
     }
+    const t = setTimeout(show, 1500)
+    return () => clearTimeout(t)
   }, [])
 
   const choose = (choice: 'accepted' | 'rejected') => {
@@ -36,42 +45,31 @@ export function CookieConsent() {
   if (!visible) return null
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[9999] p-3 sm:p-4 pointer-events-none">
-      <div className="pointer-events-auto mx-auto max-w-3xl rounded-2xl border border-black/[0.06] bg-white p-4 shadow-[0_14px_44px_-14px_rgba(15,37,71,0.4)] ring-1 ring-black/5 sm:p-5">
-        <div className="flex items-start gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#FFF1E8] text-[#FF6B35]">
-            <Cookie className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13.5px] leading-relaxed text-[#334155] md:text-sm">
-              We use cookies to keep you signed in, remember your cart, and improve Bharat Mechanics with
-              anonymous analytics. You can accept all, or keep only the essential ones. See our{' '}
-              <Link href="/privacy#10" className="font-semibold text-[#1B3B6F] underline underline-offset-2">
-                Cookie &amp; Privacy Policy
-              </Link>
-              .
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => choose('accepted')}
-                className="inline-flex items-center rounded-full bg-[#FF6B35] px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#F2541B]"
-              >
-                Accept all
-              </button>
-              <button
-                onClick={() => choose('rejected')}
-                className="inline-flex items-center rounded-full bg-[#EEF2F7] px-4 py-2 text-[13px] font-bold text-[#1B3B6F] transition-colors hover:bg-[#E2E9F2]"
-              >
-                Only essential
-              </button>
-            </div>
-          </div>
+    <div role="region" aria-label="Cookie consent" className="pointer-events-none fixed inset-x-0 bottom-0 z-[9999] p-2.5 max-md:bottom-[60px] sm:p-4">
+      <div className="pointer-events-auto mx-auto flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-[#E6ECF3] bg-white px-3.5 py-2.5 shadow-[0_14px_44px_-14px_rgba(15,37,71,0.4)]">
+        <p className="min-w-0 flex-[1_1_220px] text-[12.5px] leading-snug text-[#41586F]">
+          We use cookies for sign-in, your cart and anonymous analytics.{' '}
+          <Link href="/privacy#10" className="font-semibold text-[#0E2B4C] underline underline-offset-2">Cookie policy</Link>
+        </p>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => choose('accepted')}
+            className="inline-flex h-9 items-center rounded-full bg-[#C94309] px-4 text-[12.5px] font-bold text-white transition-colors hover:bg-[#A93807]"
+          >
+            Accept all
+          </button>
+          <button
+            onClick={() => choose('rejected')}
+            className="inline-flex h-9 items-center rounded-full bg-[#EEF2F7] px-4 text-[12.5px] font-bold text-[#0E2B4C] transition-colors hover:bg-[#E2E9F2]"
+          >
+            Only essential
+          </button>
           <button
             onClick={() => choose('rejected')}
             aria-label="Dismiss (keep only essential cookies)"
-            className="-mr-1 -mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#94A3B8] hover:bg-black/[0.04]"
+            className="grid h-9 w-9 place-items-center rounded-full text-[#52667C] hover:bg-black/[0.04]"
           >
-            <X className="h-4 w-4" />
+            <IcClose size={16} />
           </button>
         </div>
       </div>

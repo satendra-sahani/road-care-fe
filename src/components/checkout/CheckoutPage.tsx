@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { loadRazorpay } from '@/lib/loadRazorpay'
 import { useRouter } from 'next/router'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
@@ -55,6 +56,9 @@ export function CheckoutPage() {
 
   // BM Care membership — parts-discount % applied at checkout (matches backend).
   const [member, setMember] = useState<{ partsDisc: number; planName: string } | null>(null)
+
+  // Payment SDK is fetched only on this page (not site-wide) — warm it up early.
+  useEffect(() => { loadRazorpay() }, [])
 
   useEffect(() => {
     fetchData()
@@ -238,7 +242,8 @@ export function CheckoutPage() {
           },
         }
 
-        if (typeof window.Razorpay !== 'undefined') {
+        const rzpReady = await loadRazorpay()
+        if (rzpReady && typeof window.Razorpay !== 'undefined') {
           const rzp = new window.Razorpay(options)
           rzp.open()
         } else {

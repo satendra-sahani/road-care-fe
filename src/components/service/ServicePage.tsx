@@ -26,6 +26,7 @@ import {
 declare global {
   interface Window { Razorpay: any }
 }
+import { loadRazorpay } from '@/lib/loadRazorpay'
 
 const vehicleTypes = [
   { value: 'car', label: 'Car', icon: Car, emoji: '🚗' },
@@ -283,6 +284,7 @@ export function ServicePage() {
   }
 
   const handleSubmit = async () => {
+    loadRazorpay() // warm the payment SDK while the booking is being created
     if (!isAuthenticated) { openLogin(); return }
     // Mirror Android validation: vehicle, service, issues, address, contact
     // number all required. Description is optional (Android auto-builds it
@@ -367,7 +369,7 @@ export function ServicePage() {
         setSubmitProgress('Opening payment gateway...')
         setSubmitting(false)
 
-        if (typeof window.Razorpay === 'undefined') {
+        if (!(await loadRazorpay()) || typeof window.Razorpay === 'undefined') {
           toast.error('Payment gateway not loaded. Please refresh the page.')
           setSubmitProgress(''); return
         }

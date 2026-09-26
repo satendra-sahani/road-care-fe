@@ -1,5 +1,5 @@
-/* Fonts are loaded via next/font in src/pages/_app.tsx — Manrope (body)
-   and Bricolage Grotesque (display). The CSS variables --font-body and
+/* Fonts are loaded via next/font in src/pages/_app.tsx — Poppins (body)
+   and display, per the Claude Design handoff). The CSS variables --font-body and
    --font-display are wired into Tailwind's `font-sans` / `font-display`
    utilities (see tailwind.config.js). */
 
@@ -8,20 +8,17 @@
 @tailwind utilities;
 
 /* ─── Typography baseline ──────────────────────────────────────────────
-   Apply Manrope to everything by default, Bricolage Grotesque to
-   headings. Slightly tighter tracking on display text for a premium
-   editorial feel, and aggressive antialiasing so font edges stay crisp
-   on Windows + macOS. */
+   Poppins everywhere (single next/font family, see _app.tsx). No stylistic
+   sets are forced, so glyphs render exactly as in the Claude Design handoff. */
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    font-feature-settings: 'ss01', 'ss02', 'cv11'; /* Manrope alt-glyph polish */
   }
 
   body {
-    font-family: var(--font-body), Manrope, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body), Poppins, system-ui, -apple-system, sans-serif;
     font-weight: 400;
     line-height: 1.55;
     color: hsl(var(--foreground));
@@ -31,7 +28,7 @@
   /* Display family + tighter tracking for all headings. Individual
      pages can still override via Tailwind utility classes. */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display), var(--font-body), Manrope, system-ui, sans-serif;
+    font-family: var(--font-display), var(--font-body), Poppins, system-ui, sans-serif;
     letter-spacing: -0.022em;
     line-height: 1.14;
     text-wrap: balance;
@@ -163,7 +160,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display), var(--font-body), Manrope, sans-serif;
+    font-family: var(--font-display), var(--font-body), Poppins, sans-serif;
   }
 }
 

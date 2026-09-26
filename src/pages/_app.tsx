@@ -2,40 +2,40 @@ import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { Provider } from "react-redux";
 import { store } from "@/store";
-import { AuthGuard } from "@/components/admin/AuthGuard";
 import { CustomerAuthGuard } from "@/components/auth/CustomerAuthGuard";
-import { ShopAuthGuard } from "@/components/shop-partner/ShopAuthGuard";
-import { ShopLayout } from "@/components/shop-partner/ShopLayout";
 import { LoginModalProvider } from "@/components/auth/LoginModalProvider";
 import { IncomingCallProvider } from "@/components/calls/IncomingCallProvider";
 import { AdminCallProvider } from "@/components/calls/AdminCallProvider";
 import { CookieConsent } from "@/components/CookieConsent";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { Toaster } from "sonner";
-import { Manrope, Bricolage_Grotesque } from "next/font/google";
+import dynamic from "next/dynamic";
+import { Poppins } from "next/font/google";
 
-// ─── Self-hosted, preloaded fonts via next/font ────────────────────────
-// Manrope for body / UI text — warm, modern, highly legible on screens
-// without the over-used Inter look. Generous x-height keeps prices and
-// product specs scannable at small sizes.
-// Bricolage Grotesque for display / headings — variable optical-size
-// grotesque with quietly distinctive curves; gives the brand a premium,
-// editorial feel that doesn't read as a Tailwind starter.
+// Admin / shop-partner shells are only used under /admin and /shop-partner —
+// split them out so public pages don't download them (SSR still renders them).
+const AuthGuard = dynamic(() => import("@/components/admin/AuthGuard").then((m) => m.AuthGuard));
+const ShopAuthGuard = dynamic(() => import("@/components/shop-partner/ShopAuthGuard").then((m) => m.ShopAuthGuard));
+const ShopLayout = dynamic(() => import("@/components/shop-partner/ShopLayout").then((m) => m.ShopLayout));
+
+// Toast host is client-only and not needed for first paint.
+const Toaster = dynamic(() => import("sonner").then((m) => m.Toaster), { ssr: false });
+
+// ─── Self-hosted, preloaded font via next/font ─────────────────────────
+// Poppins for BOTH body and display text — matches the Claude Design
+// handoff (website-design-buildout) used for the site redesign.
+// Geometric, friendly and highly legible at UI sizes.
+// The same family is exposed under both CSS variables so every existing
+// `font-sans` / `font-display` utility keeps working unchanged
+// (see tailwind.config.js).
 // Both are exposed as CSS variables so Tailwind can wire them into
 // `font-sans` and `font-display` utility classes (see tailwind.config.js).
-const body = Manrope({
+const poppins = Poppins({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
   weight: ["400", "500", "600", "700", "800"],
-});
-
-const display = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-  weight: ["500", "600", "700", "800"],
+  fallback: ["system-ui", "Segoe UI", "Roboto", "Arial", "sans-serif"],
 });
 
 // Admin pages that don't need admin auth
@@ -74,6 +74,7 @@ export default function App({ Component, pageProps }: AppProps) {
           the deeper page-level tag wins), so this is purely a safety net that
           guarantees no page is ever served "Untitled" to Google. */}
       <Head>
+        <meta key="viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <title>Bharat Mechanics – Auto Parts & Doorstep Vehicle Service</title>
         <meta
           name="description"
@@ -85,14 +86,14 @@ export default function App({ Component, pageProps }: AppProps) {
           uses the app font instead of falling back to a system serif/sans. */}
       <style jsx global>{`
         :root {
-          --font-body: ${body.style.fontFamily};
-          --font-display: ${display.style.fontFamily};
+          --font-body: ${poppins.style.fontFamily};
+          --font-display: ${poppins.style.fontFamily};
         }
       `}</style>
       <LoginModalProvider>
       <AdminCallProvider>
       <IncomingCallProvider>
-      <div className={`${body.variable} ${display.variable} font-sans`}>
+      <div className={`${poppins.variable} font-sans`}>
         <Toaster position="top-right" richColors closeButton />
         {needsAdminAuth(router.pathname) ? (
           <AuthGuard>

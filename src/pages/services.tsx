@@ -1,50 +1,176 @@
+// Services landing (/services) — restyled to the Claude Design handoff
+// ("Bharat Mechanics Services"). Static marketing page: the category tiles
+// filter the service list (preserving the previous tab filter), and every
+// CTA still routes to the real booking wizard (/service), /emergency or tel:.
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
+import { ScaledStage } from '@/components/home/ScaledStage'
+import { DImg } from '@/components/ui/DImg'
 import {
-  Wrench, Snowflake, Disc3, BatteryCharging, Droplet, Paintbrush, Sparkles,
-  LifeBuoy, Settings2, Car, Bike, Truck, Star, ShieldCheck, Clock, MapPin,
-  User, CheckCircle2, ArrowRight, Search, Calendar, Phone, Zap,
-} from 'lucide-react'
+  IcArrowForward, IcStar, IcSchedule, IcVerifiedUser, IcSearch, IcCalendarToday,
+  IcPerson, IcCreditCard, IcSettings, IcCall, IcBuild, IcDirectionsCar, IcTwoWheeler,
+  IcLocalShipping, IcLocationOn, IcExpandMore, IcGroups, IcCheckCircle,
+} from '@/components/icons/BmIcons'
 
 interface Service {
-  name: string; desc: string; price: string; mrp: string; save: string; time: string
-  icon: typeof Wrench; color: string; cat: string; rating: string; booked: string; pop: boolean
+  name: string; desc: string; price: string; mrp: string; badge: string; badgeTone: 'orange' | 'green'
+  time: string; cat: string; rating: string; booked: string; pop: boolean; img: string
 }
 
 const SERVICES: Service[] = [
-  { name: 'Periodic Service', desc: 'Complete 30-point inspection, oil change, filter clean & top-ups.', price: '2,499', mrp: '3,200', save: 'Save 22%', time: '3-4 hrs', icon: Wrench, color: 'bg-[#E8EEF7] text-[#1B3B6F]', cat: 'periodic', rating: '4.8', booked: '12.4k', pop: true },
-  { name: 'AC Service & Gas Refill', desc: 'AC inspection, gas top-up, cooling coil clean & odour removal.', price: '1,799', mrp: '2,250', save: 'Save 20%', time: '2 hrs', icon: Snowflake, color: 'bg-[#EAF1FE] text-[#2563EB]', cat: 'ac', rating: '4.7', booked: '8.1k', pop: true },
-  { name: 'Brake Service', desc: 'Brake pad check, fluid top-up, rotor inspection & adjustment.', price: '999', mrp: '1,300', save: 'Save 25%', time: '1-2 hrs', icon: Disc3, color: 'bg-[#E7F6F0] text-[#15936B]', cat: 'repairs', rating: '4.9', booked: '9.6k', pop: false },
-  { name: 'Battery Replacement', desc: 'Genuine battery with old-battery buyback & free fitting.', price: '4,499', mrp: '5,200', save: 'Save 15%', time: '45 min', icon: BatteryCharging, color: 'bg-[#FEF3E2] text-[#D97706]', cat: 'repairs', rating: '4.8', booked: '5.3k', pop: false },
-  { name: 'Oil Change', desc: 'Premium engine oil + filter replacement at your doorstep.', price: '599', mrp: '999', save: 'Save 40%', time: '45 min', icon: Droplet, color: 'bg-[#FFF1EB] text-[#FF6B35]', cat: 'periodic', rating: '4.9', booked: '15.2k', pop: true },
-  { name: 'Denting & Painting', desc: 'Dent removal, primer & paint match with showroom finish.', price: '1,499', mrp: '2,100', save: 'Save 30%', time: '1 day', icon: Paintbrush, color: 'bg-[#F1EBFE] text-[#7C3AED]', cat: 'detailing', rating: '4.7', booked: '3.8k', pop: false },
-  { name: 'Car Spa & Detailing', desc: 'Foam wash, interior vacuum, polish & ceramic coating options.', price: '899', mrp: '1,400', save: 'Save 35%', time: '2-3 hrs', icon: Sparkles, color: 'bg-[#E7F6F0] text-[#15936B]', cat: 'detailing', rating: '4.8', booked: '6.9k', pop: false },
-  { name: 'Roadside Assistance', desc: '24/7 emergency help — jump-start, flat tyre, towing & fuel.', price: '499', mrp: '750', save: 'Save 33%', time: '30 min ETA', icon: LifeBuoy, color: 'bg-[#FFF1EB] text-[#FF6B35]', cat: 'emergency', rating: '4.9', booked: '4.2k', pop: true },
-  { name: 'Wheel Alignment & Balancing', desc: 'Computerised alignment, balancing & tyre rotation.', price: '799', mrp: '1,100', save: 'Save 27%', time: '1 hr', icon: Settings2, color: 'bg-[#EAF1FE] text-[#2563EB]', cat: 'repairs', rating: '4.6', booked: '3.1k', pop: false },
+  { name: 'Periodic Service', desc: 'Complete 30-point inspection, oil change, filter clean & top-ups.', price: '2,499', mrp: '3,200', badge: 'Most booked', badgeTone: 'orange', time: '3-4 hrs', cat: 'periodic', rating: '4.8', booked: '12.4k', pop: true, img: '/design/svccard-oil.png' },
+  { name: 'AC Service & Gas Refill', desc: 'AC inspection, gas top-up, cooling coil clean & odour removal.', price: '1,799', mrp: '2,250', badge: 'Save 20%', badgeTone: 'green', time: '2 hrs', cat: 'ac', rating: '4.7', booked: '8.1k', pop: false, img: '/design/svccard-ac.png' },
+  { name: 'Brake Service', desc: 'Brake pad check, fluid top-up, rotor inspection & adjustment.', price: '999', mrp: '1,300', badge: 'Save 25%', badgeTone: 'orange', time: '1-2 hrs', cat: 'repairs', rating: '4.9', booked: '9.6k', pop: false, img: '/design/svccard-brake.png' },
+  { name: 'Battery Replacement', desc: 'Genuine battery with old-battery buyback & free fitting.', price: '4,499', mrp: '5,200', badge: 'Save 15%', badgeTone: 'green', time: '45 min', cat: 'batteries', rating: '4.8', booked: '5.3k', pop: false, img: '/design/svc-battery.png' },
+  { name: 'Oil Change', desc: 'Premium engine oil + filter replacement at your doorstep.', price: '599', mrp: '999', badge: 'Most booked', badgeTone: 'orange', time: '45 min', cat: 'periodic', rating: '4.9', booked: '15.2k', pop: true, img: '/design/svc-oil.png' },
+  { name: 'Denting & Painting', desc: 'Dent removal, primer & paint match with showroom finish.', price: '1,499', mrp: '2,100', badge: 'Save 30%', badgeTone: 'green', time: '1 day', cat: 'denting', rating: '4.7', booked: '3.8k', pop: false, img: '/design/svc-paint.png' },
+  { name: 'Car Spa & Detailing', desc: 'Foam wash, interior vacuum, polish & ceramic coating options.', price: '899', mrp: '1,400', badge: 'Save 35%', badgeTone: 'green', time: '2-3 hrs', cat: 'detailing', rating: '4.8', booked: '6.9k', pop: false, img: '/design/help-car.png' },
+  { name: 'Roadside Assistance', desc: '24/7 emergency help — jump-start, flat tyre, towing & fuel.', price: '499', mrp: '750', badge: 'Most booked', badgeTone: 'orange', time: '30 min ETA', cat: 'emergency', rating: '4.9', booked: '4.2k', pop: true, img: '/design/svc-roadside.png' },
+  { name: 'Wheel Alignment & Balancing', desc: 'Computerised alignment, balancing & tyre rotation.', price: '799', mrp: '1,100', badge: 'Save 27%', badgeTone: 'green', time: '1 hr', cat: 'tyres', rating: '4.6', booked: '3.1k', pop: false, img: '/design/svc-brake.png' },
 ]
 
-const TABS: [string, string][] = [['all', 'All Services'], ['periodic', 'Periodic'], ['repairs', 'Repairs'], ['ac', 'AC & Cooling'], ['detailing', 'Detailing'], ['emergency', 'Emergency']]
-const VEHICLES: [string, string, string][] = [['M', 'Maruti Suzuki', '#0d6efd'], ['H', 'Hyundai', '#1b3b6f'], ['T', 'Tata', '#1769aa'], ['M', 'Mahindra', '#b91c1c'], ['H', 'Honda', '#c1121f'], ['H', 'Hero', '#d97706'], ['R', 'Royal Enfield', '#1f2937']]
-const TRUST = [
-  { icon: User, color: 'bg-[#F2F6FC] text-[#1B3B6F]', title: 'Certified Mechanics', desc: 'ID-verified, trained & rated' },
-  { icon: ShieldCheck, color: 'bg-[#E7F6F0] text-[#15936B]', title: 'Genuine Parts Only', desc: 'OEM with verifiable invoice' },
-  { icon: Clock, color: 'bg-[#FFF1EB] text-[#FF6B35]', title: 'On-time, Live Tracked', desc: 'Know your mechanic ETA' },
-  { icon: BatteryCharging, color: 'bg-[#F1EBFE] text-[#7C3AED]', title: 'Pay After Service', desc: 'Transparent, no hidden fees' },
+/* Design category tiles — clicking one filters the list (click again to clear) */
+const CATEGORIES: { key: string; label: string; icon: string }[] = [
+  { key: 'periodic', label: 'Periodic Service', icon: '/design/svcicon-periodic.png' },
+  { key: 'repairs', label: 'Repairs', icon: '/design/svcicon-repairs.png' },
+  { key: 'ac', label: 'AC & Cooling', icon: '/design/svcicon-accool.png' },
+  { key: 'batteries', label: 'Batteries', icon: '/design/svcicon-batteries.png' },
+  { key: 'tyres', label: 'Tyres & Wheels', icon: '/design/svcicon-tyres.png' },
+  { key: 'denting', label: 'Denting & Painting', icon: '/design/svcicon-denting.png' },
+  { key: 'detailing', label: 'Detailing', icon: '/design/svcicon-detailing.png' },
+  { key: 'emergency', label: 'Emergency', icon: '/design/svcicon-emergency.png' },
 ]
+
+const BRANDS: { name: string; logo: string }[] = [
+  { name: 'Maruti Suzuki', logo: '/design/brand-maruti.png' },
+  { name: 'Hyundai', logo: '/design/brand-hyundai.png' },
+  { name: 'Tata', logo: '/design/brand-tata.png' },
+  { name: 'Mahindra', logo: '/design/brand-mahindra.png' },
+  { name: 'Honda', logo: '/design/brand-honda.png' },
+  { name: 'Toyota', logo: '/design/brand-toyota.png' },
+  { name: 'Kia', logo: '/design/brand-kia.png' },
+  { name: 'Renault', logo: '/design/brand-renault.png' },
+  { name: 'Skoda', logo: '/design/brand-skoda.png' },
+  { name: 'Volkswagen', logo: '/design/brand-vw.png' },
+]
+
 const STEPS = [
-  { icon: Search, title: 'Choose a service', desc: 'Pick from periodic, repairs or detailing' },
-  { icon: Calendar, title: 'Pick a time slot', desc: 'Same-day or schedule for later' },
-  { icon: User, title: 'Mechanic arrives', desc: 'Track them live to your doorstep' },
-  { icon: BatteryCharging, title: 'Pay after service', desc: 'Rate your mechanic & relax' },
+  { Icon: IcSearch, title: 'Choose a service', desc: 'Pick from service categories' },
+  { Icon: IcCalendarToday, title: 'Pick a time slot', desc: 'Same-day or schedule later' },
+  { Icon: IcPerson, title: 'Mechanic arrives', desc: 'Track live to your doorstep' },
+  { Icon: IcCreditCard, title: 'Pay after service', desc: 'Rate your mechanic & relax' },
 ]
-const VEH_TYPES: [string, typeof Car][] = [['Car', Car], ['Bike', Bike], ['SUV', Truck]]
+
+const WHY = [
+  { Icon: IcVerifiedUser, fg: '#17A05A', bg: '#E4F5EA', title: 'Certified Mechanics', desc: 'ID-verified, trained & rated' },
+  { Icon: IcSettings, fg: '#1A6FD4', bg: '#E4EEFB', title: 'Genuine Parts Only', desc: 'OEM with invoice' },
+  { Icon: IcSchedule, fg: '#F4601F', bg: '#FFEDE1', title: 'On-time, Live Tracked', desc: 'Know your mechanic ETA' },
+  { Icon: IcCreditCard, fg: '#6D4AE0', bg: '#EDE9FE', title: 'Transparent Pricing', desc: 'No hidden charges' },
+]
+
+const HERO_CARDS = [
+  { icon: '/design/sv-ic1.webp', a: '30-day', b: 'Warranty', sub: 'On every service' },
+  { icon: '/design/sv-ic2.webp', a: 'Verified', b: 'Mechanics', sub: 'Trained & Trusted' },
+  { icon: '/design/sv-ic3.webp', a: 'Live', b: 'Tracking', sub: 'Track your mechanic' },
+  { icon: '/design/sv-ic4.webp', a: 'Pay After', b: 'Service', sub: 'No advance payment' },
+]
+
+const Eyebrow = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[11px] font-bold tracking-[1.9px] text-[#BE3F09]">{children}</div>
+)
+const H2 = ({ children }: { children: React.ReactNode }) => (
+  <h2 className="mt-1.5 text-[clamp(19px,2.3vw,26px)] font-bold tracking-[-0.6px]">{children}</h2>
+)
+const ViewAll = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <Link href={href} className="flex items-center gap-2 whitespace-nowrap text-[13px] font-semibold text-[#1864C8] hover:text-[#F4601F]">
+    {children} <IcArrowForward size={14} />
+  </Link>
+)
 
 export default function ServicesLandingPage() {
-  const [cat, setCat] = useState('all')
-  const [veh, setVeh] = useState('Car')
+  const router = useRouter()
+  const [cat, setCat] = useState<string>('all')
   const list = SERVICES.filter((s) => cat === 'all' || s.cat === cat)
+
+  /* Booking card (design) — hands the choices to the real booking wizard */
+  const [vehicle, setVehicle] = useState<'car' | 'bike' | 'suv'>('car')
+  const [model, setModel] = useState('')
+  const [location, setLocation] = useState('')
+  const startBooking = (e?: React.FormEvent) => {
+    e?.preventDefault()
+    const q = new URLSearchParams({ vehicle })
+    if (model.trim()) q.set('model', model.trim())
+    if (location.trim()) q.set('location', location.trim())
+    router.push(`/service?${q.toString()}`)
+  }
+
+  const heroCopy = (
+    <>
+      <span className="inline-flex items-center gap-[9px] whitespace-nowrap rounded-[20px] bg-[#FFE8DA] px-3.5 py-1.5 text-[11.5px] font-bold tracking-[1.4px] text-[#BE3F09]"><IcBuild size={15} />CAR &amp; BIKE SERVICE AT YOUR DOORSTEP</span>
+      <h1 className="mt-3.5 text-[46px] font-extrabold leading-[1.06] tracking-[-1.5px] text-[#0E2B4C] max-md:text-[30px]">Expert Car &amp; Bike<br />Service,<br /><span className="text-[#F4601F]">Whenever You <span className="relative inline-block">Need.<svg viewBox="0 0 120 12" preserveAspectRatio="none" className="absolute -bottom-[7px] left-0 h-2 w-full"><path d="M2 9 C40 3 80 3 118 7" fill="none" stroke="#F4601F" strokeWidth="4" strokeLinecap="round" /></svg></span></span></h1>
+      <p className="mt-[18px] max-w-[440px] text-[16px] leading-[1.5] text-[#41586F] max-md:text-[14px]">Certified mechanics, genuine parts and transparent pricing. Book in 60 seconds — we come to you.</p>
+      <div className="mt-[18px] grid grid-cols-4 gap-2.5 max-md:grid-cols-2">
+        {HERO_CARDS.map((c) => (
+          <div key={c.a} className="min-w-0 rounded-[14px] bg-white px-2 py-3 text-center shadow-[0_6px_18px_rgba(12,42,77,0.08)]">
+            <DImg src={c.icon} alt="" sizes="40px" className="mx-auto block h-10 w-10 object-contain" />
+            <div className="mt-2 text-[13px] font-bold leading-[1.2] text-[#0E2B4C]">{c.a}<br />{c.b}</div>
+            <div className="mt-[5px] text-[10.5px] leading-[1.3] text-[#52667C]">{c.sub}</div>
+          </div>
+        ))}
+      </div>
+      <DImg src="/design/sv-script2.webp" alt="Har Gaadi Ka Saathi" sizes="(max-width: 767px) 96px, 250px" className="ml-1.5 mt-3.5 block h-auto w-[250px] max-md:hidden" />
+    </>
+  )
+
+  const bookingCard = (
+    <form onSubmit={startBooking} className="box-border w-full rounded-[18px] bg-white p-6 shadow-[0_20px_44px_rgba(12,42,77,0.16)]">
+      <div className="flex items-start justify-between gap-2.5">
+        <div><div className="text-[24px] font-extrabold tracking-[-0.4px] text-[#0E2B4C] max-md:text-[20px]">Book a Service</div><div className="mt-0.5 text-[13.5px] text-[#52667C]">It takes just 60 seconds</div></div>
+        <DImg src="/design/sv-quick.webp" alt="Quick & Easy" sizes="78px" className="box-border h-auto w-[78px] shrink-0 rounded-[10px] bg-[#FFF3EC] px-1.5 py-1" />
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2.5">
+        {([['car', 'Car', IcDirectionsCar], ['bike', 'Bike', IcTwoWheeler], ['suv', 'SUV', IcLocalShipping]] as const).map(([k, l, I]) => (
+          <button key={k} type="button" onClick={() => setVehicle(k)} className={`grid justify-items-center gap-1 rounded-xl px-1 py-3 text-[13px] font-semibold transition-colors ${vehicle === k ? 'border-[1.5px] border-[#F4601F] bg-[#FFF3EC] text-[#BE3F09]' : 'border border-[#E1E8F0] bg-white text-[#0E2B4C]'}`}>
+            <I size={26} className={vehicle === k ? 'text-[#F4601F]' : 'text-[#1A6FD4]'} />{l}
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 text-[13.5px] font-bold text-[#0E2B4C]">Select brand &amp; model</div>
+      <label className="mt-2 flex h-[46px] items-center gap-2.5 rounded-[10px] border border-[#E1E8F0] px-3.5 text-[13.5px] focus-within:border-[#1A6FD4]">
+        <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="e.g. Maruti Suzuki Swift" className="min-w-0 flex-1 bg-transparent text-[#0E2B4C] outline-none placeholder:text-[#7B8DA3]" />
+        <IcExpandMore size={16} className="shrink-0 text-[#41586F]" />
+      </label>
+      <div className="mt-3.5 text-[13.5px] font-bold text-[#0E2B4C]">Service location</div>
+      <label className="mt-2 flex h-[46px] items-center gap-2.5 rounded-[10px] border border-[#E1E8F0] px-3.5 text-[13.5px] focus-within:border-[#1A6FD4]">
+        <IcLocationOn size={18} className="shrink-0 text-[#1A6FD4]" />
+        <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Detected automatically" className="min-w-0 flex-1 bg-transparent text-[#0E2B4C] outline-none placeholder:text-[#1E3553]" />
+        <IcExpandMore size={16} className="shrink-0 text-[#41586F]" />
+      </label>
+      <button type="submit" className={`mt-[18px] flex w-full items-center justify-center gap-2.5 rounded-xl bg-[linear-gradient(180deg,#FF6A26_0%,#F0520F_100%)] font-bold text-white shadow-[0_10px_22px_rgba(240,82,15,0.28)] transition-transform hover:-translate-y-px h-[54px] text-[16px] max-md:h-[50px] max-md:text-[15px]`}>Check available slots <IcArrowForward size={18} /></button>
+      <div className="mt-4 flex items-center justify-between gap-1.5 whitespace-nowrap border-t border-[#EDF1F6] pt-3.5 text-[10.5px] tracking-[-0.1px] text-[#41586F]">
+        <span className="flex items-center gap-1"><IcCalendarToday size={14} className="text-[#1A6FD4]" />Instant Booking</span>
+        <span className="flex items-center gap-1"><IcVerifiedUser size={14} className="text-[#1A6FD4]" />Secure &amp; Safe</span>
+        <span className="flex items-center gap-1"><IcSchedule size={14} className="text-[#1A6FD4]" />On-Time Service</span>
+      </div>
+    </form>
+  )
+
+  const stats = (
+    <div className="z-[7] flex items-center rounded-[14px] bg-white/[0.96] px-1 py-3 shadow-[0_10px_26px_rgba(12,42,77,0.12)] max-md:grid max-md:grid-cols-3 max-md:px-0">
+      {[[IcGroups, '50,000+', '', 'Happy Customers', '#F7931E'], [IcStar, '4.8/5', '', 'Customer Rating', '#F7931E'], [IcDirectionsCar, '100+', ' Cities', 'Across India', '#1A6FD4']].map(([I, v, suffix, l, c]: any, i) => (
+        <div key={l} className="contents">
+          {i > 0 && <span className="h-[34px] w-px bg-[#DCE4EE] max-md:hidden" />}
+          <div className="flex min-w-0 items-center gap-3 px-[18px] max-md:flex-col max-md:gap-1 max-md:px-1 max-md:text-center">
+            <I size={30} style={{ color: c }} />
+            <div className="leading-[1.25]"><div className="whitespace-nowrap text-[18px] font-extrabold text-[#0E2B4C]">{v}<span className="text-[13px] font-semibold">{suffix}</span></div><div className="whitespace-nowrap text-[12.5px] text-[#41586F] max-md:whitespace-normal">{l}</div></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <>
@@ -53,147 +179,188 @@ export default function ServicesLandingPage() {
         description="Book certified mechanics for doorstep car and bike service. Transparent pricing, genuine parts, 30-day warranty, live tracking, pay after service."
       />
       <UserLayout>
-        <div className="bg-white">
-          {/* HERO + BOOKING */}
-          <section className="relative overflow-hidden bg-gradient-to-br from-[#0F2547] via-[#1B3B6F] to-[#2A5298] text-white">
-            <div className="absolute -top-20 -right-10 w-[420px] h-[420px] rounded-full bg-[radial-gradient(circle,rgba(255,107,53,0.22),transparent_65%)] pointer-events-none" />
-            <div className="relative max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16 grid lg:grid-cols-[1.15fr_0.85fr] gap-9 items-center">
-              <div>
-                <span className="inline-flex items-center gap-1.5 bg-[#FF6B35]/20 text-[#FFB199] ring-1 ring-[#FF6B35]/30 rounded-full px-3 py-1 text-xs font-bold mb-4">⚡ Doorstep service · Free pickup</span>
-                <h1 className="text-3xl md:text-5xl font-extrabold leading-tight">Expert car &amp; bike service, at your doorstep.</h1>
-                <p className="mt-4 text-[#c8d4e8] text-base md:text-lg max-w-lg">Certified mechanics, genuine parts, and transparent pricing. Book in 60 seconds — we come to you.</p>
-                <div className="mt-5 flex flex-wrap gap-2.5">
-                  {['30-day warranty', 'Pay after service', 'Live tracking'].map((p) => (
-                    <span key={p} className="inline-flex items-center gap-1.5 bg-white/10 ring-1 ring-white/[0.16] px-3.5 py-2 rounded-full text-[13px] font-semibold"><CheckCircle2 className="h-3.5 w-3.5 text-[#FF6B35]" /> {p}</span>
+        <div className="bg-[#F5F8FC] text-[14px] leading-[1.5] text-[#0E2B4C] [overflow-x:clip]">
+
+          {/* ═══ Hero — design's 1600×560 composed canvas; stacks on mobile ═══ */}
+          <div className="mx-auto max-w-[1220px] px-[clamp(14px,3vw,24px)] pt-[clamp(12px,1.8vw,20px)]">
+            <ScaledStage
+              className="aspect-[1600/560] max-md:!aspect-auto"
+              stageClassName="h-[560px] w-[1600px] max-md:!static max-md:grid max-md:!h-auto max-md:!w-auto max-md:gap-3.5 max-md:px-3.5 max-md:pb-4 max-md:![transform:none]"
+              stageStyle={{ borderRadius: 24, overflow: 'hidden', background: 'radial-gradient(45% 60% at 58% 55%,#E7EEF7 0%,rgba(231,238,247,0) 70%),linear-gradient(110deg,#F8FAFD 0%,#F1F5FA 38%,#E6EDF5 70%,#DCE5F0 100%)', boxShadow: '0 14px 34px rgba(12,42,77,0.09)' }}
+            >
+              <div className="absolute bottom-[-30%] right-[-4%] h-[70%] w-[40%] rounded-full opacity-85 max-md:hidden" style={{ background: 'radial-gradient(closest-side,#FF8A4C 0%,#F4601F 55%,rgba(244,96,31,0) 100%)' }} />
+              <div className="absolute bottom-0 left-[32%] right-0 h-[22%] bg-[linear-gradient(180deg,rgba(214,224,236,0)_0%,#D6E0EC_100%)] max-md:hidden" />
+              <DImg src="/design/sv-store.webp" alt="Bharat Mechanics service centre" sizes="(max-width: 767px) 96px, 300px" className="absolute left-[49.5%] top-0 z-[1] h-auto w-[25%] max-md:hidden" />
+              <DImg src="/design/sv-car.webp" alt="" sizes="(max-width: 767px) 96px, 270px" className="absolute left-[27%] top-[38%] z-[2] h-auto w-[23%] max-md:hidden" />
+              <DImg src="/design/sv-bike.webp" alt="" sizes="(max-width: 767px) 96px, 190px" className="absolute bottom-[8%] left-[56.5%] z-[3] h-auto w-[16.5%] max-md:hidden" />
+              <DImg src="/design/sv-girl.webp" alt="Bharat Mechanics technician giving a thumbs up" loading="eager" fetchPriority="high" sizes="(max-width: 767px) 32px, 300px" className="absolute bottom-0 left-[37.5%] z-[4] h-[92%] w-auto max-w-[25%] object-contain object-bottom max-md:hidden" />
+              <DImg src="/design/sv-script1.webp" alt="Drive Repair Repeat" sizes="(max-width: 767px) 96px, 90px" className="absolute left-[34.5%] top-[12%] z-[5] h-auto w-[7%] max-md:hidden" />
+              <div className="relative z-[6] box-border w-[36%] pb-7 pl-[38px] pt-[30px] max-md:w-auto max-md:px-0.5 max-md:pb-0 max-md:pt-[18px]">{heroCopy}</div>
+              <div className="absolute right-[26px] top-1/2 z-[8] w-[372px] -translate-y-1/2 max-md:static max-md:w-auto max-md:translate-y-0">{bookingCard}</div>
+              <div className="absolute bottom-[18px] left-[30.5%] max-md:static">{stats}</div>
+            </ScaledStage>
+          </div>
+
+          {/* ═══ Explore services — tiles double as the list filter ═══ */}
+          <section className="mx-auto max-w-[1200px] px-[clamp(14px,3vw,24px)] pt-[clamp(22px,3vw,32px)]">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div><Eyebrow>EXPLORE SERVICES</Eyebrow><H2>Service categories for every need</H2></div>
+              <ViewAll href="/service">View all services</ViewAll>
+            </div>
+            <div className="mt-3.5 grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-3">
+              {CATEGORIES.map((c) => {
+                const on = cat === c.key
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setCat(on ? 'all' : c.key)}
+                    aria-pressed={on}
+                    className={`rounded-[14px] border bg-white px-2.5 py-3.5 text-center transition-colors hover:border-[#F4601F] ${on ? 'border-[#F4601F] shadow-[0_8px_20px_rgba(244,96,31,0.15)]' : 'border-[#E6ECF3]'}`}
+                  >
+                    <DImg src={c.icon} alt="" sizes="46px" className="mx-auto block h-[46px] w-[46px] object-contain" />
+                    <div className="mt-2.5 text-[12px] font-bold leading-[1.3]">{c.label}</div>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* ═══ Most booked — service cards ═══ */}
+          <section className="mx-auto max-w-[1200px] px-[clamp(14px,3vw,24px)] pt-[clamp(22px,3vw,32px)]">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div><Eyebrow>MOST BOOKED</Eyebrow><H2>Popular services, transparent prices</H2></div>
+              <ViewAll href="/service">View all services</ViewAll>
+            </div>
+            <div className="mt-3.5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {list.map((s) => (
+                <div key={s.name} className="flex flex-col overflow-hidden rounded-2xl border border-[#E6ECF3] bg-white">
+                  <div className="relative">
+                    <DImg src={s.img} alt={s.name} sizes="(max-width: 639px) 92vw, (max-width: 1023px) 46vw, 380px" className="block h-[120px] w-full object-cover" />
+                    <span className={`absolute left-3 top-3 flex items-center gap-1.5 rounded-2xl px-[11px] py-[5px] text-[10.5px] font-bold text-white ${s.badgeTone === 'green' ? 'bg-[#13864D]' : 'bg-[#C94309]'}`}>
+                      {s.pop && <IcStar size={11} />}
+                      {s.badge}
+                    </span>
+                  </div>
+                  <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
+                    <div className="text-[15.5px] font-bold">{s.name}</div>
+                    <div className="mt-1 flex items-center gap-[7px] text-[12px] text-[#52667C]">
+                      <span className="text-[#F0A726]">★</span><span className="font-bold text-[#0E2B4C]">{s.rating}</span> · {s.booked} booked
+                    </div>
+                    <p className="mt-2 text-[12.5px] leading-[1.5] text-[#41586F]">{s.desc}</p>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-4 text-[11.5px] text-[#52667C]">
+                      <span className="flex items-center gap-1.5"><IcSchedule size={14} /> {s.time}</span>
+                      <span className="flex items-center gap-1.5"><IcVerifiedUser size={14} /> 30-day warranty</span>
+                    </div>
+                    <div className="mt-auto flex flex-wrap items-end justify-between gap-3 border-t border-[#EDF1F6] pt-3.5">
+                      <div>
+                        <div className="text-[11px] text-[#52667C]">Starts at</div>
+                        <div className="flex items-baseline gap-[7px]">
+                          <span className="text-[18px] font-bold">₹{s.price}</span>
+                          <span className="text-[12px] text-[#52667C] line-through">₹{s.mrp}</span>
+                        </div>
+                      </div>
+                      <Link href="/service" className="whitespace-nowrap rounded-[9px] bg-[#0E2B4C] px-[22px] py-[11px] text-[13px] font-semibold text-white transition-colors hover:bg-[#F4601F]">Book Now</Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ═══ Vehicles we service ═══ */}
+          <section className="mx-auto max-w-[1200px] px-[clamp(14px,3vw,24px)] pt-[clamp(22px,3vw,32px)]">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div><Eyebrow>ALL MAKES, ALL MODELS</Eyebrow><H2>Vehicles we service</H2></div>
+              <ViewAll href="/service">View all brands</ViewAll>
+            </div>
+            <div className="mt-3.5 grid grid-cols-[repeat(auto-fit,minmax(92px,1fr))] gap-2.5">
+              {BRANDS.map((b) => (
+                <Link key={b.name} href="/service" className="rounded-xl border border-[#E6ECF3] bg-white px-2 py-3 text-center transition-colors hover:border-[#F4601F]">
+                  <DImg src={b.logo} alt="" sizes="96px" className="block h-[34px] w-full object-contain" />
+                  <div className="mt-2 text-[11px] font-semibold">{b.name}</div>
+                </Link>
+              ))}
+              <Link href="/service" className="flex flex-col items-center justify-center rounded-xl border border-[#E6ECF3] bg-white px-2 py-3 text-center transition-colors hover:border-[#F4601F]">
+                <div className="text-[17px] font-bold text-[#1864C8]">+40</div>
+                <div className="text-[11px] font-semibold text-[#1864C8]">More</div>
+              </Link>
+            </div>
+          </section>
+
+          {/* ═══ Booking in 4 easy steps ═══ */}
+          <section className="mx-auto max-w-[1200px] px-[clamp(14px,3vw,24px)] pt-[clamp(22px,3vw,32px)]">
+            <Eyebrow>SIMPLE PROCESS</Eyebrow>
+            <H2>Booking in 4 easy steps</H2>
+            <div className="mt-5 grid grid-cols-1 gap-[clamp(12px,2.4vw,30px)] sm:grid-cols-2 lg:grid-cols-4">
+              {STEPS.map((s, i) => (
+                <div key={s.title} className="relative rounded-[14px] border border-[#E6ECF3] bg-white p-4">
+                  <span className="absolute -top-[13px] left-3.5 flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[#C94309] text-[12.5px] font-bold text-white">{i + 1}</span>
+                  <span className="ml-[34px] flex h-[38px] w-[38px] items-center justify-center rounded-[10px] bg-[#EFF5FE] text-[#1864C8]"><s.Icon size={18} /></span>
+                  <div className="mt-3 text-[13.5px] font-bold">{s.title}</div>
+                  <div className="mt-0.5 text-[11.5px] text-[#52667C]">{s.desc}</div>
+                  {i < STEPS.length - 1 && <span className="absolute -right-[22px] top-1/2 hidden text-[16px] text-[#BE3F09] lg:block">→</span>}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ═══ Why Bharat Mechanics ═══ */}
+          <section className="mx-auto max-w-[1200px] px-[clamp(14px,3vw,24px)] pt-[clamp(22px,3vw,32px)]">
+            <Eyebrow>WHY BHARAT MECHANICS</Eyebrow>
+            <H2>Trusted by 10,000+ customers across India</H2>
+            <div className="mt-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+              {WHY.map((w) => (
+                <div key={w.title} className="flex items-center gap-3 rounded-[14px] border border-[#E6ECF3] bg-white px-4 py-3.5">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px]" style={{ background: w.bg, color: w.fg }}><w.Icon size={19} /></span>
+                  <div><div className="text-[13px] font-bold">{w.title}</div><div className="text-[11.5px] text-[#52667C]">{w.desc}</div></div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ═══ Need help right now? — design's 2012×327 roadside band; stacks under 1100px ═══ */}
+          <section className="mx-auto max-w-[1200px] px-[clamp(14px,3vw,24px)] pb-[clamp(28px,3.5vw,40px)] pt-[clamp(22px,3vw,32px)]">
+            <>
+              <div className="flex flex-col overflow-hidden rounded-[18px] min-[1101px]:hidden bg-[linear-gradient(90deg,#012A58_0%,#01346B_45%,#023F7C_70%,#02386F_100%)] px-4 pt-5 text-white shadow-[0_12px_30px_rgba(1,42,88,0.25)]">
+                <div className="flex items-center gap-3.5">
+                  <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[linear-gradient(160deg,#FF7A2E,#F4601F)] shadow-[0_8px_20px_rgba(0,0,0,0.25)]"><IcCall size={26} /></span>
+                  <div><h2 className="text-[24px] font-bold leading-[1.1] tracking-[-0.02em]">Need help <span className="text-[#F4601F]">right now?</span></h2><div className="mt-1.5 text-[14px] text-[#DCE6F3]">Get instant roadside assistance anywhere in India.</div></div>
+                </div>
+                <div className="mt-[18px] flex flex-wrap items-center gap-3">
+                  {[[IcSchedule, '24/7', 'Support'], [IcLocationOn, 'Pan India', 'Coverage'], [IcCheckCircle, 'Verified', 'Mechanics']].map(([I, a, b]: any) => (
+                    <div key={a} className="flex items-center gap-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-[#0F4E97]"><I size={18} /></span><span className="text-[12px] leading-[1.35] text-[#C9D8EC]"><strong className="font-semibold text-white">{a}</strong><br />{b}</span></div>
                   ))}
+                  <a href="tel:+919310694349" className="flex h-12 flex-[1_1_220px] items-center justify-center gap-2 rounded-[11px] bg-[linear-gradient(180deg,#FF7A2E,#F4601F)] text-[14.5px] font-semibold text-white shadow-[0_8px_20px_rgba(244,96,31,0.35)] hover:text-white"><IcCall size={17} />Call for Assistance<IcArrowForward size={17} /></a>
+                  <Link href="/emergency" className="flex h-12 flex-[1_1_220px] items-center justify-center gap-2 rounded-[11px] border-[1.5px] border-white/75 text-[14.5px] font-semibold text-white hover:bg-white/[0.08] hover:text-white"><IcLocationOn size={17} />Track Your Request<IcArrowForward size={17} /></Link>
                 </div>
+                <DImg src="/design/nh-truck2.webp" alt="Bharat Mechanics roadside assistance tow truck and mechanic" sizes="(min-width: 1101px) 96px, 560px" className="mx-auto mt-[18px] block aspect-[891/542] h-auto w-[min(100%,560px)]" />
               </div>
-
-              <div className="bg-white rounded-2xl shadow-2xl p-6 text-[#13203A]">
-                <h3 className="text-lg font-extrabold">Book a service</h3>
-                <p className="text-[13px] text-[#7B8AA3] mb-4">सर्विस बुक करें · Takes 60 seconds</p>
-                <label className="block text-[12.5px] font-bold text-[#475569] mb-1.5">Vehicle type</label>
-                <div className="flex gap-2.5 mb-3.5">
-                  {VEH_TYPES.map(([label, Icon]) => {
-                    const on = veh === label
-                    return (
-                      <button key={label} onClick={() => setVeh(label)} className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border-[1.5px] text-[12.5px] font-bold transition-colors ${on ? 'border-[#1B3B6F] bg-[#F2F6FC] text-[#1B3B6F]' : 'border-[#E7ECF3] text-[#475569]'}`}>
-                        <Icon className="h-6 w-6" /> {label}
-                      </button>
-                    )
-                  })}
-                </div>
-                <label className="block text-[12.5px] font-bold text-[#475569] mb-1.5">Brand &amp; model</label>
-                <div className="flex items-center gap-2.5 h-12 border border-[#E7ECF3] rounded-xl px-3.5 bg-[#F6F8FB] text-sm text-[#475569] mb-3.5"><Car className="h-[18px] w-[18px] text-[#7B8AA3]" /> Maruti Suzuki Swift</div>
-                <label className="block text-[12.5px] font-bold text-[#475569] mb-1.5">Service location</label>
-                <div className="flex items-center gap-2.5 h-12 border border-[#E7ECF3] rounded-xl px-3.5 bg-[#F6F8FB] text-sm text-[#475569] mb-4"><MapPin className="h-[18px] w-[18px] text-[#7B8AA3]" /> Detected automatically at booking</div>
-                <Link href="/service" className="flex items-center justify-center gap-2 w-full bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold py-3.5 rounded-full transition-colors">Check available slots <ArrowRight className="h-4 w-4" /></Link>
-              </div>
-            </div>
-          </section>
-
-          {/* TRUST ROW */}
-          <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {TRUST.map((t) => (
-                <div key={t.title} className="bg-white border border-[#E7ECF3] rounded-xl p-5 text-center shadow-sm">
-                  <div className={`h-12 w-12 rounded-xl flex items-center justify-center mx-auto mb-3 ${t.color}`}><t.icon className="h-[23px] w-[23px]" /></div>
-                  <b className="block text-[15px] text-[#13203A] mb-1">{t.title}</b>
-                  <span className="text-[12.5px] text-[#475569]">{t.desc}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* CATALOG */}
-          <section className="bg-[#F6F8FB]">
-            <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12">
-              <div className="text-center mb-7">
-                <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#FF6B35]">Choose your service</span>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-[#13203A] mt-2">Popular services, transparent prices</h2>
-                <p className="text-[#475569] mt-2 max-w-xl mx-auto text-sm">Up to 50% cheaper than authorised garages. Pay only after the job is done.</p>
-              </div>
-              <div className="flex flex-wrap gap-2 justify-center mb-7">
-                {TABS.map(([k, label]) => (
-                  <button key={k} onClick={() => setCat(k)} className={`px-4 py-2.5 rounded-full font-bold text-sm border transition-colors ${cat === k ? 'bg-[#1B3B6F] text-white border-[#1B3B6F]' : 'bg-white text-[#475569] border-[#E7ECF3] hover:border-[#1B3B6F]/40'}`}>{label}</button>
-                ))}
-              </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {list.map((s) => (
-                  <div key={s.name} className="relative bg-white border border-[#E7ECF3] rounded-2xl shadow-sm flex flex-col overflow-hidden hover:shadow-md transition-shadow">
-                    {s.pop && <span className="absolute top-0 right-5 bg-[#FF6B35] text-white text-[10.5px] font-extrabold px-2.5 py-1 rounded-b-lg">★ Most booked</span>}
-                    <div className="px-5 pt-5 flex items-start justify-between">
-                      <div className={`h-13 w-13 rounded-2xl flex items-center justify-center ${s.color}`} style={{ width: 52, height: 52 }}><s.icon className="h-[26px] w-[26px]" /></div>
-                      <span className="text-[11px] font-extrabold text-[#15936B] bg-[#E7F6F0] px-2.5 py-1 rounded-md">{s.save}</span>
-                    </div>
-                    <div className="px-5 pt-3.5 pb-5 flex flex-col flex-1">
-                      <h4 className="text-[17px] font-extrabold text-[#13203A]">{s.name}</h4>
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#475569] my-2"><span className="text-[#F5A623]">★ {s.rating}</span><span className="text-[#7B8AA3] font-medium">· {s.booked} booked</span></div>
-                      <p className="text-[13px] text-[#475569] leading-relaxed mb-3.5">{s.desc}</p>
-                      <div className="flex gap-4 mb-4">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#475569]"><Clock className="h-3.5 w-3.5 text-[#1B3B6F]" /> {s.time}</div>
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#475569]"><ShieldCheck className="h-3.5 w-3.5 text-[#1B3B6F]" /> 30-day warranty</div>
-                      </div>
-                      <div className="flex items-center justify-between mt-auto pt-3.5 border-t border-[#EFF2F7]">
-                        <div><small className="text-[11px] text-[#7B8AA3]">Starts at</small><b className="block text-[22px] text-[#1B3B6F] leading-none">₹{s.price}<span className="text-xs text-[#7B8AA3] line-through ml-1 font-normal">₹{s.mrp}</span></b></div>
-                        <Link href="/service" className="bg-[#1B3B6F] hover:bg-[#15315C] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">Book</Link>
-                      </div>
+              <ScaledStage className="hidden aspect-[2012/327] min-[1101px]:block" stageClassName="h-[327px] w-[2012px]" initialScale={0.5586} stageStyle={{ borderRadius: 34, overflow: 'hidden', background: 'linear-gradient(90deg,#012A58 0%,#01346B 45%,#023F7C 70%,#02386F 100%)', boxShadow: '0 12px 30px rgba(1,42,88,0.25)', color: '#fff' }}>
+                <DImg src="/design/nh-city2.webp" alt="" sizes="(max-width: 1100px) 96px, 450px" className="absolute bottom-1 left-[640px] z-[1] h-[300px] w-auto opacity-75" />
+                <div className="absolute right-0 top-0 h-full w-[300px] bg-[linear-gradient(160deg,#FF7A2E_0%,#F4601F_55%,#E24E12_100%)]" style={{ clipPath: 'polygon(38% 0,100% 0,100% 100%,62% 100%,20% 58%)' }} />
+                <div className="absolute right-[200px] top-0 h-[170px] w-2 -skew-x-[34deg] bg-[#F4601F] opacity-70" />
+                <div className="absolute bottom-0 left-[1050px] right-0 h-[70px] bg-[linear-gradient(180deg,rgba(255,140,40,0)_0%,rgba(255,140,40,0.35)_100%)] [mask-image:linear-gradient(90deg,transparent,#000_40%)]" />
+                <DImg src="/design/nh-truck2.webp" alt="" sizes="(max-width: 1100px) 96px, 280px" className="absolute bottom-0 left-[1318px] z-[2] h-[292px] w-auto" />
+                <DImg src="/design/nh-script2.webp" alt="On the Road Always With You" sizes="(max-width: 1100px) 96px, 100px" className="absolute right-[22px] top-[22px] z-[3] h-auto w-[165px]" />
+                <div className="absolute left-[67px] top-[55px] z-[4]">
+                  <div className="flex items-center gap-12">
+                    <span className="flex h-[111px] w-[116px] shrink-0 items-center justify-center rounded-[18px] bg-[linear-gradient(160deg,#FF7A2E,#F4601F)] shadow-[0_8px_20px_rgba(0,0,0,0.25)]"><IcCall size={54} /></span>
+                    <div>
+                      <h2 className="whitespace-nowrap text-[58px] font-bold leading-[1.1] tracking-[-0.02em]">Need help <span className="text-[#F4601F]">right now?</span></h2>
+                      <div className="mt-3 whitespace-nowrap text-[27px] text-[#DCE6F3]">Get instant roadside assistance anywhere in India.</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* VEHICLES */}
-          <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12">
-            <div className="text-center mb-6">
-              <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#FF6B35]">All makes, all models</span>
-              <h2 className="text-2xl font-extrabold text-[#13203A] mt-2">Vehicles we service</h2>
-            </div>
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              {VEHICLES.map(([m, name, c], i) => (
-                <div key={`${name}-${i}`} className="flex items-center gap-2.5 bg-white border border-[#E7ECF3] rounded-full pl-2 pr-4 py-2 shadow-sm font-bold text-sm text-[#475569]">
-                  <span className="h-[34px] w-[34px] rounded-full flex items-center justify-center text-white font-extrabold text-sm" style={{ background: c }}>{m}</span>{name}
-                </div>
-              ))}
-              <div className="bg-[#F2F6FC] text-[#1B3B6F] font-extrabold rounded-full px-5 py-2.5 text-sm">+ 40 more brands</div>
-            </div>
-          </section>
-
-          {/* HOW IT WORKS */}
-          <section className="bg-[#F6F8FB]">
-            <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
-              <div className="text-center mb-10">
-                <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#FF6B35]">Simple process</span>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-[#13203A] mt-2">Booking in 4 easy steps</h2>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {STEPS.map((s, i) => (
-                  <div key={s.title} className="text-center">
-                    <div className="relative w-16 h-16 mx-auto mb-4 rounded-2xl bg-white border border-[#E7ECF3] shadow flex items-center justify-center">
-                      <span className="absolute -top-2 -right-2 w-[26px] h-[26px] rounded-full bg-[#FF6B35] text-white text-xs font-extrabold flex items-center justify-center border-[3px] border-white">{i + 1}</span>
-                      <s.icon className="h-7 w-7 text-[#1B3B6F]" />
-                    </div>
-                    <h4 className="text-base font-bold text-[#13203A] mb-1">{s.title}</h4>
-                    <p className="text-[13px] text-[#475569]">{s.desc}</p>
+                  <div className="mt-[38px] flex items-center gap-[22px]">
+                    {[[IcSchedule, '24/7', 'Support'], [IcLocationOn, 'Pan India', 'Coverage'], [IcCheckCircle, 'Verified', 'Mechanics']].map(([I, a, b]: any, i) => (
+                      <div key={a} className={`flex items-center gap-3.5 ${i ? 'border-l border-white/[0.18] pl-[22px]' : ''}`}><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#0F4E97]"><I size={29} /></span><span className="text-[20px] leading-[1.35] text-[#C9D8EC]"><strong className="font-semibold text-white">{a}</strong><br />{b}</span></div>
+                    ))}
+                    <a href="tel:+919310694349" className="ml-6 flex h-[70px] w-[310px] items-center justify-center gap-3 whitespace-nowrap rounded-[14px] bg-[linear-gradient(180deg,#FF7A2E,#F4601F)] text-[22px] font-semibold text-white shadow-[0_8px_20px_rgba(244,96,31,0.35)] hover:brightness-105 hover:text-white"><IcCall size={26} />Call for Assistance<IcArrowForward size={22} /></a>
+                    <Link href="/emergency" className="box-border flex h-[70px] w-[280px] items-center justify-center gap-2.5 whitespace-nowrap rounded-[14px] border-[1.5px] border-white/75 text-[21px] font-semibold text-white hover:bg-white/[0.08] hover:text-white"><IcLocationOn size={22} />Track Your Request<IcArrowForward size={20} /></Link>
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* EMERGENCY CTA */}
-          <section className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B3B6F] to-[#0F2547] text-white p-8 md:p-12 text-center">
-              <div className="absolute -top-16 right-0 w-72 h-72 rounded-full bg-[radial-gradient(circle,rgba(255,107,53,0.25),transparent_65%)]" />
-              <h2 className="relative text-2xl md:text-3xl font-extrabold">Need help right now?</h2>
-              <p className="relative text-white/80 mt-2 max-w-xl mx-auto text-sm">Our 24/7 emergency roadside assistance reaches you in under 30 minutes across 40+ cities.</p>
-              <div className="relative mt-6 flex gap-3 justify-center flex-wrap">
-                <Link href="/emergency" className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors"><Zap className="h-4 w-4" /> Get emergency help</Link>
-                <a href="tel:+919310694349" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors"><Phone className="h-4 w-4" /> Call +91 93106 94349</a>
-              </div>
-            </div>
+                </div>
+              </ScaledStage>
+            </>
           </section>
         </div>
       </UserLayout>

@@ -10,17 +10,24 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+// Brand icon pack under the names this file used before (was lucide-react)
 import {
-  Search, ShoppingCart, User, Menu, X, Car, Home, Grid3X3, Receipt, Bell,
-  Phone, MapPin, Truck, LogOut, ChevronDown, Wallet, MapPinned, Star, Wrench,
-  Tag, Loader2, Package, ArrowRight, HelpCircle, Heart, Headphones,
-  Store, GraduationCap, BadgeCheck,
-} from 'lucide-react'
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
-} from '@/components/ui/sheet'
+  IcSearch as Search, IcPerson as User, IcClose as X, IcGridView as Grid3X3, IcReceipt as Receipt,
+  IcNotifications as Bell, IcLocalShipping as Truck, IcLogout as LogOut, IcExpandMore as ChevronDown,
+  IcAccountBalanceWallet as Wallet, IcLocationPin as MapPinned, IcStar as Star, IcLocalOffer as Tag,
+  IcAutorenew as Loader2, IcInventory as Package, IcArrowForward as ArrowRight,
+} from '@/components/icons/BmIcons'
+import dynamic from 'next/dynamic'
+
+const MobileDrawer = dynamic(() => import('./MobileDrawer'), { ssr: false })
 import Cookies from 'js-cookie'
 import { useLoginModal } from '@/components/auth/LoginModalProvider'
+// Brand icon pack (Material glyphs from the Bharat Mechanics icon set)
+import {
+  IcLocationOn, IcCall, IcLocalShipping, IcHelpCenter, IcStore, IcPerson, IcSearch,
+  IcShoppingCart, IcBuild, IcMenu, IcHome, IcShoppingBag, IcReceiptLong, IcFacebook, IcClose,
+  IcSettings, IcSchool, IcChevronRight, IcReceipt, IcLocationPin, IcCreditCard, IcStar, IcLocalShipping as IcTruck,
+} from '@/components/icons/BmIcons'
 
 /* ─── Search suggestion types ─────────────────────────────────────── */
 interface SearchProduct {
@@ -50,13 +57,16 @@ interface SearchResults {
   categories: SearchCategory[]
 }
 
-export function UserLayout({ children }: { children: React.ReactNode }) {
+export function UserLayout({ children, mobileTopBar = true }: { children: React.ReactNode; mobileTopBar?: boolean }) {
   const router = useRouter()
   const dispatch = useDispatch()
   const { isAuthenticated, user } = useSelector((state: RootState) => state.customerAuth)
   const { openLogin } = useLoginModal()
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  // Mount the (lazy) drawer the first time it's opened, then keep it for the close animation.
+  const [drawerMounted, setDrawerMounted] = useState(false)
+  useEffect(() => { if (mobileMenuOpen) setDrawerMounted(true) }, [mobileMenuOpen])
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [cartCount, setCartCount] = useState(0)
@@ -197,11 +207,15 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
     router.push('/')
   }
 
+  /* Design has two headers: the Home header (inline search, bordered Login) and the inner-page header
+     (centred nav incl. For Shops, search icon square, navy Login, top bar with Book Mechanic). */
+  const inner = router.pathname !== '/'
+
   const mobileNav = [
-    { icon: Home, label: 'Home', href: '/' },
-    { icon: Grid3X3, label: 'Shop', href: '/shop' },
-    { icon: Receipt, label: 'Orders', href: '/orders' },
-    { icon: User, label: 'Profile', href: '/profile' },
+    { icon: IcHome, label: 'Home', href: '/' },
+    { icon: IcShoppingBag, label: 'Shop', href: '/shop' },
+    { icon: IcReceiptLong, label: 'Orders', href: '/orders' },
+    { icon: IcPerson, label: 'Profile', href: '/profile' },
   ]
 
   const activeNav = mobileNav.find(n => {
@@ -211,40 +225,58 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background font-sans [overflow-x:clip]">
-      {/* Top Bar (Desktop) */}
-      <div className="hidden md:block gradient-primary">
-        <div className="px-4 md:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto py-2 flex items-center justify-between text-primary-foreground text-sm">
-            <div className="flex items-center gap-4 lg:gap-6">
-              <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> +91 93106 94349</span>
-              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Deliver to: India</span>
-            </div>
-            <div className="flex items-center gap-4 lg:gap-6">
-              <Link href="/orders" className="flex items-center gap-1 hover:underline"><Truck className="h-3 w-3" /> Track Order</Link>
-              <Link href="/service" className="flex items-center gap-1 hover:underline"><Wrench className="h-3 w-3" /> Book Mechanic</Link>
-              <Link href="#" className="flex items-center gap-1 hover:underline"><Headphones className="h-3 w-3" /> Help Center</Link>
-            </div>
+      {/* Top Bar — design: navy strip, contact left, quick links right (links hidden on mobile) */}
+      <div className={`bg-[#0A2442] text-white ${mobileTopBar ? "" : "hidden md:block"}`}>
+        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-center gap-3.5 px-[clamp(14px,4vw,28px)] py-[9px] text-[12px] font-medium md:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
+            {inner ? (
+              <>
+                <span className="flex items-center gap-[7px]"><IcCall size={13} /> +91 93106 94349</span>
+                <span className="flex items-center gap-[7px]"><IcLocationOn size={13} /> Deliver to: India</span>
+              </>
+            ) : (
+              <>
+                <span className="flex items-center gap-[7px]"><IcLocationOn size={13} /> Deliver to: India</span>
+                <span className="h-[13px] w-px bg-white/25" />
+                <span className="flex items-center gap-[7px]"><IcCall size={13} /> +91 93106 94349</span>
+              </>
+            )}
+          </div>
+          <div className="hidden flex-wrap items-center gap-5 md:flex">
+            <Link href="/orders" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcLocalShipping size={13} /> Track Order</Link>
+            {inner && <Link href="/mechanics" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcBuild size={13} /> Book Mechanic</Link>}
+            <Link href="/support" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcHelpCenter size={13} /> Help Center</Link>
+            {!inner && <Link href="/list-your-shop" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcStore size={13} /> For Shops</Link>}
+            {!inner && <Link href="/become-mechanic" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcPerson size={13} /> Become a Mechanic</Link>}
           </div>
         </div>
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
-        <div className="px-4 md:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto h-16 lg:h-[72px] flex items-center gap-2 lg:gap-2.5 xl:gap-4">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
+      <header className="sticky top-0 z-50 border-b border-[#E6ECF3] bg-white">
+        <div className="px-[clamp(14px,4vw,28px)]">
+          <div className="mx-auto flex max-w-[1180px] items-center gap-2 py-2 lg:flex-wrap lg:gap-[clamp(12px,2vw,26px)] lg:py-2.5">
+          {/* Mobile: hamburger on the left (design) */}
+          <button
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center text-[#0E2B4C] lg:hidden"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <IcMenu size={22} />
+          </button>
+          {/* Logo — design asset */}
+          <Link href="/" className="flex min-w-0 shrink items-center lg:shrink-0">
             <Image
-              src="/brand-logo-v3.png"
+              src="/design/logo2.png"
               alt="Bharat Mechanics – Auto Parts & Vehicle Services"
-              width={284}
-              height={90}
-              className="h-9 sm:h-12 lg:h-11 xl:h-14 w-auto object-contain"
+              width={600}
+              height={216}
+              sizes="140px"
+              className={`h-10 w-auto object-contain ${inner ? "lg:h-11" : "lg:h-12"}`}
               priority
             />
           </Link>
-
-          <span className="hidden lg:block h-8 w-px bg-[#E7ECF3] shrink-0" />
 
           {/* Search modal (icon-triggered, matches index.html) */}
           {searchOpen && (
@@ -261,7 +293,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                 onKeyDown={(e) => { if (e.key === 'Escape') { setSearchOpen(false); setShowSuggestions(false) } }}
                 onFocus={() => { if (searchQuery.trim().length >= 2 || defaultProducts.length > 0) setShowSuggestions(true) }}
               />
-              <button type="button" onClick={() => { setSearchOpen(false); setShowSuggestions(false) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#7B8AA3] bg-[#F2F6FC] px-2 py-1 rounded">ESC</button>
+              <button type="button" onClick={() => { setSearchOpen(false); setShowSuggestions(false) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#52667C] bg-[#F2F6FC] px-2 py-1 rounded">ESC</button>
               {searchQuery && (
                 <button
                   type="button"
@@ -294,7 +326,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-4 mb-2.5">Browse</p>
                       <div className="flex flex-wrap gap-2">
                         {([['Spare Parts', '/shop'], ['Book a Service', '/service'], ['Training', '/training'], ['Mechanics', '/mechanics']] as [string, string][]).map(([label, href]) => (
-                          <button key={label} type="button" onClick={() => router.push(href)} className="px-3 py-1.5 rounded-full text-[13px] font-medium bg-[#FFF1EB] text-[#FF6B35] hover:bg-[#FFE4D6] transition-colors">{label}</button>
+                          <button key={label} type="button" onClick={() => router.push(href)} className="px-3 py-1.5 rounded-full text-[13px] font-medium bg-[#FFF1EB] text-[#BE3F09] hover:bg-[#FFE4D6] transition-colors">{label}</button>
                         ))}
                       </div>
                     </div>
@@ -480,60 +512,71 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           </div>
           )}
 
-          {/* Desktop Nav — handoff style (orange underline) */}
-          <nav className="hidden lg:flex items-stretch gap-0.5 text-sm self-stretch lg:ml-auto">
+          {/* Desktop Nav — design: 13.5px/600, active = orange text + 2.5px orange underline */}
+          <nav className={`hidden flex-wrap items-center gap-[clamp(12px,1.6vw,22px)] text-[13.5px] font-semibold text-[#0E2B4C] lg:flex ${inner ? 'lg:mx-auto lg:gap-[clamp(12px,1.7vw,24px)]' : ''}`}>
             {[
               { label: 'Home', href: '/', active: router.pathname === '/' },
               { label: 'Shop', href: '/shop', active: router.pathname.startsWith('/shop') && !router.pathname.startsWith('/shop-partner') },
               { label: 'Services', href: '/services', active: router.pathname.startsWith('/service') },
               { label: 'Mechanics', href: '/mechanics', active: router.pathname.startsWith('/mechanics') },
-              { label: 'For Shops', href: '/list-your-shop', active: router.pathname.startsWith('/list-your-shop') || router.pathname.startsWith('/shop-partner') },
+              ...(inner ? [{ label: 'For Shops', href: '/list-your-shop', active: router.pathname.startsWith('/list-your-shop') }] : []),
               { label: 'Training', href: '/training', active: router.pathname.startsWith('/training') },
             ].map((n) => (
-              <Link key={n.href} href={n.href} className={`group relative flex items-center px-2.5 xl:px-3.5 font-semibold whitespace-nowrap transition-colors ${n.active ? 'text-[#1B3B6F]' : 'text-[#475569] hover:text-[#1B3B6F]'}`}>
+              <Link key={n.href} href={n.href} className={`whitespace-nowrap transition-colors ${inner ? 'border-b-[3px] py-1.5' : 'border-b-[2.5px] py-[5px]'} ${n.active ? 'border-[#F4601F] text-[#BE3F09]' : 'border-transparent text-[#0E2B4C] hover:text-[#F4601F]'}`}>
                 {n.label}
-                <span className={`absolute left-2.5 right-2.5 xl:left-3.5 xl:right-3.5 bottom-0 h-[3px] rounded-t-full bg-[#FF6B35] origin-left transition-transform ${n.active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
               </Link>
             ))}
           </nav>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 sm:gap-3 ml-auto lg:ml-0">
+          {/* Search field — design: inline bordered field (desktop); opens the existing search modal (autocomplete preserved) */}
+          <button
+            type="button"
+            onClick={() => { setSearchOpen(true); setShowSuggestions(true) }}
+            aria-label="Search parts, services, brands"
+            className={`hidden min-w-0 flex-[1_1_200px] items-center gap-2.5 rounded-[10px] border border-[#E1E8F0] bg-white px-[13px] py-[11px] text-left text-[12.5px] text-[#52667C] transition-colors hover:border-[#0E2B4C] ${inner ? "" : "lg:flex"}`}
+          >
+            <IcSearch size={16} className="shrink-0 text-[#94A3B8]" />
+            <span className="min-w-0 flex-1 truncate">Search parts, services, brands...</span>
+          </button>
+
+          {/* Actions — mobile: 42px search / cart / account squares; desktop: 44px squares + Book Service + Login */}
+          <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0 lg:gap-2.5">
             <button
+              type="button"
               onClick={() => { setSearchOpen(true); setShowSuggestions(true) }}
               aria-label="Search"
-              className="h-10 w-10 flex items-center justify-center rounded-lg border border-[#E7ECF3] bg-white text-[#475569] hover:border-[#2A5298] hover:text-[#1B3B6F] transition-colors shrink-0"
+              className={`flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-[#E6ECF3] bg-white text-[#0E2B4C] transition-colors hover:border-[#0E2B4C] ${inner ? "lg:rounded-[11px] lg:border-[#E1E8F0]" : "lg:hidden"}`}
             >
-              <Search className="h-[19px] w-[19px]" />
+              <IcSearch size={20} />
             </button>
             {isAuthenticated && (
-              <Link href="/notifications" className="relative h-10 w-10 flex items-center justify-center rounded-lg border border-[#E7ECF3] bg-white text-[#475569] hover:border-[#2A5298] hover:text-[#1B3B6F] transition-colors shrink-0">
-                <Bell className="h-[19px] w-[19px]" />
+              <Link href="/notifications" aria-label="Notifications" className="relative hidden h-11 w-11 items-center justify-center rounded-[10px] border border-[#E1E8F0] bg-white text-[#0E2B4C] transition-colors hover:border-[#0E2B4C] lg:flex">
+                                <Bell className="h-[19px] w-[19px]" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
+                  <span className="absolute -right-[7px] -top-[7px] flex h-[19px] min-w-[19px] items-center justify-center rounded-[10px] bg-[#C9283F] px-[5px] text-[11px] font-bold text-white">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </Link>
             )}
-            <Link href="/cart" className="relative h-10 w-10 flex items-center justify-center rounded-lg border border-[#E7ECF3] bg-white text-[#475569] hover:border-[#2A5298] hover:text-[#1B3B6F] transition-colors shrink-0">
-              <ShoppingCart className="h-[19px] w-[19px]" />
+            <Link href="/cart" aria-label="Cart" className={`relative flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-[#E6ECF3] bg-white text-[#0E2B4C] transition-colors hover:border-[#0E2B4C] lg:border-[#E1E8F0] ${inner ? "lg:rounded-[11px]" : "lg:h-11 lg:w-11 lg:rounded-[10px]"}`}>
+              <IcShoppingCart size={19} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#FF6B35] text-white text-xs flex items-center justify-center font-bold">
+                <span className="absolute -right-[6px] -top-[6px] flex h-[19px] min-w-[19px] items-center justify-center rounded-[10px] bg-[#C94309] px-[5px] text-[11px] font-bold text-white">
                   {cartCount}
                 </span>
               )}
             </Link>
 
-            <Link href="/service" className="hidden xl:inline-flex items-center gap-1.5 h-10 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-4 rounded-lg text-sm transition-colors shrink-0">
-              <Wrench className="h-4 w-4" /> Book Service
+            <Link href="/service" className={`hidden items-center gap-2 whitespace-nowrap bg-[#C94309] px-[18px] py-3 text-[13.5px] font-semibold text-white transition-colors hover:bg-[#A93807] lg:inline-flex ${inner ? "rounded-[11px]" : "rounded-[10px]"}`}>
+              <IcBuild size={15} /> Book Service
             </Link>
 
             {isAuthenticated ? (
-              <div className="relative">
+              <div className="relative hidden lg:block">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="hidden md:flex items-center gap-2 h-10 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium transition-colors"
+                  className="flex h-11 items-center gap-2 rounded-[10px] border border-[#E1E8F0] bg-white px-3 text-[13.5px] font-semibold text-[#0E2B4C] transition-colors hover:border-[#0E2B4C]"
                 >
                   <div className="h-7 w-7 rounded-full bg-[#1B3B6F] text-white flex items-center justify-center text-xs font-bold">
                     {(user?.fullName || 'U')[0].toUpperCase()}
@@ -574,224 +617,95 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             ) : (
               <button
                 onClick={() => openLogin()}
-                className="hidden md:flex items-center gap-2 h-10 px-4 rounded-lg bg-[#1B3B6F] text-white text-sm font-medium hover:bg-[#152d55] transition-colors"
+                className={`hidden items-center gap-2 whitespace-nowrap px-[18px] py-3 text-[13.5px] font-semibold transition-colors lg:flex ${inner ? "rounded-[11px] bg-[#0E2B4C] text-white hover:bg-[#16406F]" : "rounded-[10px] border border-[#E1E8F0] bg-white text-[#0E2B4C] hover:border-[#0E2B4C]"}`}
               >
-                <User className="h-4 w-4" />
+                <IcPerson size={15} />
                 Login
               </button>
             )}
 
-            <button
-              className="lg:hidden h-10 w-10 flex items-center justify-center rounded-lg border border-[#E7ECF3] text-[#475569] hover:border-[#2A5298] hover:text-[#1B3B6F] transition-colors shrink-0"
-              onClick={() => setMobileMenuOpen(true)}
-              aria-label="Menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            {/* Mobile account square (design) */}
+            {isAuthenticated ? (
+              <Link href="/profile" aria-label="Account" className="flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-[#E6ECF3] bg-white text-[#0E2B4C] lg:hidden"><IcPerson size={20} /></Link>
+            ) : (
+              <button type="button" onClick={() => openLogin()} aria-label="Login" className="flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-[#E6ECF3] bg-white text-[#0E2B4C] lg:hidden"><IcPerson size={20} /></button>
+            )}
           </div>
         </div>
         </div>
 
       </header>
 
-      {/* Mobile Side Drawer */}
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-[270px] sm:w-[300px] p-0 flex flex-col">
-          {/* Drawer Header */}
-          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border bg-gradient-to-r from-[#1B3B6F] to-[#2A5298]">
-            <SheetTitle className="flex items-center text-white">
-              <span className="inline-flex bg-white rounded-lg px-3 py-2 shadow-sm">
-                <Image
-                  src="/brand-logo-v3.png"
-                  alt="Bharat Mechanics"
-                  width={150}
-                  height={48}
-                  className="h-9 w-auto object-contain"
-                />
-              </span>
-            </SheetTitle>
-          </SheetHeader>
-
-          {/* Authenticated User Info */}
-          {isAuthenticated && user && (
-            <div className="px-5 py-3.5 border-b border-border bg-gray-50">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-[#1B3B6F] text-white flex items-center justify-center text-sm font-bold shrink-0">
-                  {(user.fullName || 'U')[0].toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{user.fullName || 'User'}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user.email || user.phone || ''}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation Links */}
-          <div className="flex-1 overflow-y-auto scrollbar-ultra-narrow py-2">
-            {/* Main Navigation */}
-            <div className="px-2.5 mb-1">
-              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Menu</p>
-              {[
-                { icon: Home, label: 'Home', href: '/' },
-                { icon: Grid3X3, label: 'Shop', href: '/shop' },
-                { icon: Wrench, label: 'Services', href: '/services' },
-                { icon: BadgeCheck, label: 'Mechanics', href: '/mechanics' },
-                { icon: Store, label: 'For Shops', href: '/list-your-shop' },
-                { icon: GraduationCap, label: 'Training', href: '/training' },
-              ].map((item) => {
-                const isActive = item.href === '/'
-                  ? router.pathname === '/'
-                  : router.pathname.startsWith(item.href)
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-0.5 ${
-                      isActive
-                        ? 'bg-[#FF6B35]/10 text-[#FF6B35]'
-                        : 'text-foreground hover:bg-gray-100'
-                    }`}
-                  >
-                    <item.icon className={`h-[18px] w-[18px] ${isActive ? 'text-[#FF6B35]' : 'text-gray-500'}`} />
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
-
-            {/* Account & Activity Links — always visible */}
-            <div className="px-2.5 mt-1 pt-1.5 border-t border-border">
-              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Account</p>
-              {[
-                { icon: User, label: 'My Profile', href: '/profile' },
-                { icon: Receipt, label: 'My Orders', href: '/orders' },
-                { icon: Truck, label: 'Service Requests', href: '/service/my-requests' },
-                { icon: Bell, label: 'Notifications', href: '/notifications', badge: unreadCount },
-                { icon: ShoppingCart, label: 'My Cart', href: '/cart' },
-                { icon: MapPinned, label: 'Addresses', href: '/addresses' },
-                { icon: Wallet, label: 'Wallet', href: '/wallet' },
-                { icon: Star, label: 'My Reviews', href: '/reviews' },
-              ].map((item) => {
-                const isActive = router.pathname === item.href || router.pathname.startsWith(item.href + '/')
-                const needsAuth = item.href !== '/cart'
-                const linkHref = !isAuthenticated && needsAuth
-                  ? `/login?redirect=${encodeURIComponent(item.href)}`
-                  : item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={linkHref}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-0.5 ${
-                      isActive
-                        ? 'bg-[#FF6B35]/10 text-[#FF6B35]'
-                        : 'text-foreground hover:bg-gray-100'
-                    }`}
-                  >
-                    <item.icon className={`h-[18px] w-[18px] ${isActive ? 'text-[#FF6B35]' : 'text-gray-500'}`} />
-                    <span className="flex-1">{item.label}</span>
-                    {item.badge ? (
-                      <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                        {item.badge > 9 ? '9+' : item.badge}
-                      </span>
-                    ) : null}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Drawer Footer */}
-          <div className="border-t border-border px-4 py-3">
-            {isAuthenticated ? (
-              <button
-                onClick={() => {
-                  handleLogout()
-                  setMobileMenuOpen(false)
-                }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
-            ) : (
-              <button
-                onClick={() => { setMobileMenuOpen(false); openLogin() }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#1B3B6F] text-white text-sm font-medium hover:bg-[#152d55] transition-colors"
-              >
-                <User className="h-4 w-4" />
-                Login / Register
-              </button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Mobile side drawer — its own chunk, fetched on the first hamburger tap */}
+      {drawerMounted && (
+        <MobileDrawer
+          mobileMenuOpen={mobileMenuOpen}
+          setMobileMenuOpen={setMobileMenuOpen}
+          isAuthenticated={isAuthenticated}
+          user={user}
+          unreadCount={unreadCount}
+          openLogin={() => openLogin()}
+          handleLogout={handleLogout}
+        />
+      )}
 
       {/* Main Content */}
       <main>{children}</main>
 
-      {/* Footer */}
-      <footer className="bg-[#0f2340] text-white">
-        <div className="px-4 md:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto py-10">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-            <div className="col-span-2 md:col-span-1">
-              <div className="mb-4">
-                <span className="inline-flex">
-                  <Image
-                    src="/white-logo-bm.png"
-                    alt="Bharat Mechanics"
-                    width={220}
-                    height={52}
-                    className="h-11 w-auto object-contain"
-                  />
-                </span>
-                <span className="block mt-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[#FF6B35]">
-                  Auto Parts &amp; Service
-                </span>
-              </div>
-              <p className="text-gray-400 text-sm leading-relaxed">India&apos;s trusted auto parts and vehicle service platform. Genuine parts, certified mechanics, doorstep delivery.</p>
+      {/* Footer — design: #0A2240, logo + blurb + socials, four link columns */}
+      <footer className="bg-[#0A2240] text-white">
+        <div className="mx-auto grid max-w-[1180px] grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-[clamp(18px,3vw,28px)] px-[clamp(14px,4vw,28px)] py-[clamp(26px,3.5vw,40px)]">
+          <div className="min-w-0">
+            <Image src="/design/footer-logo.png" alt="Bharat Mechanics" width={270} height={76} sizes="130px" className="h-9 w-auto object-contain" />
+            <p className="mt-3 max-w-[240px] text-[12.5px] leading-[1.6] text-[#A9BFD6]">India&apos;s trusted auto parts and vehicle service platform. Genuine parts, certified mechanics, doorstep delivery.</p>
+            <div className="mt-4 flex items-center gap-2.5">
+              <a href="#" aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-[#F4601F]"><IcFacebook size={15} /></a>
+              {/* Instagram / YouTube / LinkedIn marks aren't in the icon pack — design-provided glyphs */}
+              <a href="#" aria-label="Instagram" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-[#F4601F]">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="12" cy="12" r="3.6"/><circle cx="16.8" cy="7.3" r="1" fill="currentColor" stroke="none"/></svg>
+              </a>
+              <a href="#" aria-label="YouTube" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-[#F4601F]">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 8.5s-.2-1.5-.8-2.1c-.7-.8-1.6-.8-2-.9C16.7 5.3 12 5.3 12 5.3s-4.7 0-6.2.2c-.4 0-1.3.1-2 .9C3.2 7 3 8.5 3 8.5S2.8 10.3 2.8 12v.9c0 1.7.2 3.5.2 3.5s.2 1.5.8 2.1c.7.8 1.7.8 2.1.9 1.6.2 5.1.2 5.1.2s4.7 0 6.2-.2c.4 0 1.3-.1 2-.9.6-.6.8-2.1.8-2.1s.2-1.8.2-3.5V12c0-1.7-.2-3.5-.2-3.5ZM10.2 15.1V9.4l4.9 2.9-4.9 2.8Z"/></svg>
+              </a>
+              <a href="#" aria-label="LinkedIn" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-[#F4601F]">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 8.5h-3V20h3V8.5ZM5 4a1.8 1.8 0 1 0 0 3.6A1.8 1.8 0 0 0 5 4ZM20.5 13.6c0-3-1.6-4.4-3.8-4.4-1.7 0-2.5.9-2.9 1.6V8.5h-3V20h3v-6.1c0-1.3.6-2.1 1.7-2.1s1.6.8 1.6 2.1V20h3.4v-6.4Z"/></svg>
+              </a>
             </div>
-            {[
-              { title: 'Quick Links', links: [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Services', href: '/service' }, { label: 'Orders', href: '/orders' }] },
-              { title: 'Customer Service', links: [{ label: 'Track Order', href: '/orders' }, { label: 'My Profile', href: '/profile' }, { label: 'Contact Us', href: '#' }] },
-              { title: 'Partners & Training', links: [{ label: 'Become a Mechanic', href: '/become-mechanic' }, { label: 'List Your Shop', href: '/list-your-shop' }, { label: 'Certified Mechanics', href: '/mechanics' }, { label: 'Partner Login', href: '/shop-partner/login' }, { label: 'Training & Certification', href: '/training' }] },
-              { title: 'Legal', links: [{ label: 'Terms & Conditions', href: '/terms' }, { label: 'Privacy Policy', href: '/privacy' }, { label: 'Refund Policy', href: '/refund-policy' }] },
-            ].map((col) => (
-              <div key={col.title}>
-                <h4 className="font-bold text-sm mb-4">{col.title}</h4>
-                <ul className="space-y-2">
-                  {col.links.map((link) => (
-                    <li key={link.label}>
-                      <Link href={link.href} className="text-gray-400 text-sm hover:text-[#FF6B35] transition-colors">{link.label}</Link>
-                    </li>
-                  ))}
-                </ul>
+          </div>
+          {[
+            { title: 'Quick Links', links: [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Services', href: '/services' }, { label: 'Mechanics', href: '/mechanics' }, { label: 'Training', href: '/training' }, { label: 'Contact Us', href: '/support' }] },
+            { title: 'Customer Service', links: [{ label: 'Track Order', href: '/orders' }, { label: 'My Profile', href: '/profile' }, { label: 'Help Center', href: '/support' }, { label: 'Returns & Refunds', href: '/refund-policy' }, { label: 'Service Warranty', href: '/terms' }, { label: 'Contact Support', href: '/support' }] },
+            { title: 'Partners & Training', links: [{ label: 'Become a Mechanic', href: '/become-mechanic' }, { label: 'List Your Shop', href: '/list-your-shop' }, { label: 'Certified Mechanics', href: '/mechanics' }, { label: 'Partner Login', href: '/shop-partner/login' }, { label: 'Training & Certification', href: '/training' }] },
+            { title: 'Legal', links: [{ label: 'Terms & Conditions', href: '/terms' }, { label: 'Privacy Policy', href: '/privacy' }, { label: 'Refund Policy', href: '/refund-policy' }, { label: 'Shipping Policy', href: '/refund-policy' }, { label: 'Cancellation Policy', href: '/refund-policy' }] },
+          ].map((col) => (
+            <div key={col.title} className="min-w-0">
+              <div className="text-[13.5px] font-bold">{col.title}</div>
+              <div className="mt-3.5 grid gap-[9px] text-[12.5px]">
+                {col.links.map((link) => (
+                  <Link key={link.label} href={link.href} className="text-[#A9BFD6] transition-colors hover:text-[#FFB68C]">{link.label}</Link>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="border-t border-gray-700 mt-10 pt-6 text-center">
-            <p className="text-gray-500 text-sm">&copy; 2026 Bharat Mechanics. All rights reserved.</p>
-          </div>
-          </div>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-white/10">
+          <p className="mx-auto max-w-[1180px] px-[clamp(14px,4vw,28px)] py-4 text-center text-[12px] text-[#7F97B2]">&copy; 2026 Bharat Mechanics. All rights reserved.</p>
         </div>
       </footer>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E6ECF3] bg-white md:hidden">
         <div className="flex items-center justify-around py-2">
           {mobileNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${
-                activeNav === item.href ? 'text-[#FF6B35]' : 'text-muted-foreground'
+              className={`flex flex-col items-center gap-0.5 rounded-lg px-3 py-1 transition-colors ${
+                activeNav === item.href ? 'text-[#BE3F09]' : 'text-[#52667C]'
               }`}
             >
-              <item.icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <item.icon size={22} />
+              <span className="text-[10px] font-semibold">{item.label}</span>
             </Link>
           ))}
         </div>

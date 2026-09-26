@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
   // Allow the dev machine's LAN IP to load /_next/* dev assets (so testing on a
   // phone over http://<ip>:3000 or https://<ip>:3000 works without warnings).
   allowedDevOrigins: ['10.60.50.73'],
+  poweredByHeader: false,
   images: {
+    // Optimized copies are cached for 30 days (served to browsers with the same max-age).
+    minimumCacheTTL: 2592000,
     remotePatterns: [
       {
         protocol: 'https',
@@ -16,6 +19,14 @@ const nextConfig: NextConfig = {
   },
   // The distributor-dashboard demo is retired — the real shop/distributor partner
   // dashboard lives at /shop-partner.
+  // Long browser caching for static design assets / brand files in public/.
+  async headers() {
+    const cache = [{ key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=86400' }];
+    return [
+      { source: '/design/:path*', headers: cache },
+      { source: '/:file(favicon.ico|favicon.png|brand-logo-v3.png|white-logo-bm.png)', headers: cache },
+    ];
+  },
   async redirects() {
     return [
       { source: '/distributor-dashboard', destination: '/shop-partner', permanent: false },

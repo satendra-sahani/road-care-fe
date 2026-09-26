@@ -6,11 +6,14 @@
 // backend tells the others it's taken.
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/router'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
 import Cookies from 'js-cookie'
 import { adminSupportAPI } from '@/services/api'
-import { WebCall, type CallHandle } from './WebCall'
-import { Headset, Phone, PhoneOff, Loader2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import type { CallHandle } from './WebCall'
+
+const WebCall = dynamic(() => import('./WebCall').then((m) => m.WebCall), { ssr: false })
+import { IcHeadsetMic as Headset, IcCall as Phone, IcCallEnd as PhoneOff, IcAutorenew as Loader2 } from '@/components/icons/BmIcons'
 
 const SOCKET_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api').replace(/\/api\/?$/, '')
 
@@ -31,7 +34,8 @@ export function AdminCallProvider({ children }: { children: ReactNode }) {
     const token = Cookies.get('token')
     if (!token) return
 
-    const socket: Socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'], reconnection: true })
+    let socket: Socket | null = null
+    let cancelled = false
     const onIncoming = (data: any) => {
       if (!data?.callId || data.contextType !== 'support') return
       if (incomingRef.current || activeRef.current) return
@@ -41,9 +45,16 @@ export function AdminCallProvider({ children }: { children: ReactNode }) {
       // Another admin answered — clear our ring for that call.
       if (data?.callId && incomingRef.current?.callId === data.callId) setIncoming(null)
     }
-    socket.on('call:incoming', onIncoming)
-    socket.on('support:call-taken', onTaken)
-    return () => { socket.off('call:incoming', onIncoming); socket.off('support:call-taken', onTaken); socket.disconnect() }
+    import('socket.io-client').then(({ io }) => {
+      if (cancelled) return
+      socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'], reconnection: true })
+      socket.on('call:incoming', onIncoming)
+      socket.on('support:call-taken', onTaken)
+    })
+    return () => {
+      cancelled = true
+      if (socket) { socket.off('call:incoming', onIncoming); socket.off('support:call-taken', onTaken); socket.disconnect() }
+    }
   }, [isAdminArea])
 
   const accept = async () => {

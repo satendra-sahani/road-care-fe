@@ -3,7 +3,10 @@
 import { createContext, useContext, useCallback, useRef, useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
-import { LoginModal } from './LoginModal'
+import dynamic from 'next/dynamic'
+
+// The OTP login dialog is only needed when someone opens it — keep it out of every page's bundle.
+const LoginModal = dynamic(() => import('./LoginModal').then((m) => m.LoginModal), { ssr: false })
 
 interface OpenLoginOpts { mandatory?: boolean }
 interface LoginModalCtx {

@@ -8,11 +8,14 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSelector } from 'react-redux'
 import Cookies from 'js-cookie'
-import socketService from '@/services/socketService'
 import { userCallAPI } from '@/services/api'
-import { WebCall, type CallHandle } from './WebCall'
+import dynamic from 'next/dynamic'
+import type { CallHandle } from './WebCall'
+
+// Loaded only while a call is active.
+const WebCall = dynamic(() => import('./WebCall').then((m) => m.WebCall), { ssr: false })
 import type { RootState } from '@/store'
-import { Shield, Phone, PhoneOff, Loader2 } from 'lucide-react'
+import { IcShield as Shield, IcCall as Phone, IcCallEnd as PhoneOff, IcAutorenew as Loader2 } from '@/components/icons/BmIcons'
 
 interface IncomingCall {
   callId: string
@@ -100,7 +103,6 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
     const hasToken = typeof window !== 'undefined' && !!Cookies.get('customer_token')
     if (!isAuthenticated && !hasToken) return
 
-    socketService.ensureConnected()
     const handler = (data: any) => {
       if (!data?.callId) return
       // The socket authenticates with the CUSTOMER token cookie, so on the
@@ -117,8 +119,15 @@ export function IncomingCallProvider({ children }: { children: ReactNode }) {
         contextType: data.contextType,
       })
     }
-    const unsub = socketService.on('call:incoming', handler)
-    return () => { unsub() }
+    // socket.io is fetched lazily — anonymous visitors never download it.
+    let unsub: (() => void) | undefined
+    let cancelled = false
+    import('@/services/socketService').then(({ default: socketService }) => {
+      if (cancelled) return
+      socketService.ensureConnected()
+      unsub = socketService.on('call:incoming', handler)
+    })
+    return () => { cancelled = true; unsub?.() }
   }, [isAuthenticated])
 
   // Ring (sound + vibration) while an incoming call is pending; auto-miss after 45s.

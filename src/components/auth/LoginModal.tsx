@@ -74,7 +74,7 @@ export function LoginModal({ onClose, dismissable = true }: { onClose: () => voi
 
   return (
     <div className="fixed inset-0 z-[90] bg-[#0F2547]/30 backdrop-blur-md flex items-center justify-center p-4" onClick={dismissable ? onClose : undefined}>
-      <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Login" className="w-full max-w-[420px] bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="relative px-6 pt-6 pb-4 text-center border-b border-[#EFF2F7]">
           {step !== 'phone' && <button onClick={back} className="absolute left-4 top-4 h-9 w-9 rounded-lg hover:bg-gray-100 flex items-center justify-center"><ArrowLeft className="h-5 w-5 text-gray-600" /></button>}
           {dismissable && <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 h-9 w-9 rounded-lg hover:bg-gray-100 flex items-center justify-center"><X className="h-5 w-5 text-gray-600" /></button>}
