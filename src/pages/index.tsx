@@ -21,7 +21,11 @@ import { ScaledStage } from '@/components/home/ScaledStage'
 import { DImg, ikUrl } from '@/components/ui/DImg'
 import Link from 'next/link'
 import Head from 'next/head'
-import { toast } from 'sonner'
+// sonner is only needed after an "Add to cart" click — load it then, not with the page.
+const toast = {
+  success: (msg: string) => { import('sonner').then((m) => m.toast.success(msg)) },
+  error: (msg: string) => { import('sonner').then((m) => m.toast.error(msg)) },
+}
 import Cookies from 'js-cookie'
 import {
   IcBuild, IcShoppingBag, IcTwoWheeler, IcLocalShipping, IcCheckCircle, IcVerifiedUser,

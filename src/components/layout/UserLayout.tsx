@@ -8,8 +8,6 @@ import { loadUserRequest, customerLogout } from '@/store/slices/customerAuthSlic
 import { userCartAPI, userNotificationAPI, catalogAPI } from '@/services/api'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 // Brand icon pack under the names this file used before (was lucide-react)
 import {
   IcSearch as Search, IcPerson as User, IcClose as X, IcGridView as Grid3X3, IcReceipt as Receipt,
@@ -284,10 +282,11 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
           <div ref={searchContainerRef} className="w-full max-w-[620px] bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <form onSubmit={handleSearch} className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
+              {/* plain input with the exact classes ui/Input + cn() produced — keeps tailwind-merge off every page */}
+              <input
                 autoFocus
                 placeholder="Search parts, services, courses…"
-                className="pl-11 pr-20 h-14 text-base rounded-none border-0 border-b border-border focus-visible:ring-0"
+                className="flex w-full bg-background px-3 py-2 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pl-11 pr-20 h-14 text-base rounded-none border-0 border-b border-border focus-visible:ring-0"
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Escape') { setSearchOpen(false); setShowSuggestions(false) } }}

@@ -2,7 +2,6 @@ import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { Provider } from "react-redux";
 import { store } from "@/store";
-import { CustomerAuthGuard } from "@/components/auth/CustomerAuthGuard";
 import { LoginModalProvider } from "@/components/auth/LoginModalProvider";
 import { IncomingCallProvider } from "@/components/calls/IncomingCallProvider";
 import { AdminCallProvider } from "@/components/calls/AdminCallProvider";
@@ -16,6 +15,8 @@ import { Poppins } from "next/font/google";
 // split them out so public pages don't download them (SSR still renders them).
 const AuthGuard = dynamic(() => import("@/components/admin/AuthGuard").then((m) => m.AuthGuard));
 const ShopAuthGuard = dynamic(() => import("@/components/shop-partner/ShopAuthGuard").then((m) => m.ShopAuthGuard));
+// Customer guard only wraps logged-in pages (cart, orders, profile…).
+const CustomerAuthGuard = dynamic(() => import("@/components/auth/CustomerAuthGuard").then((m) => m.CustomerAuthGuard));
 const ShopLayout = dynamic(() => import("@/components/shop-partner/ShopLayout").then((m) => m.ShopLayout));
 
 // Toast host is client-only and not needed for first paint.
