@@ -585,14 +585,14 @@ export default function HomePage() {
               </div>
               <div className="h-3.5 w-14 animate-pulse rounded-md bg-gray-200" />
             </div>
-            <div className="mt-3.5 grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-2.5">
+            <div className={CATEGORY_ROW}>
               {Array.from({ length: 8 }).map((_, i) => <CategorySkeleton key={i} />)}
             </div>
           </Section>
         ) : categoryTiles.length > 0 ? (
           <Section>
             <SectionHead title="Shop by category" action={{ label: 'View all categories', href: '/shop' }} />
-            <div className="mt-3.5 grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-2.5">
+            <div className={CATEGORY_ROW}>
               {categoryTiles.map((cat: any) => <CategoryTile key={cat._id || cat.id} cat={cat} />)}
             </div>
           </Section>
@@ -1098,6 +1098,15 @@ function AppBannerCopy({ compact = false }: { compact?: boolean }) {
     </div>
   )
 }
+
+// "Shop by category" stays on ONE line: a swipeable strip on phones, and on wider screens
+// only as many tiles as fit in a single row (the rest are behind "View all categories").
+const CATEGORY_ROW = [
+  'mt-3.5 gap-2.5',
+  'max-md:flex max-md:snap-x max-md:overflow-x-auto scrollbar-hide max-md:[&>*]:w-[100px] max-md:[&>*]:shrink-0 max-md:[&>*]:snap-start',
+  'md:grid md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10',
+  'md:max-lg:[&>*:nth-child(n+7)]:hidden lg:max-xl:[&>*:nth-child(n+9)]:hidden xl:[&>*:nth-child(n+11)]:hidden',
+].join(' ')
 
 function CategoryTile({ cat }: { cat: any }) {
   const img = (cat.icon?.startsWith?.('http') || cat.icon?.startsWith?.('/')
