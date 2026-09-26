@@ -82,6 +82,23 @@ function cityPost(c: City): Post {
       ],
     },
     {
+      id: 'popular-searches',
+      h2: `Popular mechanic searches in ${c.name}`,
+      blocks: [
+        { p: `This is what people in and around ${c.name} usually search for when their vehicle gives trouble — and what Bharat Mechanics offers for each:` },
+        { ul: [
+          `**“Mechanic near me” / “${c.name} mechanic”** — a verified car or bike mechanic at your doorstep. [Book a service](/services) in about two minutes.`,
+          `**“Bike mistri near me” / “bike service at home”** — full two-wheeler service at home: oil, chain, brakes, plug and electricals.`,
+          `**“Car service at home” / “car repair near me”** — periodic service from ₹2,499 and oil change from ₹599, done at your address.`,
+          `**“Puncture repair near me” / “tyre puncture wala”** — puncture repair on the spot through [Roadside Assistance](/services) from ₹499.`,
+          `**“Battery jump start near me” / “car battery near me”** — jump-start, or a genuine new battery fitted at home with old-battery buyback.`,
+          `**“Car AC repair near me”** — AC service & gas refill from ₹1,799.`,
+          `**“Towing service near me” / “24 hour mechanic”** — 24/7 roadside help and towing to the nearest workshop.`,
+          `**“Spare parts shop near me”** — genuine parts delivered from the [Bharat Mechanics shop](/shop), with fitting on request.`,
+        ] },
+      ],
+    },
+    {
       id: 'hindi',
       h2: `${c.hi} में मैकेनिक बुक करें`,
       blocks: [
@@ -109,7 +126,8 @@ function cityPost(c: City): Post {
     excerpt: `Doorstep car and bike service, repairs and roadside help in ${c.name}${inDistrict} — prices, local driving tips and how to book.`,
     keywords: [
       `mechanic in ${c.name}`, `car mechanic ${c.name}`, `bike mechanic ${c.name}`, `car service ${c.name}`, `bike service ${c.name}`,
-      `mechanic near me ${c.name}`, `doorstep car service ${c.name}`, `roadside assistance ${c.name}`, `${c.hi} मैकेनिक`, `${d.name} car service`,
+      `mechanic near me ${c.name}`, `bike mistri ${c.name}`, `car repair near me ${c.name}`, `puncture repair ${c.name}`, `car service at home ${c.name}`,
+      `bike service at home ${c.name}`, `towing service ${c.name}`, `doorstep car service ${c.name}`, `roadside assistance ${c.name}`, `${c.hi} मैकेनिक`, `${c.hi} बाइक मिस्त्री`, `${d.name} car service`,
     ].join(', '),
     datePublished: PUB,
     dateModified: PUB,

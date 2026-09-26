@@ -78,7 +78,7 @@ export function LoginModal({ onClose, dismissable = true }: { onClose: () => voi
         <div className="relative px-6 pt-6 pb-4 text-center border-b border-[#EFF2F7]">
           {step !== 'phone' && <button onClick={back} className="absolute left-4 top-4 h-9 w-9 rounded-lg hover:bg-gray-100 flex items-center justify-center"><ArrowLeft className="h-5 w-5 text-gray-600" /></button>}
           {dismissable && <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 h-9 w-9 rounded-lg hover:bg-gray-100 flex items-center justify-center"><X className="h-5 w-5 text-gray-600" /></button>}
-          <Image src="/brand-logo-v3.png" alt="Bharat Mechanics" width={170} height={54} className="h-9 w-auto object-contain mx-auto mb-3" />
+          <Image src="/design/logo2.png" alt="Bharat Mechanics" width={600} height={216} sizes="140px" className="h-10 w-auto object-contain mx-auto mb-3" />
           <h3 className="text-lg font-extrabold text-[#13203A]">{step === 'phone' ? 'Login or Sign up' : step === 'otp' ? 'Verify your number' : 'Complete your profile'}</h3>
           <p className="text-[13px] text-[#7B8AA3] mt-0.5">{step === 'phone' ? 'Enter your mobile number to continue' : step === 'otp' ? <>Enter the 6-digit code sent to <b>+91 {phone}</b></> : 'Just a few details to get started'}</p>
         </div>

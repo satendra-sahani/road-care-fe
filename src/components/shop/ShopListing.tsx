@@ -406,18 +406,23 @@ export function ShopListing() {
 
         {/* CATEGORY TILES */}
         <div className="max-w-[1220px] mx-auto px-[clamp(14px,3vw,24px)] pt-[clamp(14px,2vw,20px)] pb-1.5 flex items-stretch gap-[9px] overflow-x-auto scrollbar-hide">
-          <button onClick={() => setSelectedCategory('')} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] text-center transition-colors ${!selectedCategory ? 'bg-[#0E2B4C] text-white py-[11px] shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'bg-white border border-[#E6ECF3] py-[9px] text-[#0E2B4C] hover:border-[#F4601F]'}`}>
-            <span className={`w-[34px] h-[34px] mx-auto rounded-[9px] flex items-center justify-center ${!selectedCategory ? 'bg-white/15' : 'bg-[#F6F9FD]'}`}><IcGridView size={18} /></span>
-            <div className="text-[11px] font-bold mt-[9px] leading-[1.25]">All Parts</div>
+          <button onClick={() => setSelectedCategory('')} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] text-center transition-colors py-[9px] border ${!selectedCategory ? 'border-[#0E2B4C] bg-[#0E2B4C] text-white shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'border-[#E6ECF3] bg-white text-[#0E2B4C] hover:border-[#F4601F]'}`}>
+            <span className="flex h-[38px] w-full items-center justify-center">
+              <span className={`flex h-[34px] w-[34px] items-center justify-center rounded-[9px] ${!selectedCategory ? 'bg-white/15' : 'bg-[#F6F9FD]'}`}><IcGridView size={18} /></span>
+            </span>
+            <div className="mt-[7px] text-[10.5px] font-semibold leading-[1.25] line-clamp-2">All Parts</div>
           </button>
           {categories.map((cat) => {
             const on = selectedCategory === cat._id
             const img = cat.image || cat.icon || artFor(cat.name)
             return (
-              <button key={cat._id} onClick={() => setSelectedCategory(on ? '' : cat._id)} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] py-[9px] text-center transition-colors ${on ? 'bg-[#0E2B4C] text-white shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'bg-white border border-[#E6ECF3] text-[#0E2B4C] hover:border-[#F4601F]'}`}>
-                {img
-                  ? (img.startsWith('/design/') ? <DImg src={img} alt="" sizes="78px" className={`block w-full h-[38px] object-contain ${on ? 'brightness-0 invert' : ''}`} /> : <img loading="lazy" decoding="async" src={ikUrl(img, 156)} alt="" width={68} height={38} className={`block w-full h-[38px] object-contain ${on ? 'brightness-0 invert' : ''}`} />)
-                  : <span className="w-full h-[38px] flex items-center justify-center"><IcInventory size={22} /></span>}
+              <button key={cat._id} onClick={() => setSelectedCategory(on ? '' : cat._id)} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] py-[9px] text-center transition-colors border ${on ? 'border-[#0E2B4C] bg-[#0E2B4C] text-white shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'border-[#E6ECF3] bg-white text-[#0E2B4C] hover:border-[#F4601F]'}`}>
+                {/* Active tile: the photo sits on a white chip (keeps its real colours instead of being inverted into a white box) */}
+                <span className={`mx-auto flex h-[38px] items-center justify-center rounded-[9px] transition-colors ${on ? 'w-[58px] bg-white p-[3px]' : 'w-full'}`}>
+                  {img
+                    ? (img.startsWith('/design/') ? <DImg src={img} alt="" sizes="78px" className="block h-full w-full object-contain" /> : <img loading="lazy" decoding="async" src={ikUrl(img, 156)} alt="" width={68} height={38} className="block h-full w-full object-contain" />)
+                    : <IcInventory size={22} className={on ? 'text-[#0E2B4C]' : ''} />}
+                </span>
                 <div className="text-[10.5px] font-semibold mt-[7px] leading-[1.25] line-clamp-2">{cat.name}</div>
               </button>
             )

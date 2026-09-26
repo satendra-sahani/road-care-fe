@@ -56,7 +56,7 @@ export default function BlogIndex({ guides, districts }: Props) {
       <SEOHead
         title="Car & Bike Care Blog & Service Areas"
         description="Car and bike care guides for Gorakhpur, Deoria, Kushinagar and Maharajganj — service prices, monsoon, fog and festive-trip tips, and mechanics in 40+ towns."
-        keywords="mechanic near me Gorakhpur, car service Deoria, bike mechanic Kushinagar, Padrauna mechanic, Kasia car service, car care tips Purvanchal, Bharat Mechanics blog"
+        keywords="mechanic near me Gorakhpur, bike mistri near me, car repair near me Deoria, bike mechanic Kushinagar, puncture repair near me, car service at home Gorakhpur, Padrauna mechanic, Kasia car service, towing service near me, car care tips Purvanchal, Bharat Mechanics blog"
       />
       <Head>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />

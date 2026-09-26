@@ -370,9 +370,9 @@ export default function HomePage() {
       {/* Admin-managed offer popup (same appConfig.homePopup the app shows) */}
       <HomeOfferPopup />
       <SEOHead
-        title="Auto Parts & Doorstep Mechanic Service"
-        description="Bharat Mechanics – Buy genuine auto parts online, book certified mechanics for doorstep vehicle repair and servicing. Car parts, bike parts, engine oil, brake pads, filters & more. Fast delivery across India."
-        keywords="auto parts online, car parts, bike parts, mechanic near me, vehicle repair, Bharat Mechanics, genuine auto parts, doorstep mechanic, car service, bike service, engine oil, brake pads, air filter, spark plug, car battery, tyre"
+        title="Mechanic Near Me – Gorakhpur, Deoria, Kushinagar"
+        description="Car & bike mechanic at your doorstep in Gorakhpur, Deoria, Kushinagar & Maharajganj. Service from ₹599, roadside help, genuine parts, pay after service."
+        keywords="mechanic near me, bike mechanic near me, car mechanic near me, bike mistri near me, car repair near me, puncture repair near me, car service at home, bike service at home, doorstep mechanic, 24 hour mechanic near me, towing service near me, battery jump start, car AC repair near me, two wheeler service near me, auto parts online, genuine car parts, bike parts, Bharat Mechanics, Gorakhpur, Deoria, Kushinagar, Padrauna, Kasia, Hata, Kaptanganj, Maharajganj"
         canonicalUrl="https://bharatmechanics.com/"
       />
 

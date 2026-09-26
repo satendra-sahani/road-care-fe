@@ -40,8 +40,8 @@ export default function TrackerPage() {
   return (
     <>
       <SEOHead
-        title="GPS Vehicle Tracker — Live Location & Engine Cut-off | Bharat Mechanics"
-        description="Track your vehicle live 24×7, get theft & geo-fence alerts, and remotely cut the engine. Bharat Mechanics GPS Tracker — ₹1,999 device + ₹99/month, SIM & cloud included."
+        title="GPS Tracker for Car & Bike – Engine Cut-off"
+        description="Track your vehicle live 24×7, get theft & geo-fence alerts and cut the engine remotely. GPS Tracker ₹1,999 + ₹99/month, SIM & cloud included."
       />
       <UserLayout>
         <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-4 md:py-6">

@@ -166,7 +166,7 @@ export function HomeOfferPopup() {
                 'linear-gradient(160deg, #0C1F3C 0%, #0A1830 55%, #1A1A24 100%)',
             }}
           >
-            <DImg src="/design/gps-logo.webp" alt="Bharat Mechanics" sizes="170px" className="block h-auto w-[140px] md:w-[170px]" />
+            <DImg src="/design/logo-white.png" alt="Bharat Mechanics" sizes="170px" className="block h-auto w-[140px] md:w-[170px]" />
             {cfg.badge && (
               <span className="absolute right-14 top-3.5 max-w-[120px] -rotate-3 rounded-lg bg-[#C94309] px-3 py-1.5 text-center text-[11px] font-bold uppercase leading-tight tracking-wide text-white shadow-[0_6px_14px_rgba(244,96,31,0.35)] md:right-[34px] md:max-w-[168px] md:text-[12px]">
                 {cfg.badge}

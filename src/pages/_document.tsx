@@ -36,7 +36,22 @@ export default function Document() {
                 contactType: "customer service",
                 availableLanguage: ["English", "Hindi"],
               },
-              sameAs: [],
+              sameAs: [
+                "https://play.google.com/store/apps/details?id=com.bharatmechanics",
+                "https://apps.apple.com/in/app/bharat-mechanics/id6806160528",
+              ],
+              // Where doorstep service is offered (city guides live under /blog/mechanic-in-*)
+              areaServed: [
+                ...["Gorakhpur", "Deoria", "Kushinagar", "Maharajganj"].map((d) => ({
+                  "@type": "AdministrativeArea",
+                  name: `${d} district, Uttar Pradesh`,
+                })),
+                ...["Gorakhpur", "Deoria", "Kushinagar", "Padrauna", "Kasia", "Hata", "Kaptanganj", "Ramkola", "Rudrapur", "Salempur", "Gauri Bazar", "Chauri Chaura", "Tamkuhi Raj", "Khadda", "Maharajganj", "Ghughli"].map((c) => ({
+                  "@type": "City",
+                  name: c,
+                })),
+              ],
+              knowsAbout: ["Car repair", "Bike repair", "Doorstep vehicle service", "Roadside assistance", "Auto spare parts", "GPS vehicle tracking"],
             }),
           }}
         />

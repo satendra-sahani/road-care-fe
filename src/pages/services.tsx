@@ -64,6 +64,13 @@ const STEPS = [
   { Icon: IcCreditCard, title: 'Pay after service', desc: 'Rate your mechanic & relax' },
 ]
 
+const SERVICE_AREAS: [string, string][] = [
+  ['gorakhpur', 'Gorakhpur'], ['deoria', 'Deoria'], ['kushinagar', 'Kushinagar'], ['padrauna', 'Padrauna'], ['kasia', 'Kasia'],
+  ['hata', 'Hata'], ['kaptanganj', 'Kaptanganj'], ['ramkola', 'Ramkola'], ['rudrapur', 'Rudrapur'], ['salempur', 'Salempur'],
+  ['gauri-bazar', 'Gauri Bazar'], ['chauri-chaura', 'Chauri Chaura'], ['tamkuhi-raj', 'Tamkuhi Raj'], ['khadda', 'Khadda'],
+  ['bhatpar-rani', 'Bhatpar Rani'], ['barhaj', 'Barhaj'], ['maharajganj', 'Maharajganj'], ['ghughli', 'Ghughli'],
+]
+
 const WHY = [
   { Icon: IcVerifiedUser, fg: '#17A05A', bg: '#E4F5EA', title: 'Certified Mechanics', desc: 'ID-verified, trained & rated' },
   { Icon: IcSettings, fg: '#1A6FD4', bg: '#E4EEFB', title: 'Genuine Parts Only', desc: 'OEM with invoice' },
@@ -175,8 +182,9 @@ export default function ServicesLandingPage() {
   return (
     <>
       <SEOHead
-        title="Book Car & Bike Service"
-        description="Book certified mechanics for doorstep car and bike service. Transparent pricing, genuine parts, 30-day warranty, live tracking, pay after service."
+        title="Car & Bike Service at Home – Gorakhpur"
+        description="Doorstep car & bike service in Gorakhpur, Deoria, Kushinagar & Maharajganj: oil change from ₹599, AC, brakes, battery, 24/7 roadside help. Pay after service."
+        keywords="mechanic near me, bike mechanic near me, car mechanic near me, bike mistri near me, car repair near me, puncture repair near me, car service at home, bike service at home, doorstep mechanic, 24 hour mechanic near me, towing service near me, battery jump start, car AC repair near me, two wheeler service near me, car service price, oil change near me, car AC gas refill, wheel alignment near me, Gorakhpur, Deoria, Kushinagar, Padrauna, Kasia, Hata, Kaptanganj, Maharajganj"
       />
       <UserLayout>
         <div className="bg-[#F5F8FC] text-[14px] leading-[1.5] text-[#0E2B4C] [overflow-x:clip]">
@@ -317,6 +325,27 @@ export default function ServicesLandingPage() {
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* ═══ Service areas — links to the city guides (local SEO) ═══ */}
+          <section className="mx-auto max-w-[1200px] px-[clamp(14px,3vw,24px)] pt-[clamp(22px,3vw,32px)]">
+            <Eyebrow>SERVICE AREAS</Eyebrow>
+            <H2>Mechanic near you in Purvanchal</H2>
+            <p className="mt-1.5 max-w-[760px] text-[13px] leading-relaxed text-[#52667C]">
+              Doorstep car &amp; bike service, puncture repair and 24/7 roadside help across Gorakhpur, Deoria, Kushinagar and Maharajganj districts.
+            </p>
+            <ul className="mt-3.5 flex flex-wrap gap-2">
+              {SERVICE_AREAS.map(([slug, name]) => (
+                <li key={slug}>
+                  <Link href={`/blog/mechanic-in-${slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-[#E6ECF3] bg-white px-3.5 py-2 text-[13px] font-medium text-[#0E2B4C] transition-colors hover:border-[#F4601F] hover:text-[#BE3F09]">
+                    <IcLocationOn size={14} className="text-[#C94309]" /> {name}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/blog#service-areas" className="inline-flex items-center gap-1 rounded-full px-3.5 py-2 text-[13px] font-semibold text-[#1864C8] hover:underline">All 43 areas <IcArrowForward size={14} /></Link>
+              </li>
+            </ul>
           </section>
 
           {/* ═══ Need help right now? — design's 2012×327 roadside band; stacks under 1100px ═══ */}

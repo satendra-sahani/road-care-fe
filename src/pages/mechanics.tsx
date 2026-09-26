@@ -184,8 +184,9 @@ export default function MechanicsPage() {
   return (
     <>
       <SEOHead
-        title="Find a Trusted Mechanic"
-        description="Browse verified, rated and background-checked mechanics near you, including Bharat Mechanics Certified experts. Doorstep service, transparent pricing."
+        title="Bike Mistri Near Me: Verified Mechanics"
+        description="Find verified car and bike mechanics (mistri) near you in Gorakhpur, Deoria, Kushinagar, Padrauna and Kasia. Rated experts, doorstep service, fair prices."
+        keywords="mechanic near me, bike mechanic near me, car mechanic near me, bike mistri near me, car repair near me, puncture repair near me, car service at home, bike service at home, doorstep mechanic, 24 hour mechanic near me, towing service near me, battery jump start, car AC repair near me, two wheeler service near me, verified mechanic, certified mechanic, Gorakhpur, Deoria, Kushinagar, Padrauna, Kasia, Hata, Kaptanganj, Maharajganj"
       />
       <UserLayout>
         <div className="bg-[#F5F8FC] text-[#0E2B4C] text-[14px] leading-[1.5] pb-2">
