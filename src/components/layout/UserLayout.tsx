@@ -672,7 +672,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
             </div>
           </div>
           {[
-            { title: 'Quick Links', links: [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Services', href: '/services' }, { label: 'Mechanics', href: '/mechanics' }, { label: 'Training', href: '/training' }, { label: 'Contact Us', href: '/support' }] },
+            { title: 'Quick Links', links: [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Services', href: '/services' }, { label: 'Mechanics', href: '/mechanics' }, { label: 'Training', href: '/training' }, { label: 'Blog & Guides', href: '/blog' }, { label: 'Contact Us', href: '/support' }] },
             { title: 'Customer Service', links: [{ label: 'Track Order', href: '/orders' }, { label: 'My Profile', href: '/profile' }, { label: 'Help Center', href: '/support' }, { label: 'Returns & Refunds', href: '/refund-policy' }, { label: 'Service Warranty', href: '/terms' }, { label: 'Contact Support', href: '/support' }] },
             { title: 'Partners & Training', links: [{ label: 'Become a Mechanic', href: '/become-mechanic' }, { label: 'List Your Shop', href: '/list-your-shop' }, { label: 'Certified Mechanics', href: '/mechanics' }, { label: 'Partner Login', href: '/shop-partner/login' }, { label: 'Training & Certification', href: '/training' }] },
             { title: 'Legal', links: [{ label: 'Terms & Conditions', href: '/terms' }, { label: 'Privacy Policy', href: '/privacy' }, { label: 'Refund Policy', href: '/refund-policy' }, { label: 'Shipping Policy', href: '/refund-policy' }, { label: 'Cancellation Policy', href: '/refund-policy' }] },
@@ -686,6 +686,16 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
               </div>
             </div>
           ))}
+        </div>
+        {/* Service areas — internal links to the city guides */}
+        <div className="border-t border-white/10">
+          <nav aria-label="Service areas" className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-3 gap-y-1.5 px-[clamp(14px,4vw,28px)] py-4 text-[12.5px]">
+            <span className="font-bold text-white">Mechanic near you:</span>
+            {[['gorakhpur', 'Gorakhpur'], ['deoria', 'Deoria'], ['kushinagar', 'Kushinagar'], ['padrauna', 'Padrauna'], ['kasia', 'Kasia'], ['hata', 'Hata'], ['kaptanganj', 'Kaptanganj'], ['ramkola', 'Ramkola'], ['rudrapur', 'Rudrapur'], ['salempur', 'Salempur'], ['maharajganj', 'Maharajganj']].map(([slug, name]) => (
+              <Link key={slug} href={`/blog/mechanic-in-${slug}`} className="text-[#A9BFD6] transition-colors hover:text-[#FFB68C]">{name}</Link>
+            ))}
+            <Link href="/blog#service-areas" className="font-semibold text-[#FFB68C] hover:text-white">All areas →</Link>
+          </nav>
         </div>
         <div className="border-t border-white/10">
           <p className="mx-auto max-w-[1180px] px-[clamp(14px,4vw,28px)] py-4 text-center text-[12px] text-[#7F97B2]">&copy; 2026 Bharat Mechanics. All rights reserved.</p>
