@@ -205,9 +205,8 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
     router.push('/')
   }
 
-  /* Design has two headers: the Home header (inline search, bordered Login) and the inner-page header
-     (centred nav incl. For Shops, search icon square, navy Login, top bar with Book Mechanic). */
-  const inner = router.pathname !== '/'
+  /* One header on every page (the Home design): top strip with quick links, nav, inline search field
+     on wide screens (icon below xl), Book Service + bordered Login. */
 
   const mobileNav = [
     { icon: IcHome, label: 'Home', href: '/' },
@@ -227,25 +226,15 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
       <div className={`bg-[#0A2442] text-white ${mobileTopBar ? "" : "hidden md:block"}`}>
         <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-center gap-3.5 px-[clamp(14px,4vw,28px)] py-[9px] text-[12px] font-medium md:justify-between">
           <div className="flex flex-wrap items-center gap-4">
-            {inner ? (
-              <>
-                <span className="flex items-center gap-[7px]"><IcCall size={13} /> +91 93106 94349</span>
-                <span className="flex items-center gap-[7px]"><IcLocationOn size={13} /> Deliver to: India</span>
-              </>
-            ) : (
-              <>
-                <span className="flex items-center gap-[7px]"><IcLocationOn size={13} /> Deliver to: India</span>
-                <span className="h-[13px] w-px bg-white/25" />
-                <span className="flex items-center gap-[7px]"><IcCall size={13} /> +91 93106 94349</span>
-              </>
-            )}
+            <span className="flex items-center gap-[7px]"><IcLocationOn size={13} /> Deliver to: India</span>
+            <span className="h-[13px] w-px bg-white/25" />
+            <a href="tel:+919310694349" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcCall size={13} /> +91 93106 94349</a>
           </div>
           <div className="hidden flex-wrap items-center gap-5 md:flex">
             <Link href="/orders" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcLocalShipping size={13} /> Track Order</Link>
-            {inner && <Link href="/mechanics" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcBuild size={13} /> Book Mechanic</Link>}
             <Link href="/support" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcHelpCenter size={13} /> Help Center</Link>
-            {!inner && <Link href="/list-your-shop" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcStore size={13} /> For Shops</Link>}
-            {!inner && <Link href="/become-mechanic" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcPerson size={13} /> Become a Mechanic</Link>}
+            <Link href="/list-your-shop" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcStore size={13} /> For Shops</Link>
+            <Link href="/become-mechanic" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcPerson size={13} /> Become a Mechanic</Link>
           </div>
         </div>
       </div>
@@ -253,7 +242,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#E6ECF3] bg-white">
         <div className="px-[clamp(14px,4vw,28px)]">
-          <div className="mx-auto flex max-w-[1180px] items-center gap-2 py-2 lg:flex-wrap lg:gap-[clamp(12px,2vw,26px)] lg:py-2.5">
+          <div className="mx-auto flex max-w-[1180px] items-center gap-2 py-2 lg:flex-wrap lg:gap-3 lg:py-2.5 xl:gap-[clamp(14px,1.8vw,24px)]">
           {/* Mobile: hamburger on the left (design) */}
           <button
             type="button"
@@ -271,7 +260,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
               width={600}
               height={216}
               sizes="140px"
-              className={`h-10 w-auto object-contain ${inner ? "lg:h-11" : "lg:h-12"}`}
+              className="h-10 w-auto object-contain lg:h-12"
               priority
             />
           </Link>
@@ -512,16 +501,16 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
           )}
 
           {/* Desktop Nav — design: 13.5px/600, active = orange text + 2.5px orange underline */}
-          <nav className={`hidden flex-wrap items-center gap-[clamp(12px,1.6vw,22px)] text-[13.5px] font-semibold text-[#0E2B4C] lg:flex ${inner ? 'lg:mx-auto lg:gap-[clamp(12px,1.7vw,24px)]' : ''}`}>
+          <nav className="hidden shrink-0 items-center gap-[clamp(14px,1.5vw,22px)] text-[13.5px] font-semibold text-[#0E2B4C] lg:flex">
             {[
               { label: 'Home', href: '/', active: router.pathname === '/' },
               { label: 'Shop', href: '/shop', active: router.pathname.startsWith('/shop') && !router.pathname.startsWith('/shop-partner') },
               { label: 'Services', href: '/services', active: router.pathname.startsWith('/service') },
               { label: 'Mechanics', href: '/mechanics', active: router.pathname.startsWith('/mechanics') },
-              ...(inner ? [{ label: 'For Shops', href: '/list-your-shop', active: router.pathname.startsWith('/list-your-shop') }] : []),
               { label: 'Training', href: '/training', active: router.pathname.startsWith('/training') },
+              { label: 'Blog', href: '/blog', active: router.pathname.startsWith('/blog') },
             ].map((n) => (
-              <Link key={n.href} href={n.href} className={`whitespace-nowrap transition-colors ${inner ? 'border-b-[3px] py-1.5' : 'border-b-[2.5px] py-[5px]'} ${n.active ? 'border-[#F4601F] text-[#BE3F09]' : 'border-transparent text-[#0E2B4C] hover:text-[#F4601F]'}`}>
+              <Link key={n.href} href={n.href} className={`whitespace-nowrap border-b-[2.5px] py-[5px] transition-colors ${n.active ? 'border-[#F4601F] text-[#BE3F09]' : 'border-transparent text-[#0E2B4C] hover:text-[#F4601F]'}`}>
                 {n.label}
               </Link>
             ))}
@@ -532,19 +521,19 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
             type="button"
             onClick={() => { setSearchOpen(true); setShowSuggestions(true) }}
             aria-label="Search parts, services, brands"
-            className={`hidden min-w-0 flex-[1_1_200px] items-center gap-2.5 rounded-[10px] border border-[#E1E8F0] bg-white px-[13px] py-[11px] text-left text-[12.5px] text-[#52667C] transition-colors hover:border-[#0E2B4C] ${inner ? "" : "lg:flex"}`}
+            className="hidden min-w-[120px] flex-[1_1_0%] items-center gap-2.5 rounded-[10px] border border-[#E1E8F0] bg-white px-[13px] py-[11px] text-left text-[12.5px] text-[#52667C] transition-colors hover:border-[#0E2B4C] xl:flex"
           >
             <IcSearch size={16} className="shrink-0 text-[#94A3B8]" />
             <span className="min-w-0 flex-1 truncate">Search parts, services, brands...</span>
           </button>
 
           {/* Actions — mobile: 42px search / cart / account squares; desktop: 44px squares + Book Service + Login */}
-          <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0 lg:gap-2.5">
+          <div className="ml-auto flex shrink-0 items-center gap-2 lg:gap-2.5 xl:ml-0">
             <button
               type="button"
               onClick={() => { setSearchOpen(true); setShowSuggestions(true) }}
               aria-label="Search"
-              className={`flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-[#E6ECF3] bg-white text-[#0E2B4C] transition-colors hover:border-[#0E2B4C] ${inner ? "lg:rounded-[11px] lg:border-[#E1E8F0]" : "lg:hidden"}`}
+              className="flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-[#E6ECF3] bg-white text-[#0E2B4C] transition-colors hover:border-[#0E2B4C] lg:h-11 lg:w-11 lg:rounded-[10px] lg:border-[#E1E8F0] xl:hidden"
             >
               <IcSearch size={20} />
             </button>
@@ -558,7 +547,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
                 )}
               </Link>
             )}
-            <Link href="/cart" aria-label="Cart" className={`relative flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-[#E6ECF3] bg-white text-[#0E2B4C] transition-colors hover:border-[#0E2B4C] lg:border-[#E1E8F0] ${inner ? "lg:rounded-[11px]" : "lg:h-11 lg:w-11 lg:rounded-[10px]"}`}>
+            <Link href="/cart" aria-label="Cart" className={`relative flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-[#E6ECF3] bg-white text-[#0E2B4C] transition-colors hover:border-[#0E2B4C] lg:h-11 lg:w-11 lg:rounded-[10px] lg:border-[#E1E8F0]`}>
               <IcShoppingCart size={19} />
               {cartCount > 0 && (
                 <span className="absolute -right-[6px] -top-[6px] flex h-[19px] min-w-[19px] items-center justify-center rounded-[10px] bg-[#C94309] px-[5px] text-[11px] font-bold text-white">
@@ -567,7 +556,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
               )}
             </Link>
 
-            <Link href="/service" className={`hidden items-center gap-2 whitespace-nowrap bg-[#C94309] px-[18px] py-3 text-[13.5px] font-semibold text-white transition-colors hover:bg-[#A93807] lg:inline-flex ${inner ? "rounded-[11px]" : "rounded-[10px]"}`}>
+            <Link href="/service" className={`hidden items-center gap-2 whitespace-nowrap bg-[#C94309] px-[18px] py-3 text-[13.5px] font-semibold text-white transition-colors hover:bg-[#A93807] lg:inline-flex rounded-[10px]`}>
               <IcBuild size={15} /> Book Service
             </Link>
 
@@ -616,7 +605,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
             ) : (
               <button
                 onClick={() => openLogin()}
-                className={`hidden items-center gap-2 whitespace-nowrap px-[18px] py-3 text-[13.5px] font-semibold transition-colors lg:flex ${inner ? "rounded-[11px] bg-[#0E2B4C] text-white hover:bg-[#16406F]" : "rounded-[10px] border border-[#E1E8F0] bg-white text-[#0E2B4C] hover:border-[#0E2B4C]"}`}
+                className="hidden items-center gap-2 whitespace-nowrap rounded-[10px] border border-[#E1E8F0] bg-white px-[18px] py-3 text-[13.5px] font-semibold text-[#0E2B4C] transition-colors hover:border-[#0E2B4C] lg:flex"
               >
                 <IcPerson size={15} />
                 Login

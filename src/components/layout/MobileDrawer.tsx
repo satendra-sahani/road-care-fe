@@ -9,7 +9,7 @@ import { IcLogout as LogOut } from '@/components/icons/BmIcons'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import {
   IcPerson, IcShoppingCart, IcHelpCenter, IcChevronRight, IcBuild, IcLocalShipping as IcTruck, IcStore,
-  IcStar, IcSettings, IcSchool, IcReceipt, IcLocationPin, IcHome, IcCreditCard, IcClose, IcCall,
+  IcStar, IcSettings, IcSchool, IcReceipt, IcLocationPin, IcHome, IcCreditCard, IcClose, IcCall, IcMenuBook,
 } from '@/components/icons/BmIcons'
 
 export default function MobileDrawer({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, user, unreadCount, openLogin, handleLogout }: {
@@ -70,6 +70,7 @@ export default function MobileDrawer({ mobileMenuOpen, setMobileMenuOpen, isAuth
               { Icon: IcPerson, label: 'Mechanics', href: '/mechanics' },
               { Icon: IcStore, label: 'For Shops', href: '/list-your-shop' },
               { Icon: IcSchool, label: 'Training', href: '/training' },
+              { Icon: IcMenuBook, label: 'Blog & Guides', href: '/blog' },
             ].map((item) => {
               const isActive = item.href === '/' ? router.pathname === '/' : router.pathname.startsWith(item.href)
               return (
