@@ -77,7 +77,7 @@ export default function BecomeMechanicPage() {
                 <h1 className="text-3xl md:text-5xl font-extrabold leading-[1.08]">Turn your skills into a <span className="text-[#FF6B35]">steady income.</span></h1>
                 <p className="mt-4 text-[#c8d4e8] text-base md:text-lg max-w-lg">Join 5,000+ verified mechanics earning more with guaranteed jobs, instant payouts, and zero customer-hunting.</p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <a href="#apply" className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors">Apply now &mdash; it&rsquo;s free <ArrowRight className="h-4 w-4" /></a>
+                  <Link href="/register/mechanic" className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#F2541B] text-white hover:text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors">Register now &mdash; it&rsquo;s free <ArrowRight className="h-4 w-4" /></Link>
                   <Link href="/training" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 ring-1 ring-white/25 text-white font-semibold px-6 py-3 rounded-full text-sm transition-colors">Get certified first</Link>
                 </div>
                 <div className="mt-8 flex gap-8">
@@ -101,7 +101,7 @@ export default function BecomeMechanicPage() {
                   <div className="flex items-center justify-between text-[13.5px]"><span className="text-[#475569]">Customer tips</span><b className="text-[#15936B]">+{fmt(tips)}</b></div>
                   <div className="flex items-center justify-between pt-2.5 border-t border-[#EFF2F7]"><b>Total / month</b><b className="text-[#1B3B6F] text-[17px]">{fmt(total)}</b></div>
                 </div>
-                <a href="#apply" className="mt-4 flex items-center justify-center gap-2 w-full bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold py-3 rounded-full text-sm transition-colors">Start earning <ArrowRight className="h-4 w-4" /></a>
+                <Link href="/register/mechanic" className="mt-4 flex items-center justify-center gap-2 w-full bg-[#FF6B35] hover:bg-[#F2541B] text-white hover:text-white font-semibold py-3 rounded-full text-sm transition-colors">Register &amp; start earning <ArrowRight className="h-4 w-4" /></Link>
               </div>
             </div>
           </section>

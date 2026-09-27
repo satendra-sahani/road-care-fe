@@ -233,8 +233,8 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
           <div className="hidden flex-wrap items-center gap-5 md:flex">
             <Link href="/orders" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcLocalShipping size={13} /> Track Order</Link>
             <Link href="/support" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcHelpCenter size={13} /> Help Center</Link>
-            <Link href="/list-your-shop" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcStore size={13} /> For Shops</Link>
-            <Link href="/become-mechanic" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcPerson size={13} /> Become a Mechanic</Link>
+            <Link href="/register/shop" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcStore size={13} /> Register Shop</Link>
+            <Link href="/register/mechanic" className="flex items-center gap-[7px] text-white hover:text-[#FFB68C]"><IcPerson size={13} /> Register as Mechanic</Link>
           </div>
         </div>
       </div>
@@ -663,7 +663,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
           {[
             { title: 'Quick Links', links: [{ label: 'Home', href: '/' }, { label: 'Shop', href: '/shop' }, { label: 'Services', href: '/services' }, { label: 'Mechanics', href: '/mechanics' }, { label: 'Training', href: '/training' }, { label: 'Blog & Guides', href: '/blog' }, { label: 'Contact Us', href: '/support' }] },
             { title: 'Customer Service', links: [{ label: 'Track Order', href: '/orders' }, { label: 'My Profile', href: '/profile' }, { label: 'Help Center', href: '/support' }, { label: 'Returns & Refunds', href: '/refund-policy' }, { label: 'Service Warranty', href: '/terms' }, { label: 'Contact Support', href: '/support' }] },
-            { title: 'Partners & Training', links: [{ label: 'Become a Mechanic', href: '/become-mechanic' }, { label: 'List Your Shop', href: '/list-your-shop' }, { label: 'Certified Mechanics', href: '/mechanics' }, { label: 'Partner Login', href: '/shop-partner/login' }, { label: 'Training & Certification', href: '/training' }] },
+            { title: 'Partners & Training', links: [{ label: 'Register as Mechanic', href: '/register/mechanic' }, { label: 'Register Your Shop', href: '/register/shop' }, { label: 'Become a Mechanic', href: '/become-mechanic' }, { label: 'List Your Shop', href: '/list-your-shop' }, { label: 'Certified Mechanics', href: '/mechanics' }, { label: 'Partner Login', href: '/shop-partner/login' }, { label: 'Training & Certification', href: '/training' }] },
             { title: 'Legal', links: [{ label: 'Terms & Conditions', href: '/terms' }, { label: 'Privacy Policy', href: '/privacy' }, { label: 'Refund Policy', href: '/refund-policy' }, { label: 'Shipping Policy', href: '/refund-policy' }, { label: 'Cancellation Policy', href: '/refund-policy' }] },
           ].map((col) => (
             <div key={col.title} className="min-w-0">

@@ -85,6 +85,18 @@ export default function MobileDrawer({ mobileMenuOpen, setMobileMenuOpen, isAuth
           </div>
 
           {/* Account & activity — same design language, always reachable */}
+          <div className="mt-2 px-3.5 py-1.5 text-[11px] font-bold tracking-[1.4px] text-[#52667C]">JOIN AS PARTNER</div>
+          <div className="grid grid-cols-2 gap-2 px-1.5 pb-1">
+            {[
+              { Icon: IcBuild, label: 'Register as Mechanic', href: '/register/mechanic' },
+              { Icon: IcStore, label: 'Register Your Shop', href: '/register/shop' },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex min-h-[64px] flex-col justify-center gap-1.5 rounded-xl border border-[#F8D9C4] bg-[#FFF6EF] px-3 py-2.5 text-[13px] font-semibold leading-tight text-[#0E2B4C] active:bg-[#FFEDE1]">
+                <item.Icon size={20} className="text-[#C94309]" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
           <div className="mt-2 px-3.5 py-1.5 text-[11px] font-bold tracking-[1.4px] text-[#52667C]">ACCOUNT</div>
           <div className="grid gap-0.5">
             {[

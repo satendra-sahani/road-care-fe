@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
@@ -84,7 +85,7 @@ export default function ListYourShopPage() {
                   ))}
                 </div>
                 <div className="flex items-center gap-3 mt-[22px] flex-wrap">
-                  <a href="#apply" className="flex items-center gap-[9px] bg-[#C94309] hover:bg-[#A93807] text-white hover:text-white rounded-[11px] px-6 py-3.5 text-[14px] font-semibold transition-colors">Start selling free <IcArrowForward size={16} /></a>
+                  <Link href="/register/shop" className="flex items-center gap-[9px] bg-[#C94309] hover:bg-[#A93807] text-white hover:text-white rounded-[11px] px-6 py-3.5 text-[14px] font-semibold transition-colors">Register your shop free <IcArrowForward size={16} /></Link>
                   <a href="#how" className="bg-white hover:bg-[#EAF2FC] text-[#0E2B4C] hover:text-[#0E2B4C] rounded-[11px] px-6 py-3.5 text-[14px] font-semibold transition-colors">See how it works</a>
                 </div>
               </div>
@@ -201,7 +202,7 @@ export default function ListYourShopPage() {
                   <div className="text-[clamp(16px,1.8vw,20px)] font-bold">List your shop and start selling today!</div>
                   <div className="text-[12.5px] text-[#41586F] mt-0.5">Join 2,400+ successful partner shops across India.</div>
                 </div>
-                <a href="#apply" className="flex items-center gap-[9px] bg-[#C94309] hover:bg-[#A93807] text-white hover:text-white rounded-[11px] px-[22px] py-[13px] text-[13.5px] font-semibold whitespace-nowrap transition-colors">Get started now <IcArrowForward size={16} /></a>
+                <Link href="/register/shop" className="flex items-center gap-[9px] bg-[#C94309] hover:bg-[#A93807] text-white hover:text-white rounded-[11px] px-[22px] py-[13px] text-[13.5px] font-semibold whitespace-nowrap transition-colors">Register now <IcArrowForward size={16} /></Link>
               </div>
             </div>
           </section>

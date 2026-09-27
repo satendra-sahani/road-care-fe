@@ -785,8 +785,8 @@ export default function HomePage() {
         <Section pad="lg">
           <SectionHead eyebrow="GROW WITH US" title="Become a partner" sub="Join thousands of mechanics, shops and delivery partners earning with Bharat Mechanics." />
           <div className="mt-[18px] grid grid-cols-1 gap-3.5 md:grid-cols-3">
-            <PartnerCard Icon={IcBuild} title="Become a Mechanic" sub="Get verified service requests, fixed payouts, and grow your business." cta="Join as Mechanic" href="/become-mechanic" bg="linear-gradient(115deg,#0D2E56 0%,#124887 100%)" subColor="#C3D4E6" ctaColor="#0E2B4C" hover="#FFEDE1" img="/design/partner-mechanic.webp" />
-            <PartnerCard Icon={IcStore} title="List Your Shop" sub="Sell genuine parts to thousands of customers across India." cta="List Your Shop" href="/list-your-shop" bg="linear-gradient(115deg,#EC5615 0%,#FB7A34 100%)" subColor="#FFE6D6" ctaColor="#C94309" hover="#FFF1E8" img="/design/partner-shop.webp" wide />
+            <PartnerCard Icon={IcBuild} title="Become a Mechanic" sub="Get verified service requests, fixed payouts, and grow your business." cta="Register as Mechanic" href="/register/mechanic" bg="linear-gradient(115deg,#0D2E56 0%,#124887 100%)" subColor="#C3D4E6" ctaColor="#0E2B4C" hover="#FFEDE1" img="/design/partner-mechanic.webp" />
+            <PartnerCard Icon={IcStore} title="List Your Shop" sub="Register your garage or parts shop and get customers near you." cta="Register Your Shop" href="/register/shop" bg="linear-gradient(115deg,#EC5615 0%,#FB7A34 100%)" subColor="#FFE6D6" ctaColor="#C94309" hover="#FFF1E8" img="/design/partner-shop.webp" wide />
             <PartnerCard Icon={IcDeliveryDining} title="Drive & Deliver" sub="Earn flexible income delivering parts and picking vehicles." cta="Join as Delivery Partner" href="/login?role=delivery" bg="linear-gradient(115deg,#0C7E48 0%,#17A862 100%)" subColor="#D8F3E4" ctaColor="#0F7040" hover="#EAF9F0" img="/design/partner-delivery.webp" />
           </div>
         </Section>

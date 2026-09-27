@@ -134,7 +134,7 @@ export default function ShopLoginPage() {
             </form>
           )}
 
-          <p className="text-center text-xs text-gray-500">Contact admin to register your shop partner account</p>
+          <p className="text-center text-xs text-gray-500">New shop? <a href="/register/shop" className="font-semibold text-[#FF6B35] hover:underline">Register your shop</a> — it’s free.</p>
         </div>
       </div>
     </div>
