@@ -96,6 +96,11 @@ const userSlice = createSlice({
       state.pagination = action.payload.pagination;
       state.error = null;
     },
+    // Page / page-size change from the admin list (the list effect refetches)
+    setUsersPage(state, action: PayloadAction<{ page: number; limit?: number }>) {
+      state.pagination.currentPage = Math.max(1, action.payload.page);
+      if (action.payload.limit) state.pagination.limit = action.payload.limit;
+    },
     fetchUsersFailure(state, action: PayloadAction<string>) {
       state.loading = false;
       state.error = action.payload;
@@ -220,6 +225,7 @@ const userSlice = createSlice({
 
 export const {
   fetchUsersRequest,
+  setUsersPage,
   fetchUsersSuccess,
   fetchUsersFailure,
   fetchUserByIdRequest,

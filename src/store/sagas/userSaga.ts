@@ -46,7 +46,15 @@ function* handleFetchUsers(action: PayloadAction<Record<string, any> | undefined
 
     const response: any = yield call(userAPI.getAll, params);
     const rawUsers = response.data.data.users || response.data.data || [];
-    const pagination = response.data.data.pagination || response.data.pagination || {};
+    const pg = response.data.data.pagination || response.data.pagination || {};
+    // Backend sends { current, pages, total, limit }; the slice/UI use
+    // { currentPage, totalPages, totalCount, limit } — map it (was silently broken).
+    const pagination = {
+      currentPage: Number(pg.currentPage ?? pg.current ?? pg.page ?? 1) || 1,
+      totalPages: Number(pg.totalPages ?? pg.pages ?? 1) || 1,
+      totalCount: Number(pg.totalCount ?? pg.total ?? 0) || 0,
+      limit: Number(pg.limit ?? 10) || 10,
+    };
 
     // Map 'user' role to 'customer' for frontend display
     const users = Array.isArray(rawUsers)

@@ -66,6 +66,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { paymentAPI } from '@/services/api'
+import { AdminPagination } from '@/components/admin/AdminPagination'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PaymentRecord {
@@ -725,20 +726,7 @@ function PaymentHistoryTab() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-            <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <AdminPagination page={page} pageSize={15} total={total} onPageChange={setPage} label="payments" />
       </div>
 
       {/* Transfer Confirmation Dialog */}
@@ -1469,18 +1457,8 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
               {settled.map(p => <CODCard key={p._id} p={p} showSettle={false} />)}
             </div>
             {/* Pagination for "All History" view */}
-            {settledView === 'all' && settledTotalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 px-2">
-                <span className="text-sm text-gray-500">Page {settledPage} of {settledTotalPages}</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={settledPage <= 1} onClick={() => setSettledPage(p => p - 1)}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={settledPage >= settledTotalPages} onClick={() => setSettledPage(p => p + 1)}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+            {settledView === 'all' && (
+              <AdminPagination className="mt-4 rounded-xl border border-gray-100 bg-white" page={settledPage} pageSize={15} total={settledTotal} onPageChange={setSettledPage} label="settled payments" />
             )}
           </>
         )}
@@ -2067,20 +2045,7 @@ function WalletsTab() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-            <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <AdminPagination page={page} pageSize={15} total={total} onPageChange={setPage} label="wallets" />
       </div>
 
       {/* Transfer / Debit Dialog */}
@@ -2415,20 +2380,7 @@ function TransactionsTab() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-            <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <AdminPagination page={page} pageSize={20} total={total} onPageChange={setPage} label="transactions" />
       </div>
     </div>
   )
@@ -2801,20 +2753,7 @@ function WithdrawalsTab() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
-              <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
+          <AdminPagination page={page} pageSize={15} total={total} onPageChange={setPage} label="withdrawals" />
         </div>
       )}
 

@@ -12,6 +12,7 @@ import ShopRegistrationForm from '@/components/admin/ShopRegistrationForm'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { AdminPagination } from '@/components/admin/AdminPagination'
 
 export function ShopPartnerManagement() {
   const [shops, setShops] = useState<any[]>([])
@@ -46,13 +47,21 @@ export function ShopPartnerManagement() {
   // Delete shop
   const [deleteShop, setDeleteShop] = useState<any>(null)
 
+  // Server-side paging for the shop list
+  const [shopPage, setShopPage] = useState(1)
+  const [shopPageSize, setShopPageSize] = useState(12)
+  const [shopTotal, setShopTotal] = useState(0)
+
   const fetchData = async () => {
     try {
       const [shopsRes, statsRes] = await Promise.all([
-        adminShopAPI.getAll({ search, limit: 50 }),
+        adminShopAPI.getAll({ search, page: shopPage, limit: shopPageSize }),
         adminShopAPI.getStats()
       ])
-      if (shopsRes.data?.success) setShops(shopsRes.data.data || [])
+      if (shopsRes.data?.success) {
+        setShops(shopsRes.data.data || [])
+        setShopTotal(shopsRes.data.pagination?.total ?? (shopsRes.data.data || []).length)
+      }
       if (statsRes.data?.success) setStats(statsRes.data.data)
     } catch (err) {
       console.error('Fetch shops error:', err)
@@ -61,9 +70,10 @@ export function ShopPartnerManagement() {
     }
   }
 
+  useEffect(() => { setShopPage(1) }, [search, shopPageSize])
   useEffect(() => {
     fetchData()
-  }, [search])
+  }, [search, shopPage, shopPageSize]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const closeShopForm = () => setShopFormState({ open: false, mode: 'create' })
   const handleShopFormDone = (data: any) => {
@@ -431,6 +441,18 @@ export function ShopPartnerManagement() {
             </div>
           ))}
         </div>
+      )}
+      {!loading && shopTotal > 0 && (
+        <AdminPagination
+          className="rounded-xl border border-gray-100 bg-white"
+          page={shopPage}
+          pageSize={shopPageSize}
+          total={shopTotal}
+          onPageChange={setShopPage}
+          onPageSizeChange={setShopPageSize}
+          pageSizeOptions={[12, 24, 48, 96]}
+          label="shops"
+        />
       )}
 
       {/* Mechanic Assignment Dialog */}

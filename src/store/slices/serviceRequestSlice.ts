@@ -149,11 +149,16 @@ export interface ServiceRequest {
   updatedAt: string;
 }
 
+export interface ServiceRequestPagination { page: number; limit: number; total: number; pages: number }
+
 interface ServiceRequestState {
   requests: ServiceRequest[];
   loading: boolean;
   error: string | null;
   selectedRequest: ServiceRequest | null;
+  pagination: ServiceRequestPagination;
+  /** last list query (page / filters) — reused by refresh dispatches without a payload */
+  lastQuery: Record<string, any> | null;
 }
 
 const initialState: ServiceRequestState = {
@@ -161,6 +166,8 @@ const initialState: ServiceRequestState = {
   loading: false,
   error: null,
   selectedRequest: null,
+  pagination: { page: 1, limit: 10, total: 0, pages: 1 },
+  lastQuery: null,
 };
 
 const serviceRequestSlice = createSlice({
@@ -168,13 +175,20 @@ const serviceRequestSlice = createSlice({
   initialState,
   reducers: {
     // Fetch service requests
-    fetchServiceRequestsRequest: (state) => {
+    fetchServiceRequestsRequest: (state, action: PayloadAction<Record<string, any> | undefined>) => {
       state.loading = true;
       state.error = null;
+      if (action.payload) state.lastQuery = action.payload;
     },
-    fetchServiceRequestsSuccess: (state, action: PayloadAction<ServiceRequest[]>) => {
+    fetchServiceRequestsSuccess: (state, action: PayloadAction<ServiceRequest[] | { requests: ServiceRequest[]; pagination?: ServiceRequestPagination }>) => {
       state.loading = false;
-      state.requests = action.payload;
+      const p = action.payload;
+      if (Array.isArray(p)) {
+        state.requests = p;
+      } else {
+        state.requests = p.requests;
+        if (p.pagination) state.pagination = p.pagination;
+      }
     },
     fetchServiceRequestsFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;

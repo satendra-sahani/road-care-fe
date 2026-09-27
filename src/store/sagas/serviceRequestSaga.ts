@@ -1,4 +1,4 @@
-import { call, put, takeEvery, takeLatest } from 'redux-saga/effects';
+import { call, put, select, takeEvery, takeLatest } from 'redux-saga/effects';
 import { PayloadAction } from '@reduxjs/toolkit';
 import Cookies from 'js-cookie';
 import {
@@ -32,8 +32,14 @@ function getToken(): string {
 
 // API functions
 const api = {
-  fetchServiceRequests: () =>
-    fetch(`${API_BASE_URL}/admin/service-requests`, {
+  fetchServiceRequests: (params?: Record<string, any>) =>
+    fetch(`${API_BASE_URL}/admin/service-requests${(() => {
+      if (!params) return '';
+      const qs = new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => [k, String(v)])
+      ).toString();
+      return qs ? `?${qs}` : '';
+    })()}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     }).then(response => {
       if (!response.ok) throw new Error('Failed to fetch service requests');
@@ -103,7 +109,7 @@ function normalizeStatus(s: string): ServiceRequest['status'] {
   return s as ServiceRequest['status']; // pass through unknown statuses instead of hiding them
 }
 
-function normalizeServiceRequest(r: any): ServiceRequest {
+export function normalizeServiceRequest(r: any): ServiceRequest {
   const cust = r.customer || {};
   const mech = r.mechanic;
   return {
@@ -246,12 +252,24 @@ function normalizeServiceRequest(r: any): ServiceRequest {
 }
 
 // Worker Sagas
-function* fetchServiceRequestsSaga() {
+function* fetchServiceRequestsSaga(action: PayloadAction<Record<string, any> | undefined>) {
   try {
-    const response: { success: boolean; data?: any[]; serviceRequests?: any[] } = yield call(api.fetchServiceRequests);
+    // No payload = refresh: reuse the last page / filters the list asked for
+    const lastQuery: Record<string, any> | null = yield select((s: any) => s.serviceRequest?.lastQuery ?? null);
+    const params = action?.payload ?? lastQuery ?? undefined;
+    const response: { success: boolean; data?: any[]; serviceRequests?: any[]; pagination?: any } = yield call(api.fetchServiceRequests, params);
     if (response.success) {
       const raw = response.data ?? response.serviceRequests ?? [];
-      yield put(fetchServiceRequestsSuccess(raw.map(normalizeServiceRequest)));
+      const pg = response.pagination;
+      yield put(fetchServiceRequestsSuccess({
+        requests: raw.map(normalizeServiceRequest),
+        pagination: pg ? {
+          page: Number(pg.current ?? pg.page ?? 1) || 1,
+          limit: Number(pg.limit ?? 10) || 10,
+          total: Number(pg.total ?? raw.length) || 0,
+          pages: Number(pg.pages ?? 1) || 1,
+        } : undefined,
+      }));
     } else {
       yield put(fetchServiceRequestsFailure('Failed to fetch service requests'));
     }

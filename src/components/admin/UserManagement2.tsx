@@ -2,11 +2,11 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import {
-  fetchUsersRequest,
+  fetchUsersRequest, setUsersPage,
   fetchUserByIdRequest,
   createUserRequest,
   updateUserRequest,
@@ -93,6 +93,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
+import { AdminPagination } from '@/components/admin/AdminPagination'
 
 const roleConfig = {
   customer: { color: 'bg-blue-100 text-blue-800', iconBg: 'bg-blue-50 text-blue-600', icon: Users, label: 'Customer' },
@@ -171,6 +172,13 @@ export function UserManagement() {
     if (statusFilter !== 'all') params.isActive = statusFilter === 'active'
     dispatch(fetchUsersRequest(params))
   }, [dispatch, pagination.currentPage, pagination.limit, roleFilter, statusFilter, searchQuery, activeTab])
+
+  // Back to page 1 whenever the tab / filters / search change
+  const firstFilterRun = useRef(true)
+  useEffect(() => {
+    if (firstFilterRun.current) { firstFilterRun.current = false; return }
+    dispatch(setUsersPage({ page: 1 }))
+  }, [dispatch, roleFilter, statusFilter, searchQuery, activeTab])
 
   useEffect(() => {
     dispatch(fetchUserStatsRequest())
@@ -666,6 +674,14 @@ export function UserManagement() {
                         ))}
                       </TableBody>
                     </Table>
+                    <AdminPagination
+                      page={pagination.currentPage || 1}
+                      pageSize={pagination.limit || 10}
+                      total={pagination.totalCount || 0}
+                      onPageChange={(pg) => dispatch(setUsersPage({ page: pg }))}
+                      onPageSizeChange={(n) => dispatch(setUsersPage({ page: 1, limit: n }))}
+                      label="users"
+                    />
                   </div>
                 )}
 

@@ -84,6 +84,7 @@ import { cn } from '@/lib/utils'
 import { orderAPI } from '@/services/api'
 import { CreateOrderDialog } from './CreateOrderDialog'
 import { AdminHeader } from './AdminHeader'
+import { AdminPagination } from '@/components/admin/AdminPagination'
 
 // The stat/quick-filter cards (Pending, Processing, Shipped) each aggregate several
 // underlying order statuses — but the real order status is never literally "pending"
@@ -118,7 +119,7 @@ export function OrderManagement() {
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string>('all')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
   const [totalOrders, setTotalOrders] = useState(0)
 
@@ -965,78 +966,15 @@ export function OrderManagement() {
           </CardContent>
         </Card>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm text-[#6B7280]">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalOrders)} of {totalOrders} orders
-            </p>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-
-              {totalPages <= 5 ? (
-                Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(page)}
-                    className={cn("h-8 w-8 p-0 text-xs", currentPage === page ? "bg-[#1B3B6F]" : "")}
-                  >
-                    {page}
-                  </Button>
-                ))
-              ) : (
-                <>
-                  {currentPage > 2 && (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} className="h-8 w-8 p-0 text-xs">1</Button>
-                      {currentPage > 3 && <span className="text-[#6B7280] text-xs px-1">...</span>}
-                    </>
-                  )}
-                  {[currentPage - 1, currentPage, currentPage + 1]
-                    .filter(page => page >= 1 && page <= totalPages)
-                    .map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className={cn("h-8 w-8 p-0 text-xs", currentPage === page ? "bg-[#1B3B6F]" : "")}
-                      >
-                        {page}
-                      </Button>
-                    ))
-                  }
-                  {currentPage < totalPages - 1 && (
-                    <>
-                      {currentPage < totalPages - 2 && <span className="text-[#6B7280] text-xs px-1">...</span>}
-                      <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} className="h-8 w-8 p-0 text-xs">{totalPages}</Button>
-                    </>
-                  )}
-                </>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <AdminPagination
+          className="rounded-xl border border-gray-100 bg-white"
+          page={currentPage}
+          pageSize={itemsPerPage}
+          total={totalOrders}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(n) => { setItemsPerPage(n); setCurrentPage(1) }}
+          label="orders"
+        />
       </div>
 
       {/* Order Details Dialog */}

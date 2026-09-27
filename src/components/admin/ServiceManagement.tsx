@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import MechanicRegistrationForm from '@/components/admin/MechanicRegistrationForm'
@@ -99,8 +99,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { userAPI, serviceRequestAPI, adminShopAPI, mechanicAPI } from '@/services/api'
+import { normalizeServiceRequest } from '@/store/sagas/serviceRequestSaga'
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
+import { AdminPagination } from '@/components/admin/AdminPagination'
 
 // Service category options
 const serviceCategories = [
@@ -401,6 +403,7 @@ export function ServiceManagement() {
   
   const { 
     requests: serviceRequests, 
+    pagination: reqPagination,
     loading: requestsLoading, 
     error: requestsError 
   } = useSelector((state: RootState) => state.serviceRequest)
@@ -467,8 +470,49 @@ export function ServiceManagement() {
   // Fetch data on component mount
   useEffect(() => {
     dispatch(fetchMechanicsRequest())
-    dispatch(fetchServiceRequestsRequest())
   }, [dispatch])
+
+  // ── Server-side paging + filters for the requests list ──
+  const [reqPage, setReqPage] = useState(1)
+  const [reqPageSize, setReqPageSize] = useState(20)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+  const reqFiltersKey = `${debouncedSearch}|${statusFilter}|${priorityFilter}|${serviceTypeFilter}|${reqPageSize}`
+  const prevFiltersKey = useRef(reqFiltersKey)
+  const reqQuery = useMemo(() => {
+    // a filter change always starts from page 1
+    const page = prevFiltersKey.current !== reqFiltersKey ? 1 : reqPage
+    return {
+      page,
+      limit: reqPageSize,
+      search: debouncedSearch || undefined,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+      serviceCategory: serviceTypeFilter !== 'all' ? serviceTypeFilter : undefined,
+    }
+  }, [reqPage, reqPageSize, debouncedSearch, statusFilter, priorityFilter, serviceTypeFilter, reqFiltersKey])
+  useEffect(() => {
+    if (prevFiltersKey.current !== reqFiltersKey) { prevFiltersKey.current = reqFiltersKey; if (reqPage !== 1) setReqPage(1) }
+    dispatch(fetchServiceRequestsRequest(reqQuery))
+  }, [dispatch, reqQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Top cards come from the server (all requests), not just the current page
+  const [srvStats, setSrvStats] = useState<any>(null)
+  useEffect(() => {
+    serviceRequestAPI.getStats().then((r) => { if (r.data?.success) setSrvStats(r.data.data) }).catch(() => {})
+  }, [serviceRequests])
+
+  // Assignment tab works on ALL pending requests, independent of the list page
+  const [assignPool, setAssignPool] = useState<ServiceRequest[]>([])
+  useEffect(() => {
+    if (activeTab !== 'assignment') return
+    serviceRequestAPI.getAll({ status: 'pending', limit: 100 })
+      .then((r) => setAssignPool((r.data?.data || []).map(normalizeServiceRequest)))
+      .catch(() => {})
+  }, [activeTab, serviceRequests])
 
   // Fetch customers when add request dialog opens
   useEffect(() => {
@@ -544,22 +588,26 @@ export function ServiceManagement() {
   }
 
   const filteredRequests = useMemo(() => {
-    return (serviceRequests ?? []).filter(request => {
-      const matchesSearch = 
-        request._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        request.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        request.serviceType.toLowerCase().includes(searchQuery.toLowerCase())
-      
-      const matchesStatus = statusFilter === 'all' || request.status === statusFilter
-      const matchesPriority = priorityFilter === 'all' || request.priority === priorityFilter
-      const matchesServiceType = serviceTypeFilter === 'all' || 
-        request.serviceType.toLowerCase().replace(/\s+/g, '-') === serviceTypeFilter
-      
-      return matchesSearch && matchesStatus && matchesPriority && matchesServiceType
-    })
-  }, [serviceRequests, searchQuery, statusFilter, priorityFilter, serviceTypeFilter])
+    // The server already applied search / status / priority / service filters and paging.
+    return serviceRequests ?? []
+  }, [serviceRequests])
 
   const getServiceStats = () => {
+    if (srvStats?.byStatus) {
+      const b = srvStats.byStatus as Record<string, number>
+      const n = (...k: string[]) => k.reduce((a, x) => a + (b[x] || 0), 0)
+      const ratedList = (serviceRequests ?? []).filter(r => r.feedback?.rating)
+      const pageAvg = ratedList.length ? ratedList.reduce((sum, r) => sum + (r.feedback?.rating || 0), 0) / ratedList.length : 0
+      return {
+        totalRequests: srvStats.total ?? n(...Object.keys(b)),
+        pendingRequests: n('pending'),
+        diagnosisRequests: n('diagnosis'),
+        inProgressRequests: n('in_progress', 'in-progress', 'approved'),
+        completedRequests: n('completed', 'payment_pending'),
+        paidRequests: n('paid'),
+        avgRating: srvStats.avgRating || pageAvg,
+      }
+    }
     const list = serviceRequests ?? []
     const totalRequests = list.length
     const pendingRequests = list.filter(r => r.status === 'pending').length
@@ -586,9 +634,14 @@ export function ServiceManagement() {
   }
 
   // Export the currently-filtered service requests to CSV (from existing state).
-  const exportCsv = () => {
+  const exportCsv = async () => {
     const rows: string[][] = [['Request ID', 'Customer', 'Service', 'Status', 'Priority', 'Est. Cost', 'Mechanic', 'City', 'Date']]
-    filteredRequests.forEach((r: any) => {
+    let exportList: any[] = filteredRequests
+    try {
+      const res = await serviceRequestAPI.getAll({ ...reqQuery, page: 1, limit: 1000 })
+      if (res.data?.success) exportList = (res.data.data || []).map(normalizeServiceRequest)
+    } catch { /* fall back to the current page */ }
+    exportList.forEach((r: any) => {
       rows.push([
         r.requestId || r.id || r._id || '',
         r.customer?.name || r.customer?.fullName || '',
@@ -1552,6 +1605,14 @@ export function ServiceManagement() {
                   <p className="text-sm text-[#6B7280]">Try adjusting your search or filter criteria</p>
                 </div>
               )}
+              <AdminPagination
+                page={reqPagination?.page || reqPage}
+                pageSize={reqPageSize}
+                total={reqPagination?.total ?? filteredRequests.length}
+                onPageChange={setReqPage}
+                onPageSizeChange={setReqPageSize}
+                label="requests"
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -1746,13 +1807,13 @@ export function ServiceManagement() {
                       </div>
                     ))}
                   </div>
-                ) : serviceRequests.length === 0 ? (
+                ) : assignPool.length === 0 ? (
                   <div className="text-center py-8">
                     <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                     <h3 className="text-lg font-medium text-[#1A1D29] mb-1">No Service Requests Found</h3>
                     <p className="text-[#6B7280] text-sm">No service requests have been loaded from the API yet.</p>
                   </div>
-                ) : (serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic && !r.shopPartner).length === 0 ? (
+                ) : assignPool.filter(r => r.status === 'pending' && !r.mechanic && !r.shopPartner).length === 0 ? (
                   <div className="text-center py-8">
                     <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
                     <h3 className="text-lg font-medium text-[#1A1D29] mb-1">All Requests Assigned</h3>
@@ -1760,7 +1821,7 @@ export function ServiceManagement() {
                   </div>
                 ) : (
                 <div className="space-y-3">
-                  {(serviceRequests ?? []).filter(r => r.status === 'pending' && !r.mechanic && !r.shopPartner).map((request) => (
+                  {assignPool.filter(r => r.status === 'pending' && !r.mechanic && !r.shopPartner).map((request) => (
                     <div key={request._id} className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
@@ -1875,7 +1936,7 @@ export function ServiceManagement() {
                         <SelectValue placeholder="Select Request" />
                       </SelectTrigger>
                       <SelectContent>
-                        {(serviceRequests ?? []).filter(r => !r.mechanic).map((request) => (
+                        {assignPool.filter(r => !r.mechanic).map((request) => (
                           <SelectItem key={request._id} value={request._id}>
                             {generateDisplayRequestId(request)} - {request.serviceType}
                           </SelectItem>
