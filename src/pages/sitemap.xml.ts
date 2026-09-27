@@ -16,6 +16,8 @@ const STATIC: { path: string; changefreq: string; priority: string; lastmod: str
   { path: '/training', changefreq: 'weekly', priority: '0.7', lastmod: '2026-09-26' },
   { path: '/list-your-shop', changefreq: 'monthly', priority: '0.6', lastmod: '2026-09-26' },
   { path: '/become-mechanic', changefreq: 'monthly', priority: '0.6', lastmod: '2026-09-26' },
+  { path: '/register/mechanic', changefreq: 'monthly', priority: '0.6', lastmod: '2026-09-27' },
+  { path: '/register/shop', changefreq: 'monthly', priority: '0.6', lastmod: '2026-09-27' },
 ]
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {

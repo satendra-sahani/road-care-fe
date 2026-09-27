@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { partnerAPI } from '@/services/api'
@@ -41,7 +42,15 @@ const fmt = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
 export default function BecomeMechanicPage() {
   const [jobs, setJobs] = useState(7)
   const [form, setForm] = useState({ name: '', phone: '', city: '', exp: '1–3 years', spec: 'Car / four-wheeler mechanic', id: '' })
-  const [submitted, setSubmitted] = useState(false)
+  const [submitted] = useState(false)
+  const router = useRouter()
+  // Quick form → save the lead, then continue in the full self-registration (prefilled, no PII in the URL).
+  const continueRegistration = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try { await partnerAPI.apply({ type: 'mechanic', name: form.name, phone: form.phone, city: form.city, experience: form.exp, specialisation: form.spec, idNumber: form.id }) } catch {}
+    try { sessionStorage.setItem('bm_partner_prefill_mechanic', JSON.stringify({ name: form.name, phone: form.phone, city: form.city })) } catch {}
+    router.push('/register/mechanic')
+  }
 
   const monthly = jobs * 4.3
   const pay = monthly * 1450
@@ -168,7 +177,7 @@ export default function BecomeMechanicPage() {
                     <p className="text-sm text-[#475569] mt-2 max-w-sm mx-auto">Thanks {form.name || 'partner'} — our team will call you on {form.phone || 'your number'} within 48 hours to verify and onboard you.</p>
                   </div>
                 ) : (
-                  <form onSubmit={async (e) => { e.preventDefault(); try { await partnerAPI.apply({ type: 'mechanic', name: form.name, phone: form.phone, city: form.city, experience: form.exp, specialisation: form.spec, idNumber: form.id }) } catch {} setSubmitted(true) }}>
+                  <form onSubmit={continueRegistration}>
                     <h3 className="text-2xl font-extrabold text-[#13203A] mb-1">Apply to become a partner</h3>
                     <p className="text-[#7B8AA3] text-sm mb-5">पार्टनर बनें — Free registration, no joining fee.</p>
                     <div className="grid sm:grid-cols-2 gap-3.5">
@@ -187,7 +196,7 @@ export default function BecomeMechanicPage() {
                       </Field>
                       <Field label="Aadhaar / ID number (for verification)" full><input value={form.id} onChange={(e) => set('id', e.target.value)} placeholder="XXXX XXXX XXXX" className={inputCls} /></Field>
                     </div>
-                    <button type="submit" className="mt-3 flex items-center justify-center gap-2 w-full bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold py-3.5 rounded-full transition-colors">Submit application <ArrowRight className="h-4 w-4" /></button>
+                    <button type="submit" className="mt-3 flex items-center justify-center gap-2 w-full bg-[#FF6B35] hover:bg-[#F2541B] text-white font-semibold py-3.5 rounded-full transition-colors">Continue registration <ArrowRight className="h-4 w-4" /></button>
                     <p className="text-center text-xs text-[#7B8AA3] mt-3">By applying you agree to our Partner Terms &amp; background verification.</p>
                   </form>
                 )}

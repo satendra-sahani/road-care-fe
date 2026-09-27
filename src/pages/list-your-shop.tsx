@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useRouter } from 'next/router'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
 import Image from 'next/image'
@@ -37,7 +38,8 @@ const EYEBROW = 'text-[10.5px] font-bold tracking-[1.6px] text-[#BE3F09]'
 
 export default function ListYourShopPage() {
   const [form, setForm] = useState({ shop: '', owner: '', phone: '', city: '', gst: '', cat: CATEGORIES[0], bank: '' })
-  const [submitted, setSubmitted] = useState(false)
+  const [submitted] = useState(false)
+  const router = useRouter()
   const [busy, setBusy] = useState(false)
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -45,8 +47,10 @@ export default function ListYourShopPage() {
     e.preventDefault()
     setBusy(true)
     try { await partnerAPI.apply({ type: 'shop', shopName: form.shop, ownerName: form.owner, name: form.owner, phone: form.phone, city: form.city, gstNumber: form.gst, shopCategory: form.cat, bankAccount: form.bank }) } catch {}
+    // Continue in the full self-registration (prefilled; no PII in the URL).
+    try { sessionStorage.setItem('bm_partner_prefill_shop', JSON.stringify({ shop: form.shop, owner: form.owner, phone: form.phone, city: form.city, gst: form.gst })) } catch {}
     setBusy(false)
-    setSubmitted(true)
+    router.push('/register/shop')
   }
 
   return (
@@ -156,7 +160,7 @@ export default function ListYourShopPage() {
                     </div>
                   </div>
                   <div className="mt-3"><label className={labelCls}>Bank account (for payouts)</label><input value={form.bank} onChange={(e) => set('bank', e.target.value)} placeholder="Account number" className={inputCls} /></div>
-                  <button type="submit" disabled={busy} className="flex items-center justify-center gap-[9px] w-full mt-4 bg-[#C94309] hover:bg-[#A93807] text-white rounded-[10px] py-[13px] text-[14px] font-semibold transition-colors disabled:opacity-60">{busy ? 'Submitting…' : 'Register my shop'} <IcArrowForward size={16} /></button>
+                  <button type="submit" disabled={busy} className="flex items-center justify-center gap-[9px] w-full mt-4 bg-[#C94309] hover:bg-[#A93807] text-white rounded-[10px] py-[13px] text-[14px] font-semibold transition-colors disabled:opacity-60">{busy ? 'Please wait…' : 'Continue registration'} <IcArrowForward size={16} /></button>
                   <div className="mt-2.5 text-center text-[11px] text-[#52667C]">By registering you agree to our Seller Terms &amp; verification policy.</div>
                 </form>
               )}

@@ -19,6 +19,10 @@ export interface Mechanic {
   notes?: string;
   rating?: number;
   completedServices?: number;
+  /** admin has verified documents (self-registered mechanics start unverified) */
+  isVerified?: boolean;
+  /** 'admin' | 'self' | 'shop' — who created the profile */
+  registrationSource?: string;
   currentLocation?: {
     latitude: number;
     longitude: number;

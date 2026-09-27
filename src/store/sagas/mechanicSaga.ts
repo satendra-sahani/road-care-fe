@@ -88,6 +88,8 @@ function normalizeMechanic(p: any): Mechanic {
     notes: p.notes || undefined,
     rating: p.rating ?? 0,
     completedServices: p.completedJobs ?? p.completedServices ?? 0,
+    isVerified: !!p.isVerified,
+    registrationSource: p.registrationSource || undefined,
     currentLocation: p.currentLocation?.latitude != null && p.currentLocation?.longitude != null
       ? {
           latitude: p.currentLocation.latitude,

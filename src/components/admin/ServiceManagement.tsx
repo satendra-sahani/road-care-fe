@@ -98,7 +98,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { userAPI, serviceRequestAPI, adminShopAPI } from '@/services/api'
+import { userAPI, serviceRequestAPI, adminShopAPI, mechanicAPI } from '@/services/api'
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
 
@@ -499,6 +499,22 @@ export function ServiceManagement() {
       setCopiedKey(key)
       setTimeout(() => setCopiedKey(null), 2000)
     })
+  }
+
+  // Approve a mechanic's documents (self-registered mechanics start unverified).
+  const [verifyingId, setVerifyingId] = useState<string | null>(null)
+  const handleVerifyMechanic = async (id: string) => {
+    setVerifyingId(id)
+    try {
+      const res = await mechanicAPI.update(id, { isVerified: true })
+      if (res.data?.success === false) throw new Error(res.data?.message)
+      toast.success('Mechanic verified')
+      dispatch(fetchMechanicsRequest())
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.message || 'Could not verify mechanic')
+    } finally {
+      setVerifyingId(null)
+    }
   }
 
   const filteredMechanics = useMemo(() => {
@@ -1541,6 +1557,16 @@ export function ServiceManagement() {
                         <span>•</span>
                         <span>{mechanic.experience}</span>
                       </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {mechanic.isVerified ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-700">Verified</span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700">Pending verification</span>
+                        )}
+                        {mechanic.registrationSource === 'self' && (
+                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10.5px] font-semibold text-sky-700" title="Registered by the mechanic from the website">Self-registered</span>
+                        )}
+                      </div>
                     </div>
                     <Badge className={
                       mechanic.availability === 'available'
@@ -1607,6 +1633,17 @@ export function ServiceManagement() {
                       <Edit className="h-3.5 w-3.5 mr-1.5" />
                       Edit
                     </Button>
+                    {!mechanic.isVerified && (
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
+                        disabled={verifyingId === mechanic._id}
+                        onClick={() => handleVerifyMechanic(mechanic._id)}
+                      >
+                        {verifyingId === mechanic._id ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
+                        Verify
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"

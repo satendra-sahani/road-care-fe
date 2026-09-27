@@ -15,6 +15,8 @@ type Props = {
   hint?: string
   required?: boolean
   className?: string
+  /** Custom uploader (public self-registration uses an OTP-token upload). Defaults to the admin upload API. */
+  uploader?: (file: File, folder: string) => Promise<string | undefined>
 }
 
 /**
@@ -22,7 +24,7 @@ type Props = {
  * Files go straight to ImageKit via POST /admin/upload/image and only the
  * returned URL is kept in form state — nothing is stored locally.
  */
-export function DocUpload({ label, value, onChange, folder, hint, required, className }: Props) {
+export function DocUpload({ label, value, onChange, folder, hint, required, className, uploader }: Props) {
   const ref = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -31,8 +33,13 @@ export function DocUpload({ label, value, onChange, folder, hint, required, clas
     if (file.size > 5 * 1024 * 1024) { toast.error('Image too large (max 5MB)'); return }
     setUploading(true)
     try {
-      const res = await uploadAPI.uploadImage(file, folder)
-      const url = res.data?.data?.url || res.data?.url
+      let url: string | undefined
+      if (uploader) {
+        url = await uploader(file, folder)
+      } else {
+        const res = await uploadAPI.uploadImage(file, folder)
+        url = res.data?.data?.url || res.data?.url
+      }
       if (url) { onChange(url); toast.success(`${label} uploaded`) }
       else toast.error('Upload failed')
     } catch (e: any) {

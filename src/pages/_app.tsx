@@ -11,12 +11,14 @@ import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { Poppins } from "next/font/google";
 
-// Admin / shop-partner shells are only used under /admin and /shop-partner —
-// split them out so public pages don't download them (SSR still renders them).
-const AuthGuard = dynamic(() => import("@/components/admin/AuthGuard").then((m) => m.AuthGuard));
-const ShopAuthGuard = dynamic(() => import("@/components/shop-partner/ShopAuthGuard").then((m) => m.ShopAuthGuard));
+// Admin / shop-partner / logged-in-customer guards are only used on protected
+// (noindex) routes — split them out so public pages don't download them.
+// ssr:false: these guards depend on the browser session (cookie); rendering them
+// on the server with a lazily-loaded chunk caused a hydration mismatch.
+const AuthGuard = dynamic(() => import("@/components/admin/AuthGuard").then((m) => m.AuthGuard), { ssr: false });
+const ShopAuthGuard = dynamic(() => import("@/components/shop-partner/ShopAuthGuard").then((m) => m.ShopAuthGuard), { ssr: false });
 // Customer guard only wraps logged-in pages (cart, orders, profile…).
-const CustomerAuthGuard = dynamic(() => import("@/components/auth/CustomerAuthGuard").then((m) => m.CustomerAuthGuard));
+const CustomerAuthGuard = dynamic(() => import("@/components/auth/CustomerAuthGuard").then((m) => m.CustomerAuthGuard), { ssr: false });
 const ShopLayout = dynamic(() => import("@/components/shop-partner/ShopLayout").then((m) => m.ShopLayout));
 
 // Toast host is client-only and not needed for first paint.

@@ -95,7 +95,8 @@ export const emptyShopForm: ShopFormValues = {
 
 const GST_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
 
-export function validateShopForm(v: ShopFormValues): string | null {
+export function validateShopForm(v: ShopFormValues, mode: 'admin' | 'self' = 'admin'): string | null {
+  const self = mode === 'self'
   if (v.shopName.trim().length < 2) return 'Shop name is required'
   if (v.gstNumber.trim() && !GST_RE.test(v.gstNumber.trim().toUpperCase())) return 'Invalid GST number (15 characters, e.g. 09ABCDE1234F1Z5)'
   if (v.shopEmail.trim() && !/^\S+@\S+\.\S+$/.test(v.shopEmail.trim())) return 'Enter a valid shop email'
@@ -115,8 +116,9 @@ export function validateShopForm(v: ShopFormValues): string | null {
     const err = validateMechanicForm(v.ownerMechanic, { requireIdentity: false, requirePayout: false, requireAddress: !v.ownerMechanicSameAddress })
     if (err) return `Owner mechanic details: ${err}`
   }
-  const payoutErr = validatePayout(v.payoutMethod, v.bank, v.upi, true)
+  const payoutErr = validatePayout(v.payoutMethod, v.bank, v.upi, !self)
   if (payoutErr) return payoutErr
+  if (self) return v.walletAccepted ? null : 'Please read and accept the partner terms'
   if (v.commissionRate === '' || isNaN(Number(v.commissionRate)) || Number(v.commissionRate) < 0 || Number(v.commissionRate) > 100) return 'Commission must be 0–100%'
   if (v.walletMinBalance === '' || isNaN(Number(v.walletMinBalance)) || Number(v.walletMinBalance) < 0) return 'Minimum wallet balance must be a number'
   if (!v.walletAccepted) return 'Owner must accept the wallet rule before registration'
@@ -215,11 +217,19 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-export default function ShopRegistrationForm() {
-  const [form, setForm] = useState<ShopFormValues>({ ...emptyShopForm })
-  const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState<any>(null)
-
+/**
+ * All shop-registration sections. Used by the admin form (mode "admin") and by the
+ * public self-registration page /register/shop (mode "self": verified owner phone,
+ * no password, read-only partner terms instead of the admin wallet/commission fields).
+ */
+export function ShopFormFields({ form, setForm, mode = 'admin', uploader, lockOwnerPhone = false }: {
+  form: ShopFormValues
+  setForm: React.Dispatch<React.SetStateAction<ShopFormValues>>
+  mode?: 'admin' | 'self'
+  uploader?: (file: File, folder: string) => Promise<string | undefined>
+  lockOwnerPhone?: boolean
+}) {
+  const self = mode === 'self'
   const set = <K extends keyof ShopFormValues>(k: K, val: ShopFormValues[K]) => setForm((f) => ({ ...f, [k]: val }))
 
   const { detect, loading: gpsLoading } = useDetectLocation((r) => {
@@ -234,6 +244,244 @@ export default function ShopRegistrationForm() {
       pincode: r.pincode || f.pincode,
     }))
   })
+
+  // Owner-as-mechanic block always mirrors the owner's name/phone.
+  const ownerMechanicValue: MechanicFormValues = { ...form.ownerMechanic, name: form.ownerName, phone: form.ownerPhone }
+  const visiblePhotoSlots = Math.min(MAX_SHOP_PHOTOS, form.shopImages.filter(Boolean).length + 1)
+
+  return (
+    <>
+      {/* ── Shop ── */}
+      <Section title="Shop details" icon={Store} description="What customers see when a job is routed to this shop.">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Shop name" required>
+            <Input value={form.shopName} onChange={(e) => set('shopName', e.target.value)} placeholder="Sharma Auto Works" />
+          </Field>
+          <Field label="GST number" hint="Optional — 15 characters">
+            <Input value={form.gstNumber} onChange={(e) => set('gstNumber', e.target.value.toUpperCase())} placeholder="09ABCDE1234F1Z5" className="uppercase font-mono" maxLength={15} />
+          </Field>
+          <Field label="Shop phone" hint="Defaults to the owner’s number">
+            <Input inputMode="numeric" value={form.shopPhone} onChange={(e) => set('shopPhone', e.target.value)} placeholder="Landline / shop mobile" />
+          </Field>
+          <Field label="Shop email" hint="Optional">
+            <Input type="email" value={form.shopEmail} onChange={(e) => set('shopEmail', e.target.value)} placeholder="shop@example.com" />
+          </Field>
+          <Field label="Services offered" className="md:col-span-2">
+            <ChipGroup options={SHOP_SPECIALIZATIONS} value={form.specializations} onChange={(v) => set('specializations', v)} />
+          </Field>
+          <Field label="Vehicle types" className="md:col-span-2">
+            <ChipGroup options={VEHICLE_TYPES} value={form.vehicleTypes} onChange={(v) => set('vehicleTypes', v)} />
+          </Field>
+          <Field label="About the shop" className="md:col-span-2">
+            <Textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={2} placeholder="Short description shown to customers" maxLength={500} />
+          </Field>
+          <div className="md:col-span-2">
+            <p className="text-xs font-semibold text-[#475569] mb-2">Shop photos <span className="text-gray-400 font-normal">(up to {MAX_SHOP_PHOTOS})</span></p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Array.from({ length: visiblePhotoSlots }).map((_, i) => (
+                <DocUpload
+                  uploader={uploader}
+                  key={i}
+                  label={`Shop photo ${i + 1}`}
+                  value={form.shopImages[i] || ''}
+                  onChange={(u) => {
+                    const arr = [...form.shopImages]
+                    arr[i] = u
+                    set('shopImages', arr.filter(Boolean))
+                  }}
+                  folder="shop-photos"
+                  hint={i === 0 ? 'Shop front' : 'Inside / workshop'}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Owner ── */}
+      <Section title="Owner details & KYC" icon={User} description={self ? 'You log in to the Shop Partner panel with this mobile number (OTP).' : 'Owner logs in to the shop-partner panel with this mobile number.'}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <DocUpload label="Owner photo" value={form.ownerPhoto} onChange={(u) => set('ownerPhoto', u)} folder="shop-kyc" hint="Optional" uploader={uploader} />
+          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Owner name" required>
+              <Input value={form.ownerName} onChange={(e) => set('ownerName', e.target.value)} placeholder="Vinod Sharma" />
+            </Field>
+            <Field label="Owner mobile" required hint={lockOwnerPhone ? 'Verified ✓ — your login for the Shop Partner panel' : 'Login ID for the shop panel'}>
+              <Input inputMode="numeric" value={form.ownerPhone} onChange={(e) => set('ownerPhone', e.target.value)} placeholder="98765 43210" disabled={lockOwnerPhone} />
+            </Field>
+            <Field label="Owner email" hint="Optional">
+              <Input type="email" value={form.ownerEmail} onChange={(e) => set('ownerEmail', e.target.value)} placeholder="owner@example.com" />
+            </Field>
+            {!self && (
+              <Field label="Login password" hint="Leave blank to use the mobile number as password">
+                <Input type="text" value={form.ownerPassword} onChange={(e) => set('ownerPassword', e.target.value)} placeholder="Min 6 characters" />
+              </Field>
+            )}
+          </div>
+          <Field label="Aadhaar number">
+            <Input inputMode="numeric" value={form.aadhaarNumber} onChange={(e) => set('aadhaarNumber', e.target.value.replace(/[^\d\s]/g, ''))} placeholder="XXXX XXXX XXXX" maxLength={14} />
+          </Field>
+          <Field label="PAN number">
+            <Input value={form.panNumber} onChange={(e) => set('panNumber', e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="uppercase font-mono" maxLength={10} />
+          </Field>
+          <div />
+          <DocUpload label="Upload Aadhaar" value={form.aadhaarImage} onChange={(u) => set('aadhaarImage', u)} folder="shop-kyc" hint="Front side, max 5MB" uploader={uploader} />
+          <DocUpload label="Upload PAN" value={form.panImage} onChange={(u) => set('panImage', u)} folder="shop-kyc" hint="JPG/PNG, max 5MB" uploader={uploader} />
+          <DocUpload label="Upload GST certificate" value={form.gstImage} onChange={(u) => set('gstImage', u)} folder="shop-kyc" hint="Optional" uploader={uploader} />
+        </div>
+      </Section>
+
+      {/* ── Address ── */}
+      <Section title="Shop address & location" icon={MapPin} description={self ? 'Tap “Use current location” while at your shop — nearby jobs are routed to you.' : 'Tap “Use location” while at the shop — coordinates decide which jobs get routed here.'}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" onClick={detect} disabled={gpsLoading} className="border-[#1B3B6F] text-[#1B3B6F]">
+              {gpsLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Navigation className="h-4 w-4 mr-2" />}
+              Use current location
+            </Button>
+            {form.latitude != null && form.longitude != null && (
+              <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" /> {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
+              </span>
+            )}
+          </div>
+          <Field label="Address" required className="md:col-span-2">
+            <Input value={form.street} onChange={(e) => set('street', e.target.value)} placeholder="Shop no., street, area" />
+          </Field>
+          <Field label="Landmark">
+            <Input value={form.landmark} onChange={(e) => set('landmark', e.target.value)} placeholder="Near…" />
+          </Field>
+          <Field label="City" required>
+            <Input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Lucknow" />
+          </Field>
+          <Field label="Pincode" required>
+            <Input inputMode="numeric" maxLength={6} value={form.pincode} onChange={(e) => set('pincode', e.target.value.replace(/\D/g, ''))} placeholder="226001" />
+          </Field>
+          <Field label="State" required>
+            <StateSelect value={form.state} onChange={(v) => set('state', v)} />
+          </Field>
+          <Field label="Coverage radius (km)" hint="How far the shop will send mechanics (1–50)">
+            <Input inputMode="numeric" value={form.coverageRadius} onChange={(e) => set('coverageRadius', e.target.value)} placeholder="10" />
+          </Field>
+        </div>
+      </Section>
+
+      {/* ── Mechanics ── */}
+      <Section title="Mechanics" icon={Wrench} description={self ? 'How many mechanics work at your shop — manage the team later from your Shop Partner panel.' : 'Headcount now; the roster can be managed later from Shop Partners → Mechanics.'}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Number of mechanics" hint="Working at this shop (excluding the owner)">
+            <Input inputMode="numeric" value={form.mechanicsCount} onChange={(e) => set('mechanicsCount', e.target.value.replace(/\D/g, ''))} placeholder="2" />
+          </Field>
+          <label className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 cursor-pointer hover:border-[#1B3B6F]/40 md:mt-5">
+            <input type="checkbox" className="h-4 w-4 accent-[#1B3B6F]" checked={form.ownerIsMechanic} onChange={(e) => set('ownerIsMechanic', e.target.checked)} />
+            <span className="text-sm font-medium text-[#1A1D29]">Owner also works as a mechanic</span>
+          </label>
+        </div>
+
+        {form.ownerIsMechanic && (
+          <div className="mt-5 space-y-4 rounded-xl border border-dashed border-[#1B3B6F]/30 bg-[#1B3B6F]/[0.03] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-[#1B3B6F] uppercase tracking-wide">Owner’s mechanic form</p>
+              <label className="flex items-center gap-2 text-xs text-[#475569] cursor-pointer">
+                <input type="checkbox" className="h-3.5 w-3.5 accent-[#1B3B6F]" checked={form.ownerMechanicSameAddress} onChange={(e) => set('ownerMechanicSameAddress', e.target.checked)} />
+                Same address as shop
+              </label>
+            </div>
+            <p className="text-xs text-[#6B7280]">Name and number are taken from the owner details above. Payout goes to the shop’s bank/UPI below.</p>
+            <MechanicFormFields
+              value={ownerMechanicValue}
+              onChange={(m) => set('ownerMechanic', m)}
+              lockIdentity
+              showAddress={!form.ownerMechanicSameAddress}
+              showPayout={false}
+              showAdmin={false}
+              folder="shop-kyc"
+              uploader={uploader}
+              selfMode={self}
+            />
+          </div>
+        )}
+      </Section>
+
+      {/* ── Payout ── */}
+      <Section title="Bank details (payouts)" icon={Landmark} description={self ? 'Where your settlements are paid. Bank account OR UPI — you can also add this later.' : 'Where settlements are paid. Bank account OR UPI.'}>
+        <PayoutFields
+          method={form.payoutMethod}
+          bank={form.bank}
+          upi={form.upi}
+          onMethodChange={(m) => set('payoutMethod', m)}
+          onBankChange={(b) => set('bank', b)}
+          onUpiChange={(u) => set('upi', u)}
+          holderHint="Should match the owner / shop name"
+        />
+      </Section>
+
+      {self ? (
+        <>
+      {/* ── Partner terms (self-registration: read-only terms + acceptance) ── */}
+      <Section title="Partner terms" icon={Wallet} description="How you get paid and how Bharat Mechanics takes its share.">
+        <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-900 space-y-1.5 mb-4">
+          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Keep a minimum <b>₹{PLATFORM_MIN_WALLET.toLocaleString('en-IN')}</b> in your Bharat Mechanics wallet to keep receiving jobs (top up any time from the Shop Partner panel).</span></p>
+          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>A platform commission (standard <b>25%</b>) is deducted per completed job. Your final rate is confirmed by our team during verification.</span></p>
+          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Earnings are settled <b>weekly</b> to your bank account / UPI.</span></p>
+        </div>
+        <label className={cn(
+          'flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer',
+          form.walletAccepted ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-[#1B3B6F]/40',
+        )}>
+          <input type="checkbox" className="h-4 w-4 mt-0.5 accent-[#1B3B6F]" checked={form.walletAccepted} onChange={(e) => set('walletAccepted', e.target.checked)} />
+          <span className="text-sm text-[#1A1D29]">
+            I, <b>{form.ownerName.trim() || 'the owner'}</b>, have read and accept the wallet rule, commission and settlement terms above, and confirm the details I entered are correct.
+          </span>
+        </label>
+      </Section>
+        </>
+      ) : (
+        <>
+      {/* ── Wallet rule ── */}
+      <Section title="Wallet rule" icon={Wallet} description="Explain this to the owner before they sign — it’s how the shop gets paid and how the platform takes its share.">
+        <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-900 space-y-1.5 mb-4">
+          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Shop keeps a minimum <b>₹{Number(form.walletMinBalance || PLATFORM_MIN_WALLET).toLocaleString('en-IN')}</b> in the Bharat Mechanics wallet to keep receiving jobs (top-up via Razorpay in the shop panel).</span></p>
+          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Platform commission of <b>{form.commissionRate || 0}%</b> is deducted per completed job.</span></p>
+          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Earnings are settled <b>{SETTLEMENT_CYCLES.find((c) => c.value === form.settlementCycle)?.label.toLowerCase()}</b> to the bank/UPI above.</span></p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Field label="Commission (%)" required>
+            <Input inputMode="numeric" value={form.commissionRate} onChange={(e) => set('commissionRate', e.target.value)} placeholder="25" />
+          </Field>
+          <Field label="Settlement cycle" required>
+            <select value={form.settlementCycle} onChange={(e) => set('settlementCycle', e.target.value as ShopFormValues['settlementCycle'])} className={selectCls}>
+              {SETTLEMENT_CYCLES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Minimum wallet balance (₹)" hint={`Platform default is ₹${PLATFORM_MIN_WALLET.toLocaleString('en-IN')}`}>
+            <Input inputMode="numeric" value={form.walletMinBalance} onChange={(e) => set('walletMinBalance', e.target.value.replace(/\D/g, ''))} />
+          </Field>
+          <Field label="Note" className="md:col-span-3">
+            <Input value={form.walletNote} onChange={(e) => set('walletNote', e.target.value)} placeholder="e.g. first top-up collected in cash on registration" maxLength={300} />
+          </Field>
+          <label className={cn(
+            'md:col-span-3 flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer',
+            form.walletAccepted ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-[#1B3B6F]/40',
+          )}>
+            <input type="checkbox" className="h-4 w-4 mt-0.5 accent-[#1B3B6F]" checked={form.walletAccepted} onChange={(e) => set('walletAccepted', e.target.checked)} />
+            <span className="text-sm text-[#1A1D29]">
+              <b>{form.ownerName.trim() || 'The owner'}</b> has understood and accepted the wallet rule, commission and settlement cycle above.
+            </span>
+          </label>
+        </div>
+      </Section>
+
+        </>
+      )}
+    </>
+  )
+}
+
+export default function ShopRegistrationForm() {
+  const [form, setForm] = useState<ShopFormValues>({ ...emptyShopForm })
+  const [saving, setSaving] = useState(false)
+  const [result, setResult] = useState<any>(null)
 
   const submit = async () => {
     const err = validateShopForm(form)
@@ -254,10 +502,6 @@ export default function ShopRegistrationForm() {
       setSaving(false)
     }
   }
-
-  // Owner-as-mechanic block always mirrors the owner's name/phone.
-  const ownerMechanicValue: MechanicFormValues = { ...form.ownerMechanic, name: form.ownerName, phone: form.ownerPhone }
-  const visiblePhotoSlots = Math.min(MAX_SHOP_PHOTOS, form.shopImages.filter(Boolean).length + 1)
 
   if (result) {
     const creds = result.credentials || {}
@@ -315,199 +559,7 @@ export default function ShopRegistrationForm() {
         <p className="text-[#6B7280] text-sm mt-1">Onboard a partner shop in person — shop + owner KYC, mechanics, payout and the wallet rule in one go.</p>
       </div>
 
-      {/* ── Shop ── */}
-      <Section title="Shop details" icon={Store} description="What customers see when a job is routed to this shop.">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Shop name" required>
-            <Input value={form.shopName} onChange={(e) => set('shopName', e.target.value)} placeholder="Sharma Auto Works" />
-          </Field>
-          <Field label="GST number" hint="Optional — 15 characters">
-            <Input value={form.gstNumber} onChange={(e) => set('gstNumber', e.target.value.toUpperCase())} placeholder="09ABCDE1234F1Z5" className="uppercase font-mono" maxLength={15} />
-          </Field>
-          <Field label="Shop phone" hint="Defaults to the owner’s number">
-            <Input inputMode="numeric" value={form.shopPhone} onChange={(e) => set('shopPhone', e.target.value)} placeholder="Landline / shop mobile" />
-          </Field>
-          <Field label="Shop email" hint="Optional">
-            <Input type="email" value={form.shopEmail} onChange={(e) => set('shopEmail', e.target.value)} placeholder="shop@example.com" />
-          </Field>
-          <Field label="Services offered" className="md:col-span-2">
-            <ChipGroup options={SHOP_SPECIALIZATIONS} value={form.specializations} onChange={(v) => set('specializations', v)} />
-          </Field>
-          <Field label="Vehicle types" className="md:col-span-2">
-            <ChipGroup options={VEHICLE_TYPES} value={form.vehicleTypes} onChange={(v) => set('vehicleTypes', v)} />
-          </Field>
-          <Field label="About the shop" className="md:col-span-2">
-            <Textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={2} placeholder="Short description shown to customers" maxLength={500} />
-          </Field>
-          <div className="md:col-span-2">
-            <p className="text-xs font-semibold text-[#475569] mb-2">Shop photos <span className="text-gray-400 font-normal">(up to {MAX_SHOP_PHOTOS})</span></p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {Array.from({ length: visiblePhotoSlots }).map((_, i) => (
-                <DocUpload
-                  key={i}
-                  label={`Shop photo ${i + 1}`}
-                  value={form.shopImages[i] || ''}
-                  onChange={(u) => {
-                    const arr = [...form.shopImages]
-                    arr[i] = u
-                    set('shopImages', arr.filter(Boolean))
-                  }}
-                  folder="shop-photos"
-                  hint={i === 0 ? 'Shop front' : 'Inside / workshop'}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* ── Owner ── */}
-      <Section title="Owner details & KYC" icon={User} description="Owner logs in to the shop-partner panel with this mobile number.">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <DocUpload label="Owner photo" value={form.ownerPhoto} onChange={(u) => set('ownerPhoto', u)} folder="shop-kyc" hint="Optional" />
-          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Owner name" required>
-              <Input value={form.ownerName} onChange={(e) => set('ownerName', e.target.value)} placeholder="Vinod Sharma" />
-            </Field>
-            <Field label="Owner mobile" required hint="Login ID for the shop panel">
-              <Input inputMode="numeric" value={form.ownerPhone} onChange={(e) => set('ownerPhone', e.target.value)} placeholder="98765 43210" />
-            </Field>
-            <Field label="Owner email" hint="Optional">
-              <Input type="email" value={form.ownerEmail} onChange={(e) => set('ownerEmail', e.target.value)} placeholder="owner@example.com" />
-            </Field>
-            <Field label="Login password" hint="Leave blank to use the mobile number as password">
-              <Input type="text" value={form.ownerPassword} onChange={(e) => set('ownerPassword', e.target.value)} placeholder="Min 6 characters" />
-            </Field>
-          </div>
-          <Field label="Aadhaar number">
-            <Input inputMode="numeric" value={form.aadhaarNumber} onChange={(e) => set('aadhaarNumber', e.target.value.replace(/[^\d\s]/g, ''))} placeholder="XXXX XXXX XXXX" maxLength={14} />
-          </Field>
-          <Field label="PAN number">
-            <Input value={form.panNumber} onChange={(e) => set('panNumber', e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="uppercase font-mono" maxLength={10} />
-          </Field>
-          <div />
-          <DocUpload label="Upload Aadhaar" value={form.aadhaarImage} onChange={(u) => set('aadhaarImage', u)} folder="shop-kyc" hint="Front side, max 5MB" />
-          <DocUpload label="Upload PAN" value={form.panImage} onChange={(u) => set('panImage', u)} folder="shop-kyc" hint="JPG/PNG, max 5MB" />
-          <DocUpload label="Upload GST certificate" value={form.gstImage} onChange={(u) => set('gstImage', u)} folder="shop-kyc" hint="Optional" />
-        </div>
-      </Section>
-
-      {/* ── Address ── */}
-      <Section title="Shop address & location" icon={MapPin} description="Tap “Use location” while at the shop — coordinates decide which jobs get routed here.">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outline" onClick={detect} disabled={gpsLoading} className="border-[#1B3B6F] text-[#1B3B6F]">
-              {gpsLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Navigation className="h-4 w-4 mr-2" />}
-              Use current location
-            </Button>
-            {form.latitude != null && form.longitude != null && (
-              <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1 flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" /> {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
-              </span>
-            )}
-          </div>
-          <Field label="Address" required className="md:col-span-2">
-            <Input value={form.street} onChange={(e) => set('street', e.target.value)} placeholder="Shop no., street, area" />
-          </Field>
-          <Field label="Landmark">
-            <Input value={form.landmark} onChange={(e) => set('landmark', e.target.value)} placeholder="Near…" />
-          </Field>
-          <Field label="City" required>
-            <Input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Lucknow" />
-          </Field>
-          <Field label="Pincode" required>
-            <Input inputMode="numeric" maxLength={6} value={form.pincode} onChange={(e) => set('pincode', e.target.value.replace(/\D/g, ''))} placeholder="226001" />
-          </Field>
-          <Field label="State" required>
-            <StateSelect value={form.state} onChange={(v) => set('state', v)} />
-          </Field>
-          <Field label="Coverage radius (km)" hint="How far the shop will send mechanics (1–50)">
-            <Input inputMode="numeric" value={form.coverageRadius} onChange={(e) => set('coverageRadius', e.target.value)} placeholder="10" />
-          </Field>
-        </div>
-      </Section>
-
-      {/* ── Mechanics ── */}
-      <Section title="Mechanics" icon={Wrench} description="Headcount now; the roster can be managed later from Shop Partners → Mechanics.">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Number of mechanics" hint="Working at this shop (excluding the owner)">
-            <Input inputMode="numeric" value={form.mechanicsCount} onChange={(e) => set('mechanicsCount', e.target.value.replace(/\D/g, ''))} placeholder="2" />
-          </Field>
-          <label className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 cursor-pointer hover:border-[#1B3B6F]/40 md:mt-5">
-            <input type="checkbox" className="h-4 w-4 accent-[#1B3B6F]" checked={form.ownerIsMechanic} onChange={(e) => set('ownerIsMechanic', e.target.checked)} />
-            <span className="text-sm font-medium text-[#1A1D29]">Owner also works as a mechanic</span>
-          </label>
-        </div>
-
-        {form.ownerIsMechanic && (
-          <div className="mt-5 space-y-4 rounded-xl border border-dashed border-[#1B3B6F]/30 bg-[#1B3B6F]/[0.03] p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-[#1B3B6F] uppercase tracking-wide">Owner’s mechanic form</p>
-              <label className="flex items-center gap-2 text-xs text-[#475569] cursor-pointer">
-                <input type="checkbox" className="h-3.5 w-3.5 accent-[#1B3B6F]" checked={form.ownerMechanicSameAddress} onChange={(e) => set('ownerMechanicSameAddress', e.target.checked)} />
-                Same address as shop
-              </label>
-            </div>
-            <p className="text-xs text-[#6B7280]">Name and number are taken from the owner details above. Payout goes to the shop’s bank/UPI below.</p>
-            <MechanicFormFields
-              value={ownerMechanicValue}
-              onChange={(m) => set('ownerMechanic', m)}
-              lockIdentity
-              showAddress={!form.ownerMechanicSameAddress}
-              showPayout={false}
-              showAdmin={false}
-              folder="shop-kyc"
-            />
-          </div>
-        )}
-      </Section>
-
-      {/* ── Payout ── */}
-      <Section title="Bank details (payouts)" icon={Landmark} description="Where settlements are paid. Bank account OR UPI.">
-        <PayoutFields
-          method={form.payoutMethod}
-          bank={form.bank}
-          upi={form.upi}
-          onMethodChange={(m) => set('payoutMethod', m)}
-          onBankChange={(b) => set('bank', b)}
-          onUpiChange={(u) => set('upi', u)}
-          holderHint="Should match the owner / shop name"
-        />
-      </Section>
-
-      {/* ── Wallet rule ── */}
-      <Section title="Wallet rule" icon={Wallet} description="Explain this to the owner before they sign — it’s how the shop gets paid and how the platform takes its share.">
-        <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-900 space-y-1.5 mb-4">
-          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Shop keeps a minimum <b>₹{Number(form.walletMinBalance || PLATFORM_MIN_WALLET).toLocaleString('en-IN')}</b> in the Bharat Mechanics wallet to keep receiving jobs (top-up via Razorpay in the shop panel).</span></p>
-          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Platform commission of <b>{form.commissionRate || 0}%</b> is deducted per completed job.</span></p>
-          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Earnings are settled <b>{SETTLEMENT_CYCLES.find((c) => c.value === form.settlementCycle)?.label.toLowerCase()}</b> to the bank/UPI above.</span></p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Field label="Commission (%)" required>
-            <Input inputMode="numeric" value={form.commissionRate} onChange={(e) => set('commissionRate', e.target.value)} placeholder="25" />
-          </Field>
-          <Field label="Settlement cycle" required>
-            <select value={form.settlementCycle} onChange={(e) => set('settlementCycle', e.target.value as ShopFormValues['settlementCycle'])} className={selectCls}>
-              {SETTLEMENT_CYCLES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
-          </Field>
-          <Field label="Minimum wallet balance (₹)" hint={`Platform default is ₹${PLATFORM_MIN_WALLET.toLocaleString('en-IN')}`}>
-            <Input inputMode="numeric" value={form.walletMinBalance} onChange={(e) => set('walletMinBalance', e.target.value.replace(/\D/g, ''))} />
-          </Field>
-          <Field label="Note" className="md:col-span-3">
-            <Input value={form.walletNote} onChange={(e) => set('walletNote', e.target.value)} placeholder="e.g. first top-up collected in cash on registration" maxLength={300} />
-          </Field>
-          <label className={cn(
-            'md:col-span-3 flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer',
-            form.walletAccepted ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-[#1B3B6F]/40',
-          )}>
-            <input type="checkbox" className="h-4 w-4 mt-0.5 accent-[#1B3B6F]" checked={form.walletAccepted} onChange={(e) => set('walletAccepted', e.target.checked)} />
-            <span className="text-sm text-[#1A1D29]">
-              <b>{form.ownerName.trim() || 'The owner'}</b> has understood and accepted the wallet rule, commission and settlement cycle above.
-            </span>
-          </label>
-        </div>
-      </Section>
+      <ShopFormFields form={form} setForm={setForm} mode="admin" />
 
       <div className="sticky bottom-4 z-10 flex justify-end">
         <Button size="lg" className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-lg" onClick={submit} disabled={saving}>

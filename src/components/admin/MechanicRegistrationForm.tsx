@@ -341,6 +341,7 @@ export function PayoutFields({ method, bank, upi, onMethodChange, onBankChange, 
 // ─── The mechanic form fields (reused inside the shop form for the owner) ────
 export function MechanicFormFields({
   value, onChange, lockIdentity = false, showAddress = true, showPayout = true, showAdmin = true, folder = 'mechanic-kyc',
+  lockPhone = false, uploader, selfMode = false,
 }: {
   value: MechanicFormValues
   onChange: (v: MechanicFormValues) => void
@@ -350,6 +351,12 @@ export function MechanicFormFields({
   showPayout?: boolean
   showAdmin?: boolean
   folder?: string
+  /** phone was OTP-verified (public self-registration) — show it but don't allow editing */
+  lockPhone?: boolean
+  /** custom document uploader (public self-registration) */
+  uploader?: (file: File, folder: string) => Promise<string | undefined>
+  /** wording for the mechanic filling in their own form (public /register/mechanic) */
+  selfMode?: boolean
 }) {
   const set = <K extends keyof MechanicFormValues>(k: K, val: MechanicFormValues[K]) => onChange({ ...value, [k]: val })
   const { detect, loading: gpsLoading } = useDetectLocation((r) => {
@@ -366,16 +373,16 @@ export function MechanicFormFields({
 
   return (
     <div className="space-y-5">
-      <Section title="Mechanic details" icon={User} description="Basic identity, contact numbers and what they can repair.">
+      <Section title={selfMode ? 'Your details' : 'Mechanic details'} icon={User} description={selfMode ? 'Your name, contact numbers and the work you do.' : 'Basic identity, contact numbers and what they can repair.'}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Mechanic name" required>
+          <Field label={selfMode ? 'Full name' : 'Mechanic name'} required>
             <Input value={value.name} onChange={(e) => set('name', e.target.value)} placeholder="Ramesh Kumar" disabled={lockIdentity} />
           </Field>
           <Field label="Email" hint="Optional">
             <Input type="email" value={value.email} onChange={(e) => set('email', e.target.value)} placeholder="mechanic@example.com" />
           </Field>
-          <Field label="Mobile number" required hint="Used for OTP login in the mechanic app">
-            <Input inputMode="numeric" value={value.phone} onChange={(e) => set('phone', e.target.value)} placeholder="98765 43210" disabled={lockIdentity} />
+          <Field label="Mobile number" required hint={lockPhone ? 'Verified ✓ — you will log in to the app with this number' : 'Used for OTP login in the mechanic app'}>
+            <Input inputMode="numeric" value={value.phone} onChange={(e) => set('phone', e.target.value)} placeholder="98765 43210" disabled={lockIdentity || lockPhone} />
           </Field>
           <Field label="Second number" hint="Optional — alternate / family number">
             <Input inputMode="numeric" value={value.secondPhone} onChange={(e) => set('secondPhone', e.target.value)} placeholder="Alternate number" />
@@ -386,7 +393,7 @@ export function MechanicFormFields({
           <Field label="Vehicle types" required className="md:col-span-2">
             <ChipGroup options={VEHICLE_TYPES} value={value.vehicleTypes} onChange={(v) => set('vehicleTypes', v)} />
           </Field>
-          <Field label="Service range (km)" hint="How far they will travel for doorstep jobs">
+          <Field label="Service range (km)" hint={selfMode ? 'How far you can travel for doorstep jobs' : 'How far they will travel for doorstep jobs'}>
             <Input inputMode="numeric" value={value.serviceRangeKm} onChange={(e) => set('serviceRangeKm', e.target.value)} placeholder="10" />
           </Field>
           <Field label="Experience">
@@ -396,7 +403,7 @@ export function MechanicFormFields({
       </Section>
 
       {showAddress && (
-        <Section title="Address & location" icon={MapPin} description="Tap “Use location” while standing at the mechanic’s shop/home to auto-fill.">
+        <Section title="Address & location" icon={MapPin} description={selfMode ? 'Tap “Use current location” at your shop or home to auto-fill — nearby jobs are sent to you.' : 'Tap “Use location” while standing at the mechanic’s shop/home to auto-fill.'}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2 flex flex-wrap items-center gap-3">
               <Button type="button" variant="outline" onClick={detect} disabled={gpsLoading} className="border-[#1B3B6F] text-[#1B3B6F]">
@@ -425,25 +432,25 @@ export function MechanicFormFields({
         </Section>
       )}
 
-      <Section title="Documents" icon={FileText} description="Photos are uploaded to ImageKit; only the link is stored with the profile.">
+      <Section title="Documents" icon={FileText} description={selfMode ? 'Clear photos help us verify you faster. They are only used for verification.' : 'Photos are uploaded to ImageKit; only the link is stored with the profile.'}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <DocUpload label="Mechanic photo" value={value.photo} onChange={(u) => set('photo', u)} folder={folder} hint="Passport-style, optional" />
+          <DocUpload label={selfMode ? 'Your photo' : 'Mechanic photo'} value={value.photo} onChange={(u) => set('photo', u)} folder={folder} hint="Passport-style, optional" uploader={uploader} />
           <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="PAN number" className="sm:col-span-2">
               <Input value={value.panNumber} onChange={(e) => set('panNumber', e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="uppercase font-mono" maxLength={10} />
             </Field>
-            <DocUpload label="Upload PAN" value={value.panImage} onChange={(u) => set('panImage', u)} folder={folder} hint="JPG/PNG, max 5MB" />
+            <DocUpload label="Upload PAN" value={value.panImage} onChange={(u) => set('panImage', u)} folder={folder} hint="JPG/PNG, max 5MB" uploader={uploader} />
           </div>
           <Field label="Aadhaar number" className="md:col-span-3">
             <Input inputMode="numeric" value={value.aadhaarNo} onChange={(e) => set('aadhaarNo', e.target.value.replace(/[^\d\s]/g, ''))} placeholder="XXXX XXXX XXXX" maxLength={14} />
           </Field>
-          <DocUpload label="Aadhaar — front" value={value.aadhaarFrontImage} onChange={(u) => set('aadhaarFrontImage', u)} folder={folder} hint="JPG/PNG, max 5MB" />
-          <DocUpload label="Aadhaar — back" value={value.aadhaarBackImage} onChange={(u) => set('aadhaarBackImage', u)} folder={folder} hint="JPG/PNG, max 5MB" />
+          <DocUpload label="Aadhaar — front" value={value.aadhaarFrontImage} onChange={(u) => set('aadhaarFrontImage', u)} folder={folder} hint="JPG/PNG, max 5MB" uploader={uploader} />
+          <DocUpload label="Aadhaar — back" value={value.aadhaarBackImage} onChange={(u) => set('aadhaarBackImage', u)} folder={folder} hint="JPG/PNG, max 5MB" uploader={uploader} />
         </div>
       </Section>
 
       {showPayout && (
-        <Section title="Bank details" icon={Landmark} description="Where the mechanic’s earnings are paid out. Bank account OR UPI.">
+        <Section title="Bank details" icon={Landmark} description={selfMode ? 'Where your earnings are paid. Bank account OR UPI — you can also add this later.' : 'Where the mechanic’s earnings are paid out. Bank account OR UPI.'}>
           <PayoutFields
             method={value.payoutMethod}
             bank={value.bank}

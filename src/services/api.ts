@@ -463,6 +463,26 @@ export const partnerAPI = {
   apply: (data: any) => api.post('/common/partner-applications', data),
 };
 
+// Public self-registration for mechanics / shop partners (/register/mechanic, /register/shop).
+// Phone is OTP-verified first; the returned partnerToken authorises uploads + the final submit.
+export const partnerRegisterAPI = {
+  sendOtp: (phone: string) => api.post('/common/partner-register/send-otp', { phone }),
+  verifyOtp: (phone: string, otp: string) => api.post('/common/partner-register/verify-otp', { phone, otp }),
+  uploadImage: (file: File, folder: string, partnerToken: string) => {
+    // Token travels as a form field (fields before the file so multer parses it) —
+    // no custom header (CORS allow-list) and no token in the URL.
+    const formData = new FormData();
+    formData.append('partnerToken', partnerToken);
+    formData.append('folder', folder);
+    formData.append('image', file);
+    return api.post('/common/partner-register/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  registerMechanic: (partnerToken: string, data: any) => api.post('/common/partner-register/mechanic', { ...data, partnerToken }),
+  registerShop: (partnerToken: string, data: any) => api.post('/common/partner-register/shop', { ...data, partnerToken }),
+};
+
 // ─── User Profile APIs (Customer-facing) ──────────────────────────────
 export const userProfileAPI = {
   get: () => api.get('/common/auth/profile'),

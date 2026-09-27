@@ -431,7 +431,12 @@ export function ShopPartnerManagement() {
                   <h3 className="font-bold text-[#1A1D29]">{shop.shopName}</h3>
                   <p className="text-sm text-gray-500">{shop.user?.fullName}</p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  {shop.registrationSource === 'self' && (
+                    <span className="bg-sky-100 text-sky-700 px-2.5 py-0.5 rounded-full text-xs font-semibold" title="Registered by the owner from the website">
+                      Self-registered
+                    </span>
+                  )}
                   {shop.isVerified ? (
                     <span className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1">
                       <ShieldCheck className="h-3 w-3" /> Verified
