@@ -489,6 +489,7 @@ export const partnerRegisterAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  getPlans: () => api.get('/common/partner-register/plans'),
   registerMechanic: (partnerToken: string, data: any) => api.post('/common/partner-register/mechanic', { ...data, partnerToken }),
   registerShop: (partnerToken: string, data: any) => api.post('/common/partner-register/shop', { ...data, partnerToken }),
 };

@@ -278,6 +278,32 @@ export default function TermsPage() {
               </p>
             </Section>
 
+            {/* 15. Partner terms (mechanics & shops) */}
+            <Section id="15-partners" title="15. Partner Terms — Mechanics &amp; Shop Partners" accent>
+              <p>
+                These terms apply to mechanics and shop partners who register on the Platform. The same plans, wallet
+                rules and withdrawal rules apply to both.
+              </p>
+              <div className="overflow-x-auto rounded-xl border border-gray-200 mt-3">
+                <table className="w-full text-left text-xs md:text-sm">
+                  <thead className="bg-gray-50 text-[#6B7280]">
+                    <tr><th className="px-3 py-2.5">Plan</th><th className="px-3 py-2.5">Platform fee</th><th className="px-3 py-2.5">Service range</th><th className="px-3 py-2.5">Minimum wallet</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    <tr><td className="px-3 py-2.5 font-medium">Standard</td><td className="px-3 py-2.5">5% of every service request</td><td className="px-3 py-2.5">8 km</td><td className="px-3 py-2.5">₹5,000</td></tr>
+                    <tr><td className="px-3 py-2.5 font-medium">Pro</td><td className="px-3 py-2.5">3% of every service request</td><td className="px-3 py-2.5">20 km</td><td className="px-3 py-2.5">₹10,000</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <ul className="mt-3">
+                <li><strong>Registration is free.</strong> No payment is taken at registration. The minimum wallet balance is topped up from the partner panel / app before jobs are routed to you.</li>
+                <li><strong>Platform fee.</strong> The plan&apos;s platform fee applies to every service request and is deducted from the wallet or from the job payment. Job routing pauses while the wallet is below the plan minimum.</li>
+                <li><strong>Visit charge on customer cancellation.</strong> If a customer cancels after a mechanic or shop has been assigned, the customer&apos;s Registration / Booking Fee is credited to that partner&apos;s wallet as a visit charge.</li>
+                <li><strong>Withdrawals above the minimum.</strong> Any amount above the minimum wallet balance can be withdrawn at any time and is credited to the partner&apos;s bank account / UPI within 2 hours and at most 5 working days.</li>
+                <li><strong>Full withdrawal.</strong> A partner who withdraws the entire balance (including the minimum) is processed within 30 days; routing pauses until the minimum is restored.</li>
+                <li><strong>Verification.</strong> Jobs are routed only after KYC verification. Bharat Mechanics may pause or remove partners for fraud, repeated cancellations, poor ratings or inaccurate details.</li>
+              </ul>
+            </Section>
             {/* 14. Contact */}
             <Section id="14-contact" title="14. Contact">
               <p>

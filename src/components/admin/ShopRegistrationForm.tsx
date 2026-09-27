@@ -416,27 +416,7 @@ export function ShopFormFields({ form, setForm, mode = 'admin', uploader, lockOw
         />
       </Section>
 
-      {self ? (
-        <>
-      {/* ── Partner terms (self-registration: read-only terms + acceptance) ── */}
-      <Section title="Partner terms" icon={Wallet} description="How you get paid and how Bharat Mechanics takes its share.">
-        <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-900 space-y-1.5 mb-4">
-          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Keep a minimum <b>₹{PLATFORM_MIN_WALLET.toLocaleString('en-IN')}</b> in your Bharat Mechanics wallet to keep receiving jobs (top up any time from the Shop Partner panel).</span></p>
-          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>A platform commission (standard <b>25%</b>) is deducted per completed job. Your final rate is confirmed by our team during verification.</span></p>
-          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Earnings are settled <b>weekly</b> to your bank account / UPI.</span></p>
-        </div>
-        <label className={cn(
-          'flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer',
-          form.walletAccepted ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-[#1B3B6F]/40',
-        )}>
-          <input type="checkbox" className="h-4 w-4 mt-0.5 accent-[#1B3B6F]" checked={form.walletAccepted} onChange={(e) => set('walletAccepted', e.target.checked)} />
-          <span className="text-sm text-[#1A1D29]">
-            I, <b>{form.ownerName.trim() || 'the owner'}</b>, have read and accept the wallet rule, commission and settlement terms above, and confirm the details I entered are correct.
-          </span>
-        </label>
-      </Section>
-        </>
-      ) : (
+      {self ? null : (
         <>
       {/* ── Wallet rule ── */}
       <Section title="Wallet rule" icon={Wallet} description="Explain this to the owner before they sign — it’s how the shop gets paid and how the platform takes its share.">

@@ -9,6 +9,7 @@ import {
   MechanicFormFields, emptyMechanicForm, validateMechanicForm, toMechanicPayload, type MechanicFormValues,
 } from '@/components/admin/MechanicRegistrationForm'
 import { PhoneVerifyStep, RegisterSteps, type VerifiedPhone } from '@/components/partner/PhoneVerifyStep'
+import { PartnerPlanTerms } from '@/components/partner/PartnerPlanTerms'
 import { IcAutorenew, IcCheckCircle, IcChevronRight, IcInfo, IcVerifiedUser } from '@/components/icons/BmIcons'
 
 // Public mechanic self-registration. Creates the same MechanicProfile the admin
@@ -19,6 +20,8 @@ export default function MechanicSelfRegister() {
   const [verified, setVerified] = useState<VerifiedPhone | null>(null)
   const [form, setForm] = useState<MechanicFormValues>({ ...emptyMechanicForm })
   const [saving, setSaving] = useState(false)
+  const [plan, setPlan] = useState('standard')
+  const [termsOk, setTermsOk] = useState(false)
   const [done, setDone] = useState<{ name: string } | null>(null)
   // Prefill handed over by the landing-page quick form (sessionStorage, never the URL).
   const [q, setQ] = useState<Record<string, string | undefined>>({})
@@ -49,9 +52,10 @@ export default function MechanicSelfRegister() {
     if (!verified) return
     const err = validateMechanicForm(form, { requirePayout: false })
     if (err) { toast.error(err); return }
+    if (!termsOk) { toast.error('Please read and accept the partner terms'); return }
     setSaving(true)
     try {
-      const r = await partnerRegisterAPI.registerMechanic(verified.token, toMechanicPayload(form))
+      const r = await partnerRegisterAPI.registerMechanic(verified.token, { ...toMechanicPayload(form), plan, termsAccepted: true })
       if (r.data?.success) {
         setDone({ name: form.name.trim() })
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -130,6 +134,7 @@ export default function MechanicSelfRegister() {
                   </p>
                 )}
                 <MechanicFormFields value={form} onChange={setForm} showAdmin={false} lockPhone selfMode uploader={uploader} />
+                <PartnerPlanTerms plan={plan} onPlanChange={setPlan} accepted={termsOk} onAcceptedChange={setTermsOk} who="mechanic" name={form.name.trim() || undefined} />
                 <p className="px-1 text-[12px] leading-snug text-[#52667C] sm:hidden">By registering you agree to our <Link href="/terms" className="font-semibold text-[#1864C8] underline">Terms</Link> and <Link href="/privacy" className="font-semibold text-[#1864C8] underline">Privacy Policy</Link>.</p>
                 <div className="sticky bottom-[68px] z-10 flex items-center gap-3 rounded-2xl border border-[#E6ECF3] bg-white/95 p-2 shadow-[0_12px_30px_-18px_rgba(14,43,76,0.45)] backdrop-blur sm:justify-between sm:p-3 md:bottom-4">
                   <p className="hidden px-1 text-[12px] leading-snug text-[#52667C] sm:block">By registering you agree to our <Link href="/terms" className="font-semibold text-[#1864C8] underline">Terms</Link> and <Link href="/privacy" className="font-semibold text-[#1864C8] underline">Privacy Policy</Link>.</p>

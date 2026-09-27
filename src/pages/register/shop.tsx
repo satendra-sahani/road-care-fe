@@ -6,6 +6,7 @@ import { UserLayout } from '@/components/layout/UserLayout'
 import { partnerRegisterAPI } from '@/services/api'
 import { ShopFormFields, emptyShopForm, validateShopForm, toShopPayload, type ShopFormValues } from '@/components/admin/ShopRegistrationForm'
 import { PhoneVerifyStep, RegisterSteps, type VerifiedPhone } from '@/components/partner/PhoneVerifyStep'
+import { PartnerPlanTerms } from '@/components/partner/PartnerPlanTerms'
 import { IcAutorenew, IcCheckCircle, IcChevronRight, IcInfo, IcVerifiedUser, IcStore } from '@/components/icons/BmIcons'
 
 // Public shop-partner self-registration. Creates the same ShopPartner (+ owner
@@ -16,6 +17,8 @@ export default function ShopSelfRegister() {
   const [verified, setVerified] = useState<VerifiedPhone | null>(null)
   const [form, setForm] = useState<ShopFormValues>({ ...emptyShopForm })
   const [saving, setSaving] = useState(false)
+  const [plan, setPlan] = useState('standard')
+  const [termsOk, setTermsOk] = useState(false)
   const [done, setDone] = useState<{ shopName: string } | null>(null)
   // Prefill handed over by the landing-page quick form (sessionStorage, never the URL).
   const [q, setQ] = useState<Record<string, string | undefined>>({})
@@ -50,11 +53,11 @@ export default function ShopSelfRegister() {
 
   const submit = async () => {
     if (!verified) return
-    const err = validateShopForm(form, 'self')
+    const err = validateShopForm({ ...form, walletAccepted: termsOk }, 'self')
     if (err) { toast.error(err); return }
     setSaving(true)
     try {
-      const r = await partnerRegisterAPI.registerShop(verified.token, { ...toShopPayload(form), walletAccepted: form.walletAccepted })
+      const r = await partnerRegisterAPI.registerShop(verified.token, { ...toShopPayload(form), walletAccepted: termsOk, plan, termsAccepted: true })
       if (r.data?.success) {
         setDone({ shopName: form.shopName.trim() })
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -129,6 +132,7 @@ export default function ShopSelfRegister() {
                   </p>
                 )}
                 <ShopFormFields form={form} setForm={setForm} mode="self" uploader={uploader} lockOwnerPhone />
+                <PartnerPlanTerms plan={plan} onPlanChange={setPlan} accepted={termsOk} onAcceptedChange={setTermsOk} who="shop" name={form.ownerName.trim() || undefined} />
                 <p className="px-1 text-[12px] leading-snug text-[#52667C] sm:hidden">By registering you agree to our <Link href="/terms" className="font-semibold text-[#1864C8] underline">Terms</Link> and <Link href="/privacy" className="font-semibold text-[#1864C8] underline">Privacy Policy</Link>.</p>
                 <div className="sticky bottom-[68px] z-10 flex items-center gap-3 rounded-2xl border border-[#E6ECF3] bg-white/95 p-2 shadow-[0_12px_30px_-18px_rgba(14,43,76,0.45)] backdrop-blur sm:justify-between sm:p-3 md:bottom-4">
                   <p className="hidden px-1 text-[12px] leading-snug text-[#52667C] sm:block">By registering you agree to our <Link href="/terms" className="font-semibold text-[#1864C8] underline">Terms</Link> and <Link href="/privacy" className="font-semibold text-[#1864C8] underline">Privacy Policy</Link>.</p>
