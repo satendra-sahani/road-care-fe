@@ -394,7 +394,7 @@ function PaymentHistoryTab() {
       const data = await apiFetch(`/admin/payments?${params}`)
       setPayments(data.payments || [])
       setTotalPages(data.pages || 1)
-      setTotal(data.total || 0)
+      setTotal(data.totalAll ?? data.total ?? 0)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -1036,13 +1036,13 @@ function CODManagementTab({ onSettled }: { onSettled: () => void }) {
       const settledData = await apiFetch(`/admin/payments?paymentMethod=cod&paymentStatus=settled&limit=${limit}&page=${settledPage}`)
       setSettled(settledData.payments || [])
       setSettledTotalPages(settledData.pages || 1)
-      setSettledTotal(settledData.total || 0)
+      setSettledTotal(settledData.totalAll ?? settledData.total ?? 0)
 
       // Calculate settled stats
       const settledAmount = (settledData.payments || []).reduce((sum: number, p: PaymentRecord) => sum + (p.totalAmount || 0), 0)
       setCodStats(prev => ({
         ...prev || { pendingCount: 0, pendingAmount: 0, totalCollected: 0 },
-        settledCount: settledData.total || 0,
+        settledCount: settledData.totalAll ?? settledData.total ?? 0,
         settledAmount,
         totalCollected: (prev?.pendingAmount || 0) + settledAmount,
       }))
@@ -1870,8 +1870,8 @@ function WalletsTab() {
       const response = await paymentAPI.getWallets(params)
       const data = response.data
       setWallets(data.wallets || data.data || [])
-      setTotalPages(data.totalPages || data.pages || 1)
-      setTotal(data.total || 0)
+      setTotalPages(data.totalPages || data.pages || data.pagination?.pages || 1)
+      setTotal(data.total ?? data.pagination?.total ?? 0)
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load wallets')
     } finally {
@@ -2257,8 +2257,8 @@ function TransactionsTab() {
       const response = await paymentAPI.getTransactions(params)
       const data = response.data
       setTransactions(data.transactions || data.data || [])
-      setTotalPages(data.totalPages || data.pages || 1)
-      setTotal(data.total || 0)
+      setTotalPages(data.totalPages || data.pages || data.pagination?.pages || 1)
+      setTotal(data.total ?? data.pagination?.total ?? 0)
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to load transactions')
     } finally {
