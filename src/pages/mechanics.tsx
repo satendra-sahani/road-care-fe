@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { SEOHead } from '@/components/SEOHead'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { DImg } from '@/components/ui/DImg'
+import { PartnerRegisterCta } from '@/components/partner/PartnerRegisterCta'
 import {
   IcGridView, IcBuild, IcSettings, IcBolt, IcDirectionsCar, IcTwoWheeler, IcSchedule, IcLocationOn,
   IcMyLocation, IcSearch, IcTune, IcExpandMore, IcExpandLess, IcFavoriteBorder, IcVerified, IcArrowForward,
@@ -216,6 +217,7 @@ export default function MechanicsPage() {
                     <span key={t} className="flex items-center gap-[7px] text-[12.5px] font-medium text-[#DCE7F3] whitespace-nowrap"><IcCheck size={15} className="text-[#39C07E]" />{t}</span>
                   ))}
                 </div>
+                <PartnerRegisterCta variant="hero" />
               </div>
               <div className="flex-[1_1_340px] min-w-0 flex justify-center items-end">
                 <DImg src="/design/mech-hero-v6-o.webp" alt="Experts Near You — certified Bharat Mechanics technician" loading="eager" fetchPriority="high" sizes="(max-width: 767px) 92vw, 560px" className="block w-full max-w-[560px] h-auto" />
@@ -338,7 +340,7 @@ export default function MechanicsPage() {
 
           {/* JOIN + LIST SHOP */}
           <section className="max-w-[1200px] mx-auto px-[clamp(14px,3vw,24px)] pt-[clamp(20px,2.6vw,30px)] flex flex-wrap gap-[18px] items-stretch">
-            <Link href="/become-mechanic" className="relative block flex-[2_1_460px] min-w-0 rounded-[20px] overflow-hidden bg-white border border-[#F3E2D3] shadow-[0_14px_34px_rgba(12,42,77,0.08)] hover:shadow-[0_18px_40px_rgba(244,96,31,0.16)] transition-shadow">
+            <Link href="/register/mechanic" aria-label="Register as a mechanic" className="relative block flex-[2_1_460px] min-w-0 rounded-[20px] overflow-hidden bg-white border border-[#F3E2D3] shadow-[0_14px_34px_rgba(12,42,77,0.08)] hover:shadow-[0_18px_40px_rgba(244,96,31,0.16)] transition-shadow">
               <DImg sizes="(max-width: 767px) 92vw, 760px" src="/design/join-mechanic-v2-o.webp" alt="Are you a Mechanic? Get certified by Bharat Mechanics and grow your business — Join as a Mechanic" className="block w-full h-full min-h-[260px] object-cover object-center" />
             </Link>
             <div className="relative flex-[1_1_280px] min-w-0 rounded-[20px] overflow-hidden bg-[linear-gradient(160deg,#0C2A4D_0%,#123A69_60%,#1A4A85_100%)] text-white p-[clamp(20px,2.4vw,28px)] flex flex-col">
@@ -349,7 +351,7 @@ export default function MechanicsPage() {
               <div className="relative grid gap-2 mt-4 text-[12.5px] text-[#DCE7F3]">
                 {['Free listing, no setup cost', 'Bookings from nearby customers', 'Manage everything from one dashboard'].map((t) => <div key={t} className="flex items-center gap-2"><IcCheck size={15} className="text-[#39C07E] shrink-0" />{t}</div>)}
               </div>
-              <Link href="/list-your-shop" className="relative flex items-center justify-center gap-[9px] mt-5 px-5 py-[13px] bg-white hover:bg-[#EAF2FC] text-[#0E2B4C] hover:text-[#0E2B4C] rounded-[12px] text-[14px] font-bold transition-colors">List Your Shop <IcArrowForward size={16} /></Link>
+              <Link href="/register/shop" className="relative flex items-center justify-center gap-[9px] mt-5 px-5 py-[13px] bg-white hover:bg-[#EAF2FC] text-[#0E2B4C] hover:text-[#0E2B4C] rounded-[12px] text-[14px] font-bold transition-colors">Register Your Shop <IcArrowForward size={16} /></Link>
             </div>
           </section>
 

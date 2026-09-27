@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import { DImg, ikUrl } from '@/components/ui/DImg'
+import { PartnerRegisterCta } from '@/components/partner/PartnerRegisterCta'
 import {
   IcGridView, IcViewList, IcTune, IcClose, IcFavorite, IcFavoriteBorder, IcLocalShipping,
   IcVerifiedUser, IcAssignmentReturn, IcHeadsetMic, IcCheck, IcExpandMore, IcExpandLess,
@@ -404,6 +405,11 @@ export function ShopListing() {
           </div>
         </div>
 
+        {/* PARTNER REGISTRATION — shops / mechanics join from here */}
+        <div className="max-w-[1220px] mx-auto px-[clamp(14px,3vw,24px)] pt-[clamp(12px,1.6vw,16px)]">
+          <PartnerRegisterCta variant="strip" />
+        </div>
+
         {/* CATEGORY TILES */}
         <div className="max-w-[1220px] mx-auto px-[clamp(14px,3vw,24px)] pt-[clamp(14px,2vw,20px)] pb-1.5 flex items-stretch gap-[9px] overflow-x-auto scrollbar-hide">
           <button onClick={() => setSelectedCategory('')} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] text-center transition-colors py-[9px] border ${!selectedCategory ? 'border-[#0E2B4C] bg-[#0E2B4C] text-white shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'border-[#E6ECF3] bg-white text-[#0E2B4C] hover:border-[#F4601F]'}`}>
@@ -526,6 +532,8 @@ export function ShopListing() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-5"><PartnerRegisterCta variant="banner" /></div>
           </div>
         </div>
       </div>
