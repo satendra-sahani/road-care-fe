@@ -645,7 +645,7 @@ export default function HomePage() {
         <Section>
           <div className="overflow-hidden rounded-[22px] bg-[linear-gradient(110deg,#F4F9FE_0%,#F1F7FE_45%,#EEF4FD_100%)] px-4 pt-5 shadow-[0_12px_30px_rgba(12,42,77,0.07)] min-[1101px]:hidden">
             <AppBannerCopy compact />
-            <DImg src="/design/ap-art-full.webp" alt="Bharat Mechanics app on two phones with car, bike and genuine parts" sizes="(min-width: 1101px) 96px, 100vw" className="mt-3 block aspect-[1115/793] h-auto w-full object-cover" />
+            <DImg src="/design/ap-art-full.webp" alt="Bharat Mechanics app on two phones with car, bike and genuine parts" sizes="(min-width: 1101px) 96px, calc(100vw - 64px)" className="mt-3 block aspect-[1115/793] h-auto w-full object-cover" />
           </div>
           <ScaledStage className="hidden aspect-[1600/640] min-[1101px]:block" stageClassName="h-[640px] w-[1600px]" stageStyle={{ borderRadius: 22, overflow: 'hidden', background: 'linear-gradient(110deg,#F4F9FE 0%,#F1F7FE 45%,#EEF4FD 100%)', boxShadow: '0 12px 30px rgba(12,42,77,0.07)' }}>
             <DImg src="/design/ap-art-full.webp" alt="" sizes="(max-width: 1100px) 96px, 640px" className="absolute left-[700px] top-0 h-[640px] w-[900px] object-cover" />
@@ -1141,7 +1141,7 @@ function ProductCard({ product, price, mrp, discount, image, rating, reviews, on
     <div className="relative flex shrink-0 basis-[max(158px,calc((100%_-_56px)/5))] snap-start flex-col rounded-2xl border border-[#E6ECF3] bg-white p-2.5 transition-[box-shadow,transform,border-color] duration-300 hover:-translate-y-[3px] hover:border-[#D6E2F0] hover:shadow-[0_14px_30px_rgba(12,42,77,0.10)]">
       <Link href={`/shop/${id}`} className="relative flex aspect-[16/10] items-center justify-center overflow-hidden rounded-[10px] border border-[#F0F4F8] bg-white p-2">
         {image ? (
-          <img loading="lazy" decoding="async" src={ikUrl(image, 360)} alt={product.name} width={180} height={112} className="block h-full w-full object-contain" />
+          <img loading="lazy" decoding="async" src={ikUrl(image, 360)} srcSet={`${ikUrl(image, 240)} 240w, ${ikUrl(image, 360)} 360w`} sizes="(max-width: 767px) 120px, 200px" alt={product.name} width={180} height={112} className="block h-full w-full object-contain" />
         ) : (
           <IcShoppingBag size={40} className="text-gray-300" />
         )}
