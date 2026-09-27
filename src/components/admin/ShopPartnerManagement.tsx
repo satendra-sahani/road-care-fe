@@ -51,7 +51,7 @@ export function ShopPartnerManagement() {
   // Edit shop
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [editShop, setEditShop] = useState<any>(null)
-  const [editForm, setEditForm] = useState({ shopName: '', shopPhone: '', shopEmail: '', city: '', commissionRate: '', ownerName: '', ownerPhone: '', ownerEmail: '' })
+  const [editForm, setEditForm] = useState({ shopName: '', shopPhone: '', shopEmail: '', city: '', commissionRate: '', coverageRadius: '', minWallet: '', feeCollection: 'online', ownerName: '', ownerPhone: '', ownerEmail: '' })
 
   // Delete shop
   const [deleteShop, setDeleteShop] = useState<any>(null)
@@ -175,6 +175,9 @@ export function ShopPartnerManagement() {
       shopEmail: shop.shopEmail || '',
       city: shop.address?.city || '',
       commissionRate: String(shop.commissionRate ?? ''),
+      coverageRadius: String(shop.coverageRadius ?? ''),
+      minWallet: String(shop.partnerPlan?.minWallet ?? shop.walletRule?.minBalance ?? ''),
+      feeCollection: shop.feeCollection?.mode || 'online',
       ownerName: shop.user?.fullName || '',
       ownerPhone: shop.user?.phone || '',
       ownerEmail: shop.user?.email || '',
@@ -193,6 +196,9 @@ export function ShopPartnerManagement() {
           shopPhone: editForm.shopPhone.trim(),
           shopEmail: editForm.shopEmail.trim(),
           commissionRate: editForm.commissionRate === '' ? undefined : Number(editForm.commissionRate),
+          coverageRadius: editForm.coverageRadius === '' ? undefined : Number(editForm.coverageRadius),
+          walletRule: editForm.minWallet === '' ? undefined : { minBalance: Number(editForm.minWallet) },
+          feeCollection: { mode: editForm.feeCollection },
           address: { city: editForm.city.trim() },
         },
         ownerData: {
@@ -1083,9 +1089,35 @@ export function ShopPartnerManagement() {
                       className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop email" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600">Commission Rate (%)</label>
+                    <label className="text-xs font-medium text-gray-600">Platform fee (%)</label>
                     <input type="number" value={editForm.commissionRate} onChange={e => setEditForm(f => ({ ...f, commissionRate: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="25" min={0} max={50} />
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="5" min={0} max={50} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Service range (km)</label>
+                    <input type="number" value={editForm.coverageRadius} onChange={e => setEditForm(f => ({ ...f, coverageRadius: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="8" min={1} max={50} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Minimum wallet (₹)</label>
+                    <input type="number" value={editForm.minWallet} onChange={e => setEditForm(f => ({ ...f, minWallet: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="5000" min={0} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">How we collect our fee</label>
+                    <select value={editForm.feeCollection} onChange={e => setEditForm(f => ({ ...f, feeCollection: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                      <option value="online">Online (wallet / UPI)</option>
+                      <option value="cash">Cash (collected by our team)</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2 flex flex-wrap gap-2">
+                    {[{ k: 'Standard', f: 5, r: 8, m: 5000 }, { k: 'Pro', f: 3, r: 20, m: 10000 }].map((p) => (
+                      <button key={p.k} type="button" onClick={() => setEditForm(f => ({ ...f, commissionRate: String(p.f), coverageRadius: String(p.r), minWallet: String(p.m) }))}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:border-[#FF6B35] hover:text-[#FF6B35]">
+                        Set {p.k}: {p.f}% · {p.r} km · ₹{p.m.toLocaleString('en-IN')}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

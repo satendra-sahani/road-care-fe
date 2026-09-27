@@ -92,6 +92,10 @@ function normalizeMechanic(p: any): Mechanic {
     registrationSource: p.registrationSource || undefined,
     vehicleTypes: p.vehicleTypes || [],
     serviceRangeKm: p.serviceRangeKm ?? undefined,
+    commissionRate: p.commissionRate ?? undefined,
+    minWallet: p.partnerPlan?.minWallet ?? undefined,
+    planKey: p.partnerPlan?.key || undefined,
+    feeCollection: p.feeCollection?.mode || undefined,
     kyc: p.kyc ? {
       panNumber: p.kyc.panNumber || undefined,
       panImage: p.kyc.panImage || undefined,

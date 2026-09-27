@@ -328,7 +328,11 @@ const emptyMechanic: Omit<Mechanic, '_id' | 'createdAt' | 'updatedAt' | 'rating'
   experience: '',
   joiningDate: new Date().toISOString().split('T')[0],
   emergencyContact: '',
-  notes: ''
+  notes: '',
+  commissionRate: 5,
+  serviceRangeKm: 8,
+  minWallet: 5000,
+  feeCollection: 'online',
 }
 
 const allSpecializations = [
@@ -539,10 +543,16 @@ export function ServiceManagement() {
     if (!newMechanic.name.trim() || !newMechanic.phone.trim() || !newMechanic.aadhaarNo.trim()) return
 
     // Build backend-compatible payload: nested address object matches MechanicProfile schema
+    const planVals = { platformFeePct: newMechanic.commissionRate, rangeKm: newMechanic.serviceRangeKm, minWallet: newMechanic.minWallet }
+    const presets = [{ key: 'standard', name: 'Standard', f: 5, r: 8, m: 5000 }, { key: 'pro', name: 'Pro', f: 3, r: 20, m: 10000 }]
+    const named = presets.find((p) => p.f === planVals.platformFeePct && p.r === planVals.rangeKm && p.m === planVals.minWallet)
     const mechanicData: any = {
       ...newMechanic,
       specializations: selectedSpecs,
       location: newMechanic.city || newMechanic.address,
+      // plan values + how we collect our fee (admin-set)
+      partnerPlan: { key: named?.key || 'custom', name: named?.name || 'Custom', ...planVals },
+      feeCollection: { mode: newMechanic.feeCollection || 'online' },
       address: {
         street: newMechanic.address || '',
         city: newMechanic.city || '',
@@ -591,6 +601,10 @@ export function ServiceManagement() {
       joiningDate: mechanic.joiningDate,
       emergencyContact: mechanic.emergencyContact || '',
       notes: mechanic.notes || '',
+      commissionRate: mechanic.commissionRate,
+      serviceRangeKm: mechanic.serviceRangeKm,
+      minWallet: mechanic.minWallet,
+      feeCollection: mechanic.feeCollection || 'online',
     })
     setSelectedSpecs(mechanic.specializations)
     setSelectedMechanic(mechanic)
@@ -2446,6 +2460,45 @@ export function ServiceManagement() {
               </div>
             </div>
 
+            {/* Platform settings — plan values + fee collection (admin only) */}
+            <div>
+              <h4 className="text-sm font-semibold text-[#1A1D29] mb-3 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-[#1B3B6F]" />
+                Platform settings
+              </h4>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {[{ k: 'Standard', f: 5, r: 8, m: 5000 }, { k: 'Pro', f: 3, r: 20, m: 10000 }].map((p) => (
+                  <button key={p.k} type="button" onClick={() => setNewMechanic(prev => ({ ...prev, commissionRate: p.f, serviceRangeKm: p.r, minWallet: p.m }))}
+                    className={cn('rounded-lg border px-3 py-1.5 text-xs transition-colors', newMechanic.commissionRate === p.f && newMechanic.serviceRangeKm === p.r && newMechanic.minWallet === p.m ? 'border-[#1B3B6F] bg-[#1B3B6F]/5 text-[#1B3B6F]' : 'border-gray-200 text-gray-600 hover:border-[#1B3B6F]/50')}>
+                    {p.k}: {p.f}% · {p.r} km · ₹{p.m.toLocaleString('en-IN')}
+                  </button>
+                ))}
+                <span className="self-center text-[11px] text-gray-400">or custom</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm">Platform fee (%)</Label>
+                  <Input type="number" min={0} max={100} className="mt-1" value={newMechanic.commissionRate ?? ''} onChange={(e) => setNewMechanic(prev => ({ ...prev, commissionRate: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="5" />
+                </div>
+                <div>
+                  <Label className="text-sm">Service range (km)</Label>
+                  <Input type="number" min={0} max={500} className="mt-1" value={newMechanic.serviceRangeKm ?? ''} onChange={(e) => setNewMechanic(prev => ({ ...prev, serviceRangeKm: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="8" />
+                </div>
+                <div>
+                  <Label className="text-sm">Minimum wallet (₹)</Label>
+                  <Input type="number" min={0} className="mt-1" value={newMechanic.minWallet ?? ''} onChange={(e) => setNewMechanic(prev => ({ ...prev, minWallet: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="5000" />
+                </div>
+                <div>
+                  <Label className="text-sm">How we collect our fee</Label>
+                  <select value={newMechanic.feeCollection || 'online'} onChange={(e) => setNewMechanic(prev => ({ ...prev, feeCollection: e.target.value as 'online' | 'cash' }))}
+                    className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <option value="online">Online (wallet / UPI)</option>
+                    <option value="cash">Cash (collected by our team)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             {/* Address */}
             <div>
               <h4 className="text-sm font-semibold text-[#1A1D29] mb-3 flex items-center gap-2">
@@ -2685,6 +2738,15 @@ export function ServiceManagement() {
                         <p className="font-medium text-[#1A1D29]">{selectedMechanic.payoutMethod === 'upi' ? 'UPI' : 'Bank account'}</p>
                       </div>
                     )}
+                    <div className="col-span-2">
+                      <p className="text-[#6B7280] text-xs">Plan &amp; platform fee</p>
+                      <p className="font-medium text-[#1A1D29]">
+                        {selectedMechanic.planKey ? (selectedMechanic.planKey === 'custom' ? 'Custom' : selectedMechanic.planKey.charAt(0).toUpperCase() + selectedMechanic.planKey.slice(1)) : 'Not set'}
+                        {selectedMechanic.commissionRate != null && <> · {selectedMechanic.commissionRate}% fee</>}
+                        {selectedMechanic.minWallet != null && <> · min wallet ₹{selectedMechanic.minWallet.toLocaleString('en-IN')}</>}
+                        {selectedMechanic.feeCollection && <> · fee via {selectedMechanic.feeCollection === 'cash' ? 'cash' : 'online'}</>}
+                      </p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {([

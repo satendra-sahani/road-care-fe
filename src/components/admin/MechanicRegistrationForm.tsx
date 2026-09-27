@@ -91,8 +91,24 @@ export type MechanicFormValues = {
   upi: UpiDetails
   // Admin
   commissionRate: string
+  minWallet: string
+  feeCollection: 'online' | 'cash'
   notes: string
 }
+
+/** Partner plans (mirror of backend config/partnerPlans.js) for the admin quick-pick. */
+export const PARTNER_PLAN_PRESETS = [
+  { key: 'standard', name: 'Standard', platformFeePct: 5, rangeKm: 8, minWallet: 5000 },
+  { key: 'pro', name: 'Pro', platformFeePct: 3, rangeKm: 20, minWallet: 10000 },
+]
+export function planKeyFor(fee: number, range: number, minWallet: number) {
+  const p = PARTNER_PLAN_PRESETS.find((x) => x.platformFeePct === fee && x.rangeKm === range && x.minWallet === minWallet)
+  return p ? { key: p.key, name: p.name } : { key: 'custom', name: 'Custom' }
+}
+export const FEE_COLLECTION_OPTIONS: { value: 'online' | 'cash'; label: string; hint: string }[] = [
+  { value: 'online', label: 'Online (wallet / UPI)', hint: 'Fee is deducted from the wallet or paid online' },
+  { value: 'cash', label: 'Cash', hint: 'Our team collects the fee in cash' },
+]
 
 export const emptyMechanicForm: MechanicFormValues = {
   name: '', email: '', phone: '', secondPhone: '',
@@ -100,7 +116,7 @@ export const emptyMechanicForm: MechanicFormValues = {
   address: '', city: '', state: 'Uttar Pradesh', pincode: '', latitude: null, longitude: null,
   photo: '', panNumber: '', panImage: '', aadhaarNo: '', aadhaarFrontImage: '', aadhaarBackImage: '',
   payoutMethod: '', bank: { ...emptyBank }, upi: { ...emptyUpi },
-  commissionRate: '20', notes: '',
+  commissionRate: '5', minWallet: '5000', feeCollection: 'online', notes: '',
 }
 
 export type MechanicValidateOpts = { requireIdentity?: boolean; requirePayout?: boolean; requireAddress?: boolean }
@@ -125,6 +141,7 @@ export function validateMechanicForm(v: MechanicFormValues, opts: MechanicValida
   if (v.panNumber.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v.panNumber.trim().toUpperCase())) return 'Invalid PAN number (e.g. ABCDE1234F)'
   if (v.aadhaarNo.trim() && !/^\d{12}$/.test(v.aadhaarNo.replace(/\s/g, ''))) return 'Aadhaar must be 12 digits'
   if (v.commissionRate !== '' && (isNaN(Number(v.commissionRate)) || Number(v.commissionRate) < 0 || Number(v.commissionRate) > 100)) return 'Commission must be 0–100%'
+  if (v.minWallet !== '' && (isNaN(Number(v.minWallet)) || Number(v.minWallet) < 0)) return 'Minimum wallet must be 0 or more'
   const payoutErr = validatePayout(v.payoutMethod, v.bank, v.upi, requirePayout)
   if (payoutErr) return payoutErr
   return null
@@ -167,6 +184,14 @@ export function toMechanicPayload(v: MechanicFormValues, opts: { includePayout?:
     }),
     payout: includePayout ? toPayoutPayload(v.payoutMethod, v.bank, v.upi) : undefined,
     commissionRate: v.commissionRate !== '' ? Number(v.commissionRate) : undefined,
+    // plan values the admin chose (fee %, range, minimum wallet) + how we collect our fee
+    partnerPlan: (v.commissionRate !== '' || v.serviceRangeKm !== '' || v.minWallet !== '') ? compact({
+      ...planKeyFor(Number(v.commissionRate), Number(v.serviceRangeKm), Number(v.minWallet)),
+      platformFeePct: v.commissionRate !== '' ? Number(v.commissionRate) : undefined,
+      rangeKm: v.serviceRangeKm !== '' ? Number(v.serviceRangeKm) : undefined,
+      minWallet: v.minWallet !== '' ? Number(v.minWallet) : undefined,
+    }) : undefined,
+    feeCollection: { mode: v.feeCollection },
     notes: v.notes.trim(),
     registrationSource: 'admin',
   })
@@ -463,10 +488,33 @@ export function MechanicFormFields({
       )}
 
       {showAdmin && (
-        <Section title="Platform settings" icon={IndianRupee} description="Internal — not shown to the mechanic.">
+        <Section title="Platform settings" icon={IndianRupee} description="Internal — not shown to the mechanic. Pick a plan or set your own numbers.">
+          <div className="mb-4 flex flex-wrap gap-2">
+            {PARTNER_PLAN_PRESETS.map((p) => {
+              const on = Number(value.commissionRate) === p.platformFeePct && Number(value.serviceRangeKm) === p.rangeKm && Number(value.minWallet) === p.minWallet
+              return (
+                <button key={p.key} type="button" onClick={() => onChange({ ...value, commissionRate: String(p.platformFeePct), serviceRangeKm: String(p.rangeKm), minWallet: String(p.minWallet) })}
+                  className={cn('rounded-xl border px-4 py-2 text-left text-sm transition-colors', on ? 'border-[#1B3B6F] bg-[#1B3B6F]/5 text-[#1B3B6F]' : 'border-gray-200 text-gray-600 hover:border-[#1B3B6F]/50')}>
+                  <span className="font-semibold">{p.name}</span> <span className="text-xs text-gray-500">· {p.platformFeePct}% · {p.rangeKm} km · ₹{p.minWallet.toLocaleString('en-IN')} min</span>
+                </button>
+              )
+            })}
+            <span className="self-center text-xs text-gray-400">or edit the values below (custom)</span>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Commission (%)" hint="Platform share per completed job (default 20%)">
-              <Input inputMode="numeric" value={value.commissionRate} onChange={(e) => set('commissionRate', e.target.value)} placeholder="20" />
+            <Field label="Platform fee (%)" hint="Our share of every service request">
+              <Input inputMode="numeric" value={value.commissionRate} onChange={(e) => set('commissionRate', e.target.value)} placeholder="5" />
+            </Field>
+            <Field label="Minimum wallet (₹)" hint="Balance the mechanic must keep to receive jobs">
+              <Input inputMode="numeric" value={value.minWallet} onChange={(e) => set('minWallet', e.target.value.replace(/[^\d]/g, ''))} placeholder="5000" />
+            </Field>
+            <Field label="Service range (km)" hint="Same as “Service range” above — jobs within this distance">
+              <Input inputMode="numeric" value={value.serviceRangeKm} onChange={(e) => set('serviceRangeKm', e.target.value)} placeholder="8" />
+            </Field>
+            <Field label="How we collect our fee" hint={FEE_COLLECTION_OPTIONS.find((o) => o.value === value.feeCollection)?.hint}>
+              <select value={value.feeCollection} onChange={(e) => set('feeCollection', e.target.value as 'online' | 'cash')} className={selectCls}>
+                {FEE_COLLECTION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </Field>
             <Field label="Notes" className="md:col-span-2">
               <Textarea value={value.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Anything the team should know…" rows={3} maxLength={500} />

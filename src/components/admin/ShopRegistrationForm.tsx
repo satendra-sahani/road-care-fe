@@ -19,6 +19,7 @@ import {
   validatePayout, toPayoutPayload,
   type MechanicFormValues, emptyMechanicForm, validateMechanicForm, toMechanicPayload,
   MechanicFormFields, PayoutFields, useDetectLocation, Section, Field, ChipGroup, StateSelect, selectCls,
+  PARTNER_PLAN_PRESETS, planKeyFor, FEE_COLLECTION_OPTIONS,
 } from './MechanicRegistrationForm'
 
 // Shop enum has three extra entries (models/ShopPartner.js)
@@ -79,6 +80,7 @@ export type ShopFormValues = {
   walletMinBalance: string
   walletAccepted: boolean
   walletNote: string
+  feeCollection: 'online' | 'cash'
 }
 
 export const emptyShopForm: ShopFormValues = {
@@ -90,7 +92,8 @@ export const emptyShopForm: ShopFormValues = {
   mechanicsCount: '', ownerIsMechanic: false, ownerMechanicSameAddress: true,
   ownerMechanic: { ...emptyMechanicForm, commissionRate: '' },
   payoutMethod: '', bank: { ...emptyBank }, upi: { ...emptyUpi },
-  commissionRate: '25', settlementCycle: 'weekly', walletMinBalance: String(PLATFORM_MIN_WALLET), walletAccepted: false, walletNote: '',
+  commissionRate: '5', settlementCycle: 'weekly', walletMinBalance: '5000', walletAccepted: false, walletNote: '',
+  feeCollection: 'online',
 }
 
 const GST_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
@@ -179,6 +182,14 @@ export function toShopPayload(v: ShopFormValues) {
       acceptedByName: v.ownerName.trim(),
       note: v.walletNote.trim(),
     }),
+    partnerPlan: compact({
+      ...planKeyFor(Number(v.commissionRate), Number(v.coverageRadius), Number(v.walletMinBalance)),
+      platformFeePct: Number(v.commissionRate),
+      rangeKm: v.coverageRadius !== '' ? Number(v.coverageRadius) : undefined,
+      minWallet: Number(v.walletMinBalance),
+      acceptedAt: v.walletAccepted ? new Date().toISOString() : undefined,
+    }),
+    feeCollection: { mode: v.feeCollection },
     registrationSource: 'admin',
   })
 
@@ -421,20 +432,37 @@ export function ShopFormFields({ form, setForm, mode = 'admin', uploader, lockOw
       {/* ── Wallet rule ── */}
       <Section title="Wallet rule" icon={Wallet} description="Explain this to the owner before they sign — it’s how the shop gets paid and how the platform takes its share.">
         <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-900 space-y-1.5 mb-4">
-          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Shop keeps a minimum <b>₹{Number(form.walletMinBalance || PLATFORM_MIN_WALLET).toLocaleString('en-IN')}</b> in the Bharat Mechanics wallet to keep receiving jobs (top-up via Razorpay in the shop panel).</span></p>
-          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Platform commission of <b>{form.commissionRate || 0}%</b> is deducted per completed job.</span></p>
+          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Shop keeps a minimum <b>₹{Number(form.walletMinBalance || PLATFORM_MIN_WALLET).toLocaleString('en-IN')}</b> in the Bharat Mechanics wallet to keep receiving jobs (top-up via Razorpay in the shop panel). Jobs are sent within <b>{form.coverageRadius || '—'} km</b>.</span></p>
+          <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Platform fee of <b>{form.commissionRate || 0}%</b> on every service request, collected <b>{form.feeCollection === 'cash' ? 'in cash by our team' : 'online (wallet / UPI)'}</b>.</span></p>
           <p className="flex gap-2"><FileText className="h-4 w-4 mt-0.5 shrink-0" /><span>Earnings are settled <b>{SETTLEMENT_CYCLES.find((c) => c.value === form.settlementCycle)?.label.toLowerCase()}</b> to the bank/UPI above.</span></p>
         </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {PARTNER_PLAN_PRESETS.map((p) => {
+            const on = Number(form.commissionRate) === p.platformFeePct && Number(form.coverageRadius) === p.rangeKm && Number(form.walletMinBalance) === p.minWallet
+            return (
+              <button key={p.key} type="button" onClick={() => setForm((f) => ({ ...f, commissionRate: String(p.platformFeePct), coverageRadius: String(p.rangeKm), walletMinBalance: String(p.minWallet) }))}
+                className={cn('rounded-xl border px-4 py-2 text-left text-sm transition-colors', on ? 'border-[#1B3B6F] bg-[#1B3B6F]/5 text-[#1B3B6F]' : 'border-gray-200 text-gray-600 hover:border-[#1B3B6F]/50')}>
+                <span className="font-semibold">{p.name} plan</span> <span className="text-xs text-gray-500">· {p.platformFeePct}% · {p.rangeKm} km · ₹{p.minWallet.toLocaleString('en-IN')} min</span>
+              </button>
+            )
+          })}
+          <span className="self-center text-xs text-gray-400">or set custom values below</span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Field label="Commission (%)" required>
-            <Input inputMode="numeric" value={form.commissionRate} onChange={(e) => set('commissionRate', e.target.value)} placeholder="25" />
+          <Field label="Platform fee (%)" required hint="Our share of every service request">
+            <Input inputMode="numeric" value={form.commissionRate} onChange={(e) => set('commissionRate', e.target.value)} placeholder="5" />
+          </Field>
+          <Field label="How we collect our fee" hint={FEE_COLLECTION_OPTIONS.find((o) => o.value === form.feeCollection)?.hint}>
+            <select value={form.feeCollection} onChange={(e) => set('feeCollection', e.target.value as 'online' | 'cash')} className={selectCls}>
+              {FEE_COLLECTION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
           </Field>
           <Field label="Settlement cycle" required>
             <select value={form.settlementCycle} onChange={(e) => set('settlementCycle', e.target.value as ShopFormValues['settlementCycle'])} className={selectCls}>
               {SETTLEMENT_CYCLES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </Field>
-          <Field label="Minimum wallet balance (₹)" hint={`Platform default is ₹${PLATFORM_MIN_WALLET.toLocaleString('en-IN')}`}>
+          <Field label="Minimum wallet balance (₹)" hint="Balance the shop must keep to receive jobs">
             <Input inputMode="numeric" value={form.walletMinBalance} onChange={(e) => set('walletMinBalance', e.target.value.replace(/\D/g, ''))} />
           </Field>
           <Field label="Note" className="md:col-span-3">

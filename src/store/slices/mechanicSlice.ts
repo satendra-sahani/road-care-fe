@@ -25,6 +25,10 @@ export interface Mechanic {
   registrationSource?: string;
   vehicleTypes?: string[];
   serviceRangeKm?: number;
+  commissionRate?: number;
+  minWallet?: number;
+  planKey?: string;
+  feeCollection?: 'online' | 'cash';
   /** KYC documents (ImageKit URLs) collected at registration */
   kyc?: {
     panNumber?: string;
