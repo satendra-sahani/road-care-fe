@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
@@ -119,25 +119,27 @@ export const emptyMechanicForm: MechanicFormValues = {
   commissionRate: '5', minWallet: '5000', feeCollection: 'online', notes: '',
 }
 
-export type MechanicValidateOpts = { requireIdentity?: boolean; requirePayout?: boolean; requireAddress?: boolean }
+export type MechanicValidateOpts = { requireIdentity?: boolean; requirePayout?: boolean; requireAddress?: boolean; requireSkills?: boolean }
 
 export function validateMechanicForm(v: MechanicFormValues, opts: MechanicValidateOpts = {}): string | null {
-  const { requireIdentity = true, requirePayout = true, requireAddress = true } = opts
+  const { requireIdentity = true, requirePayout = true, requireAddress = true, requireSkills = true } = opts
   if (requireIdentity) {
     if (v.name.trim().length < 2) return 'Mechanic name is required'
     if (v.phone.replace(/\D/g, '').slice(-10).length !== 10) return 'Enter a valid 10-digit mobile number'
   }
   if (v.email.trim() && !/^\S+@\S+\.\S+$/.test(v.email.trim())) return 'Enter a valid email'
   if (v.secondPhone.trim() && v.secondPhone.replace(/\D/g, '').slice(-10).length !== 10) return 'Second number must be 10 digits'
-  if (v.specializations.length === 0) return 'Select at least one specialisation'
-  if (v.vehicleTypes.length === 0) return 'Select at least one vehicle type'
+  if (requireSkills) {
+    if (v.specializations.length === 0) return 'Select at least one specialisation'
+    if (v.vehicleTypes.length === 0) return 'Select at least one vehicle type'
+  }
   if (v.serviceRangeKm !== '' && (isNaN(Number(v.serviceRangeKm)) || Number(v.serviceRangeKm) < 0 || Number(v.serviceRangeKm) > 500)) return 'Service range must be 0–500 km'
   if (requireAddress) {
     if (!v.address.trim()) return 'Address is required'
     if (!v.city.trim()) return 'City is required'
     if (!v.state.trim()) return 'State is required'
     if (!/^\d{6}$/.test(v.pincode.trim())) return 'Pincode must be 6 digits'
-  }
+  } else if (v.pincode.trim() && !/^\d{6}$/.test(v.pincode.trim())) return 'Pincode must be 6 digits'
   if (v.panNumber.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v.panNumber.trim().toUpperCase())) return 'Invalid PAN number (e.g. ABCDE1234F)'
   if (v.aadhaarNo.trim() && !/^\d{12}$/.test(v.aadhaarNo.replace(/\s/g, ''))) return 'Aadhaar must be 12 digits'
   if (v.commissionRate !== '' && (isNaN(Number(v.commissionRate)) || Number(v.commissionRate) < 0 || Number(v.commissionRate) > 100)) return 'Commission must be 0–100%'
@@ -157,8 +159,10 @@ const compact = (o: Record<string, any>) => {
 }
 
 /** Map form values → POST /admin/mechanics body (MechanicService.createProfile). */
-export function toMechanicPayload(v: MechanicFormValues, opts: { includePayout?: boolean } = {}) {
-  const { includePayout = true } = opts
+export function toMechanicPayload(v: MechanicFormValues, opts: { includePayout?: boolean; keepEmptyDocs?: boolean } = {}) {
+  const { includePayout = true, keepEmptyDocs = false } = opts
+  // keepEmptyDocs (admin edit): send '' so a removed document is really cleared
+  const docs = keepEmptyDocs ? (o: Record<string, any>) => o : compact
   return compact({
     fullName: v.name.trim(),
     phone: v.phone.replace(/\D/g, '').slice(-10),
@@ -175,7 +179,7 @@ export function toMechanicPayload(v: MechanicFormValues, opts: { includePayout?:
     pincode: v.pincode.trim(),
     latitude: v.latitude ?? undefined,
     longitude: v.longitude ?? undefined,
-    kyc: compact({
+    kyc: docs({
       panNumber: v.panNumber.trim().toUpperCase(),
       panImage: v.panImage,
       aadhaarFrontImage: v.aadhaarFrontImage,
@@ -195,6 +199,41 @@ export function toMechanicPayload(v: MechanicFormValues, opts: { includePayout?:
     notes: v.notes.trim(),
     registrationSource: 'admin',
   })
+}
+
+/** Map a MechanicProfile (GET /admin/mechanics/:id) → form values for the admin edit form. */
+export function mechanicFormFromProfile(p: any): MechanicFormValues {
+  const s = (x: any) => (x == null ? '' : String(x))
+  const a = p?.address || {}
+  const k = p?.kyc || {}
+  const po = p?.payout || {}
+  const plan = p?.partnerPlan || {}
+  return {
+    ...emptyMechanicForm,
+    name: s(p?.user?.fullName || p?.name),
+    email: s(p?.email || p?.user?.email),
+    phone: s(p?.phone || p?.user?.phone).replace(/\D/g, '').slice(-10),
+    secondPhone: s(p?.secondPhone),
+    specializations: Array.isArray(p?.specializations) ? p.specializations : [],
+    vehicleTypes: Array.isArray(p?.vehicleTypes) ? p.vehicleTypes : [],
+    serviceRangeKm: s(p?.serviceRangeKm ?? plan.rangeKm),
+    experience: s(p?.experience),
+    address: s(a.street), city: s(a.city), state: s(a.state), pincode: s(a.pincode),
+    latitude: typeof p?.currentLocation?.latitude === 'number' ? p.currentLocation.latitude : null,
+    longitude: typeof p?.currentLocation?.longitude === 'number' ? p.currentLocation.longitude : null,
+    photo: s(k.photo), panNumber: s(k.panNumber), panImage: s(k.panImage),
+    aadhaarNo: s(p?.aadhaarNo), aadhaarFrontImage: s(k.aadhaarFrontImage), aadhaarBackImage: s(k.aadhaarBackImage),
+    payoutMethod: po.method === 'bank' || po.method === 'upi' ? po.method : '',
+    bank: {
+      accountNumber: s(po.bank?.accountNumber), bankName: s(po.bank?.bankName),
+      accountHolderName: s(po.bank?.accountHolderName), branch: s(po.bank?.branch), ifscCode: s(po.bank?.ifscCode),
+    },
+    upi: { id: s(po.upi?.id), holderName: s(po.upi?.holderName) },
+    commissionRate: s(p?.commissionRate ?? plan.platformFeePct),
+    minWallet: s(plan.minWallet),
+    feeCollection: p?.feeCollection?.mode === 'cash' ? 'cash' : 'online',
+    notes: s(p?.notes),
+  }
 }
 
 // ─── Reverse-geocode helper ("Use location" button) ─────────────────────────
@@ -527,33 +566,77 @@ export function MechanicFormFields({
 }
 
 // ─── Standalone page component: /admin/mechanics/register ──────────────────
-export default function MechanicRegistrationForm() {
+type MechanicRegistrationFormProps = {
+  /** 'create' (default) registers a new mechanic; 'edit' loads and updates an existing profile */
+  mode?: 'create' | 'edit'
+  mechanicId?: string
+  /** Rendered inside an admin dialog: no page header / success screen — calls onDone instead */
+  embedded?: boolean
+  onDone?: (profile: any) => void
+  onCancel?: () => void
+}
+
+export default function MechanicRegistrationForm({
+  mode = 'create', mechanicId, embedded = false, onDone, onCancel,
+}: MechanicRegistrationFormProps = {}) {
+  const editing = mode === 'edit'
   const [form, setForm] = useState<MechanicFormValues>({ ...emptyMechanicForm })
+  const [loadingProfile, setLoadingProfile] = useState(editing)
   const [saving, setSaving] = useState(false)
   const [created, setCreated] = useState<any>(null)
 
+  // Edit → load the full profile (KYC, bank / UPI, plan …) — the list only has a summary
+  useEffect(() => {
+    if (!editing || !mechanicId) return
+    let alive = true
+    setLoadingProfile(true)
+    mechanicAPI.getById(mechanicId)
+      .then((res) => {
+        if (!alive) return
+        const p = res.data?.data
+        if (p) setForm(mechanicFormFromProfile(p))
+        else toast.error(res.data?.message || 'Could not load mechanic')
+      })
+      .catch((e: any) => { if (alive) toast.error(e?.response?.data?.message || 'Could not load mechanic') })
+      .finally(() => { if (alive) setLoadingProfile(false) })
+    return () => { alive = false }
+  }, [editing, mechanicId])
+
   const submit = async () => {
-    const err = validateMechanicForm(form)
+    // Older profiles can miss newer fields — editing enforces formats, not completeness
+    const err = validateMechanicForm(form, editing ? { requirePayout: false, requireAddress: false, requireSkills: false } : {})
     if (err) { toast.error(err); return }
     setSaving(true)
     try {
-      const res = await mechanicAPI.create(toMechanicPayload(form))
+      const payload = toMechanicPayload(form, { keepEmptyDocs: editing })
+      const res = editing && mechanicId
+        ? await mechanicAPI.update(mechanicId, payload)
+        : await mechanicAPI.create(payload)
       if (res.data?.success) {
+        toast.success(editing ? 'Mechanic updated' : 'Mechanic registered')
+        if (embedded || editing) { onDone?.(res.data.data); return }
         setCreated(res.data.data)
-        toast.success('Mechanic registered')
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
-        toast.error(res.data?.message || 'Could not register mechanic')
+        toast.error(res.data?.message || (editing ? 'Could not update mechanic' : 'Could not register mechanic'))
       }
     } catch (e: any) {
       const d = e?.response?.data
-      toast.error(d?.errors?.[0]?.msg || d?.message || 'Could not register mechanic')
+      toast.error(d?.errors?.[0]?.msg || d?.message || (editing ? 'Could not update mechanic' : 'Could not register mechanic'))
     } finally {
       setSaving(false)
     }
   }
 
-  if (created) {
+  if (loadingProfile) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-20 text-sm text-[#6B7280]">
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading mechanic…
+      </div>
+    )
+  }
+
+  if (created && !embedded) {
     const phone = created.phone || form.phone
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -587,6 +670,29 @@ export default function MechanicRegistrationForm() {
     )
   }
 
+  const saveLabel = editing ? 'Save changes' : 'Register mechanic'
+  const saveButton = (
+    <Button size={embedded ? 'default' : 'lg'} className={cn('bg-[#FF6B35] hover:bg-[#e55a28] text-white', !embedded && 'shadow-lg')} onClick={submit} disabled={saving}>
+      {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+      {saveLabel}
+    </Button>
+  )
+
+  if (embedded) {
+    return (
+      <div className="space-y-5">
+        {editing && (
+          <p className="text-xs text-[#6B7280]">The mobile number is the mechanic&apos;s login, so it can&apos;t be changed here.</p>
+        )}
+        <MechanicFormFields value={form} onChange={setForm} lockPhone={editing} />
+        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex justify-end gap-2 border-t border-gray-100 bg-white/95 px-6 py-3 backdrop-blur">
+          {onCancel && <Button variant="outline" onClick={onCancel} disabled={saving}>Cancel</Button>}
+          {saveButton}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -594,18 +700,15 @@ export default function MechanicRegistrationForm() {
           <Link href="/admin/services/mechanics" className="inline-flex items-center gap-1 text-xs text-[#6B7280] hover:text-[#1B3B6F] mb-1">
             <ArrowLeft className="h-3 w-3" /> Mechanics
           </Link>
-          <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Mechanic Registration</h1>
+          <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">{editing ? 'Edit Mechanic' : 'Mechanic Registration'}</h1>
           <p className="text-[#6B7280] text-sm mt-1">Register a mechanic in person — documents go to ImageKit, login works via OTP on this number.</p>
         </div>
       </div>
 
-      <MechanicFormFields value={form} onChange={setForm} />
+      <MechanicFormFields value={form} onChange={setForm} lockPhone={editing} />
 
       <div className="sticky bottom-4 z-10 flex justify-end">
-        <Button size="lg" className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-lg" onClick={submit} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Register mechanic
-        </Button>
+        {saveButton}
       </div>
     </div>
   )

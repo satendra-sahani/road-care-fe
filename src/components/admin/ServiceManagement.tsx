@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useState, useMemo, useEffect } from 'react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import MechanicRegistrationForm from '@/components/admin/MechanicRegistrationForm'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import {
@@ -55,7 +56,6 @@ import {
   ImageIcon,
   Loader2,
   Store,
-  ClipboardList,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -441,13 +441,11 @@ export function ServiceManagement() {
   const [cancelReason, setCancelReason] = useState('')
 
   // Mechanic UI state
-  const [addMechanicOpen, setAddMechanicOpen] = useState(false)
   const [viewMechanicOpen, setViewMechanicOpen] = useState(false)
+  // Add / Edit mechanic → full registration form (details, KYC docs, bank / UPI, plan)
+  const [mechFormState, setMechFormState] = useState<{ open: boolean; mode: 'create' | 'edit'; id?: string }>({ open: false, mode: 'create' })
   const [selectedMechanic, setSelectedMechanic] = useState<Mechanic | null>(null)
   const [mechanicSearch, setMechanicSearch] = useState('')
-  const [newMechanic, setNewMechanic] = useState(emptyMechanic)
-  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([])
-  const [editingMechanic, setEditingMechanic] = useState(false)
 
   // Add Service Request dialog state
   const [addRequestOpen, setAddRequestOpen] = useState(false)
@@ -533,83 +531,9 @@ export function ServiceManagement() {
     )
   }, [mechanics, mechanicSearch])
 
-  const toggleSpec = (spec: string) => {
-    setSelectedSpecs(prev =>
-      prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec]
-    )
-  }
-
-  const handleSaveMechanic = () => {
-    if (!newMechanic.name.trim() || !newMechanic.phone.trim() || !newMechanic.aadhaarNo.trim()) return
-
-    // Build backend-compatible payload: nested address object matches MechanicProfile schema
-    const planVals = { platformFeePct: newMechanic.commissionRate, rangeKm: newMechanic.serviceRangeKm, minWallet: newMechanic.minWallet }
-    const presets = [{ key: 'standard', name: 'Standard', f: 5, r: 8, m: 5000 }, { key: 'pro', name: 'Pro', f: 3, r: 20, m: 10000 }]
-    const named = presets.find((p) => p.f === planVals.platformFeePct && p.r === planVals.rangeKm && p.m === planVals.minWallet)
-    const mechanicData: any = {
-      ...newMechanic,
-      specializations: selectedSpecs,
-      location: newMechanic.city || newMechanic.address,
-      // plan values + how we collect our fee (admin-set)
-      partnerPlan: { key: named?.key || 'custom', name: named?.name || 'Custom', ...planVals },
-      feeCollection: { mode: newMechanic.feeCollection || 'online' },
-      address: {
-        street: newMechanic.address || '',
-        city: newMechanic.city || '',
-        state: newMechanic.state || '',
-        pincode: newMechanic.pincode || '',
-      },
-    }
-
-    if (editingMechanic && selectedMechanic) {
-      // Update existing
-      dispatch(updateMechanicRequest({
-        id: selectedMechanic._id,
-        data: mechanicData
-      }))
-    } else {
-      // Add new
-      dispatch(addMechanicRequest(mechanicData))
-    }
-
-    setAddMechanicOpen(false)
-    setEditingMechanic(false)
-    setNewMechanic(emptyMechanic)
-    setSelectedSpecs([])
-  }
-
   const handleEditMechanic = (mechanic: Mechanic) => {
-    // Support both flat and nested address shapes (backend returns nested)
-    const nestedAddr = (mechanic as any).address
-    const addressString = typeof nestedAddr === 'string' ? nestedAddr : (nestedAddr?.street || '')
-    const city = (typeof nestedAddr === 'object' && nestedAddr?.city) || mechanic.city || ''
-    const state = (typeof nestedAddr === 'object' && nestedAddr?.state) || mechanic.state || ''
-    const pincode = (typeof nestedAddr === 'object' && nestedAddr?.pincode) || mechanic.pincode || ''
-
-    setNewMechanic({
-      name: mechanic.name,
-      phone: mechanic.phone,
-      aadhaarNo: mechanic.aadhaarNo,
-      address: addressString,
-      city,
-      state,
-      pincode,
-      specializations: mechanic.specializations,
-      location: mechanic.location,
-      availability: mechanic.availability,
-      experience: mechanic.experience,
-      joiningDate: mechanic.joiningDate,
-      emergencyContact: mechanic.emergencyContact || '',
-      notes: mechanic.notes || '',
-      commissionRate: mechanic.commissionRate,
-      serviceRangeKm: mechanic.serviceRangeKm,
-      minWallet: mechanic.minWallet,
-      feeCollection: mechanic.feeCollection || 'online',
-    })
-    setSelectedSpecs(mechanic.specializations)
     setSelectedMechanic(mechanic)
-    setEditingMechanic(true)
-    setAddMechanicOpen(true)
+    setMechFormState({ open: true, mode: 'edit', id: mechanic._id })
   }
 
   const handleDeleteMechanic = (id: string) => {
@@ -1651,15 +1575,9 @@ export function ServiceManagement() {
                   <Badge variant="outline" className="text-sm py-1.5 px-3">
                     {filteredMechanics.length} mechanic{filteredMechanics.length !== 1 ? 's' : ''}
                   </Badge>
-                  <Button asChild variant="outline" className="border-[#1B3B6F] text-[#1B3B6F] hover:bg-[#1B3B6F]/5">
-                    <Link href="/admin/mechanics/register">
-                      <ClipboardList className="h-4 w-4 mr-2" />
-                      Full Registration
-                    </Link>
-                  </Button>
                   <Button
                     className="bg-[#1B3B6F] hover:bg-[#0F2545]"
-                    onClick={() => { setEditingMechanic(false); setNewMechanic(emptyMechanic); setSelectedSpecs([]); setAddMechanicOpen(true); }}
+                    onClick={() => setMechFormState({ open: true, mode: 'create' })}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Mechanic
@@ -2394,241 +2312,30 @@ export function ServiceManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* ==================== ADD / EDIT MECHANIC DIALOG ==================== */}
-      <Dialog open={addMechanicOpen} onOpenChange={(open) => {
-        setAddMechanicOpen(open)
-        if (!open) { setEditingMechanic(false); setNewMechanic(emptyMechanic); setSelectedSpecs([]) }
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="border-b pb-4 flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <UserPlus className="h-5 w-5 text-emerald-600" />
-              </div>
-              {editingMechanic ? 'Edit Mechanic' : 'Add New Mechanic'}
-            </DialogTitle>
+      {/* ==================== ADD / EDIT MECHANIC — full registration form ==================== */}
+      <Dialog open={mechFormState.open} onOpenChange={(open) => { if (!open) setMechFormState({ open: false, mode: 'create' }) }}>
+        <DialogContent className="max-w-5xl w-[95vw] max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{mechFormState.mode === 'edit' ? 'Edit mechanic' : 'Add mechanic'}</DialogTitle>
             <DialogDescription>
-              {editingMechanic ? 'Update mechanic details' : 'Fill all details to register a new mechanic'}
+              {mechFormState.mode === 'edit'
+                ? 'Update details, documents, bank / UPI and plan. Documents are stored on ImageKit.'
+                : 'Full registration — details, documents (ImageKit), bank / UPI and plan. The mechanic logs in with this mobile number (OTP).'}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto space-y-5 py-4 pr-1" style={{ scrollbarWidth: 'thin' }}>
-            {/* Personal Info */}
-            <div>
-              <h4 className="text-sm font-semibold text-[#1A1D29] mb-3 flex items-center gap-2">
-                <User className="h-4 w-4 text-[#1B3B6F]" />
-                Personal Information
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm">Full Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="e.g. Rajesh Kumar"
-                    className="mt-1"
-                    value={newMechanic.name}
-                    onChange={(e) => setNewMechanic(prev => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Phone Number <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="+91 98765 43210"
-                    className="mt-1"
-                    value={newMechanic.phone}
-                    onChange={(e) => setNewMechanic(prev => ({ ...prev, phone: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Aadhaar Card Number <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="1234 5678 9012"
-                    className="mt-1"
-                    maxLength={14}
-                    value={newMechanic.aadhaarNo}
-                    onChange={(e) => setNewMechanic(prev => ({ ...prev, aadhaarNo: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Emergency Contact</Label>
-                  <Input
-                    placeholder="+91 87654 32109"
-                    className="mt-1"
-                    value={newMechanic.emergencyContact || ''}
-                    onChange={(e) => setNewMechanic(prev => ({ ...prev, emergencyContact: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Platform settings — plan values + fee collection (admin only) */}
-            <div>
-              <h4 className="text-sm font-semibold text-[#1A1D29] mb-3 flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-[#1B3B6F]" />
-                Platform settings
-              </h4>
-              <div className="mb-3 flex flex-wrap gap-2">
-                {[{ k: 'Standard', f: 5, r: 8, m: 5000 }, { k: 'Pro', f: 3, r: 20, m: 10000 }].map((p) => (
-                  <button key={p.k} type="button" onClick={() => setNewMechanic(prev => ({ ...prev, commissionRate: p.f, serviceRangeKm: p.r, minWallet: p.m }))}
-                    className={cn('rounded-lg border px-3 py-1.5 text-xs transition-colors', newMechanic.commissionRate === p.f && newMechanic.serviceRangeKm === p.r && newMechanic.minWallet === p.m ? 'border-[#1B3B6F] bg-[#1B3B6F]/5 text-[#1B3B6F]' : 'border-gray-200 text-gray-600 hover:border-[#1B3B6F]/50')}>
-                    {p.k}: {p.f}% · {p.r} km · ₹{p.m.toLocaleString('en-IN')}
-                  </button>
-                ))}
-                <span className="self-center text-[11px] text-gray-400">or custom</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-sm">Platform fee (%)</Label>
-                  <Input type="number" min={0} max={100} className="mt-1" value={newMechanic.commissionRate ?? ''} onChange={(e) => setNewMechanic(prev => ({ ...prev, commissionRate: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="5" />
-                </div>
-                <div>
-                  <Label className="text-sm">Service range (km)</Label>
-                  <Input type="number" min={0} max={500} className="mt-1" value={newMechanic.serviceRangeKm ?? ''} onChange={(e) => setNewMechanic(prev => ({ ...prev, serviceRangeKm: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="8" />
-                </div>
-                <div>
-                  <Label className="text-sm">Minimum wallet (₹)</Label>
-                  <Input type="number" min={0} className="mt-1" value={newMechanic.minWallet ?? ''} onChange={(e) => setNewMechanic(prev => ({ ...prev, minWallet: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="5000" />
-                </div>
-                <div>
-                  <Label className="text-sm">How we collect our fee</Label>
-                  <select value={newMechanic.feeCollection || 'online'} onChange={(e) => setNewMechanic(prev => ({ ...prev, feeCollection: e.target.value as 'online' | 'cash' }))}
-                    className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option value="online">Online (wallet / UPI)</option>
-                    <option value="cash">Cash (collected by our team)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Address */}
-            <div>
-              <h4 className="text-sm font-semibold text-[#1A1D29] mb-3 flex items-center gap-2">
-                <Home className="h-4 w-4 text-[#1B3B6F]" />
-                Address
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-sm">Full Address <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="House/Shop no, Street, Area"
-                    className="mt-1"
-                    value={newMechanic.address}
-                    onChange={(e) => setNewMechanic(prev => ({ ...prev, address: e.target.value }))}
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-sm">City <span className="text-red-500">*</span></Label>
-                    <Input
-                      placeholder="e.g. Hata, Kushinagar"
-                      className="mt-1"
-                      value={newMechanic.city}
-                      onChange={(e) => setNewMechanic(prev => ({ ...prev, city: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">State</Label>
-                    <Input
-                      className="mt-1"
-                      value={newMechanic.state}
-                      onChange={(e) => setNewMechanic(prev => ({ ...prev, state: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Pincode</Label>
-                    <Input
-                      placeholder="274203"
-                      className="mt-1"
-                      maxLength={6}
-                      value={newMechanic.pincode}
-                      onChange={(e) => setNewMechanic(prev => ({ ...prev, pincode: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Work Details */}
-            <div>
-              <h4 className="text-sm font-semibold text-[#1A1D29] mb-3 flex items-center gap-2">
-                <Wrench className="h-4 w-4 text-[#1B3B6F]" />
-                Work Details
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm">Experience</Label>
-                  <Input
-                    placeholder="e.g. 5 years"
-                    className="mt-1"
-                    value={newMechanic.experience}
-                    onChange={(e) => setNewMechanic(prev => ({ ...prev, experience: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Joining Date</Label>
-                  <Input
-                    type="date"
-                    className="mt-1"
-                    value={newMechanic.joiningDate}
-                    onChange={(e) => setNewMechanic(prev => ({ ...prev, joiningDate: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              {/* Specializations */}
-              <div className="mt-4">
-                <Label className="text-sm mb-2 block">Specializations (select all that apply)</Label>
-                <div className="flex flex-wrap gap-2">
-                  {allSpecializations.map((spec) => (
-                    <button
-                      key={spec}
-                      type="button"
-                      onClick={() => toggleSpec(spec)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                        selectedSpecs.includes(spec)
-                          ? 'bg-[#1B3B6F] text-white border-[#1B3B6F]'
-                          : 'bg-white text-[#6B7280] border-gray-300 hover:border-[#1B3B6F] hover:text-[#1B3B6F]'
-                      }`}
-                    >
-                      {selectedSpecs.includes(spec) && <span className="mr-1">✓</span>}
-                      {spec}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <Label className="text-sm">Notes (optional)</Label>
-              <Textarea
-                placeholder="Any additional info about this mechanic..."
-                className="mt-1"
-                rows={2}
-                value={newMechanic.notes || ''}
-                onChange={(e) => setNewMechanic(prev => ({ ...prev, notes: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="border-t pt-4 flex-shrink-0 gap-2">
-            <Button variant="outline" onClick={() => {
-              setAddMechanicOpen(false)
-              setEditingMechanic(false)
-              setNewMechanic(emptyMechanic)
-              setSelectedSpecs([])
-            }}>
-              <X className="h-4 w-4 mr-2" />
-              Cancel
-            </Button>
-            <Button
-              className="bg-[#1B3B6F] hover:bg-[#0F2545] min-w-[140px]"
-              onClick={handleSaveMechanic}
-              disabled={!newMechanic.name.trim() || !newMechanic.phone.trim() || !newMechanic.aadhaarNo.trim()}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {editingMechanic ? 'Update Mechanic' : 'Save Mechanic'}
-            </Button>
-          </DialogFooter>
+          {mechFormState.open && (
+            <MechanicRegistrationForm
+              key={`${mechFormState.mode}-${mechFormState.id || 'new'}`}
+              mode={mechFormState.mode}
+              mechanicId={mechFormState.id}
+              embedded
+              onCancel={() => setMechFormState({ open: false, mode: 'create' })}
+              onDone={() => {
+                setMechFormState({ open: false, mode: 'create' })
+                dispatch(fetchMechanicsRequest())
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

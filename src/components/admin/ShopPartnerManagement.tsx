@@ -8,7 +8,8 @@ import {
   CheckCircle, XCircle, Package, TrendingUp, IndianRupee, ArrowRight,
   UserPlus, Wrench, X, UserMinus, Pencil, Trash2, Save, AlertTriangle
 } from 'lucide-react'
-import Link from 'next/link'
+import ShopRegistrationForm from '@/components/admin/ShopRegistrationForm'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -17,19 +18,12 @@ export function ShopPartnerManagement() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [selectedShop, setSelectedShop] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  // Add / Edit shop → full registration form (shop, owner KYC, mechanics, payout, wallet rule)
+  const [shopFormState, setShopFormState] = useState<{ open: boolean; mode: 'create' | 'edit'; id?: string }>({ open: false, mode: 'create' })
 
-  // Create form
-  const [ownerName, setOwnerName] = useState('')
-  const [ownerPhone, setOwnerPhone] = useState('')
-  const [ownerEmail, setOwnerEmail] = useState('')
-  const [ownerPassword, setOwnerPassword] = useState('')
-  const [shopName, setShopName] = useState('')
-  const [shopCity, setShopCity] = useState('')
-  const [commissionRate, setCommissionRate] = useState('25')
 
   // Credentials display after creation
   const [showCredentials, setShowCredentials] = useState(false)
@@ -48,10 +42,6 @@ export function ShopPartnerManagement() {
   const [kycShop, setKycShop] = useState<any>(null)
   const [kycRejectReason, setKycRejectReason] = useState('')
 
-  // Edit shop
-  const [showEditDialog, setShowEditDialog] = useState(false)
-  const [editShop, setEditShop] = useState<any>(null)
-  const [editForm, setEditForm] = useState({ shopName: '', shopPhone: '', shopEmail: '', city: '', commissionRate: '', coverageRadius: '', minWallet: '', feeCollection: 'online', ownerName: '', ownerPhone: '', ownerEmail: '' })
 
   // Delete shop
   const [deleteShop, setDeleteShop] = useState<any>(null)
@@ -75,36 +65,15 @@ export function ShopPartnerManagement() {
     fetchData()
   }, [search])
 
-  const handleCreate = async () => {
-    if (!ownerName || !ownerPhone || !shopName) return alert('Name, phone & shop name required')
-    setActionLoading(true)
-    try {
-      const res = await adminShopAPI.create({
-        ownerData: {
-          fullName: ownerName,
-          phone: ownerPhone,
-          email: ownerEmail || undefined,
-          password: ownerPassword || undefined
-        },
-        shopData: {
-          shopName,
-          shopPhone: ownerPhone,
-          address: { city: shopCity },
-          commissionRate: Number(commissionRate) || 25
-        }
-      })
-      setShowCreateDialog(false)
-      // Show credentials to admin
-      if (res.data?.credentials) {
-        setCredentials(res.data.credentials)
-        setShowCredentials(true)
-      }
-      resetForm()
-      fetchData()
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create')
-    } finally {
-      setActionLoading(false)
+  const closeShopForm = () => setShopFormState({ open: false, mode: 'create' })
+  const handleShopFormDone = (data: any) => {
+    const wasCreate = shopFormState.mode === 'create'
+    closeShopForm()
+    fetchData()
+    // Show the owner's login once, same as the old quick-create
+    if (wasCreate && data?.credentials) {
+      setCredentials(data.credentials)
+      setShowCredentials(true)
     }
   }
 
@@ -162,60 +131,6 @@ export function ShopPartnerManagement() {
       fetchData()
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  const openEditDialog = (shop: any) => {
-    setEditShop(shop)
-    setEditForm({
-      shopName: shop.shopName || '',
-      shopPhone: shop.shopPhone || shop.user?.phone || '',
-      shopEmail: shop.shopEmail || '',
-      city: shop.address?.city || '',
-      commissionRate: String(shop.commissionRate ?? ''),
-      coverageRadius: String(shop.coverageRadius ?? ''),
-      minWallet: String(shop.partnerPlan?.minWallet ?? shop.walletRule?.minBalance ?? ''),
-      feeCollection: shop.feeCollection?.mode || 'online',
-      ownerName: shop.user?.fullName || '',
-      ownerPhone: shop.user?.phone || '',
-      ownerEmail: shop.user?.email || '',
-    })
-    setShowEditDialog(true)
-  }
-
-  const handleUpdate = async () => {
-    if (!editShop) return
-    if (!editForm.shopName.trim()) return alert('Shop name is required')
-    setActionLoading(true)
-    try {
-      const res = await adminShopAPI.update(editShop._id, {
-        shopData: {
-          shopName: editForm.shopName.trim(),
-          shopPhone: editForm.shopPhone.trim(),
-          shopEmail: editForm.shopEmail.trim(),
-          commissionRate: editForm.commissionRate === '' ? undefined : Number(editForm.commissionRate),
-          coverageRadius: editForm.coverageRadius === '' ? undefined : Number(editForm.coverageRadius),
-          walletRule: editForm.minWallet === '' ? undefined : { minBalance: Number(editForm.minWallet) },
-          feeCollection: { mode: editForm.feeCollection },
-          address: { city: editForm.city.trim() },
-        },
-        ownerData: {
-          fullName: editForm.ownerName.trim(),
-          phone: editForm.ownerPhone.trim(),
-          email: editForm.ownerEmail.trim() || undefined,
-        },
-      })
-      if (res.data?.success) {
-        setShowEditDialog(false)
-        setEditShop(null)
-        fetchData()
-      } else {
-        alert(res.data?.message || 'Failed to update')
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update')
     } finally {
       setActionLoading(false)
     }
@@ -324,11 +239,6 @@ export function ShopPartnerManagement() {
     }
   }
 
-  const resetForm = () => {
-    setOwnerName(''); setOwnerPhone(''); setOwnerEmail(''); setOwnerPassword('')
-    setShopName(''); setShopCity(''); setCommissionRate('25')
-  }
-
   const formatCurrency = (val: number) =>
     (val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
 
@@ -344,19 +254,12 @@ export function ShopPartnerManagement() {
           <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Shop Partners</h1>
           <p className="text-[#6B7280] text-sm mt-1">Manage your partner shop network</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="border-[#1B3B6F] text-[#1B3B6F] hover:bg-[#1B3B6F]/5">
-            <Link href="/admin/shops/register">
-              <Store className="h-4 w-4 mr-2" /> Full Registration Form
-            </Link>
-          </Button>
-          <Button
-            className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm"
-            onClick={() => { resetForm(); setShowCreateDialog(true) }}
-          >
-            <Plus className="h-4 w-4 mr-2" /> Add Shop Partner
-          </Button>
-        </div>
+        <Button
+          className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm"
+          onClick={() => setShopFormState({ open: true, mode: 'create' })}
+        >
+          <Plus className="h-4 w-4 mr-2" /> Add Shop Partner
+        </Button>
       </div>
 
       {/* Stats: commission hero + metric cards */}
@@ -511,7 +414,7 @@ export function ShopPartnerManagement() {
                   {shop.isActive ? 'Disable' : 'Enable'}
                 </Button>
                 <Button size="sm" variant="outline" className="text-xs flex-1 rounded-lg border-blue-200 text-blue-700 hover:bg-blue-50"
-                  onClick={() => openEditDialog(shop)} disabled={actionLoading}>
+                  onClick={() => setShopFormState({ open: true, mode: 'edit', id: shop._id })} disabled={actionLoading}>
                   <Pencil className="h-3 w-3 mr-1" /> Edit
                 </Button>
                 <Button size="sm" variant="outline" className="text-xs flex-1 rounded-lg border-red-200 text-red-600 hover:bg-red-50"
@@ -527,110 +430,6 @@ export function ShopPartnerManagement() {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Create Dialog */}
-      {showCreateDialog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-            {/* Gradient header */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-5">
-              <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
-              <div className="absolute -right-2 top-10 h-16 w-16 rounded-full bg-white/[0.05]" />
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 backdrop-blur">
-                    <Store className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Add Shop Partner</h3>
-                    <p className="text-[12px] text-white/60">Create the owner login &amp; shop profile in one step</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowCreateDialog(false)} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-              {/* Owner Details */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="grid h-6 w-6 place-items-center rounded-md bg-indigo-50">
-                    <Users className="h-3.5 w-3.5 text-indigo-600" />
-                  </div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Owner Details</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Full Name <span className="text-[#FF6B35]">*</span></label>
-                    <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Owner name" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Phone <span className="text-[#FF6B35]">*</span></label>
-                    <input type="tel" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Phone number" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Email <span className="text-gray-300">(optional)</span></label>
-                    <input type="email" value={ownerEmail} onChange={e => setOwnerEmail(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Email address" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Password</label>
-                    <input type="text" value={ownerPassword} onChange={e => setOwnerPassword(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Leave empty = phone number" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Shop Details */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="grid h-6 w-6 place-items-center rounded-md bg-[#FF6B35]/10">
-                    <Store className="h-3.5 w-3.5 text-[#FF6B35]" />
-                  </div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Shop Details</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-gray-600">Shop Name <span className="text-[#FF6B35]">*</span></label>
-                    <input type="text" value={shopName} onChange={e => setShopName(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop name" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">City</label>
-                    <input type="text" value={shopCity} onChange={e => setShopCity(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="City" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Commission Rate (%)</label>
-                    <input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="25" min={0} max={50} />
-                  </div>
-                </div>
-              </div>
-
-              <p className="flex items-start gap-2 text-xs text-gray-500 bg-blue-50/60 border border-blue-100 rounded-lg p-2.5">
-                <Shield className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
-                If password is empty, the phone number will be used as the default password.
-              </p>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-gray-100 px-6 py-4 flex gap-3 justify-end bg-white">
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-              <Button className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm"
-                onClick={handleCreate} disabled={actionLoading}>
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-                Create Shop Partner
-              </Button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -780,6 +579,30 @@ export function ShopPartnerManagement() {
           </div>
         </div>
       )}
+
+      {/* ─── Add / Edit shop — full registration form ─────────────────── */}
+      <Dialog open={shopFormState.open} onOpenChange={(open) => { if (!open) closeShopForm() }}>
+        <DialogContent className="max-w-5xl w-[95vw] max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{shopFormState.mode === 'edit' ? 'Edit shop partner' : 'Add shop partner'}</DialogTitle>
+            <DialogDescription>
+              {shopFormState.mode === 'edit'
+                ? 'Update shop, owner KYC, mechanics, bank / UPI and the wallet rule. Documents are stored on ImageKit.'
+                : 'Full registration — shop details, owner KYC (ImageKit), number of mechanics, bank / UPI and the wallet rule.'}
+            </DialogDescription>
+          </DialogHeader>
+          {shopFormState.open && (
+            <ShopRegistrationForm
+              key={`${shopFormState.mode}-${shopFormState.id || 'new'}`}
+              mode={shopFormState.mode}
+              shopId={shopFormState.id}
+              embedded
+              onCancel={closeShopForm}
+              onDone={handleShopFormDone}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Credentials Dialog — shown after successful creation */}
       {showCredentials && credentials && (
@@ -1008,127 +831,6 @@ export function ShopPartnerManagement() {
                   </Button>
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Edit Shop Dialog ──────────────────────────────────── */}
-      {showEditDialog && editShop && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] px-6 py-5">
-              <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/[0.06]" />
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 backdrop-blur">
-                    <Pencil className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Edit Shop Partner</h3>
-                    <p className="text-[12px] text-white/60">{editShop.shopName}</p>
-                  </div>
-                </div>
-                <button onClick={() => { setShowEditDialog(false); setEditShop(null) }} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-              {/* Owner */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="grid h-6 w-6 place-items-center rounded-md bg-indigo-50"><Users className="h-3.5 w-3.5 text-indigo-600" /></div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Owner Details</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Full Name</label>
-                    <input type="text" value={editForm.ownerName} onChange={e => setEditForm(f => ({ ...f, ownerName: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Owner name" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Phone</label>
-                    <input type="tel" value={editForm.ownerPhone} onChange={e => setEditForm(f => ({ ...f, ownerPhone: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Phone number" />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-gray-600">Email <span className="text-gray-300">(optional)</span></label>
-                    <input type="email" value={editForm.ownerEmail} onChange={e => setEditForm(f => ({ ...f, ownerEmail: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Email address" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Shop */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="grid h-6 w-6 place-items-center rounded-md bg-[#FF6B35]/10"><Store className="h-3.5 w-3.5 text-[#FF6B35]" /></div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Shop Details</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-gray-600">Shop Name <span className="text-[#FF6B35]">*</span></label>
-                    <input type="text" value={editForm.shopName} onChange={e => setEditForm(f => ({ ...f, shopName: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop name" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Shop Phone</label>
-                    <input type="tel" value={editForm.shopPhone} onChange={e => setEditForm(f => ({ ...f, shopPhone: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop phone" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">City</label>
-                    <input type="text" value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="City" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Shop Email <span className="text-gray-300">(optional)</span></label>
-                    <input type="email" value={editForm.shopEmail} onChange={e => setEditForm(f => ({ ...f, shopEmail: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="Shop email" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Platform fee (%)</label>
-                    <input type="number" value={editForm.commissionRate} onChange={e => setEditForm(f => ({ ...f, commissionRate: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="5" min={0} max={50} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Service range (km)</label>
-                    <input type="number" value={editForm.coverageRadius} onChange={e => setEditForm(f => ({ ...f, coverageRadius: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="8" min={1} max={50} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Minimum wallet (₹)</label>
-                    <input type="number" value={editForm.minWallet} onChange={e => setEditForm(f => ({ ...f, minWallet: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" placeholder="5000" min={0} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">How we collect our fee</label>
-                    <select value={editForm.feeCollection} onChange={e => setEditForm(f => ({ ...f, feeCollection: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none transition focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
-                      <option value="online">Online (wallet / UPI)</option>
-                      <option value="cash">Cash (collected by our team)</option>
-                    </select>
-                  </div>
-                  <div className="sm:col-span-2 flex flex-wrap gap-2">
-                    {[{ k: 'Standard', f: 5, r: 8, m: 5000 }, { k: 'Pro', f: 3, r: 20, m: 10000 }].map((p) => (
-                      <button key={p.k} type="button" onClick={() => setEditForm(f => ({ ...f, commissionRate: String(p.f), coverageRadius: String(p.r), minWallet: String(p.m) }))}
-                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:border-[#FF6B35] hover:text-[#FF6B35]">
-                        Set {p.k}: {p.f}% · {p.r} km · ₹{p.m.toLocaleString('en-IN')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-100 px-6 py-4 flex gap-3 justify-end bg-white">
-              <Button variant="outline" onClick={() => { setShowEditDialog(false); setEditShop(null) }}>Cancel</Button>
-              <Button className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-sm" onClick={handleUpdate} disabled={actionLoading}>
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                Save Changes
-              </Button>
             </div>
           </div>
         </div>

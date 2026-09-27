@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
@@ -20,6 +20,7 @@ import {
   type MechanicFormValues, emptyMechanicForm, validateMechanicForm, toMechanicPayload,
   MechanicFormFields, PayoutFields, useDetectLocation, Section, Field, ChipGroup, StateSelect, selectCls,
   PARTNER_PLAN_PRESETS, planKeyFor, FEE_COLLECTION_OPTIONS,
+  mechanicFormFromProfile,
 } from './MechanicRegistrationForm'
 
 // Shop enum has three extra entries (models/ShopPartner.js)
@@ -98,33 +99,37 @@ export const emptyShopForm: ShopFormValues = {
 
 const GST_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
 
-export function validateShopForm(v: ShopFormValues, mode: 'admin' | 'self' = 'admin'): string | null {
+export function validateShopForm(v: ShopFormValues, mode: 'admin' | 'self' = 'admin', opts: { editing?: boolean } = {}): string | null {
   const self = mode === 'self'
+  // Editing an existing shop: older records can miss newer fields — check formats, not completeness
+  const editing = !!opts.editing
   if (v.shopName.trim().length < 2) return 'Shop name is required'
   if (v.gstNumber.trim() && !GST_RE.test(v.gstNumber.trim().toUpperCase())) return 'Invalid GST number (15 characters, e.g. 09ABCDE1234F1Z5)'
   if (v.shopEmail.trim() && !/^\S+@\S+\.\S+$/.test(v.shopEmail.trim())) return 'Enter a valid shop email'
   if (v.ownerName.trim().length < 2) return 'Owner name is required'
   if (v.ownerPhone.replace(/\D/g, '').slice(-10).length !== 10) return 'Enter a valid 10-digit owner mobile number'
   if (v.ownerEmail.trim() && !/^\S+@\S+\.\S+$/.test(v.ownerEmail.trim())) return 'Enter a valid owner email'
-  if (v.ownerPassword && v.ownerPassword.length < 6) return 'Password must be at least 6 characters'
+  if (!editing && v.ownerPassword && v.ownerPassword.length < 6) return 'Password must be at least 6 characters'
   if (v.aadhaarNumber.trim() && !/^\d{12}$/.test(v.aadhaarNumber.replace(/\s/g, ''))) return 'Owner Aadhaar must be 12 digits'
   if (v.panNumber.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v.panNumber.trim().toUpperCase())) return 'Invalid owner PAN number'
-  if (!v.street.trim()) return 'Shop address is required'
-  if (!v.city.trim()) return 'City is required'
-  if (!v.state.trim()) return 'State is required'
-  if (!/^\d{6}$/.test(v.pincode.trim())) return 'Pincode must be 6 digits'
+  if (!editing) {
+    if (!v.street.trim()) return 'Shop address is required'
+    if (!v.city.trim()) return 'City is required'
+    if (!v.state.trim()) return 'State is required'
+    if (!/^\d{6}$/.test(v.pincode.trim())) return 'Pincode must be 6 digits'
+  } else if (v.pincode.trim() && !/^\d{6}$/.test(v.pincode.trim())) return 'Pincode must be 6 digits'
   if (v.coverageRadius !== '' && (isNaN(Number(v.coverageRadius)) || Number(v.coverageRadius) < 1 || Number(v.coverageRadius) > 50)) return 'Coverage radius must be 1–50 km'
   if (v.mechanicsCount !== '' && (isNaN(Number(v.mechanicsCount)) || Number(v.mechanicsCount) < 0)) return 'Number of mechanics must be 0 or more'
   if (v.ownerIsMechanic) {
-    const err = validateMechanicForm(v.ownerMechanic, { requireIdentity: false, requirePayout: false, requireAddress: !v.ownerMechanicSameAddress })
+    const err = validateMechanicForm(v.ownerMechanic, { requireIdentity: false, requirePayout: false, requireAddress: !v.ownerMechanicSameAddress, requireSkills: !editing })
     if (err) return `Owner mechanic details: ${err}`
   }
-  const payoutErr = validatePayout(v.payoutMethod, v.bank, v.upi, !self)
+  const payoutErr = validatePayout(v.payoutMethod, v.bank, v.upi, !self && !editing)
   if (payoutErr) return payoutErr
   if (self) return v.walletAccepted ? null : 'Please read and accept the partner terms'
   if (v.commissionRate === '' || isNaN(Number(v.commissionRate)) || Number(v.commissionRate) < 0 || Number(v.commissionRate) > 100) return 'Commission must be 0–100%'
   if (v.walletMinBalance === '' || isNaN(Number(v.walletMinBalance)) || Number(v.walletMinBalance) < 0) return 'Minimum wallet balance must be a number'
-  if (!v.walletAccepted) return 'Owner must accept the wallet rule before registration'
+  if (!editing && !v.walletAccepted) return 'Owner must accept the wallet rule before registration'
   return null
 }
 
@@ -139,7 +144,9 @@ const compact = (o: Record<string, any>) => {
 }
 
 /** Map form values → POST /admin/shops body ({ ownerData, shopData, ownerMechanic }). */
-export function toShopPayload(v: ShopFormValues) {
+export function toShopPayload(v: ShopFormValues, opts: { editing?: boolean } = {}) {
+  // editing: send '' / [] so a removed document or photo is really cleared
+  const editing = !!opts.editing
   const ownerPhone = v.ownerPhone.replace(/\D/g, '').slice(-10)
   const ownerData = compact({
     fullName: v.ownerName.trim(),
@@ -165,7 +172,7 @@ export function toShopPayload(v: ShopFormValues) {
     mechanicsCount: v.mechanicsCount !== '' ? Number(v.mechanicsCount) : undefined,
     commissionRate: Number(v.commissionRate),
     settlementCycle: v.settlementCycle,
-    kyc: compact({
+    kyc: (editing ? (o: Record<string, any>) => o : compact)({
       aadhaarNumber: v.aadhaarNumber.replace(/\s/g, ''),
       aadhaarImage: v.aadhaarImage,
       panNumber: v.panNumber.trim().toUpperCase(),
@@ -193,6 +200,8 @@ export function toShopPayload(v: ShopFormValues) {
     registrationSource: 'admin',
   })
 
+  if (editing) shopData.shopImages = v.shopImages.filter(Boolean)
+
   let ownerMechanic: Record<string, any> | undefined
   if (v.ownerIsMechanic) {
     const m: MechanicFormValues = {
@@ -204,10 +213,53 @@ export function toShopPayload(v: ShopFormValues) {
         ? { address: v.street, city: v.city, state: v.state, pincode: v.pincode, latitude: v.latitude, longitude: v.longitude }
         : {}),
     }
-    ownerMechanic = { enabled: true, ...toMechanicPayload(m, { includePayout: false }) }
+    ownerMechanic = { enabled: true, ...toMechanicPayload(m, { includePayout: false, keepEmptyDocs: editing }) }
   }
 
   return { ownerData, shopData, ownerMechanic }
+}
+
+/** Map a ShopPartner (GET /admin/shops/:id) + owner's mechanic profile → form values for editing. */
+export function shopFormFromShop(shop: any, ownerMech?: any): ShopFormValues {
+  const s = (x: any) => (x == null ? '' : String(x))
+  const a = shop?.address || {}
+  const k = shop?.kyc || {}
+  const po = shop?.payout || {}
+  const w = shop?.walletRule || {}
+  const plan = shop?.partnerPlan || {}
+  return {
+    ...emptyShopForm,
+    shopName: s(shop?.shopName), gstNumber: s(k.gstNumber), shopPhone: s(shop?.shopPhone), shopEmail: s(shop?.shopEmail),
+    description: s(shop?.description), shopImages: (shop?.shopImages || []).filter(Boolean), logo: s(shop?.logo),
+    specializations: Array.isArray(shop?.specializations) ? shop.specializations : [],
+    vehicleTypes: Array.isArray(shop?.vehicleTypes) ? shop.vehicleTypes : [],
+    ownerName: s(shop?.user?.fullName || k.ownerName), ownerPhone: s(shop?.user?.phone).replace(/\D/g, '').slice(-10),
+    ownerEmail: s(shop?.user?.email), ownerPassword: '',
+    ownerPhoto: s(k.ownerPhoto), aadhaarNumber: s(k.aadhaarNumber), aadhaarImage: s(k.aadhaarImage),
+    panNumber: s(k.panNumber), panImage: s(k.panImage), gstImage: s(k.gstImage),
+    street: s(a.street), landmark: s(a.landmark), city: s(a.city), state: s(a.state), pincode: s(a.pincode),
+    latitude: typeof a.coordinates?.latitude === 'number' ? a.coordinates.latitude : null,
+    longitude: typeof a.coordinates?.longitude === 'number' ? a.coordinates.longitude : null,
+    coverageRadius: s(shop?.coverageRadius ?? plan.rangeKm),
+    mechanicsCount: s(shop?.mechanicsCount),
+    ownerIsMechanic: !!ownerMech,
+    ownerMechanicSameAddress: ownerMech ? s(ownerMech.address?.street) === s(a.street) : true,
+    ownerMechanic: ownerMech
+      ? { ...mechanicFormFromProfile(ownerMech), commissionRate: '' }
+      : { ...emptyMechanicForm, commissionRate: '' },
+    payoutMethod: po.method === 'bank' || po.method === 'upi' ? po.method : '',
+    bank: {
+      accountNumber: s(po.bank?.accountNumber), bankName: s(po.bank?.bankName),
+      accountHolderName: s(po.bank?.accountHolderName), branch: s(po.bank?.branch), ifscCode: s(po.bank?.ifscCode),
+    },
+    upi: { id: s(po.upi?.id), holderName: s(po.upi?.holderName) },
+    commissionRate: s(shop?.commissionRate ?? plan.platformFeePct),
+    settlementCycle: ['daily', 'weekly', 'biweekly', 'monthly'].includes(shop?.settlementCycle) ? shop.settlementCycle : 'weekly',
+    walletMinBalance: s(w.minBalance ?? plan.minWallet),
+    walletAccepted: !!(w.acceptedAt || plan.acceptedAt),
+    walletNote: s(w.note),
+    feeCollection: shop?.feeCollection?.mode === 'cash' ? 'cash' : 'online',
+  }
 }
 
 function CopyRow({ label, value }: { label: string; value: string }) {
@@ -233,12 +285,14 @@ function CopyRow({ label, value }: { label: string; value: string }) {
  * public self-registration page /register/shop (mode "self": verified owner phone,
  * no password, read-only partner terms instead of the admin wallet/commission fields).
  */
-export function ShopFormFields({ form, setForm, mode = 'admin', uploader, lockOwnerPhone = false }: {
+export function ShopFormFields({ form, setForm, mode = 'admin', uploader, lockOwnerPhone = false, editing = false }: {
   form: ShopFormValues
   setForm: React.Dispatch<React.SetStateAction<ShopFormValues>>
   mode?: 'admin' | 'self'
   uploader?: (file: File, folder: string) => Promise<string | undefined>
   lockOwnerPhone?: boolean
+  /** admin editing an existing shop — the login password isn't changed from here */
+  editing?: boolean
 }) {
   const self = mode === 'self'
   const set = <K extends keyof ShopFormValues>(k: K, val: ShopFormValues[K]) => setForm((f) => ({ ...f, [k]: val }))
@@ -323,7 +377,7 @@ export function ShopFormFields({ form, setForm, mode = 'admin', uploader, lockOw
             <Field label="Owner email" hint="Optional">
               <Input type="email" value={form.ownerEmail} onChange={(e) => set('ownerEmail', e.target.value)} placeholder="owner@example.com" />
             </Field>
-            {!self && (
+            {!self && !editing && (
               <Field label="Login password" hint="Leave blank to use the mobile number as password">
                 <Input type="text" value={form.ownerPassword} onChange={(e) => set('ownerPassword', e.target.value)} placeholder="Min 6 characters" />
               </Field>
@@ -486,32 +540,91 @@ export function ShopFormFields({ form, setForm, mode = 'admin', uploader, lockOw
   )
 }
 
-export default function ShopRegistrationForm() {
+type ShopRegistrationFormProps = {
+  /** 'create' (default) onboards a new shop; 'edit' loads and updates an existing one */
+  mode?: 'create' | 'edit'
+  shopId?: string
+  /** Rendered inside an admin dialog: no page header / success screen — calls onDone instead */
+  embedded?: boolean
+  /** create → full POST response (credentials, ownerMechanic …); edit → PUT response */
+  onDone?: (result: any) => void
+  onCancel?: () => void
+}
+
+export default function ShopRegistrationForm({
+  mode = 'create', shopId, embedded = false, onDone, onCancel,
+}: ShopRegistrationFormProps = {}) {
+  const editing = mode === 'edit'
   const [form, setForm] = useState<ShopFormValues>({ ...emptyShopForm })
+  const [loadingShop, setLoadingShop] = useState(editing)
+  const [acceptedAt, setAcceptedAt] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [result, setResult] = useState<any>(null)
 
+  // Edit → load the full shop (+ owner's mechanic profile)
+  useEffect(() => {
+    if (!editing || !shopId) return
+    let alive = true
+    setLoadingShop(true)
+    adminShopAPI.getById(shopId)
+      .then((res) => {
+        if (!alive) return
+        const shop = res.data?.data
+        if (shop) {
+          setForm(shopFormFromShop(shop, res.data?.ownerMechanic))
+          setAcceptedAt(shop.walletRule?.acceptedAt || shop.partnerPlan?.acceptedAt || null)
+        } else {
+          toast.error(res.data?.message || 'Could not load shop')
+        }
+      })
+      .catch((e: any) => { if (alive) toast.error(e?.response?.data?.message || 'Could not load shop') })
+      .finally(() => { if (alive) setLoadingShop(false) })
+    return () => { alive = false }
+  }, [editing, shopId])
+
   const submit = async () => {
-    const err = validateShopForm(form)
+    const err = validateShopForm(form, 'admin', { editing })
     if (err) { toast.error(err); return }
     setSaving(true)
     try {
-      const res = await adminShopAPI.create(toShopPayload(form))
+      let res
+      if (editing && shopId) {
+        const { ownerData, shopData, ownerMechanic } = toShopPayload(form, { editing: true })
+        delete (ownerData as any).password // password isn't changed from the edit form
+        // keep the original acceptance date instead of re-stamping it on every edit
+        if (acceptedAt && form.walletAccepted) {
+          if (shopData.walletRule) shopData.walletRule.acceptedAt = acceptedAt
+          if (shopData.partnerPlan) shopData.partnerPlan.acceptedAt = acceptedAt
+        }
+        res = await adminShopAPI.update(shopId, { shopData, ownerData, ownerMechanic })
+      } else {
+        res = await adminShopAPI.create(toShopPayload(form))
+      }
       if (res.data?.success) {
+        toast.success(editing ? 'Shop updated' : 'Shop registered')
+        if (res.data?.ownerMechanicError) toast.warning(`Owner mechanic profile: ${res.data.ownerMechanicError}`)
+        if (embedded || editing) { onDone?.(res.data); return }
         setResult(res.data)
-        toast.success('Shop registered')
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
-        toast.error(res.data?.message || 'Could not register shop')
+        toast.error(res.data?.message || (editing ? 'Could not update shop' : 'Could not register shop'))
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Could not register shop')
+      toast.error(e?.response?.data?.message || (editing ? 'Could not update shop' : 'Could not register shop'))
     } finally {
       setSaving(false)
     }
   }
 
-  if (result) {
+  if (loadingShop) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-20 text-sm text-[#6B7280]">
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading shop…
+      </div>
+    )
+  }
+
+  if (result && !embedded) {
     const creds = result.credentials || {}
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -557,23 +670,39 @@ export default function ShopRegistrationForm() {
     )
   }
 
+  const saveButton = (
+    <Button size={embedded ? 'default' : 'lg'} className={cn('bg-[#FF6B35] hover:bg-[#e55a28] text-white', !embedded && 'shadow-lg')} onClick={submit} disabled={saving}>
+      {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+      {editing ? 'Save changes' : 'Register shop'}
+    </Button>
+  )
+
+  if (embedded) {
+    return (
+      <div className="space-y-5">
+        <ShopFormFields form={form} setForm={setForm} mode="admin" editing={editing} />
+        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex justify-end gap-2 border-t border-gray-100 bg-white/95 px-6 py-3 backdrop-blur">
+          {onCancel && <Button variant="outline" onClick={onCancel} disabled={saving}>Cancel</Button>}
+          {saveButton}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-5">
       <div>
         <Link href="/admin/shops" className="inline-flex items-center gap-1 text-xs text-[#6B7280] hover:text-[#1B3B6F] mb-1">
           <ArrowLeft className="h-3 w-3" /> Shop Partners
         </Link>
-        <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Mechanic Shop Registration</h1>
+        <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">{editing ? 'Edit Shop' : 'Mechanic Shop Registration'}</h1>
         <p className="text-[#6B7280] text-sm mt-1">Onboard a partner shop in person — shop + owner KYC, mechanics, payout and the wallet rule in one go.</p>
       </div>
 
-      <ShopFormFields form={form} setForm={setForm} mode="admin" />
+      <ShopFormFields form={form} setForm={setForm} mode="admin" editing={editing} />
 
       <div className="sticky bottom-4 z-10 flex justify-end">
-        <Button size="lg" className="bg-[#FF6B35] hover:bg-[#e55a28] text-white shadow-lg" onClick={submit} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Register shop
-        </Button>
+        {saveButton}
       </div>
     </div>
   )
