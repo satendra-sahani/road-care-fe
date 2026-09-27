@@ -227,6 +227,16 @@ export const serviceRequestAPI = {
   // Mark the job completed on the mechanic's behalf (no customer OTP)
   completeOnBehalf: (id: string, note?: string) =>
     api.post(`/admin/service-requests/${id}/complete`, { note }),
+  // ── Acting on the SHOP's behalf (shop runs on phone / WhatsApp, never opens the panel) ──
+  getShopOrder: (id: string) => api.get(`/admin/service-requests/${id}/shop-order`),
+  shopAccept: (id: string) => api.put(`/admin/service-requests/${id}/shop-order/accept`),
+  shopReject: (id: string, reason?: string) => api.put(`/admin/service-requests/${id}/shop-order/reject`, { reason }),
+  shopAssignMechanic: (id: string, data: { mechanicProfileId?: string; name?: string; phone?: string }) =>
+    api.put(`/admin/service-requests/${id}/shop-order/assign-mechanic`, data),
+  shopCost: (id: string, data: { laborCost?: number; partsCost?: number }) =>
+    api.put(`/admin/service-requests/${id}/shop-order/cost`, data),
+  shopStatus: (id: string, status: 'on_way' | 'in_progress' | 'completed' | 'paid', notes?: string) =>
+    api.put(`/admin/service-requests/${id}/shop-order/status`, { status, notes }),
   cancel: (id: string, reason: string) =>
     api.put(`/admin/service-requests/${id}/cancel`, { reason }),
   updateCost: (id: string, data: {

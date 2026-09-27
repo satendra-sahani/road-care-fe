@@ -129,7 +129,21 @@ export interface ServiceRequest {
     _id: string;
     shopName: string;
     city?: string;
+    phone?: string;
     commissionRate?: number;
+  };
+  /** live ShopOrder when the request is routed to a partner shop */
+  shopOrder?: {
+    _id: string;
+    orderId?: string;
+    status: 'pending' | 'accepted' | 'mechanic_assigned' | 'on_way' | 'in_progress' | 'completed' | 'paid' | string;
+    paymentStatus?: string;
+    assignedMechanic?: { name?: string; phone?: string } | null;
+    mechanicProfile?: string | null;
+    laborCost?: number;
+    partsCost?: number;
+    finalCost?: number;
+    estimatedCost?: number;
   };
   createdAt: string;
   updatedAt: string;

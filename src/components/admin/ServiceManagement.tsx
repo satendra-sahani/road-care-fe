@@ -806,6 +806,100 @@ export function ServiceManagement() {
     } finally { setDiagSaving(false) }
   }
 
+  // ── Acting on the SHOP's behalf (shop works by phone / WhatsApp) ──────────
+  // Same ShopService calls the Shop Partner panel makes; admin just does them.
+  const [shopDlg, setShopDlg] = useState<{ request: ServiceRequest; mode: 'assign' | 'complete' } | null>(null)
+  const [shopDlgLoading, setShopDlgLoading] = useState(false)
+  const [shopMechanics, setShopMechanics] = useState<any[]>([])
+  const [shopMechId, setShopMechId] = useState('')
+  const [shopManual, setShopManual] = useState({ name: '', phone: '' })
+  const [shopCost, setShopCost] = useState({ labor: '', parts: '', notes: '' })
+  const shopBusy = (id: string) => proxyBusy === id
+
+  const runShopAction = async (request: ServiceRequest, fn: () => Promise<any>, okMsg?: string) => {
+    setProxyBusy(request._id)
+    try {
+      const res = await fn()
+      if (res.data?.success) {
+        toast.success(okMsg || res.data.message || 'Done')
+        dispatch(fetchServiceRequestsRequest())
+        return true
+      }
+      toast.error(res.data?.message || 'Action failed')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Action failed')
+    } finally {
+      setProxyBusy(null)
+    }
+    return false
+  }
+
+  const handleShopAccept = (request: ServiceRequest) => {
+    const shop = request.shopPartner?.shopName || 'the shop'
+    if (!window.confirm(`Accept this order on behalf of ${shop}?\n\nOnly after the shop confirmed on phone / WhatsApp. The customer is told the shop accepted.`)) return
+    runShopAction(request, () => serviceRequestAPI.shopAccept(request._id))
+  }
+
+  const handleShopReject = (request: ServiceRequest) => {
+    const shop = request.shopPartner?.shopName || 'the shop'
+    const reason = window.prompt(`Reject this order on behalf of ${shop}?\n\nThe request goes back to "pending" so you can assign another shop or mechanic. Reason (optional):`)
+    if (reason === null) return
+    runShopAction(request, () => serviceRequestAPI.shopReject(request._id, reason.trim() || undefined))
+  }
+
+  const handleOpenShopDialog = async (request: ServiceRequest, mode: 'assign' | 'complete') => {
+    setShopDlg({ request, mode })
+    setShopMechId(''); setShopManual({ name: '', phone: '' })
+    setShopCost({ labor: request.shopOrder?.laborCost ? String(request.shopOrder.laborCost) : '', parts: request.shopOrder?.partsCost ? String(request.shopOrder.partsCost) : '', notes: '' })
+    setShopMechanics([])
+    if (mode === 'assign') {
+      setShopDlgLoading(true)
+      try {
+        const res = await serviceRequestAPI.getShopOrder(request._id)
+        setShopMechanics(res.data?.data?.mechanics || [])
+      } catch (e: any) {
+        toast.error(e?.response?.data?.message || 'Could not load the shop\'s mechanics')
+      } finally { setShopDlgLoading(false) }
+    }
+  }
+
+  const handleShopAssignConfirm = async () => {
+    if (!shopDlg) return
+    const payload: { mechanicProfileId?: string; name?: string; phone?: string } = shopMechId
+      ? (() => { const m = shopMechanics.find((x) => x._id === shopMechId); return { mechanicProfileId: shopMechId, name: m?.name, phone: m?.phone } })()
+      : { name: shopManual.name.trim(), phone: shopManual.phone.replace(/\D/g, '').slice(-10) }
+    if (!payload.mechanicProfileId && (!payload.name || payload.phone?.length !== 10)) { toast.error('Pick a mechanic, or enter a name and 10-digit phone'); return }
+    const ok = await runShopAction(shopDlg.request, () => serviceRequestAPI.shopAssignMechanic(shopDlg.request._id, payload))
+    if (ok) setShopDlg(null)
+  }
+
+  const handleShopStatus = (request: ServiceRequest, status: 'on_way' | 'in_progress' | 'paid') => {
+    const shop = request.shopPartner?.shopName || 'the shop'
+    const label = { on_way: 'mechanic is on the way', in_progress: 'work has started', paid: `payment collected by ${shop}` }[status]
+    const extra = status === 'paid' ? `\n\nThis credits the shop's share of ₹${request.shopOrder?.finalCost || 0} to the shop's wallet, exactly like the shop panel's "Collect payment".` : ''
+    if (!window.confirm(`Mark "${label}" on behalf of ${shop}?${extra}`)) return
+    runShopAction(request, () => serviceRequestAPI.shopStatus(request._id, status))
+  }
+
+  const handleShopCompleteConfirm = async () => {
+    if (!shopDlg) return
+    const labor = Number(shopCost.labor || 0), parts = Number(shopCost.parts || 0)
+    if (isNaN(labor) || isNaN(parts) || labor < 0 || parts < 0 || labor + parts <= 0) { toast.error('Enter the labour and/or parts amount the shop charged'); return }
+    const r = shopDlg.request
+    setProxyBusy(r._id)
+    try {
+      const c = await serviceRequestAPI.shopCost(r._id, { laborCost: labor, partsCost: parts })
+      if (!c.data?.success) { toast.error(c.data?.message || 'Could not save cost'); return }
+      const s = await serviceRequestAPI.shopStatus(r._id, 'completed', shopCost.notes.trim() || undefined)
+      if (!s.data?.success) { toast.error(s.data?.message || 'Could not mark completed'); return }
+      toast.success(`Job marked completed for ${r.shopPartner?.shopName || 'the shop'} — ₹${labor + parts}`)
+      dispatch(fetchServiceRequestsRequest())
+      setShopDlg(null)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Action failed')
+    } finally { setProxyBusy(null) }
+  }
+
   // ── Accept on the mechanic's behalf (mechanic has no smartphone) ─────────
   // Backend reuses ServiceRequestService.acceptRequest → same 'accepted'
   // transition and the same "Mechanic Accepted" push to the customer.
@@ -1325,9 +1419,16 @@ export function ServiceManagement() {
                               <Store className="h-3 w-3 text-indigo-600" />
                             </div>
                             <div>
-                              <span className="text-sm font-medium text-indigo-700">{request.shopPartner.shopName}</span>
+                              <span className="text-sm font-medium text-indigo-700">{request.shopPartner.shopName || 'Shop partner'}</span>
                               {request.shopPartner.city && (
                                 <span className="text-xs text-gray-400 ml-1">({request.shopPartner.city})</span>
+                              )}
+                              {request.shopOrder && (
+                                <div className="text-[11px] text-gray-500">
+                                  {request.shopOrder.assignedMechanic?.name
+                                    ? <>🔧 {request.shopOrder.assignedMechanic.name}{request.shopOrder.assignedMechanic.phone ? ` · ${request.shopOrder.assignedMechanic.phone}` : ''}</>
+                                    : <>shop order: {request.shopOrder.status.replace(/_/g, ' ')}</>}
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1456,6 +1557,27 @@ export function ServiceManagement() {
                                 )}
                               </>
                             )}
+                            {/* Shop actions — admin acts for a shop that works by phone / WhatsApp */}
+                            {request.shopPartner && request.shopOrder && (() => {
+                              const so = request.shopOrder!
+                              const manual = !so.mechanicProfile // shop's own (non-app) mechanic → admin drives the status
+                              const items: React.ReactNode[] = []
+                              if (so.status === 'pending') {
+                                items.push(
+                                  <DropdownMenuItem key="s-acc" onClick={() => handleShopAccept(request)} disabled={shopBusy(request._id)}><CheckCircle className="h-4 w-4 mr-2 text-orange-600" />Accept order (for shop)</DropdownMenuItem>,
+                                  <DropdownMenuItem key="s-rej" onClick={() => handleShopReject(request)} disabled={shopBusy(request._id)}><XCircle className="h-4 w-4 mr-2 text-orange-600" />Reject order (for shop) → reassign</DropdownMenuItem>,
+                                )
+                              }
+                              if (['pending', 'accepted'].includes(so.status)) {
+                                items.push(<DropdownMenuItem key="s-mech" onClick={() => handleOpenShopDialog(request, 'assign')} disabled={shopBusy(request._id)}><Wrench className="h-4 w-4 mr-2 text-orange-600" />Assign shop&apos;s mechanic (for shop)</DropdownMenuItem>)
+                              }
+                              if (manual && so.status === 'mechanic_assigned') items.push(<DropdownMenuItem key="s-ow" onClick={() => handleShopStatus(request, 'on_way')} disabled={shopBusy(request._id)}><Navigation className="h-4 w-4 mr-2 text-orange-600" />Mark on the way (for shop)</DropdownMenuItem>)
+                              if (manual && so.status === 'on_way') items.push(<DropdownMenuItem key="s-ip" onClick={() => handleShopStatus(request, 'in_progress')} disabled={shopBusy(request._id)}><Wrench className="h-4 w-4 mr-2 text-orange-600" />Mark work started (for shop)</DropdownMenuItem>)
+                              if (manual && so.status === 'in_progress') items.push(<DropdownMenuItem key="s-done" onClick={() => handleOpenShopDialog(request, 'complete')} disabled={shopBusy(request._id)}><CheckCircle className="h-4 w-4 mr-2 text-orange-600" />Mark completed + cost (for shop)</DropdownMenuItem>)
+                              if (so.status === 'completed' && so.paymentStatus !== 'paid') items.push(<DropdownMenuItem key="s-paid" onClick={() => handleShopStatus(request, 'paid')} disabled={shopBusy(request._id)}><DollarSign className="h-4 w-4 mr-2 text-orange-600" />Payment collected (for shop)</DropdownMenuItem>)
+                              if (!items.length) return null
+                              return (<><DropdownMenuSeparator /><DropdownMenuLabel className="text-[11px] text-orange-700">{request.shopPartner.shopName} — on the shop&apos;s behalf</DropdownMenuLabel>{items}</>)
+                            })()}
                             {request.customer.phone && (
                               <DropdownMenuItem asChild>
                                 <a href={`tel:${request.customer.phone}`}>
@@ -1872,6 +1994,73 @@ export function ServiceManagement() {
       </Tabs>
 
       {/* ==================== ASSIGN MECHANIC / SHOP DIALOG ==================== */}
+      {/* Shop-proxy dialog: assign the shop's mechanic / complete with cost */}
+      <Dialog open={!!shopDlg} onOpenChange={(open) => { if (!open) setShopDlg(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center"><Store className="h-4 w-4 text-orange-600" /></div>
+              {shopDlg?.mode === 'assign' ? 'Assign the shop\'s mechanic' : 'Complete job + record cost'}
+            </DialogTitle>
+            <DialogDescription>
+              On behalf of <b>{shopDlg?.request.shopPartner?.shopName}</b> · request {(shopDlg?.request as any)?.requestId || shopDlg?.request._id.slice(-8).toUpperCase()}
+            </DialogDescription>
+          </DialogHeader>
+          {shopDlg?.mode === 'assign' ? (
+            <div className="py-2 space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Shop&apos;s mechanics</Label>
+                {shopDlgLoading ? (
+                  <p className="mt-2 text-sm text-gray-500 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+                ) : shopMechanics.length === 0 ? (
+                  <p className="mt-2 text-xs text-gray-500">This shop has no mechanics listed yet — enter the mechanic&apos;s name and phone below.</p>
+                ) : (
+                  <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
+                    {shopMechanics.map((m) => (
+                      <button key={m._id} type="button" onClick={() => setShopMechId(shopMechId === m._id ? '' : m._id)}
+                        className={cn('w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors', shopMechId === m._id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300')}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-[#1A1D29]">{m.name}</span>
+                          <span className="text-xs text-gray-500">{m.type === 'internal' || m.mechanicType === 'manual' ? 'shop team' : 'platform'}{m.isVerified ? ' · verified' : ''}</span>
+                        </div>
+                        <div className="text-xs text-gray-500">{m.phone}{m.specializations?.length ? ` · ${m.specializations.slice(0, 3).join(', ')}` : ''}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className={cn('rounded-lg border border-dashed p-3 space-y-2', shopMechId ? 'opacity-50' : '')}>
+                <p className="text-xs font-semibold text-gray-600">Or a mechanic the shop named on the phone</p>
+                <Input placeholder="Mechanic name" value={shopManual.name} onChange={(e) => { setShopManual({ ...shopManual, name: e.target.value }); setShopMechId('') }} />
+                <Input placeholder="Mobile number (10 digits)" inputMode="numeric" value={shopManual.phone} onChange={(e) => { setShopManual({ ...shopManual, phone: e.target.value }); setShopMechId('') }} />
+              </div>
+              <p className="text-xs text-gray-500">The customer is notified that a mechanic is on the job. If the number belongs to a registered mechanic, the job also appears in their app.</p>
+            </div>
+          ) : (
+            <div className="py-2 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-sm">Labour (₹)</Label><Input inputMode="numeric" className="mt-1" value={shopCost.labor} onChange={(e) => setShopCost({ ...shopCost, labor: e.target.value })} placeholder="0" /></div>
+                <div><Label className="text-sm">Parts (₹)</Label><Input inputMode="numeric" className="mt-1" value={shopCost.parts} onChange={(e) => setShopCost({ ...shopCost, parts: e.target.value })} placeholder="0" /></div>
+              </div>
+              <div><Label className="text-sm">Note (optional)</Label><Input className="mt-1" value={shopCost.notes} onChange={(e) => setShopCost({ ...shopCost, notes: e.target.value })} placeholder="e.g. told by owner on WhatsApp" /></div>
+              <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                Total <b>₹{(Number(shopCost.labor || 0) + Number(shopCost.parts || 0)).toLocaleString('en-IN')}</b>
+                {shopDlg?.request.shopPartner?.commissionRate != null && <span className="text-xs text-gray-500"> · platform commission {shopDlg.request.shopPartner.commissionRate}% is deducted, same as the shop panel</span>}
+              </div>
+              <p className="text-xs text-gray-500">The customer is notified the service is complete. Then use “Payment collected (for shop)” once the shop has been paid.</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShopDlg(null)}>Cancel</Button>
+            <Button className="bg-[#FF6B35] hover:bg-[#e55a28] text-white" disabled={!!shopDlg && shopBusy(shopDlg.request._id)}
+              onClick={shopDlg?.mode === 'assign' ? handleShopAssignConfirm : handleShopCompleteConfirm}>
+              {shopDlg && shopBusy(shopDlg.request._id) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              {shopDlg?.mode === 'assign' ? 'Assign mechanic' : 'Mark completed'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={assignDialogOpen} onOpenChange={(open) => {
         setAssignDialogOpen(open)
         if (!open) { setAssigningRequest(null); setAssignMechanicId(''); setSelectedShopId('') }

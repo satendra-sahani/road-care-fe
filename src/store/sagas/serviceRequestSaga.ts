@@ -203,10 +203,23 @@ function normalizeServiceRequest(r: any): ServiceRequest {
     } : undefined,
     // Shop partner
     shopPartner: r.shopPartner ? {
-      _id: r.shopPartner._id || '',
+      _id: r.shopPartner._id || (typeof r.shopPartner === 'string' ? r.shopPartner : ''),
       shopName: r.shopPartner.shopName || '',
-      city: r.shopPartner.city || undefined,
+      city: r.shopPartner.city || r.shopPartner.address?.city || undefined,
+      phone: r.shopPartner.shopPhone || r.shopPartner.phone || undefined,
       commissionRate: r.shopPartner.commissionRate ?? undefined,
+    } : undefined,
+    shopOrder: r.shopOrder ? {
+      _id: r.shopOrder._id,
+      orderId: r.shopOrder.orderId,
+      status: r.shopOrder.status,
+      paymentStatus: r.shopOrder.paymentStatus,
+      assignedMechanic: r.shopOrder.assignedMechanic || null,
+      mechanicProfile: r.shopOrder.mechanicProfile ? String(r.shopOrder.mechanicProfile) : null,
+      laborCost: r.shopOrder.laborCost ?? 0,
+      partsCost: r.shopOrder.partsCost ?? 0,
+      finalCost: r.shopOrder.finalCost ?? 0,
+      estimatedCost: r.shopOrder.estimatedCost ?? 0,
     } : undefined,
     // Prefer populated ServiceFeedback doc; fall back to legacy customerRating fields
     feedback: r.feedback?.overallRating
