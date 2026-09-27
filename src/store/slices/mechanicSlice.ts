@@ -23,6 +23,18 @@ export interface Mechanic {
   isVerified?: boolean;
   /** 'admin' | 'self' | 'shop' — who created the profile */
   registrationSource?: string;
+  vehicleTypes?: string[];
+  serviceRangeKm?: number;
+  /** KYC documents (ImageKit URLs) collected at registration */
+  kyc?: {
+    panNumber?: string;
+    panImage?: string;
+    aadhaarFrontImage?: string;
+    aadhaarBackImage?: string;
+    photo?: string;
+    submittedAt?: string;
+  };
+  payoutMethod?: string;
   currentLocation?: {
     latitude: number;
     longitude: number;

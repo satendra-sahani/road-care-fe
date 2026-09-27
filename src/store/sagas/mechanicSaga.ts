@@ -90,6 +90,17 @@ function normalizeMechanic(p: any): Mechanic {
     completedServices: p.completedJobs ?? p.completedServices ?? 0,
     isVerified: !!p.isVerified,
     registrationSource: p.registrationSource || undefined,
+    vehicleTypes: p.vehicleTypes || [],
+    serviceRangeKm: p.serviceRangeKm ?? undefined,
+    kyc: p.kyc ? {
+      panNumber: p.kyc.panNumber || undefined,
+      panImage: p.kyc.panImage || undefined,
+      aadhaarFrontImage: p.kyc.aadhaarFrontImage || undefined,
+      aadhaarBackImage: p.kyc.aadhaarBackImage || undefined,
+      photo: p.kyc.photo || undefined,
+      submittedAt: p.kyc.submittedAt || undefined,
+    } : undefined,
+    payoutMethod: p.payout?.method || undefined,
     currentLocation: p.currentLocation?.latitude != null && p.currentLocation?.longitude != null
       ? {
           latitude: p.currentLocation.latitude,

@@ -2647,6 +2647,74 @@ export function ServiceManagement() {
                   </div>
                 </div>
 
+                {/* KYC documents + verification */}
+                <div className={cn('rounded-xl p-4 space-y-3 border', selectedMechanic.isVerified ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100')}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">KYC &amp; verification</h4>
+                    <div className="flex items-center gap-2">
+                      <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-semibold', selectedMechanic.isVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+                        {selectedMechanic.isVerified ? 'Verified' : 'Pending verification'}
+                      </span>
+                      {selectedMechanic.registrationSource === 'self' && <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">Self-registered</span>}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-[#6B7280] text-xs">PAN number</p>
+                      <p className="font-mono font-medium text-[#1A1D29]">{selectedMechanic.kyc?.panNumber || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[#6B7280] text-xs">Aadhaar number</p>
+                      <p className="font-mono font-medium text-[#1A1D29]">{selectedMechanic.aadhaarNo || '—'}</p>
+                    </div>
+                    {selectedMechanic.vehicleTypes && selectedMechanic.vehicleTypes.length > 0 && (
+                      <div>
+                        <p className="text-[#6B7280] text-xs">Vehicle types</p>
+                        <p className="font-medium text-[#1A1D29]">{selectedMechanic.vehicleTypes.join(', ')}</p>
+                      </div>
+                    )}
+                    {selectedMechanic.serviceRangeKm != null && (
+                      <div>
+                        <p className="text-[#6B7280] text-xs">Service range</p>
+                        <p className="font-medium text-[#1A1D29]">{selectedMechanic.serviceRangeKm} km</p>
+                      </div>
+                    )}
+                    {selectedMechanic.payoutMethod && (
+                      <div>
+                        <p className="text-[#6B7280] text-xs">Payout</p>
+                        <p className="font-medium text-[#1A1D29]">{selectedMechanic.payoutMethod === 'upi' ? 'UPI' : 'Bank account'}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {([
+                      ['Photo', selectedMechanic.kyc?.photo],
+                      ['PAN card', selectedMechanic.kyc?.panImage],
+                      ['Aadhaar front', selectedMechanic.kyc?.aadhaarFrontImage],
+                      ['Aadhaar back', selectedMechanic.kyc?.aadhaarBackImage],
+                    ] as [string, string | undefined][]).map(([label, url]) => (
+                      <div key={label} className="space-y-1">
+                        <p className="text-[11px] text-[#6B7280]">{label}</p>
+                        {url ? (
+                          <a href={url} target="_blank" rel="noreferrer" title="Open full size" className="block overflow-hidden rounded-lg border border-gray-200 bg-white">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={url} alt={label} className="h-20 w-full object-cover" />
+                          </a>
+                        ) : (
+                          <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white text-[11px] text-gray-400">Not uploaded</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {!selectedMechanic.isVerified && (
+                    <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={verifyingId === selectedMechanic._id}
+                      onClick={async () => { await handleVerifyMechanic(selectedMechanic._id); setSelectedMechanic({ ...selectedMechanic, isVerified: true }) }}>
+                      {verifyingId === selectedMechanic._id ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
+                      Verify this mechanic
+                    </Button>
+                  )}
+                </div>
+
                 {/* Address */}
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                   <h4 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Address</h4>
