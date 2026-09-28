@@ -43,7 +43,8 @@ api.interceptors.request.use(
       const path = window.location.pathname;
       const isAdminArea = path.startsWith('/admin') || path.startsWith('/shop-partner')
         || path.startsWith('/shop-dashboard');
-      token = isAdminArea ? adminToken : customerToken;
+      // Franchise dashboard has its own cookie, so it never collides with an admin login
+      token = path.startsWith('/franchise') ? Cookies.get('franchise_token') : isAdminArea ? adminToken : customerToken;
     } else {
       // SSR / non-browser: prefer customer token (storefront is the default surface)
       token = customerToken || adminToken;
@@ -68,6 +69,9 @@ api.interceptors.response.use(
         } else if (window.location.pathname.startsWith('/shop-partner')) {
           Cookies.remove('token');
           window.location.href = '/shop-partner/login';
+        } else if (window.location.pathname.startsWith('/franchise')) {
+          Cookies.remove('franchise_token');
+          window.location.href = '/franchise/login';
         } else {
           Cookies.remove('customer_token');
           window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
@@ -894,6 +898,40 @@ export const shopAPI = {
 };
 
 // ─── Admin Shop Management APIs ─────────────────────────────────────
+// ─── Franchise dashboard (/franchise, cookie: franchise_token) ─────────────
+export const franchiseAPI = {
+  me: () => api.get('/franchise/me'),
+  dashboard: () => api.get('/franchise/dashboard'),
+  shops: (params?: Record<string, any>) => api.get('/franchise/shops', { params }),
+  shop: (id: string) => api.get(`/franchise/shops/${id}`),
+  createShop: (data: any) => api.post('/franchise/shops', data),
+  updateShop: (id: string, data: any) => api.put(`/franchise/shops/${id}`, data),
+  mechanics: (params?: Record<string, any>) => api.get('/franchise/mechanics', { params }),
+  mechanic: (id: string) => api.get(`/franchise/mechanics/${id}`),
+  createMechanic: (data: any) => api.post('/franchise/mechanics', data),
+  updateMechanic: (id: string, data: any) => api.put(`/franchise/mechanics/${id}`, data),
+  requests: (params?: Record<string, any>) => api.get('/franchise/requests', { params }),
+  request: (id: string) => api.get(`/franchise/requests/${id}`),
+  createRequest: (data: any) => api.post('/franchise/requests', data),
+  assignRequest: (id: string, data: { mechanicId?: string; shopId?: string }) => api.put(`/franchise/requests/${id}/assign`, data),
+  earnings: (params?: Record<string, any>) => api.get('/franchise/earnings', { params }),
+  wallet: () => api.get('/franchise/wallet'),
+  transactions: (params?: Record<string, any>) => api.get('/franchise/wallet/transactions', { params }),
+  withdrawals: (params?: Record<string, any>) => api.get('/franchise/withdrawals', { params }),
+  withdraw: (data: any) => api.post('/franchise/withdrawals', data),
+  updateProfile: (data: any) => api.put('/franchise/profile', data),
+  team: () => api.get('/franchise/team'),
+  addTeamMember: (data: { fullName: string; phone: string }) => api.post('/franchise/team', data),
+  setTeamMemberActive: (userId: string, isActive: boolean) => api.put(`/franchise/team/${userId}`, { isActive }),
+};
+
+export const adminFranchiseAPI = {
+  getAll: (params?: Record<string, any>) => api.get('/admin/franchises', { params }),
+  get: (id: string) => api.get(`/admin/franchises/${id}`),
+  create: (data: any) => api.post('/admin/franchises', data),
+  update: (id: string, data: any) => api.put(`/admin/franchises/${id}`, data),
+};
+
 export const adminShopAPI = {
   getAll: (params?: Record<string, any>) => api.get('/admin/shops', { params }),
   getStats: () => api.get('/admin/shops/stats'),

@@ -20,6 +20,9 @@ const ShopAuthGuard = dynamic(() => import("@/components/shop-partner/ShopAuthGu
 // Customer guard only wraps logged-in pages (cart, orders, profile…).
 const CustomerAuthGuard = dynamic(() => import("@/components/auth/CustomerAuthGuard").then((m) => m.CustomerAuthGuard), { ssr: false });
 const ShopLayout = dynamic(() => import("@/components/shop-partner/ShopLayout").then((m) => m.ShopLayout));
+// Franchise dashboard (/franchise/*): its own guard + sidebar layout
+const FranchiseAuthGuard = dynamic(() => import("@/components/franchise/FranchiseAuthGuard").then((m) => m.FranchiseAuthGuard), { ssr: false });
+const FranchiseLayout = dynamic(() => import("@/components/franchise/FranchiseLayout").then((m) => m.FranchiseLayout), { ssr: false });
 
 // Toast host is client-only and not needed for first paint.
 const Toaster = dynamic(() => import("sonner").then((m) => m.Toaster), { ssr: false });
@@ -47,6 +50,9 @@ const adminPublicPaths = ['/admin/login'];
 // Shop partner pages that don't need shop auth
 const shopPublicPaths = ['/shop-partner/login'];
 
+// Franchise pages that don't need franchise auth
+const franchisePublicPaths = ['/franchise/login'];
+
 // Customer pages that need customer auth.
 // NOTE: '/service' (the booking wizard) is intentionally NOT here — it should be
 // browsable while logged out, with the login modal overlaying the (blurred) page
@@ -61,6 +67,10 @@ function needsAdminAuth(pathname: string) {
 
 function needsShopAuth(pathname: string) {
   return pathname.startsWith('/shop-partner') && !shopPublicPaths.includes(pathname);
+}
+
+function needsFranchiseAuth(pathname: string) {
+  return (pathname === '/franchise' || pathname.startsWith('/franchise/')) && !franchisePublicPaths.includes(pathname);
 }
 
 function needsCustomerAuth(pathname: string) {
@@ -108,6 +118,12 @@ export default function App({ Component, pageProps }: AppProps) {
               <Component {...pageProps} />
             </ShopLayout>
           </ShopAuthGuard>
+        ) : needsFranchiseAuth(router.pathname) ? (
+          <FranchiseAuthGuard>
+            <FranchiseLayout>
+              <Component {...pageProps} />
+            </FranchiseLayout>
+          </FranchiseAuthGuard>
         ) : needsCustomerAuth(router.pathname) ? (
           <CustomerAuthGuard>
             <Component {...pageProps} />

@@ -23,6 +23,8 @@ export interface Mechanic {
   isVerified?: boolean;
   /** 'admin' | 'self' | 'shop' — who created the profile */
   registrationSource?: string;
+  /** franchise that added this mechanic (null for direct partners) */
+  franchise?: { _id: string; name: string; code?: string };
   vehicleTypes?: string[];
   serviceRangeKm?: number;
   commissionRate?: number;

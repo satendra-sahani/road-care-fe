@@ -132,6 +132,8 @@ export interface ServiceRequest {
     phone?: string;
     commissionRate?: number;
   };
+  /** set when the request was booked from a franchise dashboard */
+  franchise?: { _id: string; name: string; code?: string };
   /** live ShopOrder when the request is routed to a partner shop */
   shopOrder?: {
     _id: string;

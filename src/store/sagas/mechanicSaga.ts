@@ -90,6 +90,7 @@ function normalizeMechanic(p: any): Mechanic {
     completedServices: p.completedJobs ?? p.completedServices ?? 0,
     isVerified: !!p.isVerified,
     registrationSource: p.registrationSource || undefined,
+    franchise: p.franchise && typeof p.franchise === 'object' ? { _id: p.franchise._id, name: p.franchise.name || '', code: p.franchise.code } : undefined,
     vehicleTypes: p.vehicleTypes || [],
     serviceRangeKm: p.serviceRangeKm ?? undefined,
     commissionRate: p.commissionRate ?? undefined,

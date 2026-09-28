@@ -356,6 +356,11 @@ export function ShopPartnerManagement() {
                       Self-registered
                     </span>
                   )}
+                  {shop.franchise?.name && (
+                    <span className="bg-teal-100 text-teal-700 px-2.5 py-0.5 rounded-full text-xs font-semibold" title="Added and managed by this franchise">
+                      Added by franchise · {shop.franchise.name}
+                    </span>
+                  )}
                   {shop.isVerified ? (
                     <span className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1">
                       <ShieldCheck className="h-3 w-3" /> Verified

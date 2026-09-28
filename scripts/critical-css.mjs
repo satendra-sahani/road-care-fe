@@ -31,7 +31,7 @@ const DIST = path.join(ROOT, '.next');
 const PAGES = path.join(DIST, 'server', 'pages');
 
 const SKIP = [
-  /^admin(\/|\.html$)/, /^shop-partner(\/|\.html$)/,
+  /^admin(\/|\.html$)/, /^shop-partner(\/|\.html$)/, /^franchise(\/|\.html$)/,
   /^(cart|checkout|orders|profile|addresses|wallet|notifications|reviews|emergency|spin|refer)(\/|\.html$)/,
   /^service\//, /^(404|500)\.html$/, /\[/,
 ];

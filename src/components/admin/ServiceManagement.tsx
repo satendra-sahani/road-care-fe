@@ -1339,6 +1339,9 @@ export function ServiceManagement() {
                       </TableCell>
                       <TableCell className="font-mono text-xs font-semibold text-[#1B3B6F]">
                         {generateDisplayRequestId(request)}
+                        {request.franchise?.name && (
+                          <span className="mt-1 block w-fit rounded bg-teal-100 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-teal-700" title="Booked from this franchise's dashboard">Franchise · {request.franchise.name}</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -1680,6 +1683,9 @@ export function ServiceManagement() {
                         )}
                         {mechanic.registrationSource === 'self' && (
                           <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10.5px] font-semibold text-sky-700" title="Registered by the mechanic from the website">Self-registered</span>
+                        )}
+                        {mechanic.franchise?.name && (
+                          <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10.5px] font-semibold text-teal-700" title="Added and managed by this franchise">Franchise · {mechanic.franchise.name}</span>
                         )}
                       </div>
                     </div>
@@ -2477,6 +2483,7 @@ export function ServiceManagement() {
                         {selectedMechanic.isVerified ? 'Verified' : 'Pending verification'}
                       </span>
                       {selectedMechanic.registrationSource === 'self' && <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">Self-registered</span>}
+                      {selectedMechanic.franchise?.name && <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-[11px] font-semibold text-teal-700">Added by franchise · {selectedMechanic.franchise.name}</span>}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">

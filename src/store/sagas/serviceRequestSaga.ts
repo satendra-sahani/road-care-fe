@@ -207,6 +207,8 @@ export function normalizeServiceRequest(r: any): ServiceRequest {
       before: (r.images.before || []).map((i: any) => typeof i === 'string' ? { url: i } : { url: i.url, description: i.description }),
       after: (r.images.after || []).map((i: any) => typeof i === 'string' ? { url: i } : { url: i.url, description: i.description }),
     } : undefined,
+    // Booked from a franchise dashboard
+    franchise: r.franchise && typeof r.franchise === 'object' ? { _id: r.franchise._id, name: r.franchise.name || '', code: r.franchise.code } : undefined,
     // Shop partner
     shopPartner: r.shopPartner ? {
       _id: r.shopPartner._id || (typeof r.shopPartner === 'string' ? r.shopPartner : ''),
