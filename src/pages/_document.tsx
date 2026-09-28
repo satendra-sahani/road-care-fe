@@ -10,6 +10,15 @@ export default function Document() {
         <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
+        {/* Cookie banner: hide it before first paint for visitors who already
+            chose (or whose storage is blocked) — see components/CookieConsent.tsx */}
+        <style dangerouslySetInnerHTML={{ __html: "html[data-cc] [data-cookie-banner]{display:none!important}" }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{localStorage.getItem('bm_cookie_consent')&&document.documentElement.setAttribute('data-cc','1')}catch(e){document.documentElement.setAttribute('data-cc','1')}",
+          }}
+        />
+
         {/* Theme & Brand */}
         <meta name="theme-color" content="#0A2442" />
         <meta name="author" content="Bharat Mechanics" />
