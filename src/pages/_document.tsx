@@ -2,7 +2,7 @@ import { Html, Head, Main, NextScript } from "next/document";
 
 export default function Document() {
   return (
-    <Html lang="en-IN">
+    <Html lang="en-IN" dir="ltr">
       <Head>
         {/* Favicon */}
         {/* Small, purpose-sized icons (the 512px favicon.png is kept only for Razorpay's merchant logo) */}
