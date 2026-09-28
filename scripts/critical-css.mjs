@@ -124,7 +124,8 @@ function deferScriptsUntilHero(html) {
 const { parseDocument } = require('htmlparser2');
 const WEIGHT_CLASS = { 'font-thin': 100, 'font-extralight': 200, 'font-light': 300, 'font-normal': 400, 'font-medium': 500, 'font-semibold': 600, 'font-bold': 700, 'font-extrabold': 800, 'font-black': 900 };
 const BOLD_CLASS = new Set(['text-display-xl', 'text-display-lg', 'text-eyebrow']);
-const CLIENT_TEXT_FONTS = [['/shop', 0x20b9, 400]]; // [Next page, code point, weight]
+// [Next page, code point, weight] — product prices (₹) rendered from API data
+const CLIENT_TEXT_FONTS = [['/', 0x20b9, 400], ['/shop', 0x20b9, 400], ['/shop', 0x20b9, 700]];
 const parseRanges = (r) => r.split(',').map((s) => s.trim().replace(/^U\+/i, '').split('-').map((h) => parseInt(h, 16))).map(([a, b]) => [a, b ?? a]);
 function fontFaces(html) {
   const css = [...html.matchAll(/<style data-font-css="[^"]*">([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('');
@@ -179,8 +180,7 @@ function preloadExtraFontSubsets(html) {
     for (const c of n.children || []) walkNodes(c);
   };
   walkNodes(parseDocument(body));
-  // Text rendered only after data loads isn't in the HTML; /shop's product
-  // prices show ₹ in regular weight.
+  // Text rendered only after data loads isn't in the HTML (see CLIENT_TEXT_FONTS).
   for (const [page, cp, w] of CLIENT_TEXT_FONTS) {
     if (html.includes(`"page":"${page}"`)) {
       const face = faces.filter((f) => f.weight === nearest(w) && f.ranges.some(([a, b]) => cp >= a && cp <= b)).pop();
