@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { productHref } from '@/lib/shopUrls'
 import {
   ShoppingCart, Trash2, Plus, Minus, Package, ArrowRight, Truck, Loader2,
 } from 'lucide-react'
@@ -130,7 +131,7 @@ export function CartPage() {
 
                 return (
                   <div key={item._id || product._id} className="bg-white rounded-xl border p-4 flex gap-4">
-                    <Link href={`/shop/${product._id}`} className="shrink-0">
+                    <Link href={productHref(product)} className="shrink-0">
                       <div className="h-20 w-20 sm:h-24 sm:w-24 bg-gray-100 rounded-lg overflow-hidden">
                         {image ? (
                           <img src={image} alt={product.name} className="w-full h-full object-cover" />
@@ -143,7 +144,7 @@ export function CartPage() {
                     </Link>
 
                     <div className="flex-1 min-w-0">
-                      <Link href={`/shop/${product._id}`}>
+                      <Link href={productHref(product)}>
                         <h3 className="font-semibold text-sm sm:text-base line-clamp-2 hover:text-[#1B3B6F]">{product.name}</h3>
                       </Link>
                       {product.brand?.name && <p className="text-xs text-[#FF6B35] font-medium mt-1">{product.brand.name}</p>}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/router'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import { catalogAPI, userCartAPI } from '@/services/api'
+import { brandHref, categoryHref } from '@/lib/shopUrls'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -40,8 +41,12 @@ export function ProductDetail() {
   useEffect(() => {
     if (!id) return
     fetchProduct()
-    fetchReviews()
   }, [id])
+
+  // The URL carries the product slug; reviews are keyed by the product's id.
+  useEffect(() => {
+    if (product?._id) fetchReviews()
+  }, [product?._id])
 
   useEffect(() => {
     if (!product?._id) return
@@ -66,7 +71,8 @@ export function ProductDetail() {
   const fetchReviews = async () => {
     setReviewsLoading(true)
     try {
-      const res = await catalogAPI.getReviews(id as string, { limit: 10 })
+      if (!product?._id) return
+      const res = await catalogAPI.getReviews(product._id, { limit: 10 })
       if (res.data.success) setReviews(res.data.data || [])
     } catch (err) {
       // Reviews might not exist yet
@@ -115,7 +121,7 @@ export function ProductDetail() {
     }
     setSubmittingReview(true)
     try {
-      const res = await catalogAPI.addReview(id as string, { rating: reviewRating, comment: reviewComment })
+      const res = await catalogAPI.addReview(product._id, { rating: reviewRating, comment: reviewComment })
       if (res.data.success) {
         toast.success('Review submitted!')
         setShowReviewForm(false)
@@ -208,6 +214,9 @@ export function ProductDetail() {
           <div className="flex items-center gap-1.5 text-[12.5px] text-[#7B8AA3] mb-4">
             <Link href="/" className="hover:text-[#1B3B6F]">Home</Link><ChevronRight className="h-3.5 w-3.5" />
             <Link href="/shop" className="hover:text-[#1B3B6F]">Shop</Link><ChevronRight className="h-3.5 w-3.5" />
+            {product.category?.name && (
+              <><Link href={categoryHref(product.category)} className="hover:text-[#1B3B6F] truncate max-w-[140px]">{product.category.name}</Link><ChevronRight className="h-3.5 w-3.5" /></>
+            )}
             <span className="text-[#13203A] truncate max-w-[180px]">{product.name}</span>
           </div>
 
@@ -239,7 +248,7 @@ export function ProductDetail() {
             {/* Info */}
             <div className="bg-white rounded-2xl border border-[#E7ECF3] shadow-sm p-5 md:p-6">
               {product.brand?.name && (
-                <Link href={`/shop?brand=${product.brand._id}`} className="text-[12px] font-bold text-[#7B8AA3] uppercase tracking-[0.04em] hover:text-[#1B3B6F]">{product.brand.name}</Link>
+                <Link href={brandHref(product.brand)}className="text-[12px] font-bold text-[#7B8AA3] uppercase tracking-[0.04em] hover:text-[#1B3B6F]">{product.brand.name}</Link>
               )}
               <h1 className="text-xl md:text-[26px] font-extrabold text-[#13203A] leading-tight mt-1.5 mb-3">{product.name}</h1>
 

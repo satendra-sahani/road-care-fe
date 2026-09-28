@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import { DImg, ikUrl } from '@/components/ui/DImg'
 import { PartnerRegisterCta } from '@/components/partner/PartnerRegisterCta'
+import { slugify, isObjectId, categorySlug, brandSlug, productHref, shopFilterHref } from '@/lib/shopUrls'
 import {
   IcGridView, IcViewList, IcTune, IcClose, IcFavorite, IcFavoriteBorder, IcLocalShipping,
   IcVerifiedUser, IcAssignmentReturn, IcHeadsetMic, IcCheck, IcExpandMore, IcExpandLess,
@@ -80,7 +81,11 @@ const inr = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN')}`
 const SECTION_LABEL = 'text-[11.5px] font-bold tracking-[1.2px] text-[#52667C]'
 const CHECK = 'w-4 h-4 accent-[#1A6FD4] shrink-0'
 
-export function ShopListing() {
+// Category / brand filters live in the URL as slugs (see lib/shopUrls):
+//   /shop/category/<slug>, /shop/brand/<slug>, /shop/category/<slug>?brand=<slug>.
+// The route pages pass the path slug in; old ?category=/?parentCategory=/?brand=
+// links (ids or slugs) still work and are rewritten to the clean URL.
+export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp = '' }: { categorySlug?: string; brandSlug?: string } = {}) {
   const router = useRouter()
   const { isAuthenticated } = useSelector((state: RootState) => state.customerAuth)
   const { openLogin } = useLoginModal()
@@ -95,8 +100,10 @@ export function ShopListing() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
-  const [selectedCategory, setSelectedCategory] = useState((router.query.category as string) || '')
-  const [selectedBrand, setSelectedBrand] = useState((router.query.brand as string) || '')
+  const urlCategory = catProp || (router.query.category as string) || (router.query.parentCategory as string) || ''
+  const urlBrand = brandProp || (router.query.brand as string) || ''
+  const [selectedCategory, setSelectedCategory] = useState(urlCategory)
+  const [selectedBrand, setSelectedBrand] = useState(urlBrand)
   const [sortKey, setSortKey] = useState('popular')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
@@ -118,7 +125,7 @@ export function ShopListing() {
   const goSearch = (q: string) => { const t = q.trim(); router.push(t ? `/shop?search=${encodeURIComponent(t)}` : '/shop') }
 
   useEffect(() => {
-    Promise.all([catalogAPI.getCategories(), catalogAPI.getBrands()])
+    Promise.all([catalogAPI.getCategories(), catalogAPI.getBrands({ limit: 1000 })])
       .then(([c, b]) => { if (c.data.success) setCategories(c.data.data || []); if (b.data.success) setBrands(b.data.data || []) })
       .catch(() => {})
   }, [])
@@ -127,10 +134,40 @@ export function ShopListing() {
     try { const w = JSON.parse(localStorage.getItem('bm_wishlist') || '[]'); if (Array.isArray(w)) setWishlist(new Set(w)) } catch {}
   }, [])
 
+  // The URL is the source of truth for the category / brand filter.
   useEffect(() => {
-    if (router.query.category) setSelectedCategory(router.query.category as string)
-    if (router.query.brand) setSelectedBrand(router.query.brand as string)
-  }, [router.query.category, router.query.brand])
+    setSelectedCategory(urlCategory)
+    setSelectedBrand(urlBrand)
+  }, [urlCategory, urlBrand])
+
+  const catMatch = (c: any) => !!selectedCategory && (c.slug === selectedCategory || c._id === selectedCategory)
+  const brandMatch = (b: any) => !!selectedBrand && (slugify(b.name) === selectedBrand || b._id === selectedBrand)
+  const selCat = categories.find(catMatch)
+  const selBrand = brands.find(brandMatch)
+  const curCatSlug = selCat ? categorySlug(selCat) : selectedCategory
+  const curBrandSlug = selBrand ? brandSlug(selBrand) : selectedBrand
+
+  // Choosing a filter navigates to its clean URL (the listing re-reads it above).
+  const goFilters = (category: string, brand: string) =>
+    router.push(shopFilterHref({ category, brand, search: searchQ }), undefined, { scroll: false })
+  const pickCategory = (c?: any) => goFilters(c && !catMatch(c) ? categorySlug(c) : '', curBrandSlug)
+  const pickBrand = (b?: any) => goFilters(curCatSlug, b && !brandMatch(b) ? brandSlug(b) : '')
+
+  // Old links: /shop?category=<id>, ?parentCategory=<id>, ?brand=<id> (or slugs in
+  // the query) → the clean URL, once the lists are loaded to map ids to slugs.
+  useEffect(() => {
+    if (!router.isReady) return
+    const q = router.query
+    const legacyCat = !catProp && (q.category || q.parentCategory)
+    const legacyBrand = !brandProp && q.brand && (!catProp || isObjectId(q.brand as string))
+    if (!legacyCat && !legacyBrand) return
+    // read the URL directly (component state may not have caught up yet)
+    const cKey = urlCategory, bKey = urlBrand
+    if ((isObjectId(cKey) && !categories.length) || (isObjectId(bKey) && !brands.length)) return
+    const c = categories.find((x) => x.slug === cKey || x._id === cKey)
+    const br = brands.find((x) => slugify(x.name) === bKey || x._id === bKey)
+    router.replace(shopFilterHref({ category: c ? categorySlug(c) : cKey, brand: br ? brandSlug(br) : bKey, search: searchQ }), undefined, { scroll: false })
+  }, [router.isReady, router.query, categories.length, brands.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchProducts = useCallback(async (pageNum: number, append = false) => {
     append ? setLoadingMore(true) : setLoading(true)
@@ -176,7 +213,7 @@ export function ShopListing() {
   }
 
   const hasFilters = selectedCategory || selectedBrand || minPrice || maxPrice || minRating > 0 || inStockOnly || searchQ
-  const catName = selectedCategory ? (categories.find((c) => c._id === selectedCategory)?.name || 'Spare Parts') : ''
+  const catName = selectedCategory ? (selCat?.name || 'Spare Parts') : ''
   const sortLabel = SORTS.find((s) => s[0] === sortKey)![1]
 
   let displayed = inStockOnly ? products.filter((p) => qtyOf(p) > 0) : products
@@ -216,7 +253,7 @@ export function ShopListing() {
               <div className="grid gap-[11px] mt-3">
                 {catList.map((c) => (
                   <label key={c._id} className="flex items-center gap-2.5 cursor-pointer">
-                    <input type="checkbox" checked={selectedCategory === c._id} onChange={() => setSelectedCategory(selectedCategory === c._id ? '' : c._id)} className={CHECK} />
+                    <input type="checkbox" checked={catMatch(c)} onChange={() => pickCategory(c)} className={CHECK} />
                     <span className="truncate">{c.name}</span>
                     {typeof c.productCount === 'number' && <span className="text-[#52667C]">({c.productCount})</span>}
                   </label>
@@ -239,7 +276,7 @@ export function ShopListing() {
               <div className="grid gap-[11px] mt-3">
                 {brandList.map((b) => (
                   <label key={b._id} className="flex items-center gap-2.5 cursor-pointer">
-                    <input type="checkbox" checked={selectedBrand === b._id} onChange={() => setSelectedBrand(selectedBrand === b._id ? '' : b._id)} className={CHECK} />
+                    <input type="checkbox" checked={brandMatch(b)} onChange={() => pickBrand(b)} className={CHECK} />
                     <span className="truncate">{b.name}</span>
                     {typeof b.productCount === 'number' && <span className="text-[#52667C]">({b.productCount})</span>}
                   </label>
@@ -317,12 +354,12 @@ export function ShopListing() {
         <button onClick={() => toggleWishlist(p._id)} aria-label="Wishlist" className={`absolute right-2.5 top-2.5 z-[2] h-[26px] w-[26px] rounded-full bg-white border flex items-center justify-center transition-colors ${wished ? 'border-[#F4601F] text-[#BE3F09]' : 'border-[#EDF1F6] text-[#52667C] hover:text-[#F4601F]'}`}>
           {wished ? <IcFavorite size={14} /> : <IcFavoriteBorder size={14} />}
         </button>
-        <Link href={`/shop/${p._id}`} className={`flex items-center justify-center shrink-0 ${list ? 'w-[120px] h-[110px]' : 'w-full h-[112px] mt-6'}`}>
+        <Link href={productHref(p)} className={`flex items-center justify-center shrink-0 ${list ? 'w-[120px] h-[110px]' : 'w-full h-[112px] mt-6'}`}>
           {image ? <img loading="lazy" decoding="async" src={ikUrl(image, 420)} alt={p.name} width={210} height={112} className="max-h-full max-w-full object-contain" /> : <IcInventory size={56} className="text-[#0E2B4C]/25" />}
         </Link>
         <div className={`flex flex-col ${list ? 'flex-1 min-w-0' : ''}`}>
           <div className="text-[10.5px] font-bold text-[#1864C8] tracking-[0.5px] mt-2.5 uppercase min-h-[15px]">{p.brand?.name || ''}</div>
-          <Link href={`/shop/${p._id}`} className="text-[13px] font-semibold text-[#0E2B4C] leading-[1.35] mt-[3px] line-clamp-2 hover:text-[#F4601F]">{p.name}</Link>
+          <Link href={productHref(p)} className="text-[13px] font-semibold text-[#0E2B4C] leading-[1.35] mt-[3px] line-clamp-2 hover:text-[#F4601F]">{p.name}</Link>
           {p.avgRating > 0 && <div className="flex items-center gap-1 mt-1 text-[11.5px] font-semibold text-[#52667C]"><span className="text-[#F0A726]">★ {Number(p.avgRating).toFixed(1)}</span><span className="text-[#52667C] font-medium">({p.reviewCount || 0})</span></div>}
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-[16px] font-bold text-[#0E2B4C]">{inr(price)}</span>
@@ -412,17 +449,17 @@ export function ShopListing() {
 
         {/* CATEGORY TILES */}
         <div className="max-w-[1220px] mx-auto px-[clamp(14px,3vw,24px)] pt-[clamp(14px,2vw,20px)] pb-1.5 flex items-stretch gap-[9px] overflow-x-auto scrollbar-hide">
-          <button onClick={() => setSelectedCategory('')} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] text-center transition-colors py-[9px] border ${!selectedCategory ? 'border-[#0E2B4C] bg-[#0E2B4C] text-white shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'border-[#E6ECF3] bg-white text-[#0E2B4C] hover:border-[#F4601F]'}`}>
+          <button onClick={() => pickCategory()} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] text-center transition-colors py-[9px] border ${!selectedCategory ? 'border-[#0E2B4C] bg-[#0E2B4C] text-white shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'border-[#E6ECF3] bg-white text-[#0E2B4C] hover:border-[#F4601F]'}`}>
             <span className="flex h-[38px] w-full items-center justify-center">
               <span className={`flex h-[34px] w-[34px] items-center justify-center rounded-[9px] ${!selectedCategory ? 'bg-white/15' : 'bg-[#F6F9FD]'}`}><IcGridView size={18} /></span>
             </span>
             <div className="mt-[7px] text-[10.5px] font-semibold leading-[1.25] line-clamp-2">All Parts</div>
           </button>
           {categories.map((cat) => {
-            const on = selectedCategory === cat._id
+            const on = catMatch(cat)
             const img = cat.image || cat.icon || artFor(cat.name)
             return (
-              <button key={cat._id} onClick={() => setSelectedCategory(on ? '' : cat._id)} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] py-[9px] text-center transition-colors border ${on ? 'border-[#0E2B4C] bg-[#0E2B4C] text-white shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'border-[#E6ECF3] bg-white text-[#0E2B4C] hover:border-[#F4601F]'}`}>
+              <button key={cat._id} onClick={() => pickCategory(cat)} className={`shrink-0 w-[78px] rounded-[13px] px-[5px] py-[9px] text-center transition-colors border ${on ? 'border-[#0E2B4C] bg-[#0E2B4C] text-white shadow-[0_6px_16px_rgba(14,43,76,0.22)]' : 'border-[#E6ECF3] bg-white text-[#0E2B4C] hover:border-[#F4601F]'}`}>
                 {/* Active tile: the photo sits on a white chip (keeps its real colours instead of being inverted into a white box) */}
                 <span className={`mx-auto flex h-[38px] items-center justify-center rounded-[9px] transition-colors ${on ? 'w-[58px] bg-white p-[3px]' : 'w-full'}`}>
                   {img

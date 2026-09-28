@@ -20,6 +20,33 @@ const STATIC: { path: string; changefreq: string; priority: string; lastmod: str
   { path: '/register/shop', changefreq: 'monthly', priority: '0.6', lastmod: '2026-09-27' },
 ]
 
+// Shop URLs (SEO-friendly slugs, see lib/shopUrls): every active product,
+// category and brand. Cached in memory for an hour; if the API is unreachable
+// the sitemap is still served with the static pages and blog posts.
+type Url = { loc: string; lastmod: string; changefreq: string; priority: string }
+let shopCache: { at: number; urls: Url[] } | null = null
+async function shopUrls(): Promise<Url[]> {
+  if (shopCache && Date.now() - shopCache.at < 3600_000) return shopCache.urls
+  const { serverGet } = await import('@/lib/serverApi')
+  const { productSlug, categorySlug, brandSlug } = await import('@/lib/shopUrls')
+  const [cats, brands, prods] = await Promise.all([
+    serverGet<any[]>('/common/categories?limit=500', 8000),
+    serverGet<any[]>('/common/brands?limit=1000', 8000),
+    serverGet<any[]>('/common/products?limit=5000', 15000),
+  ])
+  const day = (d?: string) => (d ? String(d).slice(0, 10) : new Date().toISOString().slice(0, 10))
+  const urls: Url[] = [
+    ...(Array.isArray(cats?.data) ? cats!.data : []).filter((c) => c.isActive !== false && categorySlug(c))
+      .map((c) => ({ loc: `${SITE}/shop/category/${categorySlug(c)}`, lastmod: day(c.updatedAt), changefreq: 'weekly', priority: '0.8' })),
+    ...(Array.isArray(brands?.data) ? brands!.data : []).filter((b) => b.isActive !== false && brandSlug(b))
+      .map((b) => ({ loc: `${SITE}/shop/brand/${brandSlug(b)}`, lastmod: day(b.updatedAt), changefreq: 'weekly', priority: '0.6' })),
+    ...(Array.isArray(prods?.data) ? prods!.data : []).filter((p) => p.slug)
+      .map((p) => ({ loc: `${SITE}/shop/${productSlug(p)}`, lastmod: day(p.updatedAt), changefreq: 'weekly', priority: '0.7' })),
+  ]
+  if (urls.length) shopCache = { at: Date.now(), urls }
+  return urls
+}
+
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const { getAllPosts } = await import('@/data/blog/posts')
   const { CITY_BY_SLUG } = await import('@/data/blog/cities')
@@ -29,6 +56,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
       const tier = p.city ? CITY_BY_SLUG[p.slug.replace(/^mechanic-in-/, '')]?.tier ?? 3 : 1
       return { loc: `${SITE}/blog/${p.slug}`, lastmod: p.dateModified, changefreq: 'monthly', priority: tier === 1 ? '0.8' : tier === 2 ? '0.7' : '0.6' }
     }),
+    ...(await shopUrls()),
   ]
   const xml =
     '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +

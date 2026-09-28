@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic'
 const MobileDrawer = dynamic(() => import('./MobileDrawer'), { ssr: false })
 import Cookies from 'js-cookie'
 import { useLoginModal } from '@/components/auth/LoginModalProvider'
+import { productHref, brandHref, categoryHref } from '@/lib/shopUrls'
 // Brand icon pack (Material glyphs from the Bharat Mechanics icon set)
 import {
   IcLocationOn, IcCall, IcLocalShipping, IcHelpCenter, IcStore, IcPerson, IcSearch,
@@ -174,12 +175,12 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
     setSearchQuery('')
     if (type === 'product') {
       const p = item as SearchProduct
-      router.push(`/shop/${p._id}`)
+      router.push(productHref(p))
     } else if (type === 'brand') {
-      router.push(`/shop?brand=${item._id}`)
+      router.push(brandHref(item))
     } else if (type === 'category') {
       const c = item as SearchCategory
-      router.push(`/shop?category=${c._id}`)
+      router.push(categoryHref(c))
     }
   }
 

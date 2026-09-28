@@ -28,6 +28,7 @@ const toast = {
   error: (msg: string) => { import('sonner').then((m) => m.toast.error(msg)) },
 }
 import Cookies from 'js-cookie'
+import { productHref, categoryHref } from '@/lib/shopUrls'
 import {
   IcBuild, IcShoppingBag, IcTwoWheeler, IcLocalShipping, IcCheckCircle, IcVerifiedUser,
   IcHome, IcCreditCard, IcCalendarToday, IcMenuBook, IcGroups, IcStar, IcStars,
@@ -314,13 +315,14 @@ export default function HomePage() {
   const applyFilters = () => {
     setFilterOpen(false)
     const params = new URLSearchParams()
-    if (filterCategory !== 'all') params.set('category', filterCategory)
+    const cat = filterCategory !== 'all' ? categories.find((c: any) => (c._id || c.id) === filterCategory) : null
     if (filterPriceMin) params.set('minPrice', filterPriceMin)
     if (filterPriceMax) params.set('maxPrice', filterPriceMax)
     if (filterSelectedBrands.length) params.set('brands', filterSelectedBrands.join(','))
     if (filterRating) params.set('rating', String(filterRating))
     if (searchQuery.trim()) params.set('search', searchQuery.trim())
-    router.push(`/shop?${params.toString()}`)
+    const qs = params.toString()
+    router.push(`${cat ? categoryHref(cat) : '/shop'}${qs ? `?${qs}` : ''}`)
   }
 
   const toggleFilterBrand = (brand: string) => {
@@ -334,7 +336,7 @@ export default function HomePage() {
       /two.?wheel|bike|motor/i.test(c.name || '') || /two.?wheel|bike/i.test(c._id || c.id || '')
     )
     if (bike) {
-      router.push(`/shop?parentCategory=${bike._id || bike.id}`)
+      router.push(categoryHref(bike))
     } else {
       router.push('/shop')
     }
@@ -1117,7 +1119,7 @@ function CategoryTile({ cat }: { cat: any }) {
   const img = (cat.icon?.startsWith?.('http') || cat.icon?.startsWith?.('/')
     ? cat.icon
     : (cat.image?.url || (typeof cat.image === 'string' ? cat.image : null))) || categoryArt(cat.name)
-  const href = cat.static ? '/shop' : `/shop?category=${cat._id || cat.id}`
+  const href = cat.static ? '/shop' : categoryHref(cat)
   return (
     <Link href={href} className="rounded-xl border border-[#E6ECF3] bg-white px-2 py-3 text-center transition-colors hover:border-[#F4601F]">
       <div className="flex h-14 w-full items-center justify-center">
@@ -1139,7 +1141,7 @@ function ProductCard({ product, price, mrp, discount, image, rating, reviews, on
   const id = product._id || product.id
   return (
     <div className="relative flex shrink-0 basis-[max(158px,calc((100%_-_56px)/5))] snap-start flex-col rounded-2xl border border-[#E6ECF3] bg-white p-2.5 transition-[box-shadow,transform,border-color] duration-300 hover:-translate-y-[3px] hover:border-[#D6E2F0] hover:shadow-[0_14px_30px_rgba(12,42,77,0.10)]">
-      <Link href={`/shop/${id}`} className="relative flex aspect-[16/10] items-center justify-center overflow-hidden rounded-[10px] border border-[#F0F4F8] bg-white p-2">
+      <Link href={productHref(product)} className="relative flex aspect-[16/10] items-center justify-center overflow-hidden rounded-[10px] border border-[#F0F4F8] bg-white p-2">
         {image ? (
           <img loading="lazy" decoding="async" src={ikUrl(image, 360)} srcSet={`${ikUrl(image, 240)} 240w, ${ikUrl(image, 360)} 360w`} sizes="(max-width: 767px) 120px, 200px" alt={product.name} width={180} height={112} className="block h-full w-full object-contain" />
         ) : (
@@ -1160,7 +1162,7 @@ function ProductCard({ product, price, mrp, discount, image, rating, reviews, on
           </span>
         )}
       </div>
-      <Link href={`/shop/${id}`} className="mt-[3px] line-clamp-2 min-h-[2.7em] px-0.5 text-[12.5px] font-semibold leading-[1.35] hover:text-[#1A6FD4]">
+      <Link href={productHref(product)} className="mt-[3px] line-clamp-2 min-h-[2.7em] px-0.5 text-[12.5px] font-semibold leading-[1.35] hover:text-[#1A6FD4]">
         {product.name}
       </Link>
       <div className="mt-1.5 flex items-baseline gap-[7px] px-0.5">
