@@ -63,7 +63,7 @@ export function FranchiseLayout({ children }: { children: React.ReactNode }) {
             <span className="text-[11px] text-[#8fb3cf]">{me?.isOwner ? 'Owner' : 'Team member'}{me?.franchise?.city ? ` · ${me.franchise.city}` : ''}</span>
           </div>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 pb-5 pt-1">
+        <nav className="scrollbar-franchise flex-1 overflow-y-auto px-3 pb-5 pt-1">
           {NAV.map((g) => {
             const items = g.items.filter((i) => !i.ownerOnly || me?.isOwner)
             if (!items.length) return null
