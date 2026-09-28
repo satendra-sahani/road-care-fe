@@ -73,6 +73,47 @@ const critters = new Critters({
 
 const LINK_RE = /<link rel="stylesheet" href="(\/_next\/static\/[^"]+\.css)"([^>]*)\/?>/g;
 
+// Next puts every page bundle in <head> as <script defer>, so the browser starts
+// ~16 JS downloads at the same moment as the hero image and they all share a
+// slow mobile connection — the hero (the LCP element) then finishes late, and
+// PageSpeed's score swings run to run. Instead the same scripts are started, in
+// the same order (async=false keeps defer-like ordering), after the hero paints.
+// Total bytes are unchanged; the hero just gets the bandwidth first.
+const SCRIPT_RE = /<script src="(\/_next\/static\/[^"]+\.js)" defer(?:="")?><\/script>/g;
+function deferScriptsUntilHero(html) {
+  const head = html.slice(0, html.indexOf('</head>'));
+  const srcs = [...head.matchAll(SCRIPT_RE)].map((m) => m[1]);
+  if (!srcs.length) return html;
+  // Scripts start only after (1) the document is parsed — Next reads
+  // __NEXT_DATA__ from the end of <body>, exactly as with `defer` — and (2) the
+  // hero is on screen: whichever comes first of the browser's
+  // largest-contentful-paint entry for the fetchpriority=high image, or that
+  // image loaded + decoded + two frames (+300ms where the LCP API exists, so it
+  // stays a fallback). Pages without a hero image just wait
+  // for a frame. A 3s cap means a slow or broken image never holds the app back.
+  // No layout reads here (a visibility check would force a costly layout mid-parse).
+  const loader =
+    '<script>(function(){var s=' + JSON.stringify(srcs) + ',d=document,w=window,x=0,p=0,h=0;' +
+    'function start(){if(x||!p||!h)return;x=1;for(var i=0;i<s.length;i++){var e=d.createElement("script");e.src=s[i];e.async=false;d.head.appendChild(e)}}' +
+    'function ready(){if(h)return;h=1;setTimeout(start,0)}' +
+    'var L=0;function frames(){if(!w.requestAnimationFrame)return ready();requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(ready,L?300:0)})})}' +
+    'try{if(PerformanceObserver.supportedEntryTypes.indexOf("largest-contentful-paint")>-1){L=1;new PerformanceObserver(function(l){l.getEntries().forEach(function(e){var t=e.element;if(t&&t.tagName==="IMG"&&t.getAttribute("fetchpriority")==="high")ready()})}).observe({type:"largest-contentful-paint",buffered:true})}}catch(e){}' +
+    'function parsed(){p=1;var a=d.querySelectorAll("img[fetchpriority=high]"),n=a.length;' +
+    'function one(){if(--n<=0)frames()}function dec(g){g.decode?g.decode().then(one,one):one()}' +
+    'if(!n)frames();for(var i=0;i<a.length;i++)(function(g){if(g.complete)dec(g);else{g.addEventListener("load",function(){dec(g)});g.addEventListener("error",one)}})(a[i]);' +
+    'setTimeout(function(){h=1;start()},3000);start()}' +
+    'if(d.readyState!=="loading")parsed();else d.addEventListener("DOMContentLoaded",parsed)})()</script>';
+  let first = true;
+  const out = html.replace(SCRIPT_RE, (tag, src, offset) => {
+    if (offset > head.length || !srcs.includes(src)) return tag;
+    if (first) { first = false; return loader; }
+    return '';
+  });
+  // sanity: every bundle must still be referenced exactly once, via the loader
+  if (srcs.some((src) => out.split(src).length !== 2)) throw new Error('script rewrite mismatch');
+  return out;
+}
+
 let done = 0, skipped = 0, failed = 0;
 const t0 = Date.now();
 for (const abs of walk(PAGES)) {
@@ -93,6 +134,8 @@ for (const abs of walk(PAGES)) {
     if (!/media="print"/.test(out) || !/<noscript><link rel="stylesheet"/.test(out) || !/<style>[^<]{500,}/.test(out)) {
       throw new Error('unexpected critters output');
     }
+    // 3. let the hero image load before the JS bundles start downloading
+    if (process.env.NO_DEFER_JS !== '1') out = deferScriptsUntilHero(out);
     out = out.replace('<head>', '<head><!--critical-css-->');
     fs.writeFileSync(abs, out);
     done++;
