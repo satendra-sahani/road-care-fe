@@ -497,12 +497,3 @@
     }
   }
 }
-
-/* Off-screen-on-load blocks (homepage sections below the fold, site footer):
-   the browser skips their layout and paint until they approach the viewport,
-   so the first paint is cheaper on slow phones. Nothing changes visually;
-   `auto` remembers each block's real size once it has rendered. */
-.cv-auto {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 600px;
-}

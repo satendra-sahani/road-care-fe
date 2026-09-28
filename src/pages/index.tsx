@@ -527,7 +527,7 @@ export default function HomePage() {
         </div>
 
         {/* ═══ How can we help you today? ═══ */}
-        <Section aboveFold>
+        <Section>
           <SectionHead
             title="How can we help you today?"
             sub="Choose a service and we'll take care of the rest."
@@ -542,7 +542,7 @@ export default function HomePage() {
         </Section>
 
         {/* ═══ More from Bharat Mechanics (BM Care / Lens / Tracker) ═══ */}
-        <Section aboveFold>
+        <Section>
           <SectionHead title="More from Bharat Mechanics" sub="Smart solutions for every vehicle need" />
           <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURE_CARDS.map((c) => {
@@ -979,14 +979,10 @@ export default function HomePage() {
    Sub-components (design language)
    ═════════════════════════════════════════════════════════════════════ */
 
-// `aboveFold` sections render normally; every other section is off-screen on
-// load, so it gets .cv-auto (content-visibility) — the browser skips its layout
-// until it nears the viewport, which makes the first paint much cheaper on slow
-// phones. No visual change.
-function Section({ children, pad = 'md', bottom = false, aboveFold = false }: { children: React.ReactNode; pad?: 'md' | 'lg'; bottom?: boolean; aboveFold?: boolean }) {
+function Section({ children, pad = 'md', bottom = false }: { children: React.ReactNode; pad?: 'md' | 'lg'; bottom?: boolean }) {
   const top = pad === 'lg' ? 'pt-[clamp(28px,3.5vw,40px)]' : 'pt-[clamp(24px,3vw,34px)]'
   return (
-    <section className={`mx-auto max-w-[1180px] px-[clamp(14px,4vw,28px)] ${top} ${bottom ? 'pb-[clamp(28px,3.5vw,40px)]' : ''}${aboveFold ? '' : ' cv-auto'}`}>
+    <section className={`mx-auto max-w-[1180px] px-[clamp(14px,4vw,28px)] ${top} ${bottom ? 'pb-[clamp(28px,3.5vw,40px)]' : ''}`}>
       {children}
     </section>
   )

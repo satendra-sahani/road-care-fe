@@ -641,7 +641,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
       <main>{children}</main>
 
       {/* Footer — design: #0A2240, logo + blurb + socials, four link columns */}
-      <footer className="cv-auto bg-[#0A2240] text-white">
+      <footer className="bg-[#0A2240] text-white">
         <div className="mx-auto grid max-w-[1180px] grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-[clamp(18px,3vw,28px)] px-[clamp(14px,4vw,28px)] py-[clamp(26px,3.5vw,40px)]">
           <div className="min-w-0">
             <Image src="/design/footer-logo.png" alt="Bharat Mechanics" width={270} height={76} sizes="130px" className="h-9 w-auto object-contain" />
