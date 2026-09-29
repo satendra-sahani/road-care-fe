@@ -58,8 +58,8 @@ export default function ShareTrackPage() {
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Once viewing, ask the viewer's browser for their own location so we can draw
-  // the route to the vehicle and offer turn-by-turn navigation. Best-effort — if
+  // Once viewing, ask the viewer's browser for their own location so we can show
+  // it next to the vehicle and offer turn-by-turn navigation. Best-effort — if
   // they decline, we still show the vehicle location as before.
   useEffect(() => {
     if (phase !== 'view' || typeof navigator === 'undefined' || !navigator.geolocation) return
@@ -72,15 +72,16 @@ export default function ShareTrackPage() {
   }, [phase])
 
   // ── Interactive, zoomable map (Leaflet + OpenStreetMap) — stays inside the
-  // page, no Google redirect. Shows the vehicle AND the viewer, with a line
-  // between them; users can pinch/scroll/±-zoom freely.
+  // page, no Google redirect. Shows the vehicle AND the viewer; users can
+  // pinch/scroll/±-zoom freely. The map follows the vehicle when it nears the
+  // edge of the view, unless the viewer moved the map in the last 10 s.
   const mapDivRef = useRef<HTMLDivElement | null>(null)
   const LRef = useRef<any>(null)
   const mapRef = useRef<any>(null)
   const vehMarkerRef = useRef<any>(null)
   const meMarkerRef = useRef<any>(null)
-  const lineRef = useRef<any>(null)
   const fittedRef = useRef(false)
+  const userMovedAt = useRef(0)
 
   const loadLeaflet = () => new Promise<any>((resolve) => {
     const w = window as any
@@ -118,6 +119,9 @@ export default function ShareTrackPage() {
         const map = L.map(mapDivRef.current, { zoomControl: true, attributionControl: false }).setView([20.5937, 78.9629], 5)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }).addTo(map)
         mapRef.current = map
+        map.on('dragstart', () => { userMovedAt.current = Date.now() })
+        map.getContainer().addEventListener('wheel', () => { userMovedAt.current = Date.now() }, { passive: true })
+        map.getContainer().addEventListener('touchstart', (e: TouchEvent) => { if (e.touches.length > 1) userMovedAt.current = Date.now() }, { passive: true })
         setTimeout(() => { try { map.invalidateSize() } catch { /* noop */ } }, 60)
       }
       const map = mapRef.current
@@ -129,16 +133,15 @@ export default function ShareTrackPage() {
         const vp: [number, number] = [loc!.lat as number, loc!.lng as number]
         if (vehMarkerRef.current) vehMarkerRef.current.setLatLng(vp)
         else vehMarkerRef.current = L.marker(vp, { icon: vehIcon }).addTo(map)
+        // follow the vehicle once it nears the edge (the viewer's own zoom is kept)
+        if (fittedRef.current && Date.now() - userMovedAt.current > 10000 && !map.getBounds().pad(-0.2).contains(vp)) {
+          map.panTo(vp, { animate: true, duration: 0.8 })
+        }
       }
       if (me) {
         const mp: [number, number] = [me.lat, me.lng]
         if (meMarkerRef.current) meMarkerRef.current.setLatLng(mp)
         else meMarkerRef.current = L.marker(mp, { icon: meIcon }).addTo(map)
-      }
-      if (hasV && me) {
-        const pts: [number, number][] = [[me.lat, me.lng], [loc!.lat as number, loc!.lng as number]]
-        if (lineRef.current) lineRef.current.setLatLngs(pts)
-        else lineRef.current = L.polyline(pts, { color: '#1B3B6F', weight: 3, dashArray: '6 9', opacity: 0.7 }).addTo(map)
       }
       if (!fittedRef.current && (hasV || me)) { fitBoth(); fittedRef.current = true }
     })
