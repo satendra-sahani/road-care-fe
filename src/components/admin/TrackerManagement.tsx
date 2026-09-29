@@ -41,7 +41,7 @@ interface Device {
   user?: { fullName?: string; phone?: string }
   hardwareKey?: string
   sim?: { number?: string }
-  vehicle?: { name?: string; regNo?: string }
+  vehicle?: { name?: string; regNo?: string; type?: string; em?: string }
   status: string
   cycle?: string
   renewsAt?: string
@@ -64,6 +64,8 @@ const VEHICLE_TYPES: { value: string; label: string; em: string }[] = [
   { value: 'scooter', label: 'Scooter', em: '🛵' },
   { value: 'car',     label: 'Car',     em: '🚗' },
   { value: 'auto',    label: 'Auto',    em: '🛺' },
+  { value: 'truck',   label: 'Truck',   em: '🚚' },
+  { value: 'bus',     label: 'Bus',     em: '🚌' },
 ]
 
 // Open the print window SYNCHRONOUSLY on click (before any await) so pop-up
@@ -368,7 +370,7 @@ export function TrackerManagement() {
           <input value={assign.simNumber} onChange={(e) => setAssign(p => ({ ...p, simNumber: e.target.value }))} placeholder="SIM number" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
           <input value={assign.userPhone} onChange={(e) => setAssign(p => ({ ...p, userPhone: e.target.value }))} placeholder="App user phone *" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
           <input value={assign.vehicleName} onChange={(e) => setAssign(p => ({ ...p, vehicleName: e.target.value }))} placeholder="Vehicle name" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
-          <input value={assign.regNo} onChange={(e) => setAssign(p => ({ ...p, regNo: e.target.value }))} placeholder="Bike number" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
+          <input value={assign.regNo} onChange={(e) => setAssign(p => ({ ...p, regNo: e.target.value }))} placeholder="Vehicle number" className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1B3B6F]/50" />
           <select value={assign.vehicleType} onChange={(e) => setAssign(p => ({ ...p, vehicleType: e.target.value }))} className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-[#1B3B6F]/50">
             <option value="">Vehicle type…</option>
             {VEHICLE_TYPES.map((v) => <option key={v.value} value={v.value}>{v.em} {v.label}</option>)}
@@ -454,7 +456,17 @@ export function TrackerManagement() {
                     <div className="font-semibold text-slate-700">{d.user?.fullName || '—'}</div>
                     <div className="text-[11px] text-slate-400">{d.user?.phone || ''}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{d.vehicle?.name || '—'}{d.vehicle?.regNo ? <span className="text-[11px] text-slate-400"> · {d.vehicle.regNo}</span> : null}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {(() => {
+                      const vt = VEHICLE_TYPES.find((x) => x.value === String(d.vehicle?.type || '').toLowerCase())
+                      return (
+                        <>
+                          <div>{vt ? `${vt.em} ` : ''}{d.vehicle?.name || '—'}{d.vehicle?.regNo ? <span className="text-[11px] text-slate-400"> · {d.vehicle.regNo}</span> : null}</div>
+                          {vt ? <div className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400">{vt.label}</div> : <div className="text-[10.5px] italic text-amber-500">type not set</div>}
+                        </>
+                      )
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-[12.5px]">
                     {d.telemetry?.updatedAt ? (
                       <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
@@ -679,7 +691,7 @@ export function TrackerManagement() {
                   <option value="">— select —</option>
                   {VEHICLE_TYPES.map((v) => <option key={v.value} value={v.value}>{v.em} {v.label}</option>)}
                 </select>
-                <p className="mt-1 text-[10.5px] text-slate-400">Sets the map-marker icon shown in the mobile app (bike / scooter / car / auto).</p>
+                <p className="mt-1 text-[10.5px] text-slate-400">Sets the vehicle icon on the customer's GPS live map (bike / scooter / car / auto / truck / bus). Customers can't change it in the app.</p>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
