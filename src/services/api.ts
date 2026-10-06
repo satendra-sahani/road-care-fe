@@ -932,6 +932,29 @@ export const adminFranchiseAPI = {
   update: (id: string, data: any) => api.put(`/admin/franchises/${id}`, data),
 };
 
+// Garages registered by field executives (/manager/garage) — admin map / list / verify.
+export const adminGarageAPI = {
+  getAll: (params?: Record<string, any>) => api.get('/admin/garages', { params }),
+  getStats: () => api.get('/admin/garages/stats'),
+  get: (id: string) => api.get(`/admin/garages/${id}`),
+  setStatus: (id: string, status: 'pending' | 'active' | 'inactive', adminNote?: string) => api.put(`/admin/garages/${id}/status`, { status, adminNote }),
+  update: (id: string, data: any) => api.put(`/admin/garages/${id}`, data),
+  remove: (id: string) => api.delete(`/admin/garages/${id}`),
+};
+
+// Field executive web app (/manager/garage). No login: `staffKey` is a random id
+// kept on the executive's phone that scopes "my garages" to that phone.
+export const garageFieldAPI = {
+  mine: (staffKey: string) => api.get('/common/garage-field/mine', { headers: { 'X-Staff-Key': staffKey } }),
+  submit: (staffKey: string, data: any) => api.post('/common/garage-field', data, { headers: { 'X-Staff-Key': staffKey } }),
+  upload: (staffKey: string, file: Blob, folder: 'garage-photos' | 'garage-mechanics' | 'garage-owner-ids', name = 'photo.jpg') => {
+    const fd = new FormData();
+    fd.append('folder', folder);
+    fd.append('image', file, name);
+    return api.post('/common/garage-field/upload', fd, { headers: { 'Content-Type': 'multipart/form-data', 'X-Staff-Key': staffKey }, timeout: 90000 });
+  },
+};
+
 export const adminShopAPI = {
   getAll: (params?: Record<string, any>) => api.get('/admin/shops', { params }),
   getStats: () => api.get('/admin/shops/stats'),

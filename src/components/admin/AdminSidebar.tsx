@@ -37,6 +37,7 @@ import {
   ChevronDown,
   KeyRound,
   Network,
+  Warehouse,
 } from 'lucide-react'
 import NextImage from 'next/image'
 import { cn } from '@/lib/utils'
@@ -80,6 +81,7 @@ const NAV_GROUPS: SidebarGroup[] = [
       { id: 'customers', title: 'Users', icon: UserCheck, href: '/admin/users/customers' },
       { id: 'shop-partners', title: 'Shop Partners', icon: Store, href: '/admin/shops' },
       { id: 'franchises', title: 'Franchises', icon: Network, href: '/admin/franchises' },
+      { id: 'garages', title: 'Garages / Partners', icon: Warehouse, href: '/admin/garages' },
     ],
   },
   {

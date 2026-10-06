@@ -131,7 +131,8 @@ export default function App({ Component, pageProps }: AppProps) {
         ) : (
           <Component {...pageProps} />
         )}
-        <CookieConsent />
+        {/* the field executive app is a full-screen tool — no storefront cookie bar over its buttons */}
+        {!router.pathname.startsWith('/manager') && <CookieConsent />}
       </div>
       </IncomingCallProvider>
       </AdminCallProvider>

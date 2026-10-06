@@ -1,0 +1,3 @@
+import { mk } from "./mk"
+
+export const IcFileUpload = /*#__PURE__*/ mk(["M9 16H15V10H19L12 3L5 10H9V16ZM5 18H19V20H5V18Z"], "IcFileUpload")

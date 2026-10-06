@@ -3,6 +3,7 @@ Allow: /
 
 # Private / authenticated areas — keep out of the index
 Disallow: /admin
+Disallow: /manager
 Disallow: /cart
 Disallow: /checkout
 Disallow: /profile
