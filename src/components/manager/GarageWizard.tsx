@@ -10,8 +10,9 @@ import {
 import { garageFieldAPI } from '@/services/api'
 import { GarageMap, LatLng } from './GarageMap'
 import { DAYS, DISTANCES, MECH_VEHICLES, SERVICES, SIZES, VEHICLES, time12 } from './garageOptions'
-import { clearDraft, compressImage, getStaffKey, loadDraft, saveDraft } from './staff'
-import { MyGarage, NAVY, ORANGE, StaffIntro, StaffShell, useStaff } from './StaffShell'
+import { clearDraft, compressImage, loadDraft, saveDraft } from './staff'
+import { MyGarage, NAVY, ORANGE, StaffShell } from './StaffShell'
+import { useStaff } from './StaffAuth'
 import { StatusPill } from './StaffScreens'
 
 type Mech = { name: string; phone: string; vehicle: string; skills: string; photo: string }
@@ -90,7 +91,7 @@ function usePhotoUpload(folder: 'garage-photos' | 'garage-mechanics' | 'garage-o
     setBusy(true); setErr('')
     try {
       const blob = await compressImage(file)
-      const r = await garageFieldAPI.upload(getStaffKey(), blob, folder, (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg')
+      const r = await garageFieldAPI.upload(blob, folder, (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg')
       if (!r.data?.data?.url) throw new Error('no url')
       onDone(r.data.data.url)
     } catch (e: any) {
@@ -240,7 +241,7 @@ function MechanicCard({ i, m, onChange, onRemove, errs }: { i: number; m: Mech; 
 // ═════════════════════════════ the wizard ═════════════════════════════
 export function GarageWizard() {
   const router = useRouter()
-  const { me, ready, save } = useStaff()
+  const { me } = useStaff()
   const [f, setF] = useState<Form>(blank)
   const [step, setStep] = useState(1)
   const [errs, setErrs] = useState<Record<string, boolean>>({})
@@ -307,7 +308,6 @@ export function GarageWizard() {
     if (s === 4) {
       if (f.upi.trim().length < 5) bad('upi', 'UPI ID ya UPI number daalein')
       if (!f.visit.date) bad('visit.date', 'Visit ki date chunein')
-      if (!f.visit.by.trim() && !me?.name) bad('visit.by', 'Kisne visit kiya — naam likhein')
       if (!f.visit.garageSize) bad('visit.garageSize', 'Garage kitna bada hai — chunein')
       if (f.visit.mechanicCount === '') bad('visit.mechanicCount', 'Garage mein kitne mechanic dikhe — likhein')
       if (!f.visit.rating) bad('visit.rating', 'Aapki rai — star rating dein')
@@ -328,14 +328,12 @@ export function GarageWizard() {
       const { e, m } = check(s)
       if (m) { setStep(s); setErrs(e); setMsg(m); top(); return }
     }
-    if (!me) return
     setSaving(true); setMsg('')
     try {
       const mechanics = f.mechanics.filter((x) => x.name || x.phone)
-      const r = await garageFieldAPI.submit(getStaffKey(), {
+      const r = await garageFieldAPI.submit({
         ...f, mechanics,
         visit: { ...f.visit, by: f.visit.by.trim() || me.name, date: new Date(`${f.visit.date}T${new Date().toTimeString().slice(0, 8)}`).toISOString() },
-        staff: { name: me.name, phone: me.phone },
       })
       clearDraft()
       setDone(r.data?.data)
@@ -345,19 +343,6 @@ export function GarageWizard() {
     } finally { setSaving(false) }
   }
   const startNew = () => { clearDraft(); setF(blank()); setStep(1); setErrs({}); setMsg(''); setDone(null); setRestored(false); top() }
-
-  // ── who is filling this (asked once) ──
-  if (!ready) return <StaffShell title="Add New Garage" nav={false}><div /></StaffShell>
-  if (!me) {
-    return (
-      <StaffShell title="Add New Garage" back="/manager/garage" nav={false}>
-        <div className="p-5">
-          <p className="mb-5 text-[14px] text-[#64748B]">Garage register karne se pehle bas ek baar apna naam aur number bata dein. Yeh isi phone mein save rahega.</p>
-          <StaffIntro onSave={save} />
-        </div>
-      </StaffShell>
-    )
-  }
 
   // ── success ──
   if (done) {

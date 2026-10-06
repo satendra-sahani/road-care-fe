@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Plus, Download, Search, MapPin, List, Phone, MessageCircle, Star, User, X, Loader2, Warehouse, CheckCircle2, Clock, XCircle, Users,
-  Navigation, Trash2, ShieldCheck, Maximize2, Minimize2, Eye,
+  Download, Search, MapPin, List, Phone, MessageCircle, Star, User, X, Loader2, Warehouse, CheckCircle2, Clock, XCircle, Users,
+  Navigation, Trash2, ShieldCheck, Maximize2, Minimize2, Eye, UserPlus, Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { adminGarageAPI } from '@/services/api'
+import { adminGarageAPI, adminGarageStaffAPI } from '@/services/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { GarageMap } from '@/components/manager/GarageMap'
 import { DAYS, SERVICES, SIZES, STATUS, VEHICLES, GarageStatus, mapsLink, serviceLabel, time12, vehicleLabel, waLink } from '@/components/manager/garageOptions'
@@ -63,6 +63,7 @@ export function GarageManagement() {
   const [full, setFull] = useState(false)
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
+  const [staffOpen, setStaffOpen] = useState(false)
 
   const loadStats = useCallback(() => adminGarageAPI.getStats().then((r) => setStats(r.data?.data)).catch(() => undefined), [])
   const load = useCallback(async () => {
@@ -152,7 +153,7 @@ export function GarageManagement() {
           <p className="text-[13.5px] text-[#64748B]">View all registered garages on map or list, manage details, verify, and track performance.</p>
         </div>
         <div className="flex gap-2">
-          <a href="/manager/garage/new" target="_blank" rel="noopener noreferrer" className="flex h-10 items-center gap-1.5 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: ORANGE }}><Plus className="h-4 w-4" /> Add Garage</a>
+          <button type="button" onClick={() => setStaffOpen(true)} className="flex h-10 items-center gap-1.5 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: ORANGE }}><Users className="h-4 w-4" /> Field Staff</button>
           <button type="button" onClick={() => csv(sorted)} disabled={!rows.length} className="flex h-10 items-center gap-1.5 rounded-lg border border-[#DDE4EC] bg-white px-4 text-[13.5px] font-bold text-[#13203A] disabled:opacity-50"><Download className="h-4 w-4" /> Export</button>
         </div>
       </div>
@@ -268,6 +269,8 @@ export function GarageManagement() {
         </div>
       )}
 
+      <FieldStaffDialog open={staffOpen} onClose={() => setStaffOpen(false)} />
+
       {/* details */}
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-h-[92vh] max-w-[760px] overflow-y-auto">
@@ -360,7 +363,7 @@ const Empty = () => (
   <div className="px-4 py-14 text-center">
     <Warehouse className="mx-auto mb-2 h-9 w-9 text-[#CBD5E1]" />
     <b className="block text-[14.5px] text-[#334155]">No garages found</b>
-    <p className="text-[13px] text-[#8A97AB]">Garages registered by field executives at /manager/garage appear here.</p>
+    <p className="text-[13px] text-[#8A97AB]">Garages registered by your field staff at /manager/garage appear here. Add staff with the Field Staff button.</p>
   </div>
 )
 
@@ -370,5 +373,88 @@ function Info({ l, v, wide }: { l: string; v: React.ReactNode; wide?: boolean })
       <span className="block text-[11.5px] font-semibold uppercase tracking-wide text-[#8A97AB]">{l}</span>
       <div className="text-[13.5px] text-[#13203A]">{v === '' || v == null ? '—' : v}</div>
     </div>
+  )
+}
+
+// Field staff = the people who register garages at /manager/garage. Only an admin
+// can create them (here); each logs in at /manager/login with an OTP on this number.
+function FieldStaffDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [rows, setRows] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [busyId, setBusyId] = useState('')
+  const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/manager/login` : '/manager/login'
+
+  useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    adminGarageStaffAPI.getAll().then((r) => setRows(r.data?.data || [])).catch((e: any) => toast.error(e?.response?.data?.message || 'Could not load staff')).finally(() => setLoading(false))
+  }, [open])
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (name.trim().length < 2) return toast.error('Enter the staff member\'s name')
+    if (!/^[6-9]\d{9}$/.test(phone)) return toast.error('Enter a valid 10-digit mobile number')
+    setSaving(true)
+    try {
+      const r = await adminGarageStaffAPI.create({ name: name.trim(), phone })
+      setRows((x) => [r.data.data, ...x]); setName(''); setPhone('')
+      toast.success(r.data?.message || 'Staff added')
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Could not add staff') } finally { setSaving(false) }
+  }
+  const toggle = async (u: any) => {
+    setBusyId(u.id)
+    try {
+      const r = await adminGarageStaffAPI.update(u.id, { isActive: !u.isActive })
+      setRows((x) => x.map((y) => (y.id === u.id ? r.data.data : y)))
+      toast.success(r.data?.data?.isActive ? `${u.name} can log in again` : `${u.name}'s login is switched off`)
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Could not update staff') } finally { setBusyId('') }
+  }
+  const copy = () => navigator.clipboard?.writeText(loginUrl).then(() => toast.success('Login link copied')).catch(() => undefined)
+  const inputCls = 'h-10 w-full rounded-lg border border-[#DDE4EC] bg-white px-3 text-[13.5px] outline-none focus:border-[#1B3B6F]'
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-[680px] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-[19px]">Field Staff</DialogTitle>
+          <DialogDescription>Staff register garages from their phone. Only you can add them — they cannot sign up themselves. Each logs in with an OTP on the number you enter here.</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[#F6F8FB] px-3 py-2.5 text-[13px] text-[#475569]">
+          Staff login link: <b className="break-all text-[#13203A]">{loginUrl}</b>
+          <button type="button" onClick={copy} className="ml-auto flex items-center gap-1 rounded-md border border-[#DDE4EC] bg-white px-2.5 py-1 text-[12.5px] font-bold text-[#1B3B6F]"><Copy className="h-3.5 w-3.5" /> Copy</button>
+        </div>
+
+        <form onSubmit={add} className="grid gap-2.5 rounded-lg border border-[#E7ECF3] p-3 sm:grid-cols-[1fr_190px_auto] sm:items-end">
+          <label className="block"><span className="mb-1 block text-[12.5px] font-semibold text-[#475569]">Staff name</span><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} maxLength={50} placeholder="e.g. Rakesh Yadav" /></label>
+          <label className="block"><span className="mb-1 block text-[12.5px] font-semibold text-[#475569]">Mobile number (for OTP)</span><input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" placeholder="10-digit number" /></label>
+          <button type="submit" disabled={saving} className="flex h-10 items-center justify-center gap-1.5 rounded-lg px-4 text-[13.5px] font-bold text-white disabled:opacity-60" style={{ background: ORANGE }}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} Add Staff</button>
+        </form>
+
+        <div className="overflow-x-auto rounded-lg border border-[#E7ECF3]">
+          <table className="w-full min-w-[560px] text-left text-[13px]">
+            <thead className="bg-[#F6F8FB] text-[11.5px] uppercase tracking-wide text-[#64748B]">
+              <tr>{['Staff', 'Garages', 'Last login', 'Login', ''].map((h) => <th key={h} className="px-3 py-2.5 font-bold">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {loading ? <tr><td colSpan={5} className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-[#64748B]" /></td></tr>
+                : !rows.length ? <tr><td colSpan={5} className="px-3 py-10 text-center text-[#8A97AB]">No field staff yet. Add the first one above.</td></tr>
+                  : rows.map((u) => (
+                    <tr key={u.id} className="border-t border-[#EEF2F7]">
+                      <td className="px-3 py-2.5"><b className="block text-[#13203A]">{u.name}</b><span className="text-[12px] text-[#64748B]">+91 {u.phone}</span></td>
+                      <td className="px-3 py-2.5 text-[#475569]"><b className="text-[#13203A]">{u.garages?.total || 0}</b> total<span className="block text-[12px]">{u.garages?.active || 0} active · {u.garages?.pending || 0} pending</span></td>
+                      <td className="px-3 py-2.5 text-[#475569]">{u.lastLogin ? fmtDate(u.lastLogin) : 'Never'}</td>
+                      <td className="px-3 py-2.5"><span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={u.isActive ? { color: '#15803D', background: '#DCFCE7' } : { color: '#B91C1C', background: '#FEE2E2' }}>{u.isActive ? 'Allowed' : 'Switched off'}</span></td>
+                      <td className="px-3 py-2.5 text-right"><button type="button" disabled={busyId === u.id} onClick={() => toggle(u)} className="rounded-lg border border-[#DDE4EC] px-3 py-1.5 text-[12.5px] font-bold text-[#334155] hover:bg-[#F6F8FB] disabled:opacity-60">{busyId === u.id ? '…' : u.isActive ? 'Switch off' : 'Allow login'}</button></td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

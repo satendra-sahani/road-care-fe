@@ -22,6 +22,7 @@ const CustomerAuthGuard = dynamic(() => import("@/components/auth/CustomerAuthGu
 const ShopLayout = dynamic(() => import("@/components/shop-partner/ShopLayout").then((m) => m.ShopLayout));
 // Franchise dashboard (/franchise/*): its own guard + sidebar layout
 const FranchiseAuthGuard = dynamic(() => import("@/components/franchise/FranchiseAuthGuard").then((m) => m.FranchiseAuthGuard), { ssr: false });
+const StaffAuthGuard = dynamic(() => import("@/components/manager/StaffAuth").then((m) => m.StaffAuthGuard), { ssr: false });
 const FranchiseLayout = dynamic(() => import("@/components/franchise/FranchiseLayout").then((m) => m.FranchiseLayout), { ssr: false });
 
 // Toast host is client-only and not needed for first paint.
@@ -71,6 +72,11 @@ function needsShopAuth(pathname: string) {
 
 function needsFranchiseAuth(pathname: string) {
   return (pathname === '/franchise' || pathname.startsWith('/franchise/')) && !franchisePublicPaths.includes(pathname);
+}
+
+// Field-staff app (/manager/*): everything except its login needs a staff login
+function needsStaffAuth(pathname: string) {
+  return (pathname === '/manager' || pathname.startsWith('/manager/')) && pathname !== '/manager/login';
 }
 
 function needsCustomerAuth(pathname: string) {
@@ -124,6 +130,10 @@ export default function App({ Component, pageProps }: AppProps) {
               <Component {...pageProps} />
             </FranchiseLayout>
           </FranchiseAuthGuard>
+        ) : needsStaffAuth(router.pathname) ? (
+          <StaffAuthGuard>
+            <Component {...pageProps} />
+          </StaffAuthGuard>
         ) : needsCustomerAuth(router.pathname) ? (
           <CustomerAuthGuard>
             <Component {...pageProps} />

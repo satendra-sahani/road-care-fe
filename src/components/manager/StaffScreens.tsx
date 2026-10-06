@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  IcAdd, IcCall, IcChat, IcNavigation, IcLocationOn, IcSchedule, IcStorefront, IcViewList, IcMap, IcCheckCircle, IcMyLocation, IcClose,
+  IcAdd, IcCall, IcChat, IcNavigation, IcLocationOn, IcSchedule, IcStorefront, IcViewList, IcMap, IcCheckCircle, IcMyLocation, IcClose, IcLogout,
 } from '@/components/icons/BmIcons'
 import { GarageMap, LatLng } from './GarageMap'
 import { STATUS, mapsLink, waLink, vehicleLabel } from './garageOptions'
-import { MyGarage, NAVY, ORANGE, StaffIntro, StaffShell, useMyGarages, useStaff } from './StaffShell'
+import { MyGarage, NAVY, ORANGE, StaffShell, useMyGarages } from './StaffShell'
+import { useStaff } from './StaffAuth'
 
 const fmtDay = (d: Date) => d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 const fmtWhen = (iso: string) => {
@@ -69,23 +70,10 @@ const Empty = ({ text }: { text: string }) => (
 
 // ════════════════════════════ Home ════════════════════════════
 export function StaffHome() {
-  const { me, ready, save } = useStaff()
+  const { me, target } = useStaff()
   const { garages, stats, loading, error, reload } = useMyGarages()
 
-  if (!ready) return <StaffShell><div /></StaffShell>
-  if (!me) {
-    return (
-      <StaffShell nav={false}>
-        <div className="p-5">
-          <h2 className="text-[22px] font-extrabold leading-tight text-[#13203A]">Namaste 👋</h2>
-          <p className="mb-5 mt-1 text-[14px] text-[#64748B]">Garage register karne se pehle bas ek baar apna naam aur number bata dein. Yeh isi phone mein save rahega.</p>
-          <StaffIntro onSave={save} />
-        </div>
-      </StaffShell>
-    )
-  }
-
-  const pct = Math.min(1, stats.today / me.target)
+  const pct = Math.min(1, stats.today / target)
   const R = 26, C = 2 * Math.PI * R
   const tiles = [
     { n: stats.total, l: 'Total', fg: '#1D4ED8', bg: '#EFF4FF' },
@@ -116,7 +104,7 @@ export function StaffHome() {
               <circle cx="34" cy="34" r={R} fill="none" stroke="#16A34A" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${C * pct} ${C}`} />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-              <b className="text-[15px] text-[#13203A]">{stats.today}/{me.target}</b>
+              <b className="text-[15px] text-[#13203A]">{stats.today}/{target}</b>
               <span className="mt-0.5 text-[9.5px] font-semibold text-[#8A97AB]">Garage</span>
             </div>
           </div>
@@ -235,29 +223,41 @@ export function StaffVisits() {
 
 // ════════════════════════════ Profile ════════════════════════════
 export function StaffProfile() {
-  const { me, ready, save } = useStaff()
+  const { me, target, setTarget, logout } = useStaff()
   const { stats } = useMyGarages()
+  const [val, setVal] = useState(String(target))
   const [saved, setSaved] = useState(false)
-  if (!ready) return <StaffShell title="Profile"><div /></StaffShell>
+  const saveTarget = (e: React.FormEvent) => {
+    e.preventDefault()
+    setTarget(Number(val) || 5)
+    setSaved(true); setTimeout(() => setSaved(false), 2500)
+  }
   return (
     <StaffShell title="Profile" back="/manager/garage">
       <div className="space-y-4 p-4">
-        {me && (
-          <div className="flex items-center gap-3 rounded-2xl border border-[#E6EBF2] bg-white p-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full text-[18px] font-extrabold text-white" style={{ background: NAVY }}>{initials(me.name)}</div>
-            <div className="min-w-0">
-              <b className="block truncate text-[16px] text-[#13203A]">{me.name}</b>
-              <span className="text-[13px] text-[#64748B]">+91 {me.phone} · Field Executive</span>
-              <p className="mt-0.5 text-[12.5px] font-semibold text-[#8A97AB]">{stats.total} garage register kiye · {stats.active} verified</p>
-            </div>
+        <div className="flex items-center gap-3 rounded-2xl border border-[#E6EBF2] bg-white p-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-[18px] font-extrabold text-white" style={{ background: NAVY }}>{initials(me.name)}</div>
+          <div className="min-w-0">
+            <b className="block truncate text-[16px] text-[#13203A]">{me.name}</b>
+            <span className="text-[13px] text-[#64748B]">+91 {me.phone} · Field Executive</span>
+            <p className="mt-0.5 text-[12.5px] font-semibold text-[#8A97AB]">{stats.total} garage register kiye · {stats.active} verified</p>
           </div>
-        )}
-        <div className="rounded-2xl border border-[#E6EBF2] bg-white p-4">
-          <b className="mb-3 block text-[15px] text-[#13203A]">Aapki details</b>
-          <StaffIntro key={me?.phone || 'new'} initial={me} cta="Save karein" onSave={(m) => { save(m); setSaved(true); setTimeout(() => setSaved(false), 2500) }} />
-          {saved && <p className="mt-3 flex items-center justify-center gap-1.5 text-[13.5px] font-bold text-[#15803D]"><IcCheckCircle size={18} /> Save ho gaya</p>}
         </div>
-        <p className="px-2 text-center text-[12px] leading-relaxed text-[#8A97AB]">Aapke register kiye garage isi phone se jude hain. Browser ka data clear karne ya phone badalne par purani list yahan nahi dikhegi (admin ke paas sab safe rehta hai).</p>
+
+        <form onSubmit={saveTarget} className="rounded-2xl border border-[#E6EBF2] bg-white p-4">
+          <label className="block">
+            <span className="mb-1.5 block text-[13.5px] font-semibold text-[#13203A]">Roz ka target (kitne garage)</span>
+            <div className="flex gap-2.5">
+              <input className="h-12 min-w-0 flex-1 rounded-xl border border-[#D9E1EC] bg-white px-3.5 text-[15px] text-[#13203A] outline-none focus:border-[#1B3B6F]" value={val} onChange={(e) => setVal(e.target.value.replace(/\D/g, '').slice(0, 2))} inputMode="numeric" placeholder="5" />
+              <button type="submit" className="h-12 shrink-0 rounded-xl px-5 text-[14.5px] font-bold text-white" style={{ background: ORANGE }}>Save</button>
+            </div>
+          </label>
+          {saved && <p className="mt-2.5 flex items-center gap-1.5 text-[13px] font-bold text-[#15803D]"><IcCheckCircle size={17} /> Save ho gaya</p>}
+        </form>
+
+        <p className="px-2 text-center text-[12px] leading-relaxed text-[#8A97AB]">Naam ya number badalna ho to admin se sampark karein — staff account sirf admin banata aur badalta hai.</p>
+
+        <button type="button" onClick={logout} className="flex h-[50px] w-full items-center justify-center gap-2 rounded-2xl border border-[#FECACA] bg-white text-[15px] font-bold text-[#B91C1C] active:bg-[#FEF2F2]"><IcLogout size={20} /> Logout</button>
       </div>
     </StaffShell>
   )

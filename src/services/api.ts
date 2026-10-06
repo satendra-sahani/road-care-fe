@@ -43,8 +43,11 @@ api.interceptors.request.use(
       const path = window.location.pathname;
       const isAdminArea = path.startsWith('/admin') || path.startsWith('/shop-partner')
         || path.startsWith('/shop-dashboard');
-      // Franchise dashboard has its own cookie, so it never collides with an admin login
-      token = path.startsWith('/franchise') ? Cookies.get('franchise_token') : isAdminArea ? adminToken : customerToken;
+      // Franchise dashboard and the field-staff app (/manager) each have their own
+      // cookie, so they never collide with an admin or customer login
+      token = path.startsWith('/franchise') ? Cookies.get('franchise_token')
+        : path.startsWith('/manager') ? Cookies.get('staff_token')
+          : isAdminArea ? adminToken : customerToken;
     } else {
       // SSR / non-browser: prefer customer token (storefront is the default surface)
       token = customerToken || adminToken;
@@ -72,6 +75,9 @@ api.interceptors.response.use(
         } else if (window.location.pathname.startsWith('/franchise')) {
           Cookies.remove('franchise_token');
           window.location.href = '/franchise/login';
+        } else if (window.location.pathname.startsWith('/manager')) {
+          Cookies.remove('staff_token');
+          window.location.href = '/manager/login';
         } else {
           Cookies.remove('customer_token');
           window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
@@ -942,16 +948,26 @@ export const adminGarageAPI = {
   remove: (id: string) => api.delete(`/admin/garages/${id}`),
 };
 
-// Field executive web app (/manager/garage). No login: `staffKey` is a random id
-// kept on the executive's phone that scopes "my garages" to that phone.
+// Field staff (created by admin only) who register garages at /manager/garage.
+export const adminGarageStaffAPI = {
+  getAll: () => api.get('/admin/garage-staff'),
+  create: (data: { name: string; phone: string }) => api.post('/admin/garage-staff', data),
+  update: (id: string, data: { name?: string; isActive?: boolean }) => api.put(`/admin/garage-staff/${id}`, data),
+};
+
+// Field executive web app (/manager/garage). Staff log in at /manager/login with
+// a phone OTP (cookie `staff_token`); accounts are created by the admin.
 export const garageFieldAPI = {
-  mine: (staffKey: string) => api.get('/common/garage-field/mine', { headers: { 'X-Staff-Key': staffKey } }),
-  submit: (staffKey: string, data: any) => api.post('/common/garage-field', data, { headers: { 'X-Staff-Key': staffKey } }),
-  upload: (staffKey: string, file: Blob, folder: 'garage-photos' | 'garage-mechanics' | 'garage-owner-ids', name = 'photo.jpg') => {
+  sendOtp: (phone: string) => api.post('/common/garage-field/login/send-otp', { phone }),
+  verifyOtp: (phone: string, otp: string) => api.post('/common/garage-field/login/verify', { phone, otp }),
+  me: () => api.get('/common/garage-field/me'),
+  mine: () => api.get('/common/garage-field/mine'),
+  submit: (data: any) => api.post('/common/garage-field', data),
+  upload: (file: Blob, folder: 'garage-photos' | 'garage-mechanics' | 'garage-owner-ids', name = 'photo.jpg') => {
     const fd = new FormData();
     fd.append('folder', folder);
     fd.append('image', file, name);
-    return api.post('/common/garage-field/upload', fd, { headers: { 'Content-Type': 'multipart/form-data', 'X-Staff-Key': staffKey }, timeout: 90000 });
+    return api.post('/common/garage-field/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000 });
   },
 };
 

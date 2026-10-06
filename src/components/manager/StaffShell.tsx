@@ -7,7 +7,6 @@ import { useRouter } from 'next/router'
 import { useCallback, useEffect, useState } from 'react'
 import { IcHome, IcViewList, IcAdd, IcPerson, IcArrowBack, IcHeadsetMic } from '@/components/icons/BmIcons'
 import { garageFieldAPI } from '@/services/api'
-import { getStaff, getStaffKey, saveStaff, StaffMe } from './staff'
 
 export const NAVY = '#1B3B6F'
 export const ORANGE = '#FF5A1F'
@@ -21,7 +20,7 @@ export type MyGarage = {
 }
 export type MyStats = { total: number; today: number; pending: number; active: number; inactive: number }
 
-/** This phone's garages + numbers. */
+/** The logged-in executive's garages + numbers. */
 export function useMyGarages() {
   const [garages, setGarages] = useState<MyGarage[]>([])
   const [stats, setStats] = useState<MyStats>({ total: 0, today: 0, pending: 0, active: 0, inactive: 0 })
@@ -30,22 +29,13 @@ export function useMyGarages() {
   const load = useCallback(async () => {
     setLoading(true); setError('')
     try {
-      const r = await garageFieldAPI.mine(getStaffKey())
+      const r = await garageFieldAPI.mine()
       setGarages(r.data?.data?.garages || [])
       setStats(r.data?.data?.stats || { total: 0, today: 0, pending: 0, active: 0, inactive: 0 })
     } catch { setError('List load nahi hui. Internet check karke dobara try karein.') } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
   return { garages, stats, loading, error, reload: load }
-}
-
-/** The executive's name + mobile (asked once, kept on the phone — not a login). */
-export function useStaff() {
-  const [me, setMe] = useState<StaffMe | null>(null)
-  const [ready, setReady] = useState(false)
-  useEffect(() => { setMe(getStaff()); setReady(true) }, [])
-  const save = (m: StaffMe) => { saveStaff(m); setMe(m) }
-  return { me, ready, save }
 }
 
 const TABS = [
@@ -109,42 +99,5 @@ export function StaffShell({ title, back, right, nav = true, children }: {
         )}
       </div>
     </div>
-  )
-}
-
-/** First run: who is using this phone. Stored locally and sent with each garage. */
-export function StaffIntro({ initial, onSave, cta = 'Shuru karein' }: { initial?: StaffMe | null; onSave: (m: StaffMe) => void; cta?: string }) {
-  const [name, setName] = useState(initial?.name || '')
-  const [phone, setPhone] = useState(initial?.phone || '')
-  const [target, setTarget] = useState(String(initial?.target || 5))
-  const [err, setErr] = useState('')
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (name.trim().length < 2) return setErr('Apna poora naam likhein')
-    if (!/^[6-9]\d{9}$/.test(phone)) return setErr('Sahi 10-digit mobile number daalein')
-    setErr('')
-    onSave({ name: name.trim(), phone, target: Math.min(50, Math.max(1, Number(target) || 5)) })
-  }
-  const inp = 'h-12 w-full rounded-xl border border-[#D9E1EC] bg-white px-3.5 text-[15px] text-[#13203A] outline-none focus:border-[#1B3B6F]'
-  return (
-    <form onSubmit={submit} className="space-y-3.5">
-      <label className="block">
-        <span className="mb-1.5 block text-[13px] font-semibold text-[#13203A]">Aapka naam <b className="text-[#E11D48]">*</b></span>
-        <input className={inp} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rakesh Yadav" autoComplete="name" maxLength={80} />
-      </label>
-      <label className="block">
-        <span className="mb-1.5 block text-[13px] font-semibold text-[#13203A]">Aapka mobile number <b className="text-[#E11D48]">*</b></span>
-        <div className="flex h-12 overflow-hidden rounded-xl border border-[#D9E1EC] bg-white focus-within:border-[#1B3B6F]">
-          <span className="flex items-center border-r border-[#E6EBF2] px-3 text-[15px] font-semibold text-[#13203A]">+91</span>
-          <input className="min-w-0 flex-1 px-3 text-[15px] text-[#13203A] outline-none" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" autoComplete="tel-national" placeholder="10-digit number" />
-        </div>
-      </label>
-      <label className="block">
-        <span className="mb-1.5 block text-[13px] font-semibold text-[#13203A]">Roz ka target (kitne garage)</span>
-        <input className={inp} value={target} onChange={(e) => setTarget(e.target.value.replace(/\D/g, '').slice(0, 2))} inputMode="numeric" placeholder="5" />
-      </label>
-      {err && <p className="text-[13px] font-semibold text-[#DC2626]">{err}</p>}
-      <button type="submit" className="h-[52px] w-full rounded-2xl text-[16px] font-bold text-white active:opacity-90" style={{ background: ORANGE }}>{cta}</button>
-    </form>
   )
 }
