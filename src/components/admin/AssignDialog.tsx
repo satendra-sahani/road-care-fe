@@ -54,6 +54,35 @@ const numPin = (n: number | string, color: string, big: boolean) => {
 }
 const sel = 'h-11 appearance-none rounded-xl border border-[#E3E8EF] bg-white pl-10 pr-8 text-[13.5px] font-medium text-[#1F2937] outline-none focus:border-[#16305C]'
 
+/** where a written address is, roughly — Google first (same key as the map), OpenStreetMap otherwise */
+const geocodeOne = async (q: string): Promise<Pt | null> => {
+  try {
+    const g = await loadGoogleMaps()
+    const Geocoder = g.Geocoder || (g.importLibrary ? (await g.importLibrary('geocoding'))?.Geocoder : null)
+    if (Geocoder) {
+      const res: any = await Promise.race([
+        new Geocoder().geocode({ address: q, componentRestrictions: { country: 'IN' } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
+      ])
+      const r = res?.results?.[0]
+      // "India" or a whole state is not a place to measure from
+      const coarse = (r?.types || []).some((t: string) => ['country', 'administrative_area_level_1'].includes(t))
+      if (r?.geometry?.location && !coarse) return { lat: r.geometry.location.lat(), lng: r.geometry.location.lng() }
+    }
+  } catch { /* fall through */ }
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&countrycodes=in&limit=1`)
+    const h = (await r.json())?.[0]
+    if (h && isFinite(parseFloat(h.lat)) && !['state', 'country'].includes(h.addresstype)) return { lat: parseFloat(h.lat), lng: parseFloat(h.lon) }
+  } catch { /* no network */ }
+  return null
+}
+/** the full address first, then simpler forms of it (village + state, village) */
+const geocodeAddress = async (queries: string[]): Promise<Pt | null> => {
+  for (const q of queries) { const p = await geocodeOne(q); if (p) return p }
+  return null
+}
+
 export function AssignDialog({
   open, request, mechanics, shops, shopsLoading, displayId, onClose, onAssignShop, onAssignMechanic,
 }: {
@@ -81,8 +110,26 @@ export function AssignDialog({
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const cust: Pt | null = request?.location?.coordinates?.latitude != null && request?.location?.coordinates?.longitude != null
+  const exact: Pt | null = request?.location?.coordinates?.latitude != null && request?.location?.coordinates?.longitude != null
     ? { lat: request.location.coordinates.latitude, lng: request.location.coordinates.longitude } : null
+  // No pin on the request (phone / old bookings): place the customer from the
+  // written address so distances can still be shown — marked as approximate.
+  const [approx, setApprox] = useState<Pt | null>(null)
+  const addrText = [request?.location?.address, request?.location?.city, request?.location?.state, request?.location?.pincode]
+    .map((x) => String(x || '').trim()).filter((x, i, a) => x && a.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i).join(', ')
+  useEffect(() => {
+    setApprox(null)
+    if (!open || exact || addrText.length < 4) return
+    let off = false
+    const first = String(request?.location?.address || '').split(',')[0].trim()
+    const state = String(request?.location?.state || '').trim() || 'Uttar Pradesh'
+    const queries = [addrText, first.length > 2 ? `${first}, ${state}` : ''].filter((q, i, all) => q && all.indexOf(q) === i)
+    geocodeAddress(queries).then((p) => { if (!off && p) setApprox(p) })
+    return () => { off = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, request?._id, addrText, exact?.lat])
+  const cust: Pt | null = exact || approx
+  const approxCust = !exact && !!approx
   const reqKind = vehicleKind(request?.vehicle?.type)
   const reqService = request?.serviceType || ''
 
@@ -187,7 +234,7 @@ export function AssignDialog({
         const circle = new g.Circle({ map: m, center: cust, radius: radius * 1000, strokeColor: '#2563EB', strokeOpacity: 0.9, strokeWeight: 1.5, fillColor: '#3B82F6', fillOpacity: 0.07, clickable: false })
         layers.current.push(circle); b.union(circle.getBounds())
       }
-      layers.current.push(new g.Marker({ map: m, position: cust, zIndex: 900, title: 'Customer', icon: { path: g.SymbolPath.CIRCLE, scale: 9, fillColor: '#FFFFFF', fillOpacity: 1, strokeColor: '#DC2626', strokeWeight: 5, labelOrigin: new g.Point(0, 2.9) }, label: { text: 'Customer', className: 'bm-cust-label', color: '#FFFFFF', fontSize: '11px', fontWeight: '700' } }))
+      layers.current.push(new g.Marker({ map: m, position: cust, zIndex: 900, title: 'Customer', icon: { path: g.SymbolPath.CIRCLE, scale: 9, fillColor: '#FFFFFF', fillOpacity: 1, strokeColor: '#DC2626', strokeWeight: 5, labelOrigin: new g.Point(0, 2.9) }, label: { text: approxCust ? 'Customer (approx.)' : 'Customer', className: 'bm-cust-label', color: '#FFFFFF', fontSize: '11px', fontWeight: '700' } }))
       b.extend(cust)
     }
     if (showPins) {
@@ -203,7 +250,7 @@ export function AssignDialog({
     const sig = `${radius}|${showPins}|${items.map((x) => x.id).join(',')}`
     if (sig !== fitted.current && !b.isEmpty()) { fitted.current = sig; m.fitBounds(b, 36) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, engine, items, selId, radius, showPins, mapType, cust?.lat, cust?.lng, view])
+  }, [open, engine, items, selId, radius, showPins, mapType, cust?.lat, cust?.lng, approxCust, view])
   useEffect(() => { const m = map.current; if (selected?.pt && m && !m.getBounds()?.contains(selected.pt)) m.panTo(selected.pt) }, [selected?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!open) return
@@ -254,6 +301,7 @@ export function AssignDialog({
       {engine === 'google' && <div ref={el} className="absolute inset-0" />}
       {engine === 'loading' && <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#16305C]" /></div>}
       {engine === 'none' && <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-[13px] font-semibold text-[#64748B]">The map could not load. The list still works.</div>}
+      {approxCust && engine === 'google' && <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 rounded-lg bg-white/95 px-3 py-2 text-center text-[12px] font-semibold text-[#B45309] shadow">No map pin on this request — the customer is placed from the address, so distances are approximate.</div>}
       {!cust && engine === 'google' && <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 rounded-lg bg-white/95 px-3 py-2 text-center text-[12px] font-semibold text-[#B45309] shadow">This request has no map location, so distances and the radius are not available.</div>}
       <label className="absolute left-3 top-3 z-10 flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-white px-3 text-[12.5px] font-semibold text-[#1F2937] shadow-[0_2px_8px_rgba(15,23,42,.16)]">
         <input type="checkbox" checked={showPins} onChange={(e) => setShowPins(e.target.checked)} className="h-4 w-4 accent-[#16305C]" /> Show {items.length} {noun}
@@ -294,7 +342,7 @@ export function AssignDialog({
           <div className="mt-1 flex items-start justify-between gap-2">
             <div className="min-w-0 text-[12.5px] text-[#475569]">
               {selected.rating > 0 && <p className="flex items-center gap-1"><Star className="h-4 w-4 fill-[#F59E0B] text-[#F59E0B]" /><b className="text-[#111827]">{selected.rating}</b> ({selected.ratings} {selected.kind === 'garage' ? 'reviews' : 'jobs'})</p>}
-              <p className="flex items-center gap-1 truncate"><MapPin className="h-3.5 w-3.5 shrink-0 text-[#16305C]" />{selected.place}{selected.km != null ? ` (${selected.km.toFixed(1)} km)` : ''}</p>
+              <p className="flex items-center gap-1 truncate"><MapPin className="h-3.5 w-3.5 shrink-0 text-[#16305C]" />{selected.place}{selected.km != null ? ` (${approxCust ? '~' : ''}${selected.km.toFixed(1)} km)` : ''}</p>
               {selected.hours && <p className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 shrink-0 text-[#16A34A]" />{selected.open != null && <b className={selected.open ? 'text-[#16A34A]' : 'text-[#DC2626]'}>{selected.open ? 'Open Now' : 'Closed'}</b>}{selected.open != null && <span>•</span>}{selected.hours}</p>}
             </div>
             <div className="flex shrink-0 gap-1.5">
@@ -444,7 +492,7 @@ export function AssignDialog({
                               {it.hours && <p className="flex items-center gap-1 truncate"><Clock className="h-3.5 w-3.5 shrink-0 text-[#16A34A]" />{it.open != null && <b className={it.open ? 'text-[#16A34A]' : 'text-[#DC2626]'}>{it.open ? 'Open Now' : 'Closed'}</b>}{it.open != null && <span>•</span>}{it.hours}</p>}
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-1.5">
-                              <span className="flex items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-[#111827]" title={it.km != null ? undefined : !it.pt ? (it.kind === 'garage' ? 'This shop has no map location saved — open the shop in Shop Partners and set it' : 'This mechanic has not shared a location yet') : 'This request has no customer map location, so distance cannot be measured'}><MapPin className="h-4 w-4 fill-[#2563EB] text-white" />{it.km != null ? `${it.km.toFixed(1)} km` : <span className="text-[12px] font-medium text-[#94A3B8]">{!it.pt ? (it.kind === 'garage' ? 'shop location not set' : 'location not shared') : 'customer location missing'}</span>}</span>
+                              <span className="flex items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-[#111827]" title={it.km != null ? (approxCust ? 'Approximate — this request has no map pin, so the customer is placed from the written address' : undefined) : !it.pt ? (it.kind === 'garage' ? 'This shop has no map location saved — open the shop in Shop Partners and set it' : 'This mechanic has not shared a location yet') : 'This request has no customer map location, so distance cannot be measured'}><MapPin className="h-4 w-4 fill-[#2563EB] text-white" />{it.km != null ? `${approxCust ? '~' : ''}${it.km.toFixed(1)} km` : <span className="text-[12px] font-medium text-[#94A3B8]">{!it.pt ? (it.kind === 'garage' ? 'shop location not set' : 'location not shared') : 'customer location missing'}</span>}</span>
                               <AssignBtn it={it} solid={on} />
                             </div>
                           </div>
