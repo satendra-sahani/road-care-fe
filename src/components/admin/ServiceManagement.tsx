@@ -114,8 +114,8 @@ import { userAPI, serviceRequestAPI, adminShopAPI, mechanicAPI } from '@/service
 import { normalizeServiceRequest } from '@/store/sagas/serviceRequestSaga'
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
-import { GarageMap } from '@/components/manager/GarageMap'
-import { IcTwoWheeler, IcBikeScooter, IcDirectionsCar, IcLocalShipping } from '@/components/icons/BmIcons'
+import { ServiceRequestsMap } from '@/components/admin/ServiceRequestsMap'
+import { PRIORITY_PILL, STATUS_PILL, vehicleIconFor, kmBetween, initialsOf, vehicleName } from '@/components/admin/serviceRequestUi'
 
 // Service category options
 const serviceCategories = [
@@ -404,37 +404,6 @@ const priorityConfig: Record<string, { color: string; label: string }> = {
   critical: { color: 'bg-red-200 text-red-900',     label: 'Critical' },
 }
 
-// ── Requests table look (admin redesign) ──
-const PRIORITY_PILL: Record<string, { label: string; fg: string; bg: string }> = {
-  low:      { label: 'Low',      fg: '#15803D', bg: '#DCFCE7' },
-  medium:   { label: 'Medium',   fg: '#7E22CE', bg: '#F3E8FF' },
-  normal:   { label: 'Normal',   fg: '#B45309', bg: '#FEF3C7' },
-  high:     { label: 'High',     fg: '#DC2626', bg: '#FEE2E2' },
-  urgent:   { label: 'Urgent',   fg: '#FFFFFF', bg: '#DC2626' },
-  critical: { label: 'Critical', fg: '#FFFFFF', bg: '#991B1B' },
-}
-const STATUS_PILL: Record<string, { fg: string; bg: string }> = {
-  pending: { fg: '#B45309', bg: '#FEF3C7' }, assigned: { fg: '#1D4ED8', bg: '#DBEAFE' }, accepted: { fg: '#4338CA', bg: '#E0E7FF' },
-  mechanic_assigned: { fg: '#4338CA', bg: '#E0E7FF' }, on_way: { fg: '#0E7490', bg: '#CFFAFE' }, diagnosis: { fg: '#7E22CE', bg: '#F3E8FF' },
-  approved: { fg: '#047857', bg: '#D1FAE5' }, in_progress: { fg: '#1D4ED8', bg: '#DBEAFE' }, 'in-progress': { fg: '#1D4ED8', bg: '#DBEAFE' },
-  completed: { fg: '#15803D', bg: '#DCFCE7' }, payment_pending: { fg: '#C2410C', bg: '#FFEDD5' }, paid: { fg: '#15803D', bg: '#DCFCE7' },
-  rejected_quote: { fg: '#BE123C', bg: '#FFE4E6' }, payment_refused: { fg: '#B91C1C', bg: '#FEE2E2' }, cancelled: { fg: '#DC2626', bg: '#FEE2E2' },
-}
-const vehicleIconFor = (type?: string) => {
-  const t = String(type || '').toLowerCase()
-  if (/truck|tempo|pickup|bus|lcv|hcv/.test(t)) return IcLocalShipping
-  if (/scoot/.test(t)) return IcBikeScooter
-  if (/bike|motor|two|2/.test(t)) return IcTwoWheeler
-  return IcDirectionsCar
-}
-const kmBetween = (a?: { latitude?: number; longitude?: number }, b?: { latitude?: number; longitude?: number }) => {
-  if (a?.latitude == null || a?.longitude == null || b?.latitude == null || b?.longitude == null) return null
-  const R = 6371, rad = (d: number) => (d * Math.PI) / 180
-  const dLat = rad(b.latitude - a.latitude), dLng = rad(b.longitude - a.longitude)
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
-}
-const initialsOf = (name?: string) => String(name || '?').trim().split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 const selCls = 'h-11 rounded-xl border border-[#E3E8EF] bg-white px-3.5 text-[13.5px] font-medium text-[#1F2937]'
 
 export function ServiceManagement() {
@@ -528,6 +497,8 @@ export function ServiceManagement() {
   const [dateTo, setDateTo] = useState('')
   const [emergencyOnly, setEmergencyOnly] = useState(false)
   const [mapSel, setMapSel] = useState<string | null>(null)
+  const [mapRequests, setMapRequests] = useState<ServiceRequest[]>([])
+  const [mapLoading, setMapLoading] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState('')
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
@@ -562,6 +533,18 @@ export function ServiceManagement() {
   useEffect(() => {
     serviceRequestAPI.getStats().then((r) => { if (r.data?.success) setSrvStats(r.data.data) }).catch(() => {})
   }, [serviceRequests])
+
+  // Map View shows every request matching the filters (up to 300), not just the list page
+  useEffect(() => {
+    if (activeTab !== 'map') return
+    let off = false
+    setMapLoading(true)
+    serviceRequestAPI.getAll({ ...reqQuery, page: 1, limit: 300 })
+      .then((r) => { if (!off) setMapRequests((r.data?.data || []).map(normalizeServiceRequest)) })
+      .catch(() => { if (!off) toast.error('Could not load requests for the map') })
+      .finally(() => { if (!off) setMapLoading(false) })
+    return () => { off = true }
+  }, [activeTab, reqQuery, serviceRequests]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Assignment tab works on ALL pending requests, independent of the list page
   const [assignPool, setAssignPool] = useState<ServiceRequest[]>([])
@@ -1173,6 +1156,119 @@ export function ServiceManagement() {
       toast.error('Could not download the invoice')
     }
   }
+  // The "more" menu of a request — every admin action on it. Used by the table rows and the map list.
+  const rowMenu = (request: ServiceRequest) => {
+    const coords = request.location?.coordinates?.latitude != null && request.location?.coordinates?.longitude != null ? request.location.coordinates : null
+    return (
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setSelectedRequest(request)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => downloadInvoice(request)}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Download Invoice PDF
+                            </DropdownMenuItem>
+                            {coords && (
+                              <DropdownMenuItem onClick={() => copyToClipboard(`${coords.latitude}, ${coords.longitude}`, `table-coords-${request._id}`)}>
+                                {copiedKey === `table-coords-${request._id}` ? <CheckCircle className="h-4 w-4 mr-2 text-green-600" /> : <Copy className="h-4 w-4 mr-2" />}
+                                Copy coordinates
+                              </DropdownMenuItem>
+                            )}
+                            {getNextStatus(request.status) && (
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(request._id, getNextStatus(request.status)!)}>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                {getNextStatusLabel(request.status)}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleOpenAssignDialog(request)}>
+                              <User className="h-4 w-4 mr-2" />
+                              {request.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic'}
+                            </DropdownMenuItem>
+                            {/* Proxy actions — for mechanics who don't use the app */}
+                            {['assigned', 'mechanic_assigned'].includes(request.status) && request.mechanic && (
+                              <DropdownMenuItem onClick={() => handleAcceptOnBehalf(request)} disabled={acceptingId === request._id}>
+                                <CheckCircle className="h-4 w-4 mr-2 text-indigo-600" />
+                                Accept on mechanic&apos;s behalf
+                              </DropdownMenuItem>
+                            )}
+                            {['accepted', 'on_way', 'diagnosis'].includes(request.status) && (
+                              <DropdownMenuItem onClick={() => handleOpenDiagnosis(request)}>
+                                <Search className="h-4 w-4 mr-2 text-indigo-600" />
+                                {request.status === 'diagnosis' ? 'Revise quotation (on behalf)' : 'Submit quotation (on behalf)'}
+                              </DropdownMenuItem>
+                            )}
+                            {request.status === 'diagnosis' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleApproveQuoteOnBehalf(request)} disabled={proxyBusy === request._id}>
+                                  <CheckCircle className="h-4 w-4 mr-2 text-emerald-600" />
+                                  Approve quote (for customer)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleRejectQuoteOnBehalf(request)} disabled={proxyBusy === request._id}>
+                                  <XCircle className="h-4 w-4 mr-2 text-rose-600" />
+                                  Reject quote (for customer)
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {DIAG_AFTER_APPROVAL_STATUSES.includes(request.status) && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleOpenDiagnosis(request)}>
+                                  <Edit className="h-4 w-4 mr-2 text-indigo-600" />
+                                  Add/remove items (re-approval)
+                                </DropdownMenuItem>
+                                {request.status === 'in_progress' && (
+                                  <DropdownMenuItem onClick={() => handleCompleteOnBehalf(request)} disabled={proxyBusy === request._id}>
+                                    <CheckCircle className="h-4 w-4 mr-2 text-indigo-600" />
+                                    Complete work (on behalf)
+                                  </DropdownMenuItem>
+                                )}
+                              </>
+                            )}
+                            {/* Shop actions — admin acts for a shop that works by phone / WhatsApp */}
+                            {request.shopPartner && request.shopOrder && (() => {
+                              const so = request.shopOrder!
+                              const manual = !so.mechanicProfile // shop's own (non-app) mechanic → admin drives the status
+                              const items: React.ReactNode[] = []
+                              if (so.status === 'pending') {
+                                items.push(
+                                  <DropdownMenuItem key="s-acc" onClick={() => handleShopAccept(request)} disabled={shopBusy(request._id)}><CheckCircle className="h-4 w-4 mr-2 text-orange-600" />Accept order (for shop)</DropdownMenuItem>,
+                                  <DropdownMenuItem key="s-rej" onClick={() => handleShopReject(request)} disabled={shopBusy(request._id)}><XCircle className="h-4 w-4 mr-2 text-orange-600" />Reject order (for shop) → reassign</DropdownMenuItem>,
+                                )
+                              }
+                              if (['pending', 'accepted'].includes(so.status)) {
+                                items.push(<DropdownMenuItem key="s-mech" onClick={() => handleOpenShopDialog(request, 'assign')} disabled={shopBusy(request._id)}><Wrench className="h-4 w-4 mr-2 text-orange-600" />Assign shop&apos;s mechanic (for shop)</DropdownMenuItem>)
+                              }
+                              if (manual && so.status === 'mechanic_assigned') items.push(<DropdownMenuItem key="s-ow" onClick={() => handleShopStatus(request, 'on_way')} disabled={shopBusy(request._id)}><Navigation className="h-4 w-4 mr-2 text-orange-600" />Mark on the way (for shop)</DropdownMenuItem>)
+                              if (manual && so.status === 'on_way') items.push(<DropdownMenuItem key="s-ip" onClick={() => handleShopStatus(request, 'in_progress')} disabled={shopBusy(request._id)}><Wrench className="h-4 w-4 mr-2 text-orange-600" />Mark work started (for shop)</DropdownMenuItem>)
+                              if (manual && so.status === 'in_progress') items.push(<DropdownMenuItem key="s-done" onClick={() => handleOpenShopDialog(request, 'complete')} disabled={shopBusy(request._id)}><CheckCircle className="h-4 w-4 mr-2 text-orange-600" />Mark completed + cost (for shop)</DropdownMenuItem>)
+                              if (so.status === 'completed' && so.paymentStatus !== 'paid') items.push(<DropdownMenuItem key="s-paid" onClick={() => handleShopStatus(request, 'paid')} disabled={shopBusy(request._id)}><DollarSign className="h-4 w-4 mr-2 text-orange-600" />Payment collected (for shop)</DropdownMenuItem>)
+                              if (!items.length) return null
+                              return (<><DropdownMenuSeparator /><DropdownMenuLabel className="text-[11px] text-orange-700">{request.shopPartner.shopName} — on the shop&apos;s behalf</DropdownMenuLabel>{items}</>)
+                            })()}
+                            {request.customer.phone && (
+                              <DropdownMenuItem asChild>
+                                <a href={`tel:${request.customer.phone}`}>
+                                  <Phone className="h-4 w-4 mr-2" />
+                                  Call Customer
+                                </a>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {request.status !== 'cancelled' && request.status !== 'completed' && (
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => handleOpenCancelDialog(request)}
+                              >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Cancel Request
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+    )
+  }
   const extraFiltersOn = !!(dateFrom || dateTo || emergencyOnly)
   const anyFilterOn = extraFiltersOn || statusFilter !== 'all' || priorityFilter !== 'all' || serviceTypeFilter !== 'all' || vehicleFilter !== 'all' || cityFilter !== 'all' || !!searchQuery
   const clearFilters = () => { setSearchQuery(''); setStatusFilter('all'); setPriorityFilter('all'); setServiceTypeFilter('all'); setVehicleFilter('all'); setCityFilter('all'); setDateFrom(''); setDateTo(''); setEmergencyOnly(false) }
@@ -1187,10 +1283,6 @@ export function ServiceManagement() {
     }
     return out
   })()
-  const mapPins = filteredRequests
-    .filter((r) => r.location?.coordinates?.latitude != null && r.location?.coordinates?.longitude != null)
-    .map((r) => ({ id: r._id, lat: r.location.coordinates!.latitude, lng: r.location.coordinates!.longitude, color: STATUS_STRIPE[r.status] || '#64748B' }))
-  const mapReq = filteredRequests.find((r) => r._id === mapSel) || null
   const kpis = [
     { key: 'all', t: 'total', label: 'Total Requests', value: stats.totalRequests, Icon: Wrench, fg: '#2563EB', bg: '#EAF1FF' },
     { key: 'pending', t: 'pending', label: 'Pending', value: stats.pendingRequests, Icon: PieChart, fg: '#F97316', bg: '#FFF1E6' },
@@ -1236,7 +1328,7 @@ export function ServiceManagement() {
           <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-[#111827]">Service Management</h1>
           <p className="mt-1 text-[14px] text-[#6B7280]">Manage service requests, mechanic assignments, and track job progress in real-time.</p>
         </div>
-        <div className="pointer-events-none hidden shrink-0 select-none items-end xl:flex" aria-hidden="true">
+        <div className={`pointer-events-none hidden shrink-0 select-none items-end ${activeTab === 'map' ? '' : 'xl:flex'}`} aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/admin/sr-keep-moving.webp" alt="" width={151} height={137} className="mb-3 h-[92px] w-auto" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1262,23 +1354,19 @@ export function ServiceManagement() {
               type="button"
               onClick={() => setStatusFilter(k.key)}
               title={tr ? `${tr.thisMonth} created this month · ${tr.lastMonth} last month` : undefined}
-              className={`relative rounded-2xl border bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(16,24,40,.04)] transition-shadow hover:shadow-md ${active ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-[#EAEEF3]'}`}
+              className={`relative rounded-2xl border bg-white px-3.5 py-3.5 text-left shadow-[0_1px_2px_rgba(16,24,40,.04)] transition-shadow hover:shadow-md ${active ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-[#EAEEF3]'}`}
             >
-              <div className="flex items-start gap-3">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl" style={{ background: k.bg, color: k.fg }}><k.Icon className="h-6 w-6" /></span>
-                <div className="min-w-0">
-                  <p className="text-[26px] font-extrabold leading-none text-[#111827] tabular-nums">{k.value}</p>
-                  <p className="mt-1.5 truncate text-[13.5px] font-medium text-[#374151]">{k.label}</p>
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: k.bg, color: k.fg }}><k.Icon className="h-[22px] w-[22px]" /></span>
+                <div className="min-w-0 pr-7">
+                  <p className="text-[24px] font-extrabold leading-none text-[#111827] tabular-nums">{k.value}</p>
+                  <p className="mt-1 whitespace-nowrap text-[13px] font-medium text-[#374151]">{k.label}</p>
+                  <span className="mt-0.5 flex items-center gap-0.5 text-[12.5px] font-bold" style={{ color: trendColor }}><Trend className="h-3.5 w-3.5" />{Math.abs(pct)}%</span>
+                  <span className="block whitespace-nowrap text-[10px] leading-tight text-[#94A3B8]">vs last month</span>
                 </div>
               </div>
-              <div className="mt-1 flex items-end justify-between pl-[60px]">
-                <div className="leading-tight">
-                  <span className="flex items-center gap-0.5 text-[12.5px] font-bold" style={{ color: trendColor }}><Trend className="h-3.5 w-3.5" />{Math.abs(pct)}%</span>
-                  <span className="text-[10.5px] text-[#94A3B8]">vs last month</span>
-                </div>
-                <div className="flex h-7 items-end gap-[3px]">
-                  {bars.map((b, i) => <span key={i} className="w-[5px] rounded-sm" style={{ height: `${Math.max(14, (b / max) * 100)}%`, background: k.fg, opacity: 0.35 + (i / (bars.length - 1 || 1)) * 0.65 }} />)}
-                </div>
+              <div className="absolute bottom-3.5 right-3.5 flex h-7 items-end gap-[3px]">
+                {bars.map((b, i) => <span key={i} className="w-[5px] rounded-sm" style={{ height: `${Math.max(14, (b / max) * 100)}%`, background: k.fg, opacity: 0.35 + (i / (bars.length - 1 || 1)) * 0.65 }} />)}
               </div>
             </button>
           )
@@ -1321,8 +1409,8 @@ export function ServiceManagement() {
           </div>
         </div>
 
-        {/* Service Requests Tab */}
-        <TabsContent value="requests" className="mt-0 space-y-4">
+        {(activeTab === 'requests' || activeTab === 'map') && (
+          <div className="space-y-3">
           {/* Search + filters */}
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative min-w-[240px] flex-1 lg:max-w-[430px]">
@@ -1411,7 +1499,11 @@ export function ServiceManagement() {
               {anyFilterOn && <button type="button" onClick={clearFilters} className="ml-auto h-10 rounded-lg px-3 text-[13px] font-bold text-[#DC2626] hover:bg-[#FEF2F2]">Clear all filters</button>}
             </div>
           )}
+          </div>
+        )}
 
+        {/* Service Requests Tab */}
+        <TabsContent value="requests" className="mt-0 space-y-4">
           {/* Bulk Actions */}
           {selectedRequests.length > 0 && (
             <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50 p-3">
@@ -1449,7 +1541,7 @@ export function ServiceManagement() {
                   {filteredRequests.map((request) => {
                     const coords = request.location?.coordinates?.latitude != null && request.location?.coordinates?.longitude != null ? request.location.coordinates : null
                     const VehIcon = vehicleIconFor(request.vehicle?.type)
-                    const vehName = [request.vehicle?.brand, request.vehicle?.model].filter(Boolean).join(' ') || (request.vehicle?.type ? request.vehicle.type.charAt(0).toUpperCase() + request.vehicle.type.slice(1) : 'Vehicle')
+                    const vehName = vehicleName(request.vehicle)
                     const pr = PRIORITY_PILL[request.priority] || PRIORITY_PILL.medium
                     const sp = STATUS_PILL[request.status] || STATUS_PILL.pending
                     const sc = statusConfig[request.status as keyof typeof statusConfig]
@@ -1576,113 +1668,7 @@ export function ServiceManagement() {
                             <DropdownMenuTrigger asChild>
                               <button type="button" title="More actions" className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#16305C] hover:bg-[#F3F5F9]"><MoreHorizontal className="h-4 w-4" /></button>
                             </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setSelectedRequest(request)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => downloadInvoice(request)}>
-                              <FileText className="h-4 w-4 mr-2" />
-                              Download Invoice PDF
-                            </DropdownMenuItem>
-                            {coords && (
-                              <DropdownMenuItem onClick={() => copyToClipboard(`${coords.latitude}, ${coords.longitude}`, `table-coords-${request._id}`)}>
-                                {copiedKey === `table-coords-${request._id}` ? <CheckCircle className="h-4 w-4 mr-2 text-green-600" /> : <Copy className="h-4 w-4 mr-2" />}
-                                Copy coordinates
-                              </DropdownMenuItem>
-                            )}
-                            {getNextStatus(request.status) && (
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(request._id, getNextStatus(request.status)!)}>
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                {getNextStatusLabel(request.status)}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleOpenAssignDialog(request)}>
-                              <User className="h-4 w-4 mr-2" />
-                              {request.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic'}
-                            </DropdownMenuItem>
-                            {/* Proxy actions — for mechanics who don't use the app */}
-                            {['assigned', 'mechanic_assigned'].includes(request.status) && request.mechanic && (
-                              <DropdownMenuItem onClick={() => handleAcceptOnBehalf(request)} disabled={acceptingId === request._id}>
-                                <CheckCircle className="h-4 w-4 mr-2 text-indigo-600" />
-                                Accept on mechanic&apos;s behalf
-                              </DropdownMenuItem>
-                            )}
-                            {['accepted', 'on_way', 'diagnosis'].includes(request.status) && (
-                              <DropdownMenuItem onClick={() => handleOpenDiagnosis(request)}>
-                                <Search className="h-4 w-4 mr-2 text-indigo-600" />
-                                {request.status === 'diagnosis' ? 'Revise quotation (on behalf)' : 'Submit quotation (on behalf)'}
-                              </DropdownMenuItem>
-                            )}
-                            {request.status === 'diagnosis' && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleApproveQuoteOnBehalf(request)} disabled={proxyBusy === request._id}>
-                                  <CheckCircle className="h-4 w-4 mr-2 text-emerald-600" />
-                                  Approve quote (for customer)
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleRejectQuoteOnBehalf(request)} disabled={proxyBusy === request._id}>
-                                  <XCircle className="h-4 w-4 mr-2 text-rose-600" />
-                                  Reject quote (for customer)
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {DIAG_AFTER_APPROVAL_STATUSES.includes(request.status) && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleOpenDiagnosis(request)}>
-                                  <Edit className="h-4 w-4 mr-2 text-indigo-600" />
-                                  Add/remove items (re-approval)
-                                </DropdownMenuItem>
-                                {request.status === 'in_progress' && (
-                                  <DropdownMenuItem onClick={() => handleCompleteOnBehalf(request)} disabled={proxyBusy === request._id}>
-                                    <CheckCircle className="h-4 w-4 mr-2 text-indigo-600" />
-                                    Complete work (on behalf)
-                                  </DropdownMenuItem>
-                                )}
-                              </>
-                            )}
-                            {/* Shop actions — admin acts for a shop that works by phone / WhatsApp */}
-                            {request.shopPartner && request.shopOrder && (() => {
-                              const so = request.shopOrder!
-                              const manual = !so.mechanicProfile // shop's own (non-app) mechanic → admin drives the status
-                              const items: React.ReactNode[] = []
-                              if (so.status === 'pending') {
-                                items.push(
-                                  <DropdownMenuItem key="s-acc" onClick={() => handleShopAccept(request)} disabled={shopBusy(request._id)}><CheckCircle className="h-4 w-4 mr-2 text-orange-600" />Accept order (for shop)</DropdownMenuItem>,
-                                  <DropdownMenuItem key="s-rej" onClick={() => handleShopReject(request)} disabled={shopBusy(request._id)}><XCircle className="h-4 w-4 mr-2 text-orange-600" />Reject order (for shop) → reassign</DropdownMenuItem>,
-                                )
-                              }
-                              if (['pending', 'accepted'].includes(so.status)) {
-                                items.push(<DropdownMenuItem key="s-mech" onClick={() => handleOpenShopDialog(request, 'assign')} disabled={shopBusy(request._id)}><Wrench className="h-4 w-4 mr-2 text-orange-600" />Assign shop&apos;s mechanic (for shop)</DropdownMenuItem>)
-                              }
-                              if (manual && so.status === 'mechanic_assigned') items.push(<DropdownMenuItem key="s-ow" onClick={() => handleShopStatus(request, 'on_way')} disabled={shopBusy(request._id)}><Navigation className="h-4 w-4 mr-2 text-orange-600" />Mark on the way (for shop)</DropdownMenuItem>)
-                              if (manual && so.status === 'on_way') items.push(<DropdownMenuItem key="s-ip" onClick={() => handleShopStatus(request, 'in_progress')} disabled={shopBusy(request._id)}><Wrench className="h-4 w-4 mr-2 text-orange-600" />Mark work started (for shop)</DropdownMenuItem>)
-                              if (manual && so.status === 'in_progress') items.push(<DropdownMenuItem key="s-done" onClick={() => handleOpenShopDialog(request, 'complete')} disabled={shopBusy(request._id)}><CheckCircle className="h-4 w-4 mr-2 text-orange-600" />Mark completed + cost (for shop)</DropdownMenuItem>)
-                              if (so.status === 'completed' && so.paymentStatus !== 'paid') items.push(<DropdownMenuItem key="s-paid" onClick={() => handleShopStatus(request, 'paid')} disabled={shopBusy(request._id)}><DollarSign className="h-4 w-4 mr-2 text-orange-600" />Payment collected (for shop)</DropdownMenuItem>)
-                              if (!items.length) return null
-                              return (<><DropdownMenuSeparator /><DropdownMenuLabel className="text-[11px] text-orange-700">{request.shopPartner.shopName} — on the shop&apos;s behalf</DropdownMenuLabel>{items}</>)
-                            })()}
-                            {request.customer.phone && (
-                              <DropdownMenuItem asChild>
-                                <a href={`tel:${request.customer.phone}`}>
-                                  <Phone className="h-4 w-4 mr-2" />
-                                  Call Customer
-                                </a>
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            {request.status !== 'cancelled' && request.status !== 'completed' && (
-                              <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={() => handleOpenCancelDialog(request)}
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel Request
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
+                          {rowMenu(request)}
                           </DropdownMenu>
                         </div>
                       </td>
@@ -1725,37 +1711,24 @@ export function ServiceManagement() {
           </div>
         </TabsContent>
 
-        {/* Map View Tab — the requests in the list above (same search / filters / page), on a map */}
+        {/* Map View Tab — every request matching the search / filters, on a map with a live list */}
         <TabsContent value="map" className="mt-0">
-          <div className="relative h-[620px] overflow-hidden rounded-2xl border border-[#EAEEF3] bg-white">
-            {activeTab === 'map' && <GarageMap pins={mapPins} selectedId={mapSel} onSelect={setMapSel} className="h-full w-full" />}
-            <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-wrap gap-2">
-              <span className="rounded-lg bg-white px-3 py-2 text-[12.5px] font-semibold text-[#334155] shadow">Showing <b>{mapPins.length}</b> of {filteredRequests.length} requests on this page{mapPins.length < filteredRequests.length ? ` · ${filteredRequests.length - mapPins.length} without coordinates` : ''}</span>
-            </div>
-            {mapReq && (() => {
-              const sp = STATUS_PILL[mapReq.status] || STATUS_PILL.pending
-              return (
-                <div className="absolute left-3 top-14 z-10 w-[320px] max-w-[calc(100%-1.5rem)] rounded-xl bg-white p-3.5 shadow-xl">
-                  <button type="button" onClick={() => setMapSel(null)} aria-label="Close" className="absolute right-2 top-2 rounded-full p-1 text-[#94A3B8] hover:bg-[#F1F5F9]"><X className="h-4 w-4" /></button>
-                  <div className="flex flex-wrap items-center gap-2 pr-6">
-                    <b className="text-[14.5px] text-[#111827]">{generateDisplayRequestId(mapReq)}</b>
-                    <span className="rounded-full px-2.5 py-0.5 text-[11.5px] font-bold" style={{ color: sp.fg, background: sp.bg }}>{statusConfig[mapReq.status as keyof typeof statusConfig]?.label || mapReq.status}</span>
-                  </div>
-                  <p className="mt-1.5 text-[13.5px] font-semibold text-[#111827]">{mapReq.customer.name} <span className="font-normal text-[#6B7280]">· {mapReq.customer.phone}</span></p>
-                  <p className="text-[12.5px] text-[#6B7280]">{mapReq.serviceType}</p>
-                  <p className="mt-1 flex items-start gap-1 text-[12.5px] text-[#475569]"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{mapReq.location?.address || mapReq.location?.city}</p>
-                  <p className="mt-1 text-[12.5px] text-[#475569]">Mechanic: <b>{mapReq.mechanic?.name || mapReq.shopPartner?.shopName || 'Not assigned'}</b></p>
-                  <div className="mt-3 flex gap-2">
-                    <button type="button" onClick={() => setSelectedRequest(mapReq)} className="h-9 flex-1 rounded-lg bg-[#FF5A1F] text-[13px] font-bold text-white">View Details</button>
-                    {mapReq.location?.coordinates?.latitude != null && (
-                      <a href={`https://www.google.com/maps/dir/?api=1&destination=${mapReq.location.coordinates.latitude},${mapReq.location.coordinates.longitude}`} target="_blank" rel="noopener noreferrer" className="flex h-9 items-center gap-1 rounded-lg border border-[#E3E8EF] px-3 text-[13px] font-bold text-[#16305C]"><Navigation className="h-3.5 w-3.5" /> Directions</a>
-                    )}
-                  </div>
-                </div>
-              )
-            })()}
-            {mapPins.length === 0 && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"><span className="rounded-xl bg-white/95 px-4 py-3 text-[13.5px] font-semibold text-[#64748B] shadow">No requests with a map location on this page.</span></div>}
-          </div>
+          {activeTab === 'map' && (
+            <ServiceRequestsMap
+              requests={mapRequests}
+              loading={mapLoading}
+              selectedId={mapSel}
+              onSelect={setMapSel}
+              mechanicInfo={(id) => { const m = id ? mechanics.find((x) => x._id === id) : undefined; return m ? { rating: m.rating || undefined, jobs: m.completedServices || undefined } : undefined }}
+              onView={(r) => setSelectedRequest(r)}
+              onAssign={(r) => handleOpenAssignDialog(r)}
+              renderMenu={rowMenu}
+              displayId={generateDisplayRequestId}
+              formatCurrency={formatCurrency}
+              statusFilter={statusFilter}
+              onStatusFilter={setStatusFilter}
+            />
+          )}
         </TabsContent>
 
         {/* Mechanics Tab */}
