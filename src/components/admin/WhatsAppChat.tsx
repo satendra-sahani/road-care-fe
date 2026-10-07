@@ -43,7 +43,13 @@ const dayLabel = (iso: string) => {
   return d.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })
 }
 const prettyPhone = (p: string) => (p?.length > 10 ? `+${p.slice(0, p.length - 10)} ${p.slice(-10)}` : p)
+// A message WhatsApp did not hand over to business tools (a poll, a view-once
+// photo / video, …). Older rows were saved with the body "[unsupported]".
+const notShown = (type: string, body?: string) => type === 'unsupported' || /^\[(unsupported|unknown|message)\]$/.test(body || '')
+const NOT_SHOWN = 'Message not available here'
+const TYPE_LABEL: Record<string, string> = { location: '📍 Location', contacts: '👤 Contact', order: '🛒 Order', button: 'Button reply', interactive: 'Reply', system: 'WhatsApp notice' }
 const previewText = (t: string, type: string) => {
+  if (notShown(type, t)) return NOT_SHOWN
   if (t) return t
   switch (type) {
     case 'image': return '📷 Photo'
@@ -51,7 +57,7 @@ const previewText = (t: string, type: string) => {
     case 'audio': return '🎵 Audio'
     case 'sticker': return '🎨 Sticker'
     case 'document': return '📄 Document'
-    default: return type === 'text' ? '' : `[${type}]`
+    default: return type === 'text' ? '' : (TYPE_LABEL[type] || 'Message')
   }
 }
 
@@ -477,7 +483,12 @@ export function WhatsAppChat() {
                                 </div>
                               )}
                               {(m.mediaId) && <div className="mb-1"><MediaContent m={m} onOpen={setLightbox} /></div>}
-                              {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                              {notShown(m.type, m.body) ? (
+                                <p data-wa-not-shown className="max-w-[300px] text-[12.5px] italic leading-snug text-slate-500">
+                                  This message can’t be shown here. WhatsApp does not pass some messages to business tools — for example a poll, a view-once photo or video, or a message type it added recently. Ask the customer to send it again as a normal message.
+                                </p>
+                              ) : m.body ? <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                                : (!m.mediaId && m.type !== 'text') ? <p className="italic text-slate-500">{TYPE_LABEL[m.type] || 'Message'}</p> : null}
                               <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10.5px] ${out ? 'text-emerald-800/60' : 'text-slate-400'}`}>
                                 {fmtTime(m.createdAt)}
                                 {out && (m.status === 'read' ? <CheckCheck className="h-3.5 w-3.5 text-sky-500" /> : m.status === 'delivered' ? <CheckCheck className="h-3.5 w-3.5" /> : m.status === 'failed' ? <AlertTriangle className="h-3 w-3 text-red-500" /> : <Check className="h-3.5 w-3.5" />)}
