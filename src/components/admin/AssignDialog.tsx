@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   X, MapPin, Star, Clock, Phone, MessageCircle, Navigation, ArrowRight, ExternalLink, List, Map as MapIcon, Check, Loader2, Layers, Plus, Minus,
-  LocateFixed, Store, User, Wrench, SlidersHorizontal, BadgeCheck, ChevronDown,
+  LocateFixed, Store, User, Wrench, SlidersHorizontal, BadgeCheck, ChevronDown, Home,
 } from 'lucide-react'
 import type { ServiceRequest } from '@/store/slices/serviceRequestSlice'
 import type { Mechanic } from '@/store/slices/mechanicSlice'
@@ -11,7 +11,8 @@ import { loadGoogleMaps, googleMapsFailed } from '@/lib/googleMaps'
 import { initialsOf, kmBetween, vehicleIconFor, vehicleName } from './serviceRequestUi'
 
 // "Assign Mechanic / Garage" — pick who does a service request.
-//  • Garages  = shop partners, nearest first, with their own mechanics
+//  • Garages  = shop partners + the garages our field staff registered (those become
+//               shop partners with their first job), nearest first, with their own mechanics
 //  • Mechanics = independent platform mechanics
 // A map shows the customer, the search radius and the numbered candidates.
 // Assigning calls the same APIs the old dialog used.
@@ -22,6 +23,8 @@ type Item = {
   rating: number; ratings: number; place: string; pt: Pt | null; km: number | null
   open: boolean | null; hours: string; status: 'available' | 'busy' | 'closed' | 'offline'
   chips: string[]; vehicles: string[]; phone?: string; raw: any
+  // field = registered by our field staff, not a shop partner yet; doorstep = sends a mechanic to the customer (null = not recorded)
+  field: boolean; fieldBy: string; pending: boolean; doorstep: boolean | null
 }
 
 const ORANGE = '#FF5A1F'
@@ -71,6 +74,7 @@ export function AssignDialog({
   const [service, setService] = useState<'any' | 'match'>('any')
   const [avail, setAvail] = useState<'any' | 'available'>('any')
   const [minRating, setMinRating] = useState(0)
+  const [doorstep, setDoorstep] = useState<'any' | 'yes'>('any') // garages: only those that send a mechanic to the customer
   const [radius, setRadius] = useState(10) // km; 0 = any distance
   const [showPins, setShowPins] = useState(true)
   const [selId, setSelId] = useState<string | null>(null)
@@ -85,7 +89,7 @@ export function AssignDialog({
   // fresh state every time the dialog opens for a request
   useEffect(() => {
     if (!open) return
-    setKind('garage'); setView('list'); setSort('nearest'); setVehicle('any'); setService('any'); setAvail('any'); setMinRating(0); setRadius(10)
+    setKind('garage'); setView('list'); setSort('nearest'); setVehicle('any'); setService('any'); setAvail('any'); setMinRating(0); setDoorstep('any'); setRadius(10)
     setSelId(null); setConfirmId(null); setBusyId(null)
   }, [open, request?._id])
   useEffect(() => { if (!confirmId) return; const t = setTimeout(() => setConfirmId(null), 4000); return () => clearTimeout(t) }, [confirmId])
@@ -104,6 +108,7 @@ export function AssignDialog({
           open: openNow, hours: s.operatingHours?.open ? `${to12(s.operatingHours.open)} – ${to12(s.operatingHours.close)}` : '',
           status: s.isAvailable === false ? 'offline' as const : openNow === false ? 'closed' as const : 'available' as const,
           chips: s.specializations || [], vehicles: s.vehicleTypes || [], phone: s.shopPhone || s.user?.phone, raw: s,
+          field: s.source === 'field', fieldBy: s.fieldStaff || '', pending: s.source === 'field' && s.fieldStatus !== 'active', doorstep: typeof s.doorstepService === 'boolean' ? s.doorstepService : null,
         }
       })
     }
@@ -116,6 +121,7 @@ export function AssignDialog({
         open: null, hours: m.experience ? `${m.experience} experience` : '',
         status: m.availability === 'available' ? 'available' as const : m.availability === 'busy' ? 'busy' as const : 'offline' as const,
         chips: m.specializations || [], vehicles: m.vehicleTypes || [], phone: m.phone, raw: m,
+        field: false, fieldBy: '', pending: false, doorstep: null,
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,16 +130,16 @@ export function AssignDialog({
   const matchVehicle = (it: Item) => !reqKind || !it.vehicles.length || it.vehicles.some((v) => vehicleKind(v) === reqKind)
   const matchService = (it: Item) => { const want = norm(reqService); return !want || !it.chips.length || it.chips.some((c) => { const n = norm(c); return n.includes(want) || want.includes(n) }) }
   const items = useMemo(() => {
-    let a = all.filter((it) => (vehicle === 'any' || matchVehicle(it)) && (service === 'any' || matchService(it)) && (avail === 'any' || it.status === 'available') && it.rating >= minRating)
+    let a = all.filter((it) => (vehicle === 'any' || matchVehicle(it)) && (service === 'any' || matchService(it)) && (avail === 'any' || it.status === 'available') && it.rating >= minRating && (doorstep === 'any' || it.kind !== 'garage' || it.doorstep === true))
     // the radius only drops candidates KNOWN to be farther; ones without a location stay (listed last)
     if (radius > 0 && cust) a = a.filter((it) => it.km == null || it.km <= radius)
     const by = { nearest: (x: Item, y: Item) => (x.km ?? 1e9) - (y.km ?? 1e9), rating: (x: Item, y: Item) => y.rating - x.rating || y.ratings - x.ratings, jobs: (x: Item, y: Item) => (y.raw.totalJobsCompleted ?? y.ratings) - (x.raw.totalJobsCompleted ?? x.ratings) }
     return a.sort(by[sort]).slice(0, 50)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, vehicle, service, avail, minRating, radius, sort, cust?.lat])
+  }, [all, vehicle, service, avail, minRating, doorstep, radius, sort, cust?.lat])
   const selected = items.find((x) => x.id === selId) || null
-  const filtersOn = vehicle !== 'any' || service !== 'any' || avail !== 'any' || minRating > 0
-  const clearFilters = () => { setVehicle('any'); setService('any'); setAvail('any'); setMinRating(0) }
+  const filtersOn = vehicle !== 'any' || service !== 'any' || avail !== 'any' || minRating > 0 || doorstep !== 'any'
+  const clearFilters = () => { setVehicle('any'); setService('any'); setAvail('any'); setMinRating(0); setDoorstep('any') }
 
   const assign = async (it: Item) => {
     if (busyId) return
@@ -211,6 +217,15 @@ export function AssignDialog({
   const ctl = 'flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#16305C] shadow-[0_2px_8px_rgba(15,23,42,.16)] hover:bg-[#F3F5F9]'
   const Pill = ({ s }: { s: Item['status'] }) => <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11.5px] font-bold" style={{ color: STATUS[s].fg, background: STATUS[s].bg }}><span className="h-2 w-2 rounded-full border-2" style={{ borderColor: STATUS[s].dot }} />{STATUS[s].label}</span>
   const Verified = () => <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[11.5px] font-bold text-[#15803D]"><BadgeCheck className="h-3.5 w-3.5" />Verified</span>
+  const NotVerified = () => <span className="inline-flex items-center whitespace-nowrap rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[11.5px] font-bold text-[#B45309]" title="Registered by field staff, not verified by the admin yet">Not verified yet</span>
+  const tag = 'shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11.5px] font-bold'
+  const Tags = ({ it }: { it: Item }) => (
+    <>
+      {it.doorstep === true && <span data-doorstep="yes" className={`${tag} bg-[#DCFCE7] text-[#15803D]`}>Doorstep service</span>}
+      {it.doorstep === false && <span data-doorstep="no" className={`${tag} bg-[#F1F5F9] text-[#475569]`}>Workshop only</span>}
+      {it.field && <span data-field-garage className={`${tag} bg-[#EDE9FE] text-[#5B21B6]`} title="Registered on site by our field staff">Field staff{it.fieldBy ? ` · ${it.fieldBy}` : ''}</span>}
+    </>
+  )
   const Photo = ({ it, cls }: { it: Item; cls: string }) => it.photo
     // eslint-disable-next-line @next/next/no-img-element
     ? <img src={`${it.photo}${it.photo.includes('ik.imagekit.io') ? '?tr=w-260,h-240,fo-auto' : ''}`} alt="" loading="lazy" className={`shrink-0 rounded-xl object-cover ${cls}`} />
@@ -269,6 +284,7 @@ export function AssignDialog({
           <div className="flex flex-wrap items-center gap-1.5">
             <b className="text-[16px] text-[#111827]">{selected.name}</b>
             {selected.verified && <Verified />}
+            {selected.pending && <NotVerified />}
             <Pill s={selected.status} />
           </div>
           <div className="mt-1 flex items-start justify-between gap-2">
@@ -288,6 +304,8 @@ export function AssignDialog({
 
       {selected.kind === 'garage' ? (
         <div className="mt-3">
+          {(selected.doorstep != null || selected.field) && <div className="mb-2 flex flex-wrap gap-1.5"><Tags it={selected} /></div>}
+          {selected.field && <p data-field-note className="mb-2 rounded-lg bg-[#F5F3FF] px-2.5 py-2 text-[12px] leading-snug text-[#4C1D95]">Registered by our field staff. When you assign this job it is also added to Shop Partners, so its mechanic, status, payment and calls work as for any garage.</p>}
           <b className="text-[13.5px] text-[#111827]">Garage Mechanics ({shopMechs.length})</b>
           {shopMechs.length === 0 ? <p className="mt-1 text-[12.5px] text-[#6B7280]">This garage has not listed its mechanics yet.</p> : (
             <div className="mt-2 grid grid-cols-2 gap-2 xl:grid-cols-3">
@@ -311,7 +329,7 @@ export function AssignDialog({
       <div className={`mt-auto grid gap-2.5 pt-3 ${selected.kind === 'garage' ? 'grid-cols-2' : ''}`}>
         <AssignBtn it={selected} solid wide />
         {selected.kind === 'garage' && (
-          <a href="/admin/shops" target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-[#FFB89C] text-[13.5px] font-bold text-[#16305C] hover:bg-[#FFF4EE]">View Full Details <ExternalLink className="h-4 w-4" /></a>
+          <a href={selected.field ? '/admin/garages' : '/admin/shops'} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-[#FFB89C] text-[13.5px] font-bold text-[#16305C] hover:bg-[#FFF4EE]">View Full Details <ExternalLink className="h-4 w-4" /></a>
         )}
       </div>
     </div>
@@ -359,6 +377,10 @@ export function AssignDialog({
             <select className={sel} value={service} onChange={(e) => setService(e.target.value as any)} aria-label="Service"><option value="any">Any service</option><option value="match">{reqService || 'This service'}</option></select></span>
           <span className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[#16A34A]" /><ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
             <select className={sel} value={avail} onChange={(e) => setAvail(e.target.value as any)} aria-label="Availability"><option value="any">Any availability</option><option value="available">Available Now</option></select></span>
+          {kind === 'garage' && (
+            <span className="relative"><Home className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#15803D]" /><ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
+              <select className={sel} value={doorstep} onChange={(e) => setDoorstep(e.target.value as any)} aria-label="Doorstep service"><option value="any">Workshop or doorstep</option><option value="yes">Doorstep service</option></select></span>
+          )}
           <span className="relative"><Star className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 fill-[#F59E0B] text-[#F59E0B]" /><ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748B]" />
             <select className={sel} value={minRating} onChange={(e) => setMinRating(Number(e.target.value))} aria-label="Rating"><option value={0}>Any rating</option><option value={3}>Rating 3+</option><option value={4}>Rating 4+</option><option value={4.5}>Rating 4.5+</option></select></span>
           <button type="button" onClick={clearFilters} disabled={!filtersOn} title="Show everyone again" className="flex h-11 items-center gap-2 rounded-xl border border-[#E3E8EF] bg-white px-3.5 text-[13.5px] font-medium text-[#1F2937] hover:bg-[#F8FAFC] disabled:opacity-50"><SlidersHorizontal className="h-4 w-4" /> {filtersOn ? 'Clear Filters' : 'All Filters'}</button>
@@ -408,7 +430,7 @@ export function AssignDialog({
                         <Photo it={it} cls="h-[92px] w-[104px]" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex min-w-0 flex-wrap items-center gap-1.5"><b className="truncate text-[15.5px] text-[#111827]">{it.name}</b>{it.verified && <Verified />}</div>
+                            <div className="flex min-w-0 flex-wrap items-center gap-1.5"><b className="truncate text-[15.5px] text-[#111827]">{it.name}</b>{it.verified && <Verified />}{it.pending && <NotVerified />}</div>
                             <Pill s={it.status} />
                           </div>
                           <div className="mt-0.5 flex items-start justify-between gap-2">
@@ -422,7 +444,7 @@ export function AssignDialog({
                               <AssignBtn it={it} solid={on} />
                             </div>
                           </div>
-                          {it.chips.length > 0 && <div className="mt-1.5 flex gap-1.5 overflow-hidden">{it.chips.slice(0, 4).map((c) => <span key={c} className="shrink-0 whitespace-nowrap rounded-lg bg-[#EEF3FB] px-2.5 py-1 text-[11.5px] font-medium text-[#16305C]">{c}</span>)}{it.chips.length > 4 && <span className="shrink-0 rounded-lg bg-[#F1F5F9] px-2 py-1 text-[11.5px] font-medium text-[#64748B]" title={it.chips.slice(4).join(', ')}>+{it.chips.length - 4}</span>}</div>}
+                          {(it.chips.length > 0 || it.doorstep != null || it.field) && <div className="mt-1.5 flex gap-1.5 overflow-hidden"><Tags it={it} />{it.chips.slice(0, 4).map((c) => <span key={c} className="shrink-0 whitespace-nowrap rounded-lg bg-[#EEF3FB] px-2.5 py-1 text-[11.5px] font-medium text-[#16305C]">{c}</span>)}{it.chips.length > 4 && <span className="shrink-0 rounded-lg bg-[#F1F5F9] px-2 py-1 text-[11.5px] font-medium text-[#64748B]" title={it.chips.slice(4).join(', ')}>+{it.chips.length - 4}</span>}</div>}
                         </div>
                       </div>
                     )

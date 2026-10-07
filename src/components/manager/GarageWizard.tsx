@@ -290,7 +290,7 @@ export function GarageWizard() {
       if (!f.services.length) bad('services', 'Select at least one service')
       if (f.services.includes('other') && !f.otherWork.trim()) bad('otherWork', 'Describe the other work they do')
       if (f.emergency === null) bad('emergency', 'Night / emergency service — choose Yes or No')
-      if (f.sendsMechanic === null) bad('sendsMechanic', 'Can they send a mechanic to the customer — choose Yes or No')
+      if (f.sendsMechanic === null) bad('sendsMechanic', 'Doorstep service available — choose Yes or No')
       if (f.sendsMechanic && !f.travelKm) bad('travelKm', 'Select how far they travel')
       if (!f.partsWarranty.trim()) bad('partsWarranty', 'Describe the warranty on parts (write "None" if they give none)')
     }
@@ -536,11 +536,11 @@ export function GarageWizard() {
                 <YesNo value={f.emergency} onChange={(v) => up('emergency', v)} />
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[13.5px] font-semibold" style={{ color: errs.sendsMechanic ? '#DC2626' : '#13203A' }}>Can they send a mechanic to the customer?<Req /></span>
+                <span className="text-[13.5px] font-semibold" style={{ color: errs.sendsMechanic ? '#DC2626' : '#13203A' }}>Doorstep service available?<Req /><span className="block text-[11.5px] font-medium text-[#64748B]">Do they send a mechanic to the customer&apos;s home or breakdown spot?</span></span>
                 <YesNo value={f.sendsMechanic} onChange={(v) => up('sendsMechanic', v)} />
               </div>
               {f.sendsMechanic && (
-                <label className="block"><Label req>How far do they travel?</Label>
+                <label className="block"><Label req>How far do they go for doorstep service?</Label>
                   <Field icon={<IcLocationOn size={20} />} error={errs.travelKm}>
                     <select className={`${inp} h-[50px]`} value={f.travelKm} onChange={txt('travelKm')}>
                       <option value="">Select distance</option>
@@ -566,7 +566,7 @@ export function GarageWizard() {
                 <p className="text-[12px] leading-snug text-[#7C2D12]">This photo is sent to the customer so they can recognise the mechanic.</p>
               </div>
             </div>
-            {!f.sendsMechanic && <p className="rounded-xl bg-[#F1F5F9] px-3 py-2.5 text-[12.5px] font-semibold text-[#475569]">This garage does not send mechanics out, so mechanic details are optional. You can go straight to the next step.</p>}
+            {!f.sendsMechanic && <p className="rounded-xl bg-[#F1F5F9] px-3 py-2.5 text-[12.5px] font-semibold text-[#475569]">This garage has no doorstep service (workshop only), so mechanic details are optional. You can go straight to the next step.</p>}
             {f.mechanics.map((m, i) => (
               <MechanicCard key={i} i={i} m={m} errs={mErr(i)}
                 onChange={(nm) => { setF((x) => ({ ...x, mechanics: x.mechanics.map((y, j) => (j === i ? nm : y)) })); setErrs((e) => { const n = { ...e }; Object.keys(n).forEach((k) => k.startsWith(`m${i}.`) && delete n[k]); return n }) }}

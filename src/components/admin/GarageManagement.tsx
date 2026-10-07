@@ -38,7 +38,7 @@ function csv(rows: any[]) {
     ['Address', (g) => g.address], ['Area', (g) => g.area], ['City', (g) => g.city], ['Lat', (g) => g.location?.lat], ['Lng', (g) => g.location?.lng],
     ['Vehicles', (g) => (g.vehicleTypes || []).map(vehicleLabel).join(' / ')], ['Services', (g) => (g.services || []).map(serviceLabel).join(' / ')],
     ['Open', (g) => g.openTime], ['Close', (g) => g.closeTime], ['Weekly off', (g) => g.weeklyOff], ['Emergency', (g) => (g.emergency ? 'Yes' : 'No')],
-    ['Sends mechanic', (g) => (g.sendsMechanic ? 'Yes' : 'No')], ['Travel km', (g) => g.travelKm], ['Mechanics', (g) => (g.mechanics || []).length],
+    ['Doorstep service', (g) => (g.sendsMechanic ? 'Yes' : 'No')], ['Travel km', (g) => g.travelKm], ['Mechanics', (g) => (g.mechanics || []).length],
     ['UPI', (g) => g.upi], ['GST', (g) => g.gst], ['Staff rating', (g) => g.visit?.rating], ['Status', (g) => g.status],
     ['Visited by', (g) => g.visit?.by || g.staff?.name], ['Staff phone', (g) => g.staff?.phone], ['Registered', (g) => (g.createdAt ? new Date(g.createdAt).toISOString().slice(0, 10) : '')],
   ]
@@ -98,6 +98,18 @@ export function GarageManagement() {
       setOpen(u)
       toast.success(status === 'active' ? 'Garage verified' : status === 'inactive' ? 'Garage marked inactive' : 'Garage moved back to pending')
       loadStats()
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Could not update the garage') } finally { setBusy('') }
+  }
+  // Doorstep service = the garage sends a mechanic to the customer. The executive
+  // records it at the visit; the admin can correct it here.
+  const setDoorstep = async (g: any, yes: boolean) => {
+    setBusy('doorstep')
+    try {
+      const r = await adminGarageAPI.update(g._id, { sendsMechanic: yes })
+      const u = r.data?.data
+      setRows((list) => list.map((x) => (x._id === g._id ? u : x)))
+      setOpen(u)
+      toast.success(yes ? 'Doorstep service marked available' : 'Doorstep service marked not available')
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Could not update the garage') } finally { setBusy('') }
   }
   const remove = async (g: any) => {
@@ -278,7 +290,7 @@ export function GarageManagement() {
             <>
               <DialogHeader>
                 <DialogTitle className="flex flex-wrap items-center gap-2 pr-6 text-[19px]">{open.garageName} <Pill status={open.status} /></DialogTitle>
-                <DialogDescription>{open.code} · registered {fmtDate(open.createdAt)} by {open.staff?.name || '—'}{open.staff?.phone ? ` (+91 ${open.staff.phone})` : ''}</DialogDescription>
+                <DialogDescription>{open.code} · registered {fmtDate(open.createdAt)} by {open.staff?.name || '—'}{open.staff?.phone ? ` (+91 ${open.staff.phone})` : ''}{open.shopPartner ? ' · now also a Shop Partner (it has been given a job)' : ''}</DialogDescription>
               </DialogHeader>
 
               {!!open.photos?.length && (
@@ -299,7 +311,7 @@ export function GarageManagement() {
                 <Info l="Vehicles" v={(open.vehicleTypes || []).map(vehicleLabel).join(', ')} />
                 <Info l="Emergency / night" v={open.emergency ? 'Yes' : 'No'} />
                 <Info wide l="Services" v={<span className="flex flex-wrap gap-1.5">{(open.services || []).map((s: string) => <span key={s} className="rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-[12px] font-semibold text-[#334155]">{serviceLabel(s)}{s === 'other' && open.otherWork ? `: ${open.otherWork}` : ''}</span>)}</span>} />
-                <Info l="Sends mechanic to customer" v={open.sendsMechanic ? `Yes${open.travelKm ? ` · up to ${open.travelKm} km` : ''}` : 'No'} />
+                <Info l="Doorstep service (sends a mechanic to the customer)" v={<span className="flex flex-wrap items-center gap-2">{open.sendsMechanic ? `Available${open.travelKm ? ` · up to ${open.travelKm} km` : ''}` : 'Not available — workshop only'}<button type="button" data-doorstep-toggle disabled={!!busy} onClick={() => setDoorstep(open, !open.sendsMechanic)} className="rounded-md border border-[#DDE4EC] px-2 py-0.5 text-[12px] font-bold text-[#1B3B6F] hover:bg-[#EFF4FF] disabled:opacity-60">{busy === 'doorstep' ? 'Saving…' : open.sendsMechanic ? 'Mark not available' : 'Mark available'}</button></span>} />
                 <Info l="Parts warranty" v={open.partsWarranty} />
                 <Info l="UPI" v={open.upi} />
                 <Info l="GST / registration" v={open.gst} />

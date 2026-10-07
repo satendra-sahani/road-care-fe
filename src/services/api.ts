@@ -946,6 +946,10 @@ export const adminGarageAPI = {
   setStatus: (id: string, status: 'pending' | 'active' | 'inactive', adminNote?: string) => api.put(`/admin/garages/${id}/status`, { status, adminNote }),
   update: (id: string, data: any) => api.put(`/admin/garages/${id}`, data),
   remove: (id: string) => api.delete(`/admin/garages/${id}`),
+  // field garages that can be given a job and are not shop partners yet (shaped like shop partners)
+  assignable: () => api.get('/admin/garages/assignable'),
+  // give a request to a field garage — with its first job it becomes a shop partner
+  assignOrder: (garageId: string, serviceRequestId: string) => api.post(`/admin/garages/${garageId}/assign-order`, { serviceRequestId }),
 };
 
 // Field staff (created by admin only) who register garages at /manager/garage.
@@ -996,6 +1000,8 @@ export const garageFieldAPI = {
   verifyOtp: (phone: string, otp: string) => api.post('/common/garage-field/login/verify', { phone, otp }),
   me: () => api.get('/common/garage-field/me'),
   mine: () => api.get('/common/garage-field/mine'),
+  // every garage for the map: all executives' + shop partners (others without phone numbers)
+  all: () => api.get('/common/garage-field/all'),
   submit: (data: any) => api.post('/common/garage-field', data),
   upload: (file: Blob, folder: 'garage-photos' | 'garage-mechanics' | 'garage-owner-ids', name = 'photo.jpg') => {
     const fd = new FormData();

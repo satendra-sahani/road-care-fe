@@ -17,6 +17,14 @@ export type MyGarage = {
   address: string; area?: string; city?: string; location?: { lat: number; lng: number }; photo?: string | null
   vehicleTypes: string[]; services: string[]; mechanics: number; status: 'pending' | 'active' | 'inactive'
   visitDate: string; createdAt: string
+  doorstep?: boolean; travelKm?: number | null // doorstep service = sends a mechanic to the customer
+}
+/** A garage on the "all garages" map: the executive's own in full, somebody else's without phone numbers, or a shop partner. */
+export type MapGarage = {
+  id: string; kind: 'garage' | 'partner'; mine: boolean; garageName: string; status: 'pending' | 'active' | 'inactive'; createdAt: string
+  code?: string; address?: string; area?: string; city?: string; location?: { lat: number; lng: number }; photo?: string | null
+  addedBy?: string; doorstep?: boolean; whatsapp?: string; callNumber?: string
+  ownerName?: string; vehicleTypes?: string[]; services?: string[]; mechanics?: number; visitDate?: string; travelKm?: number | null
 }
 export type MyStats = { total: number; today: number; pending: number; active: number; inactive: number }
 
@@ -36,6 +44,21 @@ export function useMyGarages() {
   }, [])
   useEffect(() => { load() }, [load])
   return { garages, stats, loading, error, reload: load }
+}
+
+/** Every garage — all executives' and the shop partners — for the map. Loaded once `on` is true. */
+export function useAllGarages(on: boolean) {
+  const [all, setAll] = useState<MapGarage[] | null>(null)
+  const [error, setError] = useState('')
+  const load = useCallback(async () => {
+    setError('')
+    try {
+      const r = await garageFieldAPI.all()
+      setAll([...(r.data?.data?.garages || []), ...(r.data?.data?.partners || [])])
+    } catch { setError('Could not load all garages — showing only yours.') }
+  }, [])
+  useEffect(() => { if (on && all === null && !error) load() }, [on, all, error, load])
+  return { all, error, reload: load }
 }
 
 const TABS = [

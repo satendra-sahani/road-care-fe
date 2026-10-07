@@ -110,7 +110,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { serviceRequestAPI, adminShopAPI, mechanicAPI } from '@/services/api'
+import { serviceRequestAPI, adminShopAPI, adminGarageAPI, mechanicAPI } from '@/services/api'
 import { normalizeServiceRequest } from '@/store/sagas/serviceRequestSaga'
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
@@ -914,12 +914,11 @@ export function ServiceManagement() {
     setAssignDialogOpen(true)
     // Fetch shops in background
     setShopsLoading(true)
-    try {
-      const res = await adminShopAPI.getAll({ limit: 300 })
-      if (res.data?.success) {
-        setShopsList((res.data.data || []).filter((s: any) => s.isActive))
-      }
-    } catch {}
+    // shop partners + the garages our field staff registered that are not partners yet
+    const [shopsRes, fieldRes] = await Promise.allSettled([adminShopAPI.getAll({ limit: 300 }), adminGarageAPI.assignable()])
+    const partners = shopsRes.status === 'fulfilled' && shopsRes.value.data?.success ? (shopsRes.value.data.data || []).filter((s: any) => s.isActive) : null
+    const fieldGarages = fieldRes.status === 'fulfilled' && fieldRes.value.data?.success ? (fieldRes.value.data.data || []) : []
+    if (partners || fieldGarages.length) setShopsList([...(partners || []), ...fieldGarages])
     setShopsLoading(false)
   }
 
@@ -938,10 +937,12 @@ export function ServiceManagement() {
   const assignToShop = async (shopId: string) => {
     if (!assigningRequest || !shopId) return false
     try {
-      const res = await adminShopAPI.assignOrder(assigningRequest._id, shopId)
+      // a garage registered by field staff becomes a shop partner with its first job
+      const fieldGarage = shopsList.some((s: any) => s._id === shopId && s.source === 'field')
+      const res = fieldGarage ? await adminGarageAPI.assignOrder(shopId, assigningRequest._id) : await adminShopAPI.assignOrder(assigningRequest._id, shopId)
       if (!res.data?.success) { toast.error(res.data?.message || 'Failed to assign to the garage'); return false }
       dispatch(fetchServiceRequestsRequest())
-      toast.success('Request assigned to the garage')
+      toast.success((fieldGarage && res.data.message) || 'Request assigned to the garage')
       closeAssignDialog()
       return true
     } catch (err: any) {

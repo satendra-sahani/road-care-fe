@@ -7,7 +7,7 @@ import {
 } from '@/components/icons/BmIcons'
 import { GarageMap, LatLng } from './GarageMap'
 import { STATUS, mapsLink, waLink, vehicleLabel } from './garageOptions'
-import { MyGarage, NAVY, ORANGE, StaffShell, useMyGarages } from './StaffShell'
+import { MapGarage, MyGarage, NAVY, ORANGE, StaffShell, useAllGarages, useMyGarages } from './StaffShell'
 import { useStaff } from './StaffAuth'
 
 const fmtDay = (d: Date) => d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
@@ -19,10 +19,18 @@ const fmtWhen = (iso: string) => {
 }
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening' }
 const initials = (n: string) => n.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+// map pins of garages that are not this executive's own
+const OTHERS_PIN = '#2563EB'
+const PARTNER_PIN = '#7C3AED'
 
 export function StatusPill({ status }: { status: MyGarage['status'] }) {
   const s = STATUS[status] || STATUS.pending
   return <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11px] font-bold" style={{ color: s.fg, background: s.bg }}>{s.label}</span>
+}
+
+/** Doorstep service = the garage sends a mechanic to the customer. */
+export function DoorstepTag({ yes }: { yes: boolean }) {
+  return <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11px] font-bold" style={yes ? { color: '#15803D', background: '#DCFCE7' } : { color: '#475569', background: '#E2E8F0' }}>{yes ? 'Doorstep service' : 'Workshop only'}</span>
 }
 
 function Thumb({ src, size = 64 }: { src?: string | null; size?: number }) {
@@ -46,6 +54,7 @@ function GarageCard({ g, actions = false }: { g: MyGarage; actions?: boolean }) 
           <p className="mt-0.5 truncate text-[12.5px] text-[#64748B]">{[g.area, g.city].filter(Boolean).join(', ') || g.address}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <StatusPill status={g.status} />
+            {g.doorstep != null && <DoorstepTag yes={g.doorstep} />}
             <span className="text-[11.5px] font-semibold text-[#8A97AB]">{g.code} · {g.vehicleTypes.map(vehicleLabel).join(', ')}</span>
           </div>
         </div>
@@ -145,23 +154,34 @@ export function StaffHome() {
 
 // ════════════════════════════ My Visits ════════════════════════════
 export function StaffVisits() {
-  const { garages, stats, loading, error, reload } = useMyGarages()
+  const { garages, loading, error, reload } = useMyGarages()
   const [view, setView] = useState<'list' | 'map'>('list')
   const [tab, setTab] = useState<'all' | 'pending' | 'active' | 'inactive'>('all')
+  const [scope, setScope] = useState<'all' | 'mine'>('all') // the map: every garage, or only this executive's
   const [sel, setSel] = useState<string | null>(null)
   const [meLoc, setMeLoc] = useState<LatLng | null>(null)
+  const { all, error: allError } = useAllGarages(view === 'map')
+  const everyone = view === 'map' && scope === 'all' && all !== null
 
   const shown = useMemo(() => garages.filter((g) => tab === 'all' || g.status === tab), [garages, tab])
-  const pins = useMemo(() => shown.filter((g) => g.location?.lat != null).map((g) => ({ id: g.id, lat: g.location!.lat, lng: g.location!.lng, color: STATUS[g.status]?.pin || '#F59E0B' })), [shown])
-  const selG = shown.find((g) => g.id === sel) || null
-  useEffect(() => { if (sel && !shown.some((g) => g.id === sel)) setSel(null) }, [shown, sel])
+  // The map shows what is already covered by ANYONE — this executive's garages, other
+  // executives' and the shop partners — so nobody visits the same garage twice.
+  const mineOnMap: MapGarage[] = useMemo(() => garages.map((g) => ({ ...g, kind: 'garage' as const, mine: true })), [garages])
+  const source = everyone ? all! : mineOnMap
+  const onMap = useMemo(() => source.filter((g) => tab === 'all' || g.status === tab), [source, tab])
+  const pins = useMemo(() => onMap.filter((g) => g.location?.lat != null).map((g) => ({
+    id: g.id, lat: g.location!.lat, lng: g.location!.lng, color: g.kind === 'partner' ? PARTNER_PIN : g.mine ? (STATUS[g.status]?.pin || '#F59E0B') : OTHERS_PIN,
+  })), [onMap])
+  const selG = onMap.find((g) => g.id === sel) || null
+  useEffect(() => { if (sel && !onMap.some((g) => g.id === sel)) setSel(null) }, [onMap, sel])
 
   const locate = () => navigator.geolocation?.getCurrentPosition(
     (p) => setMeLoc({ lat: p.coords.latitude, lng: p.coords.longitude }), () => undefined, { enableHighAccuracy: true, timeout: 12000 },
   )
+  const n = (s: string) => source.filter((g) => s === 'all' || g.status === s).length
   const tabs = [
-    { k: 'all', l: `All (${stats.total})` }, { k: 'pending', l: `Pending (${stats.pending})` },
-    { k: 'active', l: `Verified (${stats.active})` }, { k: 'inactive', l: `Inactive (${stats.inactive})` },
+    { k: 'all', l: `All (${n('all')})` }, { k: 'pending', l: `Pending (${n('pending')})` },
+    { k: 'active', l: `Verified (${n('active')})` }, { k: 'inactive', l: `Inactive (${n('inactive')})` },
   ] as const
 
   return (
@@ -175,6 +195,22 @@ export function StaffVisits() {
               </button>
             ))}
           </div>
+          {view === 'map' && (
+            <div data-map-scope className="grid grid-cols-2 gap-2">
+              {(['all', 'mine'] as const).map((s) => (
+                <button key={s} type="button" data-scope={s} onClick={() => setScope(s)} aria-pressed={scope === s} className="h-9 rounded-xl border text-[12.5px] font-bold" style={scope === s ? { borderColor: ORANGE, color: '#C2410C', background: '#FFF4EE' } : { borderColor: '#D9E1EC', color: '#64748B' }}>
+                  {s === 'all' ? `All garages${all ? ` (${all.length})` : ''}` : `My garages (${garages.length})`}
+                </button>
+              ))}
+            </div>
+          )}
+          {everyone && (
+            <div data-map-legend className="flex flex-wrap items-center gap-x-3.5 gap-y-1 px-0.5 text-[11.5px] font-semibold text-[#475569]">
+              <span className="flex items-center gap-1.5"><span className="flex gap-0.5">{(['active', 'pending', 'inactive'] as const).map((s) => <span key={s} className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS[s].pin }} />)}</span>Mine (by status)</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: OTHERS_PIN }} />Other staff</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: PARTNER_PIN }} />Shop partner</span>
+            </div>
+          )}
           <div className="-mx-3 flex gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {tabs.map((t) => (
               <button key={t.k} type="button" onClick={() => setTab(t.k)} className="shrink-0 rounded-full border px-3.5 py-1.5 text-[12.5px] font-bold" style={tab === t.k ? { borderColor: NAVY, color: NAVY, background: '#EFF4FF' } : { borderColor: '#D9E1EC', color: '#64748B' }}>{t.l}</button>
@@ -194,6 +230,7 @@ export function StaffVisits() {
           <div className="relative flex-1">
             <GarageMap pins={pins} selectedId={sel} onSelect={setSel} me={meLoc} className="h-full w-full" zoomControl={false} />
             <button type="button" onClick={locate} aria-label="My location" className="absolute bottom-4 right-3 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#1B3B6F] shadow-lg active:bg-[#EEF2F8]"><IcMyLocation size={22} /></button>
+            {scope === 'all' && allError && <div className="pointer-events-none absolute inset-x-6 bottom-20 z-10 rounded-xl bg-white/95 px-3 py-2 text-center text-[12.5px] font-semibold text-[#B45309] shadow">{allError}</div>}
             {!loading && pins.length === 0 && (
               <div className="pointer-events-none absolute inset-x-6 top-6 z-10 rounded-xl bg-white/95 px-3 py-2.5 text-center text-[13px] font-semibold text-[#64748B] shadow">No garages to show on the map.</div>
             )}
@@ -206,10 +243,11 @@ export function StaffVisits() {
                     <b className="block truncate text-[14.5px] text-[#13203A]">{selG.garageName}</b>
                     <p className="flex items-center gap-1 truncate text-[12.5px] text-[#64748B]"><IcLocationOn size={14} />{[selG.area, selG.city].filter(Boolean).join(', ') || selG.address}</p>
                     <p className="mt-0.5 flex items-center gap-1 text-[12px] text-[#8A97AB]"><IcSchedule size={13} />{fmtWhen(selG.createdAt)} · <StatusPill status={selG.status} /></p>
+                    {!selG.mine && <p data-map-owner className="mt-0.5 text-[12px] font-bold" style={{ color: selG.kind === 'partner' ? PARTNER_PIN : OTHERS_PIN }}>{selG.kind === 'partner' ? 'Shop partner — already with Bharat Mechanics' : `Already registered${selG.addedBy ? ` by ${selG.addedBy}` : ''}`}</p>}
                   </div>
                 </div>
-                <div className="mt-2.5 grid grid-cols-[48px_1fr] gap-2">
-                  <a href={`tel:+91${selG.callNumber || selG.whatsapp}`} aria-label="Call" className="flex h-10 items-center justify-center rounded-xl border border-[#D9E1EC] text-[#1B3B6F]"><IcCall size={19} /></a>
+                <div className={`mt-2.5 grid gap-2 ${selG.callNumber || selG.whatsapp ? 'grid-cols-[48px_1fr]' : ''}`}>
+                  {(selG.callNumber || selG.whatsapp) && <a href={`tel:+91${selG.callNumber || selG.whatsapp}`} aria-label="Call" className="flex h-10 items-center justify-center rounded-xl border border-[#D9E1EC] text-[#1B3B6F]"><IcCall size={19} /></a>}
                   <a href={mapsLink(selG.location, selG.address)} target="_blank" rel="noopener noreferrer" className="flex h-10 items-center justify-center gap-1.5 rounded-xl text-[13.5px] font-bold text-white" style={{ background: NAVY }}><IcNavigation size={17} /> Navigate</a>
                 </div>
               </div>
