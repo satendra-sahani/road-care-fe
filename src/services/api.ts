@@ -997,6 +997,11 @@ export const locationRequestAPI = {
     api.post(`/common/location-request/${token}`, data),
 };
 
+// Public page /j/[token] — the job behind the link in the SMS to a garage / mechanic, no login.
+export const jobLinkAPI = {
+  get: (token: string) => api.get(`/common/job-link/${encodeURIComponent(token)}`),
+};
+
 // Field executive web app (/manager/garage). Staff log in at /manager/login with
 // a phone OTP (cookie `staff_token`); accounts are created by the admin.
 export const garageFieldAPI = {

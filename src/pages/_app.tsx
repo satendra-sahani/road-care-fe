@@ -142,8 +142,8 @@ export default function App({ Component, pageProps }: AppProps) {
           <Component {...pageProps} />
         )}
         {/* the field executive app is a full-screen tool — no storefront cookie bar over its buttons;
-            same for the one-button "share my location" page (/l/[token]) */}
-        {!router.pathname.startsWith('/manager') && !router.pathname.startsWith('/l/') && <CookieConsent />}
+            same for the one-button "share my location" page (/l/[token]) and the job page a mechanic opens from an SMS (/j/[token]) */}
+        {!router.pathname.startsWith('/manager') && !router.pathname.startsWith('/l/') && !router.pathname.startsWith('/j/') && <CookieConsent />}
       </div>
       </IncomingCallProvider>
       </AdminCallProvider>
