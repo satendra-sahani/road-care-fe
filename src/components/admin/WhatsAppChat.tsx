@@ -24,6 +24,7 @@ interface Message {
   direction: 'in' | 'out'; type: string; body: string; status?: string
   mediaId?: string; mediaMime?: string; mediaFilename?: string
   contextWaId?: string; reaction?: Reaction; createdAt: string
+  templateName?: string
 }
 
 const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
@@ -48,8 +49,12 @@ const prettyPhone = (p: string) => (p?.length > 10 ? `+${p.slice(0, p.length - 1
 const notShown = (type: string, body?: string) => type === 'unsupported' || /^\[(unsupported|unknown|message)\]$/.test(body || '')
 const NOT_SHOWN = 'Message not available here'
 const TYPE_LABEL: Record<string, string> = { location: '📍 Location', contacts: '👤 Contact', order: '🛒 Order', button: 'Button reply', interactive: 'Reply', system: 'WhatsApp notice' }
+// Templates sent before their words were saved carry only "[template: name]".
+const templateNameOf = (m: { type: string; body?: string; templateName?: string }) => m.templateName || (/^\[template: (.+)\]$/.exec(m.body || '') || [])[1] || ''
 const previewText = (t: string, type: string) => {
   if (notShown(type, t)) return NOT_SHOWN
+  const oldTpl = /^\[template: (.+)\]$/.exec(t || '')
+  if (oldTpl) return `Template: ${oldTpl[1]}`
   if (t) return t
   switch (type) {
     case 'image': return '📷 Photo'
@@ -184,8 +189,10 @@ function DocMsg({ m }: { m: Message }) {
 
 function MediaContent({ m, onOpen }: { m: Message; onOpen?: (i: LightboxItem) => void }) {
   if (!m.mediaId) return null
-  if (m.type === 'image' || m.type === 'sticker') return <ImageMsg m={m} onOpen={onOpen} />
-  if (m.type === 'video') return <VideoMsg m={m} onOpen={onOpen} />
+  // a template's header photo / video is told apart by its mime type
+  const kind = m.type === 'template' ? (m.mediaMime || '').split('/')[0] : m.type
+  if (kind === 'image' || kind === 'sticker') return <ImageMsg m={m} onOpen={onOpen} />
+  if (kind === 'video') return <VideoMsg m={m} onOpen={onOpen} />
   if (m.type === 'audio') return <AudioMsg m={m} />
   return <DocMsg m={m} />
 }
@@ -194,6 +201,17 @@ export function WhatsAppChat() {
   const [chats, setChats] = useState<Chat[]>([])
   const [active, setActive] = useState<Chat | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  // template name → its words, for templates sent before the words were saved with the message
+  const [tplText, setTplText] = useState<Record<string, string>>({})
+  useEffect(() => {
+    adminWhatsappAPI.getTemplates().then((res: any) => {
+      const map: Record<string, string> = {}
+      for (const t of res.data?.data || []) {
+        map[t.name] = [t.headerType === 'TEXT' ? t.headerText : '', t.bodyText, t.footerText, (t.buttons || []).map((b: any) => `[ ${b.text} ]`).join('  ')].filter(Boolean).join('\n\n')
+      }
+      setTplText(map)
+    }).catch(() => {})
+  }, [])
   const [windowOpen, setWindowOpen] = useState(false)
   const [loadingChats, setLoadingChats] = useState(true)
   const [loadingThread, setLoadingThread] = useState(false)
@@ -487,6 +505,17 @@ export function WhatsAppChat() {
                                 <p data-wa-not-shown className="max-w-[300px] text-[12.5px] italic leading-snug text-slate-500">
                                   This message can’t be shown here. WhatsApp does not pass some messages to business tools — for example a poll, a view-once photo or video, or a message type it added recently. Ask the customer to send it again as a normal message.
                                 </p>
+                              ) : m.type === 'template' ? (
+                                <div data-wa-template>
+                                  <p className="mb-0.5 text-[10.5px] font-bold uppercase tracking-wide text-emerald-800/70">Template{templateNameOf(m) ? ` · ${templateNameOf(m)}` : ''}</p>
+                                  {(() => {
+                                    const old = /^\[template: (.+)\]$/.exec(m.body || '')
+                                    const text = old ? tplText[old[1]] : m.body
+                                    return text
+                                      ? <p className="whitespace-pre-wrap break-words">{text}</p>
+                                      : <p className="italic text-slate-500">The text of this template is not available (it may have been deleted or renamed in WhatsApp Manager).</p>
+                                  })()}
+                                </div>
                               ) : m.body ? <p className="whitespace-pre-wrap break-words">{m.body}</p>
                                 : (!m.mediaId && m.type !== 'text') ? <p className="italic text-slate-500">{TYPE_LABEL[m.type] || 'Message'}</p> : null}
                               <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10.5px] ${out ? 'text-emerald-800/60' : 'text-slate-400'}`}>
