@@ -7,7 +7,8 @@ import { GarageMap } from '@/components/manager/GarageMap'
 
 // Location preview of the "Create Service Request" dialog: a Google map opened
 // wide enough to read the area and city names around the customer, with the pin
-// (tap the map or drag the pin to correct it) and a soft circle around it.
+// (tap the map or drag the pin to correct it) and a circle the size of the
+// phone's margin of error: a dot when the GPS is sure, wide when it is not.
 // "Change Location" goes down to street level for an exact drop.
 // If Google Maps cannot load (no key, key refused, blocked network) the
 // OpenStreetMap picker is used instead, so the dialog never loses its map.
@@ -16,14 +17,14 @@ type LatLng = { lat: number; lng: number }
 
 const AREA_ZOOM = 14    // neighbourhoods and the city name are readable
 const STREET_ZOOM = 18  // shop names and lanes, for an exact pin
-const AREA_RADIUS_M = 400
+const MIN_RADIUS_M = 12 // the circle is the phone's margin of error; never draw it smaller than this
 const INDIA: LatLng = { lat: 22.6, lng: 79 }
 const PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 24 24"><path fill="#E11D2E" stroke="#fff" stroke-width="1.2" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.8" fill="#fff"/></svg>`
 /** map centre that shows `p` shifted `px` pixels to the left of the middle at zoom `z` (room for the info card on the right) */
 const centreFor = (p: LatLng, z: number, px: number): LatLng => ({ lat: p.lat, lng: p.lng + (px * 360) / (256 * 2 ** z) })
 const ctl = 'flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#16305C] shadow-[0_2px_8px_rgba(15,23,42,.18)] hover:bg-[#F3F5F9]'
 
-export function CreateRequestMap({ value, accuracy, onChange, className = '', offsetX = 0 }: {
+export function CreateRequestMap({ value, accuracy, onChange, className = '', offsetX = 0, focusKey = '' }: {
   value: LatLng | null
   /** metres, when the phone reported it */
   accuracy?: number | null
@@ -31,6 +32,8 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
   className?: string
   /** show the pin this many pixels left of the centre (an overlay covers the right side) */
   offsetX?: number
+  /** changes whenever a position arrives that the admin did not place by hand — the map then centres on it */
+  focusKey?: string
 }) {
   const [engine, setEngine] = useState<'loading' | 'google' | 'osm'>('loading')
   const [mapType, setMapType] = useState<'roadmap' | 'hybrid'>('roadmap')
@@ -80,24 +83,36 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
       marker.current = null; circle.current = null
       return
     }
-    const radius = Math.max(accuracy || 0, AREA_RADIUS_M)
+    const radius = accuracy && accuracy > 0 ? Math.max(accuracy, MIN_RADIUS_M) : 0 // a hand-placed pin has no margin
     if (!marker.current) {
       marker.current = new g.Marker({
         map: m, position: value, draggable: true, zIndex: 10, title: 'Customer location — drag to correct',
         icon: { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(PIN)}`, scaledSize: new g.Size(46, 46), anchor: new g.Point(23, 44) },
       })
       marker.current.addListener('dragend', (e: any) => cb.current({ lat: e.latLng.lat(), lng: e.latLng.lng() }))
-      circle.current = new g.Circle({ map: m, center: value, radius, strokeColor: '#2563EB', strokeOpacity: 0.85, strokeWeight: 1.5, fillColor: '#3B82F6', fillOpacity: 0.12, clickable: false })
+      circle.current = new g.Circle({ map: m, center: value, radius, visible: radius > 0, strokeColor: '#2563EB', strokeOpacity: 0.85, strokeWeight: 1.5, fillColor: '#3B82F6', fillOpacity: 0.14, clickable: false })
       m.setZoom(AREA_ZOOM); m.setCenter(centreFor(value, AREA_ZOOM, offsetX))
       return
     }
     marker.current.setPosition(value)
-    circle.current.setCenter(value); circle.current.setRadius(radius)
+    circle.current.setCenter(value); circle.current.setRadius(radius); circle.current.setVisible(radius > 0)
     // A new place outside the view (the customer just shared, another address was
     // picked) → show its area. A correction inside the view keeps the admin's zoom.
     if (!m.getBounds()?.contains(value) || (m.getZoom() || 0) < 11) { m.setZoom(AREA_ZOOM); m.setCenter(centreFor(value, AREA_ZOOM, offsetX)) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, value?.lat, value?.lng, accuracy])
+
+  // A position that came from the customer's phone (or a picked address) may sit at
+  // the edge of what is on screen: bring it into the middle, keeping the admin's zoom.
+  // A rough fix is shown with its whole circle, so the uncertainty is plain to see.
+  useEffect(() => {
+    const m = map.current
+    if (engine !== 'google' || !m || !value || !focusKey) return
+    if (accuracy && accuracy > 250 && circle.current?.getBounds()) { m.fitBounds(circle.current.getBounds(), 28); return }
+    const z = Math.max(m.getZoom() || 0, AREA_ZOOM)
+    m.setZoom(z); m.setCenter(centreFor(value, z, offsetX))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, focusKey])
 
   useEffect(() => { if (engine === 'google') map.current?.setMapTypeId(mapType) }, [engine, mapType])
 

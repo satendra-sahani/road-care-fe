@@ -26,8 +26,10 @@ function getToken(): string {
 
 // API functions
 const api = {
+  // limit: the server pages at 10 by default — the admin list and the "Assign
+  // Mechanic" dialog (nearest first) must see every mechanic, not the 10 newest
   fetchMechanics: () =>
-    fetch(`${API_BASE_URL}/admin/mechanics`, {
+    fetch(`${API_BASE_URL}/admin/mechanics?limit=1000`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     }).then(response => {
       if (!response.ok) throw new Error('Failed to fetch mechanics');

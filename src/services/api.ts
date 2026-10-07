@@ -970,7 +970,8 @@ export const adminLocationRequestAPI = {
 // Public page /l/[token] — the customer shares the location once, no login.
 export const locationRequestAPI = {
   meta: (token: string) => api.get(`/common/location-request/${token}`),
-  share: (token: string, data: { latitude: number; longitude: number; accuracy?: number }) =>
+  // `refining: true` = sharper fixes for the same share are still coming
+  share: (token: string, data: { latitude: number; longitude: number; accuracy?: number; refining?: boolean }) =>
     api.post(`/common/location-request/${token}`, data),
 };
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { useSelector } from 'react-redux'
@@ -15,6 +15,7 @@ import CallScreen from '@/components/service/CallScreen'
 import RatingFlow from '@/components/service/RatingFlow'
 import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import { toast } from 'sonner'
+import { bestPosition, sameSpot, validCoords, PIN_MAX_M } from '@/lib/geolocate'
 import Cookies from 'js-cookie'
 import {
   Wrench, Calendar, Clock, MapPin, Car, Bike, Truck as TruckIcon,
@@ -154,6 +155,10 @@ export function ServicePage() {
   const [contactNumber, setContactNumber] = useState('')
   const [latitude, setLatitude] = useState<number | null>(null)
   const [longitude, setLongitude] = useState<number | null>(null)
+  // how exact the pin is (metres, from the GPS) and the address line it was taken for:
+  // the pin is sent only while the address still describes that place (see sameSpot)
+  const [pinAccuracy, setPinAccuracy] = useState<number | null>(null)
+  const pinLine = useRef('')
   const [gpsLoading, setGpsLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitProgress, setSubmitProgress] = useState('')
@@ -204,6 +209,12 @@ export function ServicePage() {
           const defaultAddr = addresses.find((a: any) => a.isDefault) || addresses[0]
           if (defaultAddr) {
             setAddress(defaultAddr.address || defaultAddr.addressLine1 || '')
+            // a saved address may carry its own map pin — it goes with the booking
+            const savedPin = validCoords(defaultAddr.coordinates?.latitude, defaultAddr.coordinates?.longitude)
+            if (savedPin) {
+              setLatitude(savedPin.latitude); setLongitude(savedPin.longitude); setPinAccuracy(null)
+              pinLine.current = defaultAddr.address || defaultAddr.addressLine1 || ''
+            }
             if (!city && (defaultAddr.city || defaultAddr.town)) setCity(defaultAddr.city || defaultAddr.town || '')
             if (!landmark && defaultAddr.landmark) setLandmark(defaultAddr.landmark || '')
             return
@@ -251,13 +262,21 @@ export function ServicePage() {
   const handleGPS = () => {
     if (!navigator.geolocation) { toast.error('Geolocation not supported'); return }
     setGpsLoading(true)
-    navigator.geolocation.getCurrentPosition(
+    // The sharpest fix the browser can give in a few seconds. (A bare
+    // getCurrentPosition answered with a rough network guess — pins landed
+    // hundreds of metres from the customer.)
+    bestPosition().then(
       async (pos) => {
         try {
-          const { latitude: lat, longitude: lng } = pos.coords
-          // Store coords for the create payload (mechanic uses these for routing)
-          setLatitude(lat)
-          setLongitude(lng)
+          const { latitude: lat, longitude: lng, accuracy } = pos
+          // Store coords for the create payload (mechanic uses these for routing) —
+          // a rough fix still fills the address below, but it is not a pin to drive to
+          const exact = accuracy <= PIN_MAX_M
+          setLatitude(exact ? lat : null)
+          setLongitude(exact ? lng : null)
+          setPinAccuracy(exact ? Math.round(accuracy) : null)
+          pinLine.current = ''
+          if (!exact) toast.info('Location is approximate — please check the address')
           const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`)
           const data = await resp.json()
           if (data.address) {
@@ -266,7 +285,7 @@ export function ServicePage() {
             // address part. Each setter only writes if its current value is
             // empty so we don't overwrite something the user already typed.
             const addrLine = [a.road, a.neighbourhood, a.suburb].filter(Boolean).join(', ')
-            if (addrLine) setAddress(addrLine)
+            if (addrLine) { setAddress(addrLine); pinLine.current = addrLine }
             if ((a.city || a.town || a.village || a.state_district) && !city) {
               setCity(a.city || a.town || a.village || a.state_district || '')
             }
@@ -325,8 +344,9 @@ export function ServicePage() {
         state: addrState.trim() || undefined,
         pincode: pincode.trim() || undefined,
         contactNumber: contactNumber.replace(/\D/g, ''),
-        latitude: latitude ?? undefined,
-        longitude: longitude ?? undefined,
+        // the pin goes with the booking only while the address still describes the place it was taken at
+        ...(latitude != null && longitude != null && sameSpot(pinLine.current, address)
+          ? { latitude, longitude, locationAccuracy: pinAccuracy ?? undefined } : {}),
         paymentMethod,
         estimatedCost: estimatedTotal,
         priority: serviceType === 'roadside' ? 'high' : 'normal',

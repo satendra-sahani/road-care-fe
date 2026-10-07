@@ -26,7 +26,8 @@ type LocReq = {
   id: string; link: string; phone: string
   status: 'pending' | 'captured' | 'declined' | 'expired'
   openedAt: string | null
-  location: { latitude: number; longitude: number; accuracy: number | null; source: 'web' | 'app' | null; capturedAt: string | null } | null
+  /** `refining`: the customer's phone is still sending sharper fixes */
+  location: { latitude: number; longitude: number; accuracy: number | null; source: 'web' | 'app' | null; capturedAt: string | null; refining?: boolean } | null
   sends: { channel: Channel; at: string; mode: Delivery['mode']; detail: string }[]
 }
 type RecentLoc = { label: string; source: 'saved' | 'request'; address: string; landmark: string; city: string; state: string; pincode: string; latitude: number | null; longitude: number | null }
@@ -49,7 +50,14 @@ type Form = {
   notes: string; photos: string[]
 }
 /** where the pin on the map came from */
-type Fix = { source: 'web' | 'app' | 'manual' | 'recent' | 'search'; accuracy?: number | null; at?: string | null }
+type Fix = { source: 'web' | 'app' | 'manual' | 'recent' | 'search'; accuracy?: number | null; at?: string | null; refining?: boolean }
+/** above this margin a phone fix is only "somewhere around here" (network / approximate permission) */
+const ROUGH_M = 100
+const metresBetween = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+  const rad = (d: number) => (d * Math.PI) / 180
+  const x = rad(b.lng - a.lng) * Math.cos(rad((a.lat + b.lat) / 2)), y = rad(b.lat - a.lat)
+  return Math.sqrt(x * x + y * y) * 6371000
+}
 
 const BLUE = '#1E40E0'
 const NAVY = '#0F2A5F'
@@ -228,6 +236,10 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
   const addrAuto = useRef(true)
   // the name we filled in from the customer record — cleared again if the number changes to someone else
   const autoName = useRef('')
+  const applied = useRef('')       // capturedAt of the customer fix already on the map
+  const handMoved = useRef(false)  // the admin corrected the pin after it arrived — leave it alone
+  const seenStatus = useRef('')    // to announce "declined" once
+  const lastGeo = useRef<{ lat: number; lng: number } | null>(null) // where the address was last looked up
   const set = useCallback((patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch })), [])
 
   const phoneOk = validPhone(form.phone)
@@ -241,6 +253,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
     if (!open) return
     setStep(0); setLookup(null); setLocReq(null); setDeliveries({}); setFix(null); setAddrQ(''); setAddrHits([]); setCustQ(''); setCustHits([])
     lastLooked.current = ''; addrAuto.current = true; autoName.current = ''
+    applied.current = ''; handMoved.current = false; seenStatus.current = ''; lastGeo.current = null
     let draft: { form?: Form; locReqId?: string; fix?: Fix | null } | null = null
     try { const s = localStorage.getItem(DRAFT_KEY); draft = s ? JSON.parse(s) : null } catch { /* no draft */ }
     if (draft?.form) {
@@ -248,7 +261,15 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
       setFix(draft.fix || null)
       addrAuto.current = !draft.form.address
       toast.info('Draft restored', { action: { label: 'Start fresh', onClick: () => { try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ } setForm(emptyForm()); setFix(null); setLocReq(null); setDeliveries({}); addrAuto.current = true } } })
-      if (draft.locReqId) adminLocationRequestAPI.get(draft.locReqId).then((r) => { const d = r.data?.data; if (d && d.phone === draft?.form?.phone) setLocReq(d) }).catch(() => {})
+      if (draft.locReqId) adminLocationRequestAPI.get(draft.locReqId).then((r) => {
+        const d: LocReq | undefined = r.data?.data
+        if (!d || d.phone !== draft?.form?.phone) return
+        // whatever it holds is already part of the draft — don't put it on top of later edits
+        applied.current = d.location?.capturedAt || ''
+        handMoved.current = !!applied.current
+        seenStatus.current = d.status
+        setLocReq(d)
+      }).catch(() => {})
     } else setForm(emptyForm())
     api.get('/common/config').then((r) => {
       const d = r.data?.data
@@ -334,35 +355,59 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
   const placePin = useCallback(async (la: number, ln: number, f: Fix, known?: Partial<Place> & { landmark?: string }) => {
     setFix(f)
     setForm((p) => ({ ...p, lat: la.toFixed(6), lng: ln.toFixed(6) }))
+    if (f.source !== 'web' && f.source !== 'app') handMoved.current = true
     if (known?.address) {
       addrAuto.current = true
+      lastGeo.current = { lat: la, lng: ln }
       setForm((p) => ({ ...p, address: known.address || '', landmark: known.landmark ?? p.landmark, city: known.city || '', state: known.state || '', pincode: known.pincode || '' }))
       return
     }
     if (!addrAuto.current) return
+    // a fix that only sharpened by a few metres has the same address
+    if (lastGeo.current && metresBetween(lastGeo.current, { lat: la, lng: ln }) < 15) return
+    lastGeo.current = { lat: la, lng: ln }
     const place = await reverseGeocode(la, ln)
     if (place?.address && addrAuto.current) setForm((p) => ({ ...p, address: place.address, city: place.city, state: place.state, pincode: place.pincode }))
   }, [])
 
-  // wait for the customer to share the location
+  // Follow the request: quickly while we wait for the customer and while their
+  // phone is still sending sharper fixes (the first one arrives within a second
+  // or two, the exact GPS fix a few seconds later), then slowly in case they
+  // press "Share again". A pin the admin corrected by hand is left alone.
   useEffect(() => {
-    if (!open || !locReq || locReq.status !== 'pending') return
+    if (!open || !locReq || locReq.status === 'expired') return
     let off = false
     const id = locReq.id
-    const t = setInterval(async () => {
+    const tick = async () => {
       try {
         const d: LocReq | undefined = (await adminLocationRequestAPI.get(id)).data?.data
         if (off || !d) return
-        setLocReq((p) => (p && p.id === d.id && p.status === d.status && p.openedAt === d.openedAt ? p : d))
-        if (d.status === 'captured' && d.location) {
-          addrAuto.current = true // the customer's real spot beats whatever was typed before
-          placePin(d.location.latitude, d.location.longitude, { source: d.location.source || 'web', accuracy: d.location.accuracy, at: d.location.capturedAt })
-          toast.success('The customer shared the current location')
-        } else if (d.status === 'declined') toast.error('The customer declined to share the location in the app')
-      } catch { /* keep waiting */ }
-    }, 3000)
+        const loc = d.location
+        const was = seenStatus.current
+        seenStatus.current = d.status
+        setLocReq((p) => (p && p.id === d.id && p.status === d.status && p.openedAt === d.openedAt
+          && (p.location?.capturedAt || '') === (loc?.capturedAt || '') && !!p.location?.refining === !!loc?.refining ? p : d))
+        if (d.status === 'pending') { applied.current = ''; return } // asked again somewhere — a fresh answer is coming
+        if (d.status === 'declined') { if (was !== 'declined') toast.error('The customer declined to share the location in the app'); return }
+        if (d.status !== 'captured' || !loc?.capturedAt) return
+        if (loc.capturedAt !== applied.current) {
+          const first = !applied.current
+          applied.current = loc.capturedAt
+          if (first) handMoved.current = false // the customer's real spot beats whatever was typed before
+          if (!handMoved.current) {
+            addrAuto.current = true
+            placePin(loc.latitude, loc.longitude, { source: loc.source || 'web', accuracy: loc.accuracy, at: loc.capturedAt, refining: !!loc.refining })
+          }
+          if (first) toast.success('The customer shared the current location')
+        } else if (!loc.refining) {
+          setFix((f) => (f?.refining ? { ...f, refining: false } : f))
+        }
+      } catch { /* keep trying */ }
+    }
+    const busy = locReq.status === 'pending' || !!locReq.location?.refining
+    const t = setInterval(tick, busy ? 1500 : 6000)
     return () => { off = true; clearInterval(t) }
-  }, [open, locReq?.id, locReq?.status, placePin]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, locReq?.id, locReq?.status, locReq?.location?.refining, placePin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ask = async (channel: Channel) => {
     if (!phoneOk) { toast.error('Enter the customer’s 10-digit mobile number first'); return }
@@ -376,6 +421,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
       const res = await adminLocationRequestAPI.ask({ phone: form.phone, name: form.name.trim(), channel })
       const { request, delivery } = (res.data?.data || {}) as { request: LocReq; delivery: Delivery }
       if (!request || !delivery) throw new Error('bad response')
+      applied.current = ''; seenStatus.current = request.status // a fresh ask: the next fix is a new answer
       setLocReq(request)
       setDeliveries((d) => ({ ...d, [channel]: delivery }))
       if (delivery.mode === 'failed') { tab?.close(); toast.error(delivery.detail); return }
@@ -472,6 +518,8 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
         vehicleType: form.vehicleType, vehicleBrand: form.brand.trim(), vehicleModel: form.model.trim(), registrationNumber: form.reg.trim().toUpperCase(),
         address: form.address.trim(), landmark: form.landmark.trim(), city: form.city.trim(), state: form.state.trim(), pincode: form.pincode.trim(),
         ...(pos ? { latitude: pos.lat, longitude: pos.lng } : {}),
+        // how exact the pin is, when it is the customer's own GPS fix (not a pin placed by hand)
+        ...(pos && (fix?.source === 'web' || fix?.source === 'app') && fix.accuracy ? { locationAccuracy: fix.accuracy } : {}),
         preferredDate: form.when === 'later' ? form.date : new Date().toISOString(),
         preferredTimeSlot: form.when === 'later' ? form.slot : 'As soon as possible',
         notes: form.notes.trim(), images: form.photos, saveAddress: form.saveAddress,
@@ -504,7 +552,37 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
   // ── location status banner ──
   const st = locReq?.status
   const captured = (fix?.source === 'web' || fix?.source === 'app') && hasPos
-  const Banner = captured ? (
+  const margin = fix?.accuracy ?? null
+  const rough = captured && !fix?.refining && margin != null && margin > ROUGH_M
+  // asked (again): we are waiting, whatever an earlier answer left on the map
+  const Waiting = (
+    <div className="flex items-start gap-3 rounded-xl border border-[#F7D58A] bg-[#FFF8E6] px-3.5 py-3" data-loc-status="pending">
+      <Loader2 className="mt-1 h-6 w-6 shrink-0 animate-spin text-[#D97706]" />
+      <div className="min-w-0 flex-1">
+        <b className="block text-[14px] text-[#0F1E46]">Waiting for the customer to share the location…</b>
+        <span className="text-[12.5px] text-[#4B5563]">{locReq?.openedAt ? `The customer opened it at ${timeOf(locReq.openedAt)} — ask them to press “Share my location”.` : 'This fills in by itself as soon as they share. You can keep filling the form.'}{captured ? ' The earlier location stays on the map until the new one arrives.' : ''}</span>
+      </div>
+    </div>
+  )
+  const Banner = st === 'pending' ? Waiting : captured && fix?.refining ? (
+    <div className="flex items-start gap-3 rounded-xl border border-[#BCD0FB] bg-[#EEF3FD] px-3.5 py-3" data-loc-status="refining">
+      <Loader2 className="mt-1 h-6 w-6 shrink-0 animate-spin" style={{ color: BLUE }} />
+      <div className="min-w-0 flex-1">
+        <b className="block text-[14px] text-[#0F1E46]">Location received — getting more exact…</b>
+        <span className="text-[12.5px] text-[#4B5563]">Lat: {lat.toFixed(4)}, Long: {lng.toFixed(4)}{margin ? ` • ±${margin} m so far` : ''}. The pin settles by itself in a few seconds.</span>
+      </div>
+      <span className="shrink-0 text-[12px] text-[#4B5563]">{timeOf(fix?.at)}</span>
+    </div>
+  ) : rough ? (
+    <div className="flex items-start gap-3 rounded-xl border border-[#F7D58A] bg-[#FFF8E6] px-3.5 py-3" data-loc-status="rough">
+      <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-[#D97706]" />
+      <div className="min-w-0 flex-1">
+        <b className="block text-[14px] text-[#0F1E46]">Approximate location only (±{margin} m)</b>
+        <span className="text-[12.5px] text-[#4B5563]">The phone had no GPS fix — the customer can be anywhere inside the circle. Ask them to turn on Location (GPS) with <b>precise location</b>, step outside and share again (press Resend) — or confirm the spot on the call and drag the pin.</span>
+      </div>
+      <span className="shrink-0 text-[12px] text-[#4B5563]">{timeOf(fix?.at)}</span>
+    </div>
+  ) : captured ? (
     <div className="flex items-start gap-3 rounded-xl border border-[#A7E3BC] bg-[#EAFBF0] px-3.5 py-3" data-loc-status="captured">
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#16A34A] text-white"><Check className="h-5 w-5" /></span>
       <div className="min-w-0 flex-1">
@@ -513,14 +591,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
       </div>
       <span className="shrink-0 text-[12px] text-[#4B5563]">{timeOf(fix?.at)}</span>
     </div>
-  ) : st === 'pending' ? (
-    <div className="flex items-start gap-3 rounded-xl border border-[#F7D58A] bg-[#FFF8E6] px-3.5 py-3" data-loc-status="pending">
-      <Loader2 className="mt-1 h-6 w-6 shrink-0 animate-spin text-[#D97706]" />
-      <div className="min-w-0 flex-1">
-        <b className="block text-[14px] text-[#0F1E46]">Waiting for the customer to share the location…</b>
-        <span className="text-[12.5px] text-[#4B5563]">{locReq?.openedAt ? `The customer opened it at ${timeOf(locReq.openedAt)} — ask them to press “Share my location”.` : 'This fills in by itself as soon as they share. You can keep filling the form.'}</span>
-      </div>
-    </div>
+
   ) : st === 'declined' || st === 'expired' ? (
     <div className="flex items-start gap-3 rounded-xl border border-[#FBC5C5] bg-[#FEF1F1] px-3.5 py-3" data-loc-status={st}>
       <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-[#DC2626]" />
@@ -685,8 +756,8 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
             <div><label className={label}>Pincode</label><input className={field} inputMode="numeric" placeholder="6 digits" value={form.pincode} onChange={(e) => set({ pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} aria-label="Pincode" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className={label}>Latitude <Opt /></label><input className={field} inputMode="decimal" placeholder="e.g. 26.7606" value={form.lat} onChange={(e) => { setFix({ source: 'manual' }); set({ lat: e.target.value.replace(/[^0-9.\-]/g, '') }) }} aria-label="Latitude" /></div>
-            <div><label className={label}>Longitude <Opt /></label><input className={field} inputMode="decimal" placeholder="e.g. 83.3732" value={form.lng} onChange={(e) => { setFix({ source: 'manual' }); set({ lng: e.target.value.replace(/[^0-9.\-]/g, '') }) }} aria-label="Longitude" /></div>
+            <div><label className={label}>Latitude <Opt /></label><input className={field} inputMode="decimal" placeholder="e.g. 26.7606" value={form.lat} onChange={(e) => { handMoved.current = true; setFix({ source: 'manual' }); set({ lat: e.target.value.replace(/[^0-9.\-]/g, '') }) }} aria-label="Latitude" /></div>
+            <div><label className={label}>Longitude <Opt /></label><input className={field} inputMode="decimal" placeholder="e.g. 83.3732" value={form.lng} onChange={(e) => { handMoved.current = true; setFix({ source: 'manual' }); set({ lng: e.target.value.replace(/[^0-9.\-]/g, '') }) }} aria-label="Longitude" /></div>
           </div>
         </div>
       </Card>
@@ -930,13 +1001,14 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
             <Card className="overflow-hidden">
               <Band icon={<MapPin className="h-[18px] w-[18px]" />}>Location Preview</Band>
               <div className="relative h-[280px]">
-                <CreateRequestMap value={pos} accuracy={fix?.accuracy} onChange={(p) => placePin(p.lat, p.lng, { source: 'manual' })} className="h-full w-full" offsetX={70} />
+                <CreateRequestMap value={pos} accuracy={fix?.accuracy} onChange={(p) => placePin(p.lat, p.lng, { source: 'manual' })} className="h-full w-full" offsetX={70}
+                  focusKey={fix && fix.source !== 'manual' ? `${fix.source}|${fix.at || ''}|${form.lat},${form.lng}` : ''} />
                 {pos ? (
                   <>
                     <div className="pointer-events-none absolute right-2.5 top-2.5 z-10 w-[178px] rounded-lg bg-white/95 px-2.5 py-2 text-[11.5px] leading-snug text-[#374151] shadow-[0_2px_8px_rgba(15,23,42,.18)]" data-loc-card>
                       <b className="block truncate text-[12.5px] text-[#0F1E46]">{form.city || 'Customer location'}</b>
                       Lat: {lat.toFixed(4)}<br />Long: {lng.toFixed(4)}
-                      {fix?.accuracy ? <><br />Accuracy: ±{fix.accuracy} m</> : null}
+                      {fix?.accuracy ? <><br /><span className={rough ? 'font-bold text-[#B45309]' : undefined}>Accuracy: ±{fix.accuracy} m{fix.refining ? ' …' : ''}</span></> : null}
                       {form.address && <span className="mt-1 line-clamp-2 border-t border-[#E6ECF5] pt-1 text-[11px] text-[#4B5563]">{joinAddr(form.address, form.city, form.pincode)}</span>}
                     </div>
                     <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer"
