@@ -48,6 +48,8 @@ export interface ServiceRequest {
       laborCost: number;
       parts: Array<{ name: string; cost: number; quantity: number; warranty?: string }>;
       additionalCharges: number;
+      travelCharge?: number;
+      otherCharges?: number;
       discount: number;
       totalEstimate: number;
       bookingFeeAdjusted?: number;
@@ -55,7 +57,11 @@ export interface ServiceRequest {
       amountDue?: number;
     };
     estimatedTime?: string;
+    actualTime?: string;
     serviceWarranty?: string;
+    partsWarranty?: string;
+    reportedIssue?: string;
+    additionalNotes?: string;
     revisions?: Array<{
       revisedAt: string;
       revisedBy: 'mechanic' | 'admin';

@@ -151,9 +151,12 @@ export function normalizeServiceRequest(r: any): ServiceRequest {
       costBreakdown: r.diagnosis.costBreakdown ? {
         laborCost: r.diagnosis.costBreakdown.laborCost || 0,
         parts: (r.diagnosis.costBreakdown.parts || []).map((p: any) => ({
-          name: p.name || '', cost: p.cost || 0, quantity: p.quantity || 1
+          name: p.name || '', cost: p.cost || 0, quantity: p.quantity || 1,
+          ...(p.warranty ? { warranty: p.warranty } : {}),
         })),
         additionalCharges: r.diagnosis.costBreakdown.additionalCharges || 0,
+        travelCharge: r.diagnosis.costBreakdown.travelCharge || 0,
+        otherCharges: r.diagnosis.costBreakdown.otherCharges || 0,
         discount: r.diagnosis.costBreakdown.discount || 0,
         totalEstimate: r.diagnosis.costBreakdown.totalEstimate || 0,
         bookingFeeAdjusted: r.diagnosis.costBreakdown.bookingFeeAdjusted || 0,
@@ -161,6 +164,12 @@ export function normalizeServiceRequest(r: any): ServiceRequest {
         amountDue: r.diagnosis.costBreakdown.amountDue ?? undefined,
       } : undefined,
       estimatedTime: r.diagnosis.estimatedTime || undefined,
+      actualTime: r.diagnosis.actualTime || undefined,
+      serviceWarranty: r.diagnosis.serviceWarranty || undefined,
+      partsWarranty: r.diagnosis.partsWarranty || undefined,
+      reportedIssue: r.diagnosis.reportedIssue || undefined,
+      additionalNotes: r.diagnosis.additionalNotes || undefined,
+      revisions: r.diagnosis.revisions || undefined,
       diagnosedAt: r.diagnosis.diagnosedAt || undefined,
       diagnosedBy: r.diagnosis.diagnosedBy || undefined,
     } : undefined,

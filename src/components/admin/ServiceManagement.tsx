@@ -116,6 +116,7 @@ import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
 import { ServiceRequestsMap } from '@/components/admin/ServiceRequestsMap'
 import { AssignDialog } from '@/components/admin/AssignDialog'
+import { DiagnosisDialog } from '@/components/admin/DiagnosisDialog'
 import { PRIORITY_PILL, STATUS_PILL, vehicleIconFor, kmBetween, initialsOf, vehicleName } from '@/components/admin/serviceRequestUi'
 
 // Service category options
@@ -436,12 +437,6 @@ export function ServiceManagement() {
   // Submit-diagnosis-on-behalf dialog (used when the mechanic can't operate the app)
   const [diagDialogOpen, setDiagDialogOpen] = useState(false)
   const [diagRequest, setDiagRequest] = useState<ServiceRequest | null>(null)
-  const [diagSaving, setDiagSaving] = useState(false)
-  const [diagForm, setDiagForm] = useState<{
-    laborCost: string; additionalCharges: string; discount: string; notes: string; estimatedTime: string
-    serviceWarranty: string; reason: string
-    parts: { name: string; cost: string; quantity: string; warranty: string }[]
-  }>({ laborCost: '', additionalCharges: '', discount: '', notes: '', estimatedTime: '', serviceWarranty: '', reason: '', parts: [] })
   // Proxy actions on the customer's / mechanic's behalf (see handlers below)
   const [proxyBusy, setProxyBusy] = useState<string | null>(null)
 
@@ -769,75 +764,10 @@ export function ServiceManagement() {
   // Only offered while the request is accepted/on_way (same window the mechanic
   // app allows) or in diagnosis (revise the quotation).
   const handleOpenDiagnosis = (request: ServiceRequest) => {
-    const cb: any = (request as any).diagnosis?.costBreakdown || {}
     setDiagRequest(request)
-    setDiagForm({
-      laborCost: cb.laborCost != null ? String(cb.laborCost) : '',
-      additionalCharges: cb.additionalCharges ? String(cb.additionalCharges) : '',
-      discount: cb.discount ? String(cb.discount) : '',
-      notes: (request as any).diagnosis?.notes || '',
-      estimatedTime: (request as any).diagnosis?.estimatedTime ? String((request as any).diagnosis.estimatedTime) : '',
-      serviceWarranty: (request as any).diagnosis?.serviceWarranty || '',
-      reason: '',
-      parts: (cb.parts || []).map((p: any) => ({ name: p.name || '', cost: String(p.cost ?? ''), quantity: String(p.quantity ?? 1), warranty: p.warranty || '' })),
-    })
     setDiagDialogOpen(true)
   }
-
-  const diagPartsTotal = diagForm.parts.reduce(
-    (sum, p) => sum + (parseFloat(p.cost) || 0) * (parseInt(p.quantity) || 1), 0,
-  )
-  const diagTotalEstimate =
-    (parseFloat(diagForm.laborCost) || 0) + diagPartsTotal +
-    (parseFloat(diagForm.additionalCharges) || 0) - (parseFloat(diagForm.discount) || 0)
-
-  const handleSubmitDiagnosis = async () => {
-    if (!diagRequest) return
-    if (diagForm.laborCost === '' || isNaN(parseFloat(diagForm.laborCost))) {
-      toast.error('Enter the labour cost'); return
-    }
-    if (diagForm.parts.some((p) => !p.name.trim() || p.cost === '' || isNaN(parseFloat(p.cost)))) {
-      toast.error('Every part needs a name and a cost'); return
-    }
-    setDiagSaving(true)
-    try {
-      const isRevise = DIAG_REVISE_STATUSES.includes(diagRequest.status)
-      const afterApproval = DIAG_AFTER_APPROVAL_STATUSES.includes(diagRequest.status)
-      const payload = {
-        laborCost: parseFloat(diagForm.laborCost) || 0,
-        parts: diagForm.parts.map((p) => ({
-          name: p.name.trim(),
-          cost: parseFloat(p.cost) || 0,
-          quantity: parseInt(p.quantity) || 1,
-          ...(p.warranty.trim() ? { warranty: p.warranty.trim() } : {}),
-        })),
-        additionalCharges: parseFloat(diagForm.additionalCharges) || 0,
-        discount: parseFloat(diagForm.discount) || 0,
-        notes: diagForm.notes.trim(),
-        serviceWarranty: diagForm.serviceWarranty.trim(),
-        ...(diagForm.estimatedTime ? { estimatedTime: parseInt(diagForm.estimatedTime) } : {}),
-        ...(afterApproval && diagForm.reason.trim() ? { reason: diagForm.reason.trim() } : {}),
-      }
-      const res = isRevise
-        ? await serviceRequestAPI.updateDiagnosis(diagRequest._id, payload)
-        : await serviceRequestAPI.submitDiagnosis(diagRequest._id, payload)
-      if (res.data?.success) {
-        toast.success(
-          afterApproval ? 'Quotation revised — customer must approve again before work continues'
-            : isRevise ? 'Quotation revised — customer notified'
-            : 'Diagnosis submitted — sent to customer for approval',
-        )
-        setDiagDialogOpen(false)
-        setDiagRequest(null)
-        dispatch(fetchServiceRequestsRequest())
-        setSelectedRequest(null)
-      } else {
-        toast.error(res.data?.message || 'Could not submit diagnosis')
-      }
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Could not submit diagnosis')
-    } finally { setDiagSaving(false) }
-  }
+  const closeDiagnosis = () => { setDiagDialogOpen(false); setDiagRequest(null) }
 
   // ── Acting on the SHOP's behalf (shop works by phone / WhatsApp) ──────────
   // Same ShopService calls the Shop Partner panel makes; admin just does them.
@@ -2181,143 +2111,12 @@ export function ServiceManagement() {
       />
 
       {/* ============ SUBMIT DIAGNOSIS ON MECHANIC'S BEHALF ============ */}
-      <Dialog open={diagDialogOpen} onOpenChange={(open) => {
-        setDiagDialogOpen(open)
-        if (!open) setDiagRequest(null)
-      }}>
-        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {diagRequest && DIAG_AFTER_APPROVAL_STATUSES.includes(diagRequest.status)
-                ? 'Add / remove items (customer re-approval)'
-                : diagRequest?.status === 'diagnosis' ? 'Revise quotation' : 'Submit diagnosis'}
-            </DialogTitle>
-            <DialogDescription>
-              {diagRequest?.mechanic?.name
-                ? <>On behalf of <b>{diagRequest.mechanic.name}</b> · </>
-                : null}
-              The customer receives this quotation for approval, exactly like a mechanic-submitted one.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* labour + time */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Labour cost (₹) *</Label>
-                <Input type="number" min="0" value={diagForm.laborCost} placeholder="0"
-                  onChange={(e) => setDiagForm((f) => ({ ...f, laborCost: e.target.value }))} />
-              </div>
-              <div>
-                <Label className="text-xs">Estimated time (mins)</Label>
-                <Input type="number" min="0" value={diagForm.estimatedTime} placeholder="e.g. 45"
-                  onChange={(e) => setDiagForm((f) => ({ ...f, estimatedTime: e.target.value }))} />
-              </div>
-            </div>
-
-            {/* parts */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <Label className="text-xs">Parts</Label>
-                <Button type="button" size="sm" variant="outline" className="h-7 text-[11px]"
-                  onClick={() => setDiagForm((f) => ({ ...f, parts: [...f.parts, { name: '', cost: '', quantity: '1', warranty: '' }] }))}>
-                  + Add part
-                </Button>
-              </div>
-              {diagForm.parts.length === 0 && (
-                <p className="text-[11px] text-[#9CA3AF]">No parts — labour only.</p>
-              )}
-              <div className="space-y-2">
-                {diagForm.parts.map((p, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Input className="flex-1" placeholder="Part name" value={p.name}
-                      onChange={(e) => setDiagForm((f) => {
-                        const parts = [...f.parts]; parts[i] = { ...parts[i], name: e.target.value }; return { ...f, parts }
-                      })} />
-                    <Input className="w-24" type="number" min="0" placeholder="Cost" value={p.cost}
-                      onChange={(e) => setDiagForm((f) => {
-                        const parts = [...f.parts]; parts[i] = { ...parts[i], cost: e.target.value }; return { ...f, parts }
-                      })} />
-                    <Input className="w-16" type="number" min="1" placeholder="Qty" value={p.quantity}
-                      onChange={(e) => setDiagForm((f) => {
-                        const parts = [...f.parts]; parts[i] = { ...parts[i], quantity: e.target.value }; return { ...f, parts }
-                      })} />
-                    <Input className="w-28" placeholder="Warranty" title="Guarantee / warranty on this part, e.g. 6 months" value={p.warranty}
-                      onChange={(e) => setDiagForm((f) => {
-                        const parts = [...f.parts]; parts[i] = { ...parts[i], warranty: e.target.value }; return { ...f, parts }
-                      })} />
-                    <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => setDiagForm((f) => ({ ...f, parts: f.parts.filter((_, j) => j !== i) }))}>
-                      ✕
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* extras */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Additional charges (₹)</Label>
-                <Input type="number" min="0" value={diagForm.additionalCharges} placeholder="0"
-                  onChange={(e) => setDiagForm((f) => ({ ...f, additionalCharges: e.target.value }))} />
-              </div>
-              <div>
-                <Label className="text-xs">Discount (₹)</Label>
-                <Input type="number" min="0" value={diagForm.discount} placeholder="0"
-                  onChange={(e) => setDiagForm((f) => ({ ...f, discount: e.target.value }))} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Service guarantee</Label>
-                <Input value={diagForm.serviceWarranty} placeholder="e.g. 15 days on labour"
-                  onChange={(e) => setDiagForm((f) => ({ ...f, serviceWarranty: e.target.value }))} />
-              </div>
-              {diagRequest && DIAG_AFTER_APPROVAL_STATUSES.includes(diagRequest.status) && (
-                <div>
-                  <Label className="text-xs">Reason for change</Label>
-                  <Input value={diagForm.reason} placeholder="e.g. brake pads also worn"
-                    onChange={(e) => setDiagForm((f) => ({ ...f, reason: e.target.value }))} />
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-xs">Diagnosis notes</Label>
-              <Textarea rows={3} value={diagForm.notes} placeholder="What's wrong with the vehicle / what will be done…"
-                onChange={(e) => setDiagForm((f) => ({ ...f, notes: e.target.value }))} />
-            </div>
-
-            {/* running total */}
-            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">
-              <div className="flex justify-between text-xs text-[#6B7280]">
-                <span>Labour</span><span>₹{parseFloat(diagForm.laborCost) || 0}</span>
-              </div>
-              <div className="flex justify-between text-xs text-[#6B7280]">
-                <span>Parts</span><span>₹{diagPartsTotal}</span>
-              </div>
-              <div className="flex justify-between font-bold border-t border-slate-200 mt-2 pt-2">
-                <span>Estimate</span><span className="text-[#1B3B6F]">₹{diagTotalEstimate}</span>
-              </div>
-              <p className="text-[10.5px] text-[#9CA3AF] mt-1.5">
-                Membership discounts, free-service waiver and any booking fee already paid are applied automatically by the server.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDiagDialogOpen(false)} disabled={diagSaving}>Cancel</Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleSubmitDiagnosis} disabled={diagSaving}>
-              {diagSaving ? 'Submitting…'
-                : diagRequest && DIAG_AFTER_APPROVAL_STATUSES.includes(diagRequest.status) ? 'Send revised quote for approval'
-                : diagRequest?.status === 'diagnosis' ? 'Save revision'
-                : 'Submit & notify customer'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DiagnosisDialog
+        open={diagDialogOpen}
+        request={diagRequest}
+        onClose={closeDiagnosis}
+        onDone={() => { closeDiagnosis(); dispatch(fetchServiceRequestsRequest()); setSelectedRequest(null) }}
+      />
 
       {/* ==================== CANCEL REQUEST DIALOG ==================== */}
       <Dialog open={cancelDialogOpen} onOpenChange={(open) => {
