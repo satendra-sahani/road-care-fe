@@ -979,6 +979,8 @@ export const adminLocationRequestAPI = {
 // mechanic never see each other's number (admin → request details).
 export const adminMaskedCallAPI = {
   status: () => api.get('/admin/masked-calls/status'),
+  // every call through the virtual number, newest first (Call Logs page)
+  list: (params?: { page?: number; limit?: number; recorded?: boolean; status?: string; serviceRequest?: string }) => api.get('/admin/masked-calls', { params }),
   // a link that plays one call's recording for a few minutes (the file is private) — or why there is none
   recording: (id: string) => api.get(`/admin/masked-calls/${id}/recording`),
   // both sides, the message each would get, what was sent, the calls so far

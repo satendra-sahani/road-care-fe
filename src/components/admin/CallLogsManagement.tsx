@@ -33,6 +33,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { VirtualNumberCalls } from '@/components/admin/VirtualNumberCalls'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -385,7 +386,7 @@ export function CallLogsManagement() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Call Logs</h1>
-            <p className="text-[#6B7280] mt-1 text-sm">Monitor all in-app calls between users, mechanics, and delivery partners</p>
+            <p className="text-[#6B7280] mt-1 text-sm">Phone calls through the virtual number (with recordings) and all in-app calls between users, mechanics, and delivery partners</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -425,6 +426,9 @@ export function CallLogsManagement() {
             </Button>
           </div>
         )}
+
+        {/* Phone calls through the company's virtual number, with their recordings */}
+        <VirtualNumberCalls />
 
         {/* KPI row: total-calls hero + clickable status quick-filters */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
