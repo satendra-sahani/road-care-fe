@@ -115,6 +115,7 @@ import { normalizeServiceRequest } from '@/store/sagas/serviceRequestSaga'
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
 import { ServiceRequestsMap } from '@/components/admin/ServiceRequestsMap'
+import { AssignDialog } from '@/components/admin/AssignDialog'
 import { PRIORITY_PILL, STATUS_PILL, vehicleIconFor, kmBetween, initialsOf, vehicleName } from '@/components/admin/serviceRequestUi'
 
 // Service category options
@@ -1026,7 +1027,7 @@ export function ServiceManagement() {
     // Fetch shops in background
     setShopsLoading(true)
     try {
-      const res = await adminShopAPI.getAll({ limit: 100 })
+      const res = await adminShopAPI.getAll({ limit: 300 })
       if (res.data?.success) {
         setShopsList((res.data.data || []).filter((s: any) => s.isActive))
       }
@@ -1034,35 +1035,31 @@ export function ServiceManagement() {
     setShopsLoading(false)
   }
 
-  const handleConfirmAssign = async () => {
-    if (!assigningRequest) return
+  const closeAssignDialog = () => { setAssignDialogOpen(false); setAssigningRequest(null); setAssignMechanicId(''); setSelectedShopId('') }
 
-    if (assignMode === 'mechanic') {
-      // Existing mechanic assignment
-      if (!assignMechanicId) return
-      dispatch(assignMechanicRequest({ requestId: assigningRequest._id, mechanicId: assignMechanicId }))
-    } else {
-      // Assign to shop partner
-      if (!selectedShopId) return
-      try {
-        const res = await adminShopAPI.assignOrder(assigningRequest._id, selectedShopId)
-        if (res.data?.success) {
-          // Refresh service requests to show updated status
-          dispatch(fetchServiceRequestsRequest())
-        } else {
-          alert(res.data?.message || 'Failed to assign to shop')
-          return
-        }
-      } catch (err: any) {
-        alert(err.response?.data?.message || 'Failed to assign to shop')
-        return
-      }
+  // Assign the open request to an individual mechanic (same action as before)
+  const assignToMechanic = (mechanicId: string) => {
+    if (!assigningRequest || !mechanicId) return false
+    dispatch(assignMechanicRequest({ requestId: assigningRequest._id, mechanicId }))
+    toast.success('Mechanic assigned')
+    closeAssignDialog()
+    return true
+  }
+
+  // Assign the open request to a garage / shop partner (same API as before)
+  const assignToShop = async (shopId: string) => {
+    if (!assigningRequest || !shopId) return false
+    try {
+      const res = await adminShopAPI.assignOrder(assigningRequest._id, shopId)
+      if (!res.data?.success) { toast.error(res.data?.message || 'Failed to assign to the garage'); return false }
+      dispatch(fetchServiceRequestsRequest())
+      toast.success('Request assigned to the garage')
+      closeAssignDialog()
+      return true
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to assign to the garage')
+      return false
     }
-
-    setAssignDialogOpen(false)
-    setAssigningRequest(null)
-    setAssignMechanicId('')
-    setSelectedShopId('')
   }
 
   const handleOpenCancelDialog = (request: ServiceRequest) => {
@@ -2171,140 +2168,17 @@ export function ServiceManagement() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={assignDialogOpen} onOpenChange={(open) => {
-        setAssignDialogOpen(open)
-        if (!open) { setAssigningRequest(null); setAssignMechanicId(''); setSelectedShopId('') }
-      }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                {assignMode === 'mechanic' ? <User className="h-4 w-4 text-indigo-600" /> : <Store className="h-4 w-4 text-indigo-600" />}
-              </div>
-              {assignMode === 'mechanic'
-                ? (assigningRequest?.mechanic ? 'Reassign Mechanic' : 'Assign Mechanic')
-                : 'Assign to Shop Partner'}
-            </DialogTitle>
-            <DialogDescription>
-              Request: {assigningRequest?._id?.slice(-8).toUpperCase()} — {assigningRequest?.serviceType}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4 space-y-4">
-            {/* Toggle: Mechanic vs Shop */}
-            <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
-              <button
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all',
-                  assignMode === 'mechanic' ? 'bg-white shadow text-[#1B3B6F]' : 'text-gray-500 hover:text-gray-700'
-                )}
-                onClick={() => { setAssignMode('mechanic'); setSelectedShopId('') }}
-              >
-                <User className="h-4 w-4" /> Mechanic
-              </button>
-              <button
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all',
-                  assignMode === 'shop' ? 'bg-white shadow text-[#FF6B35]' : 'text-gray-500 hover:text-gray-700'
-                )}
-                onClick={() => { setAssignMode('shop'); setAssignMechanicId('') }}
-              >
-                <Store className="h-4 w-4" /> Shop Partner
-              </button>
-            </div>
-
-            {/* Mechanic Mode */}
-            {assignMode === 'mechanic' && (
-              <div>
-                <Label className="text-sm font-medium">Select Mechanic</Label>
-                <Select value={assignMechanicId} onValueChange={setAssignMechanicId}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Choose an available mechanic..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(mechanics ?? []).filter(m => m.availability === 'available').map(m => (
-                      <SelectItem key={m._id} value={m._id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{m.name}</span>
-                          <span className="text-xs text-gray-500">· {m.city}</span>
-                          {(m.rating ?? 0) > 0 && (
-                            <span className="text-xs text-yellow-600 flex items-center gap-0.5">
-                              <Star className="h-3 w-3" />{m.rating}
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {(mechanics ?? []).filter(m => m.availability === 'available').length === 0 && (
-                  <p className="text-sm text-amber-600 mt-2">No mechanics currently available.</p>
-                )}
-              </div>
-            )}
-
-            {/* Shop Mode */}
-            {assignMode === 'shop' && (
-              <div>
-                <Label className="text-sm font-medium">Select Shop Partner</Label>
-                {shopsLoading ? (
-                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading shops...
-                  </div>
-                ) : (
-                  <>
-                    <Select value={selectedShopId} onValueChange={setSelectedShopId}>
-                      <SelectTrigger className="mt-2">
-                        <SelectValue placeholder="Choose a shop partner..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shopsList.map((shop: any) => (
-                          <SelectItem key={shop._id} value={shop._id}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{shop.shopName}</span>
-                              <span className="text-xs text-gray-500">· {shop.address?.city || 'N/A'}</span>
-                              {shop.isVerified && (
-                                <span className="text-xs text-green-600">✓</span>
-                              )}
-                              <span className="text-xs text-gray-400">{shop.commissionRate}%</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {shopsList.length === 0 && (
-                      <p className="text-sm text-amber-600 mt-2">No active shop partners found.</p>
-                    )}
-                    {selectedShopId && (() => {
-                      const s = shopsList.find((sh: any) => sh._id === selectedShopId)
-                      if (!s) return null
-                      return (
-                        <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm space-y-1">
-                          <p className="font-medium text-gray-900">{s.shopName}</p>
-                          <p className="text-gray-600 flex items-center gap-1"><MapPin className="h-3 w-3" /> {s.address?.city || 'N/A'}</p>
-                          <p className="text-gray-600 flex items-center gap-1"><Phone className="h-3 w-3" /> {s.user?.phone || s.shopPhone}</p>
-                          <p className="text-gray-500 text-xs">Commission: {s.commissionRate}% · Mechanics: {(s.mechanics?.length || 0) + (s.assignedMechanics?.length || 0)} · Jobs: {s.totalJobsCompleted}</p>
-                        </div>
-                      )
-                    })()}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
-            <Button
-              className={assignMode === 'mechanic' ? 'bg-[#1B3B6F] hover:bg-[#0F2545]' : 'bg-[#FF6B35] hover:bg-[#e55a28]'}
-              onClick={handleConfirmAssign}
-              disabled={assignMode === 'mechanic' ? !assignMechanicId : !selectedShopId}
-            >
-              {assignMode === 'mechanic' ? 'Assign Mechanic' : 'Assign to Shop'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AssignDialog
+        open={assignDialogOpen}
+        request={assigningRequest}
+        mechanics={mechanics ?? []}
+        shops={shopsList}
+        shopsLoading={shopsLoading}
+        displayId={generateDisplayRequestId}
+        onClose={closeAssignDialog}
+        onAssignShop={assignToShop}
+        onAssignMechanic={assignToMechanic}
+      />
 
       {/* ============ SUBMIT DIAGNOSIS ON MECHANIC'S BEHALF ============ */}
       <Dialog open={diagDialogOpen} onOpenChange={(open) => {
