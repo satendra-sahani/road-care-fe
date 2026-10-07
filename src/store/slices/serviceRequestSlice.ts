@@ -20,6 +20,8 @@ export interface ServiceRequest {
     };
   };
   serviceType: string;
+  /** the customer's vehicle as entered at booking */
+  vehicle?: { type?: string; brand?: string; model?: string; registrationNumber?: string };
   description: string;
   location: {
     address: string;

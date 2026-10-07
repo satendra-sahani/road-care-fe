@@ -56,6 +56,18 @@ import {
   ImageIcon,
   Loader2,
   Store,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  SlidersHorizontal,
+  Stethoscope,
+  Send,
+  ArrowUp,
+  ArrowDown,
+  ArrowRight,
+  Users,
+  FileText,
+  PieChart,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -102,7 +114,8 @@ import { userAPI, serviceRequestAPI, adminShopAPI, mechanicAPI } from '@/service
 import { normalizeServiceRequest } from '@/store/sagas/serviceRequestSaga'
 import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
-import { AdminPagination } from '@/components/admin/AdminPagination'
+import { GarageMap } from '@/components/manager/GarageMap'
+import { IcTwoWheeler, IcBikeScooter, IcDirectionsCar, IcLocalShipping } from '@/components/icons/BmIcons'
 
 // Service category options
 const serviceCategories = [
@@ -391,6 +404,39 @@ const priorityConfig: Record<string, { color: string; label: string }> = {
   critical: { color: 'bg-red-200 text-red-900',     label: 'Critical' },
 }
 
+// ── Requests table look (admin redesign) ──
+const PRIORITY_PILL: Record<string, { label: string; fg: string; bg: string }> = {
+  low:      { label: 'Low',      fg: '#15803D', bg: '#DCFCE7' },
+  medium:   { label: 'Medium',   fg: '#7E22CE', bg: '#F3E8FF' },
+  normal:   { label: 'Normal',   fg: '#B45309', bg: '#FEF3C7' },
+  high:     { label: 'High',     fg: '#DC2626', bg: '#FEE2E2' },
+  urgent:   { label: 'Urgent',   fg: '#FFFFFF', bg: '#DC2626' },
+  critical: { label: 'Critical', fg: '#FFFFFF', bg: '#991B1B' },
+}
+const STATUS_PILL: Record<string, { fg: string; bg: string }> = {
+  pending: { fg: '#B45309', bg: '#FEF3C7' }, assigned: { fg: '#1D4ED8', bg: '#DBEAFE' }, accepted: { fg: '#4338CA', bg: '#E0E7FF' },
+  mechanic_assigned: { fg: '#4338CA', bg: '#E0E7FF' }, on_way: { fg: '#0E7490', bg: '#CFFAFE' }, diagnosis: { fg: '#7E22CE', bg: '#F3E8FF' },
+  approved: { fg: '#047857', bg: '#D1FAE5' }, in_progress: { fg: '#1D4ED8', bg: '#DBEAFE' }, 'in-progress': { fg: '#1D4ED8', bg: '#DBEAFE' },
+  completed: { fg: '#15803D', bg: '#DCFCE7' }, payment_pending: { fg: '#C2410C', bg: '#FFEDD5' }, paid: { fg: '#15803D', bg: '#DCFCE7' },
+  rejected_quote: { fg: '#BE123C', bg: '#FFE4E6' }, payment_refused: { fg: '#B91C1C', bg: '#FEE2E2' }, cancelled: { fg: '#DC2626', bg: '#FEE2E2' },
+}
+const vehicleIconFor = (type?: string) => {
+  const t = String(type || '').toLowerCase()
+  if (/truck|tempo|pickup|bus|lcv|hcv/.test(t)) return IcLocalShipping
+  if (/scoot/.test(t)) return IcBikeScooter
+  if (/bike|motor|two|2/.test(t)) return IcTwoWheeler
+  return IcDirectionsCar
+}
+const kmBetween = (a?: { latitude?: number; longitude?: number }, b?: { latitude?: number; longitude?: number }) => {
+  if (a?.latitude == null || a?.longitude == null || b?.latitude == null || b?.longitude == null) return null
+  const R = 6371, rad = (d: number) => (d * Math.PI) / 180
+  const dLat = rad(b.latitude - a.latitude), dLng = rad(b.longitude - a.longitude)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
+const initialsOf = (name?: string) => String(name || '?').trim().split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+const selCls = 'h-11 rounded-xl border border-[#E3E8EF] bg-white px-3.5 text-[13.5px] font-medium text-[#1F2937]'
+
 export function ServiceManagement() {
   const dispatch = useDispatch()
   
@@ -474,13 +520,20 @@ export function ServiceManagement() {
 
   // ── Server-side paging + filters for the requests list ──
   const [reqPage, setReqPage] = useState(1)
-  const [reqPageSize, setReqPageSize] = useState(20)
+  const [reqPageSize, setReqPageSize] = useState(10)
+  const [vehicleFilter, setVehicleFilter] = useState('all')
+  const [cityFilter, setCityFilter] = useState('all')
+  const [moreFilters, setMoreFilters] = useState(false)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [emergencyOnly, setEmergencyOnly] = useState(false)
+  const [mapSel, setMapSel] = useState<string | null>(null)
   const [debouncedSearch, setDebouncedSearch] = useState('')
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
     return () => clearTimeout(t)
   }, [searchQuery])
-  const reqFiltersKey = `${debouncedSearch}|${statusFilter}|${priorityFilter}|${serviceTypeFilter}|${reqPageSize}`
+  const reqFiltersKey = `${debouncedSearch}|${statusFilter}|${priorityFilter}|${serviceTypeFilter}|${vehicleFilter}|${cityFilter}|${dateFrom}|${dateTo}|${emergencyOnly}|${reqPageSize}`
   const prevFiltersKey = useRef(reqFiltersKey)
   const reqQuery = useMemo(() => {
     // a filter change always starts from page 1
@@ -492,8 +545,13 @@ export function ServiceManagement() {
       status: statusFilter !== 'all' ? statusFilter : undefined,
       priority: priorityFilter !== 'all' ? priorityFilter : undefined,
       serviceCategory: serviceTypeFilter !== 'all' ? serviceTypeFilter : undefined,
+      vehicleType: vehicleFilter !== 'all' ? vehicleFilter : undefined,
+      city: cityFilter !== 'all' ? cityFilter : undefined,
+      startDate: dateFrom ? new Date(`${dateFrom}T00:00:00`).toISOString() : undefined,
+      endDate: dateTo ? new Date(`${dateTo}T23:59:59`).toISOString() : undefined,
+      isEmergency: emergencyOnly ? 'true' : undefined,
     }
-  }, [reqPage, reqPageSize, debouncedSearch, statusFilter, priorityFilter, serviceTypeFilter, reqFiltersKey])
+  }, [reqPage, reqPageSize, debouncedSearch, statusFilter, priorityFilter, serviceTypeFilter, vehicleFilter, cityFilter, dateFrom, dateTo, emergencyOnly, reqFiltersKey])
   useEffect(() => {
     if (prevFiltersKey.current !== reqFiltersKey) { prevFiltersKey.current = reqFiltersKey; if (reqPage !== 1) setReqPage(1) }
     dispatch(fetchServiceRequestsRequest(reqQuery))
@@ -1096,404 +1154,428 @@ export function ServiceManagement() {
     }
   }
 
+  const downloadInvoice = async (request: ServiceRequest) => {
+    try {
+      const res = await serviceRequestAPI.downloadInvoice(request._id)
+      if (res.data) {
+        const blob = new Blob([res.data], { type: 'application/pdf' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `service-${generateDisplayRequestId(request)}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      }
+    } catch (err) {
+      console.error('Failed to download invoice:', err)
+      toast.error('Could not download the invoice')
+    }
+  }
+  const extraFiltersOn = !!(dateFrom || dateTo || emergencyOnly)
+  const anyFilterOn = extraFiltersOn || statusFilter !== 'all' || priorityFilter !== 'all' || serviceTypeFilter !== 'all' || vehicleFilter !== 'all' || cityFilter !== 'all' || !!searchQuery
+  const clearFilters = () => { setSearchQuery(''); setStatusFilter('all'); setPriorityFilter('all'); setServiceTypeFilter('all'); setVehicleFilter('all'); setCityFilter('all'); setDateFrom(''); setDateTo(''); setEmergencyOnly(false) }
+  const reqTotal = reqPagination?.total ?? filteredRequests.length
+  const reqCur = reqPagination?.page || reqPage
+  const reqPages = Math.max(1, Math.ceil(reqTotal / reqPageSize))
+  const pageNums = (() => {
+    const out: (number | '…')[] = []
+    for (let p = 1; p <= reqPages; p++) {
+      if (p === 1 || p === reqPages || Math.abs(p - reqCur) <= 1 || (reqCur <= 3 && p <= 4) || (reqCur >= reqPages - 2 && p >= reqPages - 3)) out.push(p)
+      else if (out[out.length - 1] !== '…') out.push('…')
+    }
+    return out
+  })()
+  const mapPins = filteredRequests
+    .filter((r) => r.location?.coordinates?.latitude != null && r.location?.coordinates?.longitude != null)
+    .map((r) => ({ id: r._id, lat: r.location.coordinates!.latitude, lng: r.location.coordinates!.longitude, color: STATUS_STRIPE[r.status] || '#64748B' }))
+  const mapReq = filteredRequests.find((r) => r._id === mapSel) || null
+  const kpis = [
+    { key: 'all', t: 'total', label: 'Total Requests', value: stats.totalRequests, Icon: Wrench, fg: '#2563EB', bg: '#EAF1FF' },
+    { key: 'pending', t: 'pending', label: 'Pending', value: stats.pendingRequests, Icon: PieChart, fg: '#F97316', bg: '#FFF1E6' },
+    { key: 'diagnosis', t: 'diagnosis', label: 'Diagnosis', value: stats.diagnosisRequests, Icon: Stethoscope, fg: '#7C3AED', bg: '#F3EEFF' },
+    { key: 'in_progress', t: 'in_progress', label: 'In Progress', value: stats.inProgressRequests, Icon: Send, fg: '#0EA5E9', bg: '#E6F6FE' },
+    { key: 'completed', t: 'completed', label: 'Completed', value: stats.completedRequests, Icon: CheckCircle, fg: '#16A34A', bg: '#E8F8EE' },
+    { key: 'paid', t: 'paid', label: 'Paid', value: stats.paidRequests, Icon: CreditCard, fg: '#16A34A', bg: '#E8F8EE' },
+  ]
+  const TABS = [
+    { value: 'requests', label: 'Service Requests', icon: Wrench },
+    { value: 'map', label: 'Map View', icon: MapPin },
+    { value: 'mechanics', label: 'Mechanics', icon: User },
+    { value: 'assignment', label: 'Assignments', icon: Users },
+  ]
+
   return (
     <div className="min-h-screen">
-      <AdminHeader />
+      <AdminHeader
+        search={{ value: searchQuery, onChange: setSearchQuery, placeholder: 'Search orders, garages, mechanics, customers, services...' }}
+        left={
+          <Select value={cityFilter} onValueChange={setCityFilter}>
+            <SelectTrigger className="relative hidden h-10 w-[170px] rounded-xl border-[#E3E8EF] pl-9 text-[13.5px] font-semibold text-[#111827] md:flex">
+              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#16305C]" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All India</SelectItem>
+              {((srvStats?.cities as string[]) || []).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div className="p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A1D29] tracking-tight">Service Management</h1>
-          <p className="text-[#6B7280] mt-1 text-sm">Manage service requests, mechanic assignments, and job tracking</p>
+      <div className="p-4 sm:p-6 space-y-5">
+      {/* Header: breadcrumb + title, with the "Keep India Moving" banner on wide screens */}
+      <div className="relative flex items-end justify-between gap-4">
+        <div className="min-w-0 pb-1">
+          <nav className="mb-1.5 flex items-center gap-2 text-[13.5px]">
+            <Link href="/admin" className="font-semibold text-[#1F2937] hover:text-[#1B3B6F]">Dashboard</Link>
+            <ChevronRight className="h-3.5 w-3.5 text-[#94A3B8]" />
+            <span className="text-[#64748B]">Service Management</span>
+          </nav>
+          <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-[#111827]">Service Management</h1>
+          <p className="mt-1 text-[14px] text-[#6B7280]">Manage service requests, mechanic assignments, and track job progress in real-time.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={exportCsv} disabled={filteredRequests.length === 0}>
-            <Download className="h-3.5 w-3.5 mr-1.5" />
-            Export
-          </Button>
-          <Button size="sm" className="bg-[#1B3B6F] hover:bg-[#0F2545] h-9 text-xs" onClick={() => setAddRequestOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Add Service Request
-          </Button>
-        </div>
-      </div>
-
-      {/* KPI row: total-requests hero + clickable status filters */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-        {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#16305c] via-[#1B3B6F] to-[#2a55a0] p-5 shadow-md">
-          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.06]" />
-          <div className="absolute -right-2 top-14 h-20 w-20 rounded-full bg-white/[0.05]" />
-          <div className="relative flex items-center justify-between">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">Total requests</p>
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
-              <Wrench className="h-[18px] w-[18px] text-white" />
-            </div>
-          </div>
-          <p className="relative mt-2 text-3xl font-extrabold tracking-tight text-white tabular-nums">{stats.totalRequests}</p>
-          <div className="relative mt-3 flex items-center gap-3 text-[12px] text-white/70">
-            <span><b className="text-white">{stats.completedRequests}</b> completed</span>
-            <span className="text-white/30">·</span>
-            <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-amber-300" /><b className="text-white">{stats.avgRating?.toFixed(1) || '0'}</b></span>
-          </div>
-        </div>
-
-        {/* Clickable status stat cards (reuse the existing statusFilter) */}
-        <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            { key: 'pending', label: 'Pending', value: stats.pendingRequests, icon: Clock, tint: 'text-amber-600 bg-amber-50' },
-            { key: 'diagnosis', label: 'Diagnosis', value: stats.diagnosisRequests, icon: Search, tint: 'text-orange-600 bg-orange-50' },
-            { key: 'in_progress', label: 'In Progress', value: stats.inProgressRequests, icon: Wrench, tint: 'text-purple-600 bg-purple-50' },
-            { key: 'completed', label: 'Completed', value: stats.completedRequests, icon: CheckCircle, tint: 'text-emerald-600 bg-emerald-50' },
-            { key: 'paid', label: 'Paid', value: stats.paidRequests, icon: CreditCard, tint: 'text-green-600 bg-green-50' },
-          ].map((s) => {
-            const Icon = s.icon
-            const active = statusFilter === s.key
-            return (
-              <button
-                key={s.key}
-                onClick={() => setStatusFilter(s.key)}
-                className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${active ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-gray-100'}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className={`grid h-8 w-8 place-items-center rounded-lg ${s.tint}`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  {active && <span className="text-[9px] font-bold uppercase tracking-wide text-[#1B3B6F]">Filtered</span>}
-                </div>
-                <p className="mt-2 text-2xl font-extrabold text-[#1A1D29] tabular-nums">{s.value}</p>
-                <p className="text-[11.5px] font-medium text-gray-500">{s.label}</p>
-              </button>
-            )
-          })}
+        <div className="pointer-events-none hidden shrink-0 select-none items-end xl:flex" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/admin/sr-keep-moving.webp" alt="" width={151} height={137} className="mb-3 h-[92px] w-auto" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/admin/sr-mechanic.webp" alt="" width={198} height={228} className="relative z-10 -mb-5 -ml-2 h-[136px] w-auto" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/admin/sr-map.webp" alt="" width={561} height={150} className="-ml-10 mb-1 h-[112px] w-auto opacity-90" />
         </div>
       </div>
 
-      {/* Pipeline proportion bar */}
-      {(() => {
-        const seg = [
-          { v: stats.pendingRequests, c: 'bg-amber-400' },
-          { v: stats.diagnosisRequests, c: 'bg-orange-400' },
-          { v: stats.inProgressRequests, c: 'bg-purple-400' },
-          { v: stats.completedRequests, c: 'bg-emerald-500' },
-          { v: stats.paidRequests, c: 'bg-green-500' },
-        ]
-        const tot = seg.reduce((a, s) => a + (s.v || 0), 0)
-        return tot > 0 ? (
-          <div className="flex items-center gap-3">
-            <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-              {seg.map((s, i) => (s.v > 0 ? <div key={i} className={s.c} style={{ width: `${(s.v / tot) * 100}%` }} /> : null))}
-            </div>
-            <span className="whitespace-nowrap text-[11px] font-medium text-gray-400">{tot} in pipeline</span>
-          </div>
-        ) : null
-      })()}
-
-      {/* Service Management Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-white border shadow-sm p-1 h-auto">
-          {[
-            { value: 'requests', label: 'Service Requests', icon: Wrench },
-            { value: 'mechanics', label: 'Mechanics', icon: User },
-            { value: 'assignment', label: 'Assignment', icon: UserPlus },
-          ].map((tab) => {
-            const TabIcon = tab.icon
-            return (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="data-[state=active]:bg-[#1B3B6F] data-[state=active]:text-white text-xs gap-1.5 px-4 py-1.5"
-              >
-                <TabIcon className="h-3.5 w-3.5" />
-                {tab.label}
-              </TabsTrigger>
-            )
-          })}
-        </TabsList>
-
-        {/* Service Requests Tab */}
-        <TabsContent value="requests" className="space-y-4">
-          {/* Filters and Search */}
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                <div className="flex-1 max-w-md">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search by request ID, customer, vehicle..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 h-9 text-sm bg-gray-50 border-gray-200 focus:bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[130px] h-9 text-xs">
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="assigned">Assigned</SelectItem>
-                      <SelectItem value="accepted">Accepted</SelectItem>
-                      <SelectItem value="on_way">On Way</SelectItem>
-                      <SelectItem value="diagnosis">Diagnosis</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="payment_pending">Payment Pending</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                      <SelectItem value="rejected_quote">Quote Rejected</SelectItem>
-                      <SelectItem value="payment_refused">Payment Refused</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                    <SelectTrigger className="w-[120px] h-9 text-xs">
-                      <SelectValue placeholder="All Priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Priority</SelectItem>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
-                    <SelectTrigger className="w-[150px] h-9 text-xs">
-                      <SelectValue placeholder="All Services" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Services</SelectItem>
-                      <SelectItem value="engine-service">Engine Service</SelectItem>
-                      <SelectItem value="brake-service">Brake Service</SelectItem>
-                      <SelectItem value="ac-service">AC Service</SelectItem>
-                      <SelectItem value="battery-replacement">Battery Replacement</SelectItem>
-                      <SelectItem value="tyre-replacement">Tyre Replacement</SelectItem>
-                    </SelectContent>
-                  </Select>
+      {/* KPI cards — click one to filter the list by that status */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
+        {kpis.map((k) => {
+          const tr = srvStats?.trend?.[k.t]
+          const pct = tr?.pct ?? 0
+          const bars: number[] = tr?.bars?.length ? tr.bars : [0, 0, 0, 0, 0]
+          const max = Math.max(1, ...bars)
+          const active = (k.key === 'all' && statusFilter === 'all') ? false : statusFilter === k.key
+          const Trend = pct > 0 ? ArrowUp : pct < 0 ? ArrowDown : ArrowRight
+          const trendColor = pct > 0 ? '#16A34A' : pct < 0 ? '#F97316' : '#94A3B8'
+          return (
+            <button
+              key={k.key}
+              type="button"
+              onClick={() => setStatusFilter(k.key)}
+              title={tr ? `${tr.thisMonth} created this month · ${tr.lastMonth} last month` : undefined}
+              className={`relative rounded-2xl border bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(16,24,40,.04)] transition-shadow hover:shadow-md ${active ? 'border-[#1B3B6F] ring-2 ring-[#1B3B6F]/15' : 'border-[#EAEEF3]'}`}
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl" style={{ background: k.bg, color: k.fg }}><k.Icon className="h-6 w-6" /></span>
+                <div className="min-w-0">
+                  <p className="text-[26px] font-extrabold leading-none text-[#111827] tabular-nums">{k.value}</p>
+                  <p className="mt-1.5 truncate text-[13.5px] font-medium text-[#374151]">{k.label}</p>
                 </div>
               </div>
-
-              {/* Bulk Actions */}
-              {selectedRequests.length > 0 && (
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg flex items-center justify-between border border-blue-100">
-                  <span className="text-sm font-medium text-blue-800">
-                    {selectedRequests.length} request(s) selected
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleBulkAction('assign')}>Assign</Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleBulkAction('update-status')}>Update Status</Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleBulkAction('send-notification')}>Send Update</Button>
-                  </div>
+              <div className="mt-1 flex items-end justify-between pl-[60px]">
+                <div className="leading-tight">
+                  <span className="flex items-center gap-0.5 text-[12.5px] font-bold" style={{ color: trendColor }}><Trend className="h-3.5 w-3.5" />{Math.abs(pct)}%</span>
+                  <span className="text-[10.5px] text-[#94A3B8]">vs last month</span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <div className="flex h-7 items-end gap-[3px]">
+                  {bars.map((b, i) => <span key={i} className="w-[5px] rounded-sm" style={{ height: `${Math.max(14, (b / max) * 100)}%`, background: k.fg, opacity: 0.35 + (i / (bars.length - 1 || 1)) * 0.65 }} />)}
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Service Management Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center rounded-xl border border-[#E3E8EF] bg-white p-1">
+            {TABS.map((tab, i) => {
+              const TabIcon = tab.icon
+              const on = activeTab === tab.value
+              return (
+                <React.Fragment key={tab.value}>
+                  {i > 0 && !on && activeTab !== TABS[i - 1].value && <span className="h-5 w-px bg-[#E3E8EF]" />}
+                  <button type="button" onClick={() => setActiveTab(tab.value)} aria-pressed={on}
+                    className={`flex h-10 items-center gap-2 rounded-lg px-4 text-[13.5px] font-semibold transition-colors ${on ? 'bg-[#16305C] text-white shadow-sm' : 'text-[#1F2937] hover:bg-[#F3F5F9]'}`}>
+                    <TabIcon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                </React.Fragment>
+              )
+            })}
+          </div>
+          <div className="flex items-center gap-2.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" disabled={filteredRequests.length === 0} className="flex h-11 items-center gap-2 rounded-xl border border-[#E3E8EF] bg-white px-4 text-[13.5px] font-semibold text-[#1F2937] hover:bg-[#F8FAFC] disabled:opacity-50">
+                  <Download className="h-4 w-4" /> Export <ChevronDown className="ml-1 h-4 w-4 text-[#64748B]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportCsv}><FileText className="mr-2 h-4 w-4" />Export CSV (current filters)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <button type="button" onClick={() => setAddRequestOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[#FF5A1F] px-5 text-[13.5px] font-bold text-white shadow-sm hover:bg-[#F04E14]">
+              <Plus className="h-4 w-4" /> Add Service Request
+            </button>
+          </div>
+        </div>
+
+        {/* Service Requests Tab */}
+        <TabsContent value="requests" className="mt-0 space-y-4">
+          {/* Search + filters */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="relative min-w-[240px] flex-1 lg:max-w-[430px]">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#64748B]" />
+              <input
+                placeholder="Search by request ID, customer, garage, vehicle..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-11 w-full rounded-xl border border-[#E3E8EF] bg-white pl-11 pr-3 text-[13.5px] text-[#111827] outline-none placeholder:text-[#94A3B8] focus:border-[#1B3B6F]"
+              />
+            </div>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className={`${selCls} w-[140px]`}><SelectValue placeholder="All Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="assigned">Assigned</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="on_way">On Way</SelectItem>
+                <SelectItem value="diagnosis">Diagnosis</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="payment_pending">Payment Pending</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="rejected_quote">Quote Rejected</SelectItem>
+                <SelectItem value="payment_refused">Payment Refused</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className={`${selCls} w-[140px]`}><SelectValue placeholder="All Priority" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priority</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
+              <SelectTrigger className={`${selCls} w-[160px]`}><SelectValue placeholder="All Services" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Services</SelectItem>
+                {serviceCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
+              <SelectTrigger className={`${selCls} w-[170px]`}><SelectValue placeholder="All Vehicle Types" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Vehicle Types</SelectItem>
+                {((srvStats?.vehicleTypes as string[]) || []).map((v) => <SelectItem key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={cityFilter} onValueChange={setCityFilter}>
+              <SelectTrigger className={`${selCls} w-[140px]`}><SelectValue placeholder="All Cities" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cities</SelectItem>
+                {((srvStats?.cities as string[]) || []).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <button type="button" onClick={() => setMoreFilters((v) => !v)} aria-expanded={moreFilters}
+              className={`relative ml-auto flex h-11 items-center gap-2 rounded-xl border bg-white px-4 text-[13.5px] font-semibold text-[#1F2937] hover:bg-[#F8FAFC] ${moreFilters ? 'border-[#1B3B6F]' : 'border-[#E3E8EF]'}`}>
+              <SlidersHorizontal className="h-4 w-4" /> Filters
+              {extraFiltersOn && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#FF5A1F] ring-2 ring-white" />}
+            </button>
+          </div>
+
+          {moreFilters && (
+            <div className="flex flex-wrap items-end gap-3 rounded-xl border border-[#E3E8EF] bg-white p-3.5">
+              <label className="block text-[12px] font-semibold text-[#64748B]">From date
+                <input type="date" value={dateFrom} max={dateTo || undefined} onChange={(e) => setDateFrom(e.target.value)} className="mt-1 block h-10 rounded-lg border border-[#E3E8EF] px-3 text-[13.5px] text-[#111827] outline-none focus:border-[#1B3B6F]" />
+              </label>
+              <label className="block text-[12px] font-semibold text-[#64748B]">To date
+                <input type="date" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} className="mt-1 block h-10 rounded-lg border border-[#E3E8EF] px-3 text-[13.5px] text-[#111827] outline-none focus:border-[#1B3B6F]" />
+              </label>
+              <label className="flex h-10 cursor-pointer items-center gap-2 text-[13.5px] font-medium text-[#1F2937]">
+                <Checkbox checked={emergencyOnly} onCheckedChange={(v) => setEmergencyOnly(v === true)} /> Emergency requests only
+              </label>
+              {anyFilterOn && <button type="button" onClick={clearFilters} className="ml-auto h-10 rounded-lg px-3 text-[13px] font-bold text-[#DC2626] hover:bg-[#FEF2F2]">Clear all filters</button>}
+            </div>
+          )}
+
+          {/* Bulk Actions */}
+          {selectedRequests.length > 0 && (
+            <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50 p-3">
+              <span className="text-sm font-medium text-blue-800">{selectedRequests.length} request(s) selected</span>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleBulkAction('assign')}>Assign</Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleBulkAction('update-status')}>Update Status</Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleBulkAction('send-notification')}>Send Update</Button>
+              </div>
+            </div>
+          )}
 
           {/* Service Requests Table */}
-          <Card className="border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[#F6F8FB] hover:bg-[#F6F8FB] border-b border-gray-200">
-                    <TableHead className="w-10">
-                      <Checkbox
-                        checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
-                        onCheckedChange={handleSelectAll}
-                      />
-                    </TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Request ID</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Service</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Priority</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Mechanic</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Est. Cost</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</TableHead>
-                    <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Invoice</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRequests.map((request) => (
-                    <TableRow
-                      key={request._id}
-                      className="hover:bg-[#1B3B6F]/[0.03] transition-colors border-l-[3px]"
-                      style={{ borderLeftColor: STATUS_STRIPE[request.status] || 'transparent' }}
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedRequests.includes(request._id)}
-                          onCheckedChange={() => handleSelectRequest(request._id)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs font-semibold text-[#1B3B6F]">
-                        {generateDisplayRequestId(request)}
+          <div className="overflow-hidden rounded-2xl border border-[#EAEEF3] bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1120px] border-collapse text-left">
+                <thead>
+                  <tr className="whitespace-nowrap border-b border-[#EAEEF3] text-[11.5px] font-bold uppercase tracking-[0.06em] text-[#1F2937]">
+                    <th className="w-12 py-3.5 pl-5 pr-2">
+                      <Checkbox checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0} onCheckedChange={handleSelectAll} />
+                    </th>
+                    <th className="px-2.5 py-3.5">Request ID</th>
+                    <th className="px-2.5 py-3.5">Customer</th>
+                    <th className="px-2.5 py-3.5">Vehicle &amp; Service</th>
+                    <th className="px-2.5 py-3.5">Location</th>
+                    <th className="px-2.5 py-3.5">Priority</th>
+                    <th className="px-2.5 py-3.5">Status</th>
+                    <th className="px-2.5 py-3.5">Mechanic</th>
+                    <th className="px-2.5 py-3.5">Est. Cost</th>
+                    <th className="px-2.5 py-3.5">Date &amp; Time</th>
+                    <th className="px-2.5 py-3.5 pr-4 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRequests.map((request) => {
+                    const coords = request.location?.coordinates?.latitude != null && request.location?.coordinates?.longitude != null ? request.location.coordinates : null
+                    const VehIcon = vehicleIconFor(request.vehicle?.type)
+                    const vehName = [request.vehicle?.brand, request.vehicle?.model].filter(Boolean).join(' ') || (request.vehicle?.type ? request.vehicle.type.charAt(0).toUpperCase() + request.vehicle.type.slice(1) : 'Vehicle')
+                    const pr = PRIORITY_PILL[request.priority] || PRIORITY_PILL.medium
+                    const sp = STATUS_PILL[request.status] || STATUS_PILL.pending
+                    const sc = statusConfig[request.status as keyof typeof statusConfig]
+                    const StatusIcon = sc?.icon || Clock
+                    const dist = kmBetween(request.mechanic?.currentLocation, coords || undefined)
+                    const created = new Date(request.createdAt)
+                    const displayId = generateDisplayRequestId(request)
+                    const idCut = displayId.lastIndexOf('-')
+                    return (
+                    <tr key={request._id} className="border-b border-[#F0F3F7] transition-colors last:border-b-0 hover:bg-[#FAFBFD]" style={{ boxShadow: `inset 3px 0 0 ${STATUS_STRIPE[request.status] || 'transparent'}` }}>
+                      <td className="py-2.5 pl-5 pr-2 align-middle">
+                        <Checkbox checked={selectedRequests.includes(request._id)} onCheckedChange={() => handleSelectRequest(request._id)} />
+                      </td>
+                      <td className="px-2.5 py-2.5 align-middle">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EAF1FF] text-[#2563EB]"><FileText className="h-4 w-4" /></span>
+                          <button type="button" onClick={() => setSelectedRequest(request)} className="whitespace-nowrap text-left text-[12.5px] font-bold leading-tight text-[#16305C] hover:underline">
+                            {idCut > 0 ? <>{displayId.slice(0, idCut + 1)}<br />{displayId.slice(idCut + 1)}</> : displayId}
+                          </button>
+                        </div>
                         {request.franchise?.name && (
-                          <span className="mt-1 block w-fit rounded bg-teal-100 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-teal-700" title="Booked from this franchise's dashboard">Franchise · {request.franchise.name}</span>
+                          <span className="mt-1 block w-fit rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700" title="Booked from this franchise's dashboard">Franchise · {request.franchise.name}</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>
-                              {request.customer.name.split(' ').map((n: string) => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium text-[#1A1D29]">{request.customer.name}</div>
-                            <div className="text-sm text-[#6B7280]">{request.customer.phone}</div>
+                      </td>
+                      <td className="px-2.5 py-2.5 align-middle">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEF2F7] text-[12.5px] font-bold text-[#334155]">{initialsOf(request.customer.name)}</span>
+                          <div className="min-w-0 max-w-[128px]">
+                            <div className="truncate text-[13.5px] font-bold text-[#111827]" title={request.customer.name}>{request.customer.name || '—'}</div>
+                            <div className="text-[12.5px] text-[#6B7280]">{request.customer.phone}</div>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-[#1A1D29]">{request.serviceType}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-1 text-sm text-[#6B7280]">
-                            <MapPin className="h-3 w-3 flex-shrink-0" />
-                            <span>{request.location?.city || request.location?.address || '—'}</span>
-                          </div>
-                          {/* Coordinates display */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">Coords:</span>
-                            {request.location.coordinates?.latitude && request.location.coordinates?.longitude ? (
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs font-mono text-[#6B7280]">
-                                  {request.location.coordinates.latitude.toFixed(4)}, {request.location.coordinates.longitude.toFixed(4)}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  variant="ghost" 
-                                  className="h-auto p-0.5 hover:bg-gray-100"
-                                  onClick={() => copyToClipboard(
-                                    `${request.location.coordinates?.latitude}, ${request.location.coordinates?.longitude}`,
-                                    `table-coords-${request._id}`
-                                  )}
-                                >
-                                  {copiedKey === `table-coords-${request._id}` ? (
-                                    <CheckCircle className="h-3 w-3 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-3 w-3 text-[#6B7280] hover:text-[#374151]" />
-                                  )}
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-red-400 italic">No coordinates</span>
-                            )}
+                      </td>
+                      <td className="px-2.5 py-2.5 align-middle">
+                        <div className="flex items-center gap-3">
+                          <span className="shrink-0 text-[#16305C]"><VehIcon size={26} /></span>
+                          <div className="min-w-0 max-w-[150px]">
+                            <div className="truncate text-[13.5px] font-bold text-[#111827]" title={vehName}>{vehName}</div>
+                            <div className="truncate text-[12.5px] text-[#6B7280]">{request.serviceType}</div>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>{getPriorityBadge(request.priority)}</TableCell>
-                      <TableCell>{getStatusBadge(request.status)}</TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-2.5 py-2.5 align-middle">
+                        <div className="flex items-start gap-1.5">
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#16305C]" />
+                          <div className="min-w-0">
+                            <div className="max-w-[160px] truncate text-[13px] text-[#374151]" title={request.location?.address}>{[request.location?.address?.split(',')[0], request.location?.city].filter((x, i, a) => x && a.indexOf(x) === i).join(', ') || '—'}</div>
+                            <div className="whitespace-nowrap text-[12px] text-[#6B7280]">
+                              {dist != null && <span className="mr-2">{dist.toFixed(1)} km</span>}
+                              {coords
+                                ? <button type="button" onClick={() => { setMapSel(request._id); setActiveTab('map') }} className="font-semibold text-[#FF5A1F] hover:underline">View on Map</button>
+                                : <span className="italic text-[#DC2626]/70">No coordinates</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-2.5 py-2.5 align-middle">
+                        <span className="inline-block rounded-full px-3 py-1 text-[12px] font-bold" style={{ color: pr.fg, background: pr.bg }}>{pr.label}</span>
+                      </td>
+                      <td className="px-2.5 py-2.5 align-middle">
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-bold" style={{ color: sp.fg, background: sp.bg }}><StatusIcon className="h-3.5 w-3.5" />{sc?.label || request.status}</span>
+                      </td>
+                      <td className="px-2.5 py-2.5 align-middle">
                         {request.mechanic ? (
-                          <div className="flex items-center space-x-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarFallback className="text-xs">
-                                {request.mechanic.name.split(' ').map((n: string) => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">{request.mechanic.name}</span>
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EAF1FF] text-[12px] font-bold text-[#2563EB]">{initialsOf(request.mechanic.name)}</span>
+                            <div className="min-w-0 max-w-[118px]">
+                              <div className="truncate text-[13.5px] font-bold text-[#111827]" title={request.mechanic.name}>{request.mechanic.name}</div>
+                              <div className="text-[12.5px] text-[#6B7280]">{request.mechanic.phone || 'Mechanic'}</div>
+                            </div>
                           </div>
                         ) : request.shopPartner ? (
-                          <div className="flex items-center space-x-2">
-                            <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center">
-                              <Store className="h-3 w-3 text-indigo-600" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-medium text-indigo-700">{request.shopPartner.shopName || 'Shop partner'}</span>
-                              {request.shopPartner.city && (
-                                <span className="text-xs text-gray-400 ml-1">({request.shopPartner.city})</span>
-                              )}
-                              {request.shopOrder && (
-                                <div className="text-[11px] text-gray-500">
-                                  {request.shopOrder.assignedMechanic?.name
-                                    ? <>🔧 {request.shopOrder.assignedMechanic.name}{request.shopOrder.assignedMechanic.phone ? ` · ${request.shopOrder.assignedMechanic.phone}` : ''}</>
-                                    : <>shop order: {request.shopOrder.status.replace(/_/g, ' ')}</>}
-                                </div>
-                              )}
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600"><Store className="h-4 w-4" /></span>
+                            <div className="min-w-0 max-w-[150px]">
+                              <div className="truncate text-[13.5px] font-bold text-indigo-700" title={request.shopPartner.shopName}>{request.shopPartner.shopName || 'Shop partner'}</div>
+                              <div className="text-[12px] text-[#6B7280]">
+                                {request.shopOrder
+                                  ? (request.shopOrder.assignedMechanic?.name
+                                    ? <>{request.shopOrder.assignedMechanic.name}{request.shopOrder.assignedMechanic.phone ? ` · ${request.shopOrder.assignedMechanic.phone}` : ''}</>
+                                    : <>shop order: {request.shopOrder.status.replace(/_/g, ' ')}</>)
+                                  : request.shopPartner.city || 'Shop'}
+                              </div>
                             </div>
                           </div>
                         ) : (
-                          <span className="text-sm text-[#6B7280]">Not assigned</span>
+                          <span className="text-[13.5px] text-[#6B7280]">Not assigned</span>
                         )}
-                      </TableCell>
-                      <TableCell className="font-medium">
+                      </td>
+                      <td className="px-2.5 py-2.5 align-middle">
                         {(() => {
                           const diagTotal = request.diagnosis?.costBreakdown?.totalEstimate;
                           const amtDue = request.diagnosis?.costBreakdown?.amountDue;
                           const bkFee = request.bookingFee || request.diagnosis?.costBreakdown?.bookingFeeAdjusted || 0;
                           const hasSplit = bkFee > 0 && diagTotal && amtDue && amtDue < diagTotal;
                           const isFullyPaid = ['paid', 'settled'].includes(request.status);
-
                           if (hasSplit) {
                             return (
                               <div>
-                                <span className="text-sm font-bold text-[#1B3B6F]">{formatCurrency(diagTotal)}</span>
-                                <div className="text-[10px] text-gray-400 leading-tight">
+                                <span className="text-[15px] font-extrabold text-[#111827]">{formatCurrency(diagTotal)}</span>
+                                <div className="text-[10.5px] leading-tight text-gray-400">
                                   <span className="text-green-600">₹{bkFee} online</span>
                                   {isFullyPaid
                                     ? <span className="ml-1 text-green-600">· ₹{amtDue} COD ✓</span>
-                                    : <span className="ml-1 text-amber-600">· ₹{amtDue} COD pending</span>
-                                  }
+                                    : <span className="ml-1 text-amber-600">· ₹{amtDue} COD pending</span>}
                                 </div>
                               </div>
                             );
                           }
-                          return <span className="text-sm">{formatCurrency(diagTotal || request.finalCost || request.totalCost || request.estimatedCost || 0)}</span>;
+                          return <span className="text-[15px] font-extrabold text-[#111827]">{formatCurrency(diagTotal || request.finalCost || request.totalCost || request.estimatedCost || 0)}</span>;
                         })()}
-                      </TableCell>
-                      <TableCell className="text-xs text-[#6B7280]">
-                        {formatDate(request.createdAt)}
-                      </TableCell>
-                      {/* PDF Download Column */}
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-red-50 text-red-500 hover:text-red-700"
-                          onClick={async () => {
-                            try {
-                              const res = await serviceRequestAPI.downloadInvoice(request._id)
-                              if (res.data) {
-                                const blob = new Blob([res.data], { type: 'application/pdf' })
-                                const url = window.URL.createObjectURL(blob)
-                                const a = document.createElement('a')
-                                a.href = url
-                                a.download = `service-${generateDisplayRequestId(request)}.pdf`
-                                document.body.appendChild(a)
-                                a.click()
-                                window.URL.revokeObjectURL(url)
-                                document.body.removeChild(a)
-                              }
-                            } catch (err) {
-                              console.error('Failed to download invoice:', err)
-                            }
-                          }}
-                          title="Download Invoice PDF"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 align-middle text-[12.5px] leading-snug text-[#6B7280]">
+                        {created.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}<br />
+                        {created.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}
+                      </td>
+                      <td className="px-2 py-2.5 pr-4 align-middle">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button type="button" onClick={() => setSelectedRequest(request)} title="View details" className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#16305C] hover:bg-[#F3F5F9]"><Eye className="h-4 w-4" /></button>
+                          {request.customer.phone
+                            ? <a href={`tel:${request.customer.phone}`} title="Call customer" className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#16A34A] hover:bg-[#F0FDF4]"><Phone className="h-4 w-4" /></a>
+                            : <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#CBD5E1]"><Phone className="h-4 w-4" /></span>}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button type="button" title="More actions" className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#16305C] hover:bg-[#F3F5F9]"><MoreHorizontal className="h-4 w-4" /></button>
+                            </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
@@ -1501,6 +1583,16 @@ export function ServiceManagement() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => downloadInvoice(request)}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Download Invoice PDF
+                            </DropdownMenuItem>
+                            {coords && (
+                              <DropdownMenuItem onClick={() => copyToClipboard(`${coords.latitude}, ${coords.longitude}`, `table-coords-${request._id}`)}>
+                                {copiedKey === `table-coords-${request._id}` ? <CheckCircle className="h-4 w-4 mr-2 text-green-600" /> : <Copy className="h-4 w-4 mr-2" />}
+                                Copy coordinates
+                              </DropdownMenuItem>
+                            )}
                             {getNextStatus(request.status) && (
                               <DropdownMenuItem onClick={() => handleUpdateStatus(request._id, getNextStatus(request.status)!)}>
                                 <CheckCircle className="h-4 w-4 mr-2" />
@@ -1591,33 +1683,79 @@ export function ServiceManagement() {
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-              </div>
-              {filteredRequests.length === 0 && (
-                <div className="flex flex-col items-center p-12">
-                  <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                    <Wrench className="h-7 w-7 text-gray-400" />
-                  </div>
-                  <h3 className="text-base font-medium text-[#1A1D29] mb-1">No service requests found</h3>
-                  <p className="text-sm text-[#6B7280]">Try adjusting your search or filter criteria</p>
+            {filteredRequests.length === 0 && (
+              <div className="flex flex-col items-center p-12">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
+                  {requestsLoading ? <Loader2 className="h-7 w-7 animate-spin text-gray-400" /> : <Wrench className="h-7 w-7 text-gray-400" />}
                 </div>
-              )}
-              <AdminPagination
-                page={reqPagination?.page || reqPage}
-                pageSize={reqPageSize}
-                total={reqPagination?.total ?? filteredRequests.length}
-                onPageChange={setReqPage}
-                onPageSizeChange={setReqPageSize}
-                label="requests"
-              />
-            </CardContent>
-          </Card>
+                <h3 className="mb-1 text-base font-medium text-[#1A1D29]">{requestsLoading ? 'Loading service requests…' : 'No service requests found'}</h3>
+                {!requestsLoading && <p className="text-sm text-[#6B7280]">Try adjusting your search or filter criteria</p>}
+              </div>
+            )}
+
+            {/* Pagination */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#EAEEF3] px-5 py-3.5">
+              <p className="text-[13.5px] text-[#6B7280]">
+                {reqTotal === 0 ? 'No requests' : <>Showing {(reqCur - 1) * reqPageSize + 1} to {Math.min(reqTotal, reqCur * reqPageSize)} of {reqTotal} requests</>}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button type="button" aria-label="Previous page" disabled={reqCur <= 1} onClick={() => setReqPage(reqCur - 1)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#1F2937] hover:bg-[#F3F5F9] disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button>
+                {pageNums.map((p, i) => p === '…'
+                  ? <span key={`e${i}`} className="px-1 text-[#94A3B8]">…</span>
+                  : <button key={p} type="button" aria-current={p === reqCur ? 'page' : undefined} onClick={() => setReqPage(p)} className={`h-9 min-w-9 rounded-lg px-2 text-[13.5px] font-semibold ${p === reqCur ? 'bg-[#16305C] text-white' : 'border border-[#E3E8EF] text-[#1F2937] hover:bg-[#F3F5F9]'}`}>{p}</button>)}
+                <button type="button" aria-label="Next page" disabled={reqCur >= reqPages} onClick={() => setReqPage(reqCur + 1)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#1F2937] hover:bg-[#F3F5F9] disabled:opacity-40"><ChevronRight className="h-4 w-4" /></button>
+              </div>
+              <label className="flex items-center gap-2 text-[13.5px] text-[#6B7280]">Show
+                <select value={reqPageSize} onChange={(e) => setReqPageSize(Number(e.target.value))} className="h-9 rounded-lg border border-[#E3E8EF] bg-white px-2 text-[13.5px] font-semibold text-[#111827] outline-none">
+                  {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+                per page
+              </label>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Map View Tab — the requests in the list above (same search / filters / page), on a map */}
+        <TabsContent value="map" className="mt-0">
+          <div className="relative h-[620px] overflow-hidden rounded-2xl border border-[#EAEEF3] bg-white">
+            {activeTab === 'map' && <GarageMap pins={mapPins} selectedId={mapSel} onSelect={setMapSel} className="h-full w-full" />}
+            <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-wrap gap-2">
+              <span className="rounded-lg bg-white px-3 py-2 text-[12.5px] font-semibold text-[#334155] shadow">Showing <b>{mapPins.length}</b> of {filteredRequests.length} requests on this page{mapPins.length < filteredRequests.length ? ` · ${filteredRequests.length - mapPins.length} without coordinates` : ''}</span>
+            </div>
+            {mapReq && (() => {
+              const sp = STATUS_PILL[mapReq.status] || STATUS_PILL.pending
+              return (
+                <div className="absolute left-3 top-14 z-10 w-[320px] max-w-[calc(100%-1.5rem)] rounded-xl bg-white p-3.5 shadow-xl">
+                  <button type="button" onClick={() => setMapSel(null)} aria-label="Close" className="absolute right-2 top-2 rounded-full p-1 text-[#94A3B8] hover:bg-[#F1F5F9]"><X className="h-4 w-4" /></button>
+                  <div className="flex flex-wrap items-center gap-2 pr-6">
+                    <b className="text-[14.5px] text-[#111827]">{generateDisplayRequestId(mapReq)}</b>
+                    <span className="rounded-full px-2.5 py-0.5 text-[11.5px] font-bold" style={{ color: sp.fg, background: sp.bg }}>{statusConfig[mapReq.status as keyof typeof statusConfig]?.label || mapReq.status}</span>
+                  </div>
+                  <p className="mt-1.5 text-[13.5px] font-semibold text-[#111827]">{mapReq.customer.name} <span className="font-normal text-[#6B7280]">· {mapReq.customer.phone}</span></p>
+                  <p className="text-[12.5px] text-[#6B7280]">{mapReq.serviceType}</p>
+                  <p className="mt-1 flex items-start gap-1 text-[12.5px] text-[#475569]"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{mapReq.location?.address || mapReq.location?.city}</p>
+                  <p className="mt-1 text-[12.5px] text-[#475569]">Mechanic: <b>{mapReq.mechanic?.name || mapReq.shopPartner?.shopName || 'Not assigned'}</b></p>
+                  <div className="mt-3 flex gap-2">
+                    <button type="button" onClick={() => setSelectedRequest(mapReq)} className="h-9 flex-1 rounded-lg bg-[#FF5A1F] text-[13px] font-bold text-white">View Details</button>
+                    {mapReq.location?.coordinates?.latitude != null && (
+                      <a href={`https://www.google.com/maps/dir/?api=1&destination=${mapReq.location.coordinates.latitude},${mapReq.location.coordinates.longitude}`} target="_blank" rel="noopener noreferrer" className="flex h-9 items-center gap-1 rounded-lg border border-[#E3E8EF] px-3 text-[13px] font-bold text-[#16305C]"><Navigation className="h-3.5 w-3.5" /> Directions</a>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+            {mapPins.length === 0 && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"><span className="rounded-xl bg-white/95 px-4 py-3 text-[13.5px] font-semibold text-[#64748B] shadow">No requests with a map location on this page.</span></div>}
+          </div>
         </TabsContent>
 
         {/* Mechanics Tab */}

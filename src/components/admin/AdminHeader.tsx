@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { Search, Bell, Settings, User, ChevronDown, Menu, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,10 @@ import {
 interface AdminHeaderProps {
   collapsed?: boolean
   onToggleSidebar?: () => void
+  /** replaces the default breadcrumb (e.g. a city selector) */
+  left?: React.ReactNode
+  /** make the header search drive the page: controlled value + placeholder; Ctrl/⌘+K focuses it */
+  search?: { value: string; onChange: (v: string) => void; placeholder?: string }
 }
 
 interface Notification {
@@ -77,9 +81,17 @@ const mockNotifications: Notification[] = [
   }
 ]
 
-export function AdminHeader({ collapsed = false, onToggleSidebar }: AdminHeaderProps) {
+export function AdminHeader({ collapsed = false, onToggleSidebar, left, search }: AdminHeaderProps) {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
   const [searchQuery, setSearchQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement | null>(null)
+  const hasSearch = !!search
+  useEffect(() => {
+    if (!hasSearch) return
+    const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); searchRef.current?.focus() } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [hasSearch])
   const router = useRouter()
   const dispatch = useAppDispatch()
   const { user } = useAppSelector((state) => state.auth)
@@ -141,8 +153,9 @@ export function AdminHeader({ collapsed = false, onToggleSidebar }: AdminHeaderP
           <Menu className="h-5 w-5" />
         </Button>
 
-        {/* Breadcrumb */}
-        <Breadcrumb className="hidden md:flex">
+        {/* Breadcrumb (or the page's own left slot) */}
+        {left}
+        <Breadcrumb className={left ? 'hidden' : 'hidden md:flex'}>
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink href="/admin" className="text-[#1B3B6F]">
@@ -162,11 +175,13 @@ export function AdminHeader({ collapsed = false, onToggleSidebar }: AdminHeaderP
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Search orders, users, products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-[#1B3B6F] focus:ring-[#1B3B6F]"
+            ref={searchRef}
+            placeholder={search?.placeholder || 'Search orders, users, products...'}
+            value={search ? search.value : searchQuery}
+            onChange={(e) => (search ? search.onChange(e.target.value) : setSearchQuery(e.target.value))}
+            className={`pl-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-[#1B3B6F] focus:ring-[#1B3B6F] ${search ? 'pr-16' : ''}`}
           />
+          {search && <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-gray-500 sm:block">Ctrl + K</kbd>}
         </div>
       </div>
 

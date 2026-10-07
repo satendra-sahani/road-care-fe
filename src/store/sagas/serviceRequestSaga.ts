@@ -134,6 +134,7 @@ export function normalizeServiceRequest(r: any): ServiceRequest {
         : undefined,
     } : undefined,
     serviceType: r.serviceCategory || r.serviceType || '',
+    vehicle: r.vehicle ? { type: r.vehicle.type || undefined, brand: r.vehicle.brand || undefined, model: r.vehicle.model || undefined, registrationNumber: r.vehicle.registrationNumber || undefined } : undefined,
     description: r.description || '',
     location: r.location || { address: '', city: '', state: '', pincode: '' },
     scheduledDate: r.scheduledDate || r.preferredDate || '',
