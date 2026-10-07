@@ -19,7 +19,9 @@ Disallow: /shop-dashboard
 Disallow: /shop-partner
 Disallow: /service/
 Disallow: /l/
+Disallow: /l?
 Disallow: /j/
+Disallow: /j?
 
 # Account & utility pages (no search value)
 Disallow: /login
