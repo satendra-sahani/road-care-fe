@@ -226,30 +226,50 @@ export function CallLogsManagement() {
   // Audio player
   const [playingCallId, setPlayingCallId] = useState<string | null>(null)
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
+  const [loadingCallId, setLoadingCallId] = useState<string | null>(null)
+  // why recordings cannot be saved / played right now ('' = storage is fine)
+  const [recordingIssue, setRecordingIssue] = useState('')
 
-  const togglePlayRecording = (callId: string, url: string) => {
+  const togglePlayRecording = async (callId: string, url: string) => {
     if (playingCallId === callId) {
       // Stop playing
       audioRef.current?.pause()
       setPlayingCallId(null)
-    } else {
-      // Play new recording
-      if (audioRef.current) {
-        audioRef.current.pause()
-      }
-      const audio = new Audio(url)
-      audio.onended = () => setPlayingCallId(null)
-      audio.onerror = () => {
-        setPlayingCallId(null)
-        setError('Failed to play recording. The file may not be available.')
-      }
-      audio.play().catch(() => {
-        setPlayingCallId(null)
-        setError('Failed to play recording')
-      })
-      audioRef.current = audio
-      setPlayingCallId(callId)
+      return
     }
+    if (loadingCallId) return
+    audioRef.current?.pause()
+    setPlayingCallId(null)
+    setError('')
+
+    // Recordings sit in a private bucket: the address saved with the call cannot be
+    // played by a browser. The server hands out a link that works for a few minutes,
+    // or tells us exactly why it cannot.
+    setLoadingCallId(callId)
+    let src = ''
+    try {
+      const res = await adminCallLogsAPI.recording(callId)
+      if (res.data?.success && res.data.data?.url) src = res.data.data.url
+      else { setError(res.data?.message || 'This recording cannot be played.'); return }
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Could not reach the server to get the recording. Please try again.')
+      return
+    } finally {
+      setLoadingCallId(null)
+    }
+
+    const audio = new Audio(src)
+    audio.onended = () => setPlayingCallId(null)
+    audio.onerror = () => {
+      setPlayingCallId(null)
+      setError(/\.m3u8(\?|$)/.test(src) ? 'This recording was saved only as a stream (HLS), which this browser cannot play.' : 'The browser could not play this recording file.')
+    }
+    audio.play().catch(() => {
+      setPlayingCallId(null)
+      setError('The browser could not play this recording. Press Play once more.')
+    })
+    audioRef.current = audio
+    setPlayingCallId(callId)
   }
 
   // Cleanup audio on unmount
@@ -316,6 +336,12 @@ export function CallLogsManagement() {
 
   useEffect(() => { fetchCalls() }, [fetchCalls])
   useEffect(() => { fetchStats() }, [fetchStats])
+  // Tell the admin up front when recordings are not being saved (keys / AWS account).
+  useEffect(() => {
+    adminCallLogsAPI.recordingStorage()
+      .then((r) => setRecordingIssue(r.data?.data?.ok === false ? (r.data.data.message || 'Recording storage is not reachable.') : ''))
+      .catch(() => undefined)
+  }, [])
 
   // ─── View detail ──────────────────────────────────────────────────────
   const openDetail = async (call: CallLog) => {
@@ -374,6 +400,18 @@ export function CallLogsManagement() {
             </Button>
           </div>
         </div>
+
+        {/* Recording storage not working: nothing is saved, nothing plays */}
+        {recordingIssue && (
+          <div data-recording-issue className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">Call recordings cannot be saved or played right now.</p>
+              <p className="mt-0.5">{recordingIssue}</p>
+              <p className="mt-0.5 text-xs text-amber-800">Calls themselves are not affected. Calls made while storage is unreachable are not recorded.</p>
+            </div>
+          </div>
+        )}
 
         {/* Error Banner */}
         {error && (
@@ -741,7 +779,9 @@ export function CallLogsManagement() {
                                 )}
                                 onClick={() => togglePlayRecording(call._id, call.recording!.url!)}
                               >
-                                {playingCallId === call._id ? (
+                                {loadingCallId === call._id ? (
+                                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading</>
+                                ) : playingCallId === call._id ? (
                                   <><Pause className="h-3.5 w-3.5" /> Playing</>
                                 ) : (
                                   <><Play className="h-3.5 w-3.5" /> Play</>
@@ -1048,7 +1088,9 @@ export function CallLogsManagement() {
                       )}
                       onClick={() => togglePlayRecording(selectedCall._id, selectedCall.recording!.url!)}
                     >
-                      {playingCallId === selectedCall._id ? (
+                      {loadingCallId === selectedCall._id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : playingCallId === selectedCall._id ? (
                         <Pause className="h-4 w-4" />
                       ) : (
                         <Play className="h-4 w-4 ml-0.5" />

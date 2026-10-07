@@ -739,6 +739,10 @@ export const adminCallLogsAPI = {
   getAll: (params?: Record<string, any>) => api.get('/admin/calls', { params }),
   getStats: () => api.get('/admin/calls/stats'),
   getById: (id: string) => api.get(`/admin/calls/${id}`),
+  // a link that plays the recording for a few minutes (the bucket is private) — or the reason there is none
+  recording: (id: string) => api.get(`/admin/calls/${id}/recording`),
+  // can recordings be saved and played right now?
+  recordingStorage: () => api.get('/admin/calls/recording-storage'),
 };
 
 // ─── Admin OTP Helpdesk (live OTPs for support) ──────────────────────

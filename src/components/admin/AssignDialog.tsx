@@ -281,7 +281,7 @@ export function AssignDialog({
   )
 
   const Detail = selected ? (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="scrollbar-admin flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div className="flex gap-3">
         <Photo it={selected} cls="h-[88px] w-[96px]" />
         <div className="min-w-0 flex-1">
@@ -391,7 +391,7 @@ export function AssignDialog({
         </div>
 
         {/* body */}
-        <div className={`grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 pb-5 sm:px-7 lg:overflow-hidden ${view === 'list' ? 'lg:grid-cols-[1.2fr_1fr]' : 'lg:grid-cols-[1.5fr_1fr]'}`}>
+        <div className={`scrollbar-admin grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 pb-5 sm:px-7 lg:overflow-hidden ${view === 'list' ? 'lg:grid-cols-[1.2fr_1fr]' : 'lg:grid-cols-[1.5fr_1fr]'}`}>
           <div className="flex min-h-0 flex-col">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
               {/* the heading doubles as the Garages / Mechanics switch */}
@@ -417,7 +417,7 @@ export function AssignDialog({
             </div>
 
             {view === 'map' ? MapBox : (
-              <div className="min-h-[280px] flex-1 space-y-2.5 overflow-y-auto pr-1">
+              <div data-assign-list className="scrollbar-admin min-h-[280px] flex-1 space-y-2.5 overflow-y-auto pr-1.5">
                 {loading ? <div className="py-16 text-center text-[#64748B]"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div>
                   : items.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-[#CBD5E1] px-4 py-12 text-center">

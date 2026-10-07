@@ -1976,7 +1976,7 @@ export function ServiceManagement() {
                 ) : shopMechanics.length === 0 ? (
                   <p className="mt-2 text-xs text-gray-500">This shop has no mechanics listed yet — enter the mechanic&apos;s name and phone below.</p>
                 ) : (
-                  <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
+                  <div className="scrollbar-admin mt-2 max-h-56 space-y-1.5 overflow-y-auto pr-1">
                     {shopMechanics.map((m) => (
                       <button key={m._id} type="button" onClick={() => setShopMechId(shopMechId === m._id ? '' : m._id)}
                         className={cn('w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors', shopMechId === m._id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300')}>
@@ -2089,7 +2089,7 @@ export function ServiceManagement() {
 
       {/* ==================== ADD / EDIT MECHANIC — full registration form ==================== */}
       <Dialog open={mechFormState.open} onOpenChange={(open) => { if (!open) setMechFormState({ open: false, mode: 'create' }) }}>
-        <DialogContent className="max-w-5xl w-[95vw] max-h-[92vh] overflow-y-auto">
+        <DialogContent className="scrollbar-admin max-w-5xl w-[95vw] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{mechFormState.mode === 'edit' ? 'Edit mechanic' : 'Add mechanic'}</DialogTitle>
             <DialogDescription>
