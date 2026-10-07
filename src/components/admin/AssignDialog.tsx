@@ -444,7 +444,7 @@ export function AssignDialog({
                               {it.hours && <p className="flex items-center gap-1 truncate"><Clock className="h-3.5 w-3.5 shrink-0 text-[#16A34A]" />{it.open != null && <b className={it.open ? 'text-[#16A34A]' : 'text-[#DC2626]'}>{it.open ? 'Open Now' : 'Closed'}</b>}{it.open != null && <span>•</span>}{it.hours}</p>}
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-1.5">
-                              <span className="flex items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-[#111827]" title={it.km == null ? 'No location on record' : undefined}><MapPin className="h-4 w-4 fill-[#2563EB] text-white" />{it.km != null ? `${it.km.toFixed(1)} km` : <span className="text-[12px] font-medium text-[#94A3B8]">no location</span>}</span>
+                              <span className="flex items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-[#111827]" title={it.km != null ? undefined : !it.pt ? (it.kind === 'garage' ? 'This shop has no map location saved — open the shop in Shop Partners and set it' : 'This mechanic has not shared a location yet') : 'This request has no customer map location, so distance cannot be measured'}><MapPin className="h-4 w-4 fill-[#2563EB] text-white" />{it.km != null ? `${it.km.toFixed(1)} km` : <span className="text-[12px] font-medium text-[#94A3B8]">{!it.pt ? (it.kind === 'garage' ? 'shop location not set' : 'location not shared') : 'customer location missing'}</span>}</span>
                               <AssignBtn it={it} solid={on} />
                             </div>
                           </div>
