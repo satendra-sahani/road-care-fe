@@ -9,7 +9,7 @@
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Check, ChevronDown, Copy, Loader2,MessageCircle, MessageSquareText, PhoneCall, PhoneForwarded, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { Check, ChevronDown, Copy, Loader2, MessageCircle, Pause, Play, MessageSquareText, PhoneCall, PhoneForwarded, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { adminMaskedCallAPI } from '@/services/api'
 
 type Side = 'partner' | 'customer'
@@ -17,7 +17,7 @@ type Channel = 'whatsapp' | 'sms'
 type Lang = 'hi' | 'en'
 type Party = { name: string; role: string; phone: string; whatsapp: { mode: 'auto' | 'manual'; text: string }; sms: { mode: 'auto' | 'manual'; text: string } }
 type Sent = { id: string; to: Side; channel: Channel; mode: 'sent' | 'manual' | 'failed'; name: string; auto: boolean; by: string; at: string }
-type Call = { _id: string; direction: 'inbound' | 'connect'; fromRole?: string; toRole?: string; status: string; duration?: number; createdAt: string }
+type Call = { _id: string; direction: 'inbound' | 'connect'; fromRole?: string; toRole?: string; status: string; duration?: number; createdAt: string; recording?: { status?: string; duration?: number } }
 type Share = { configured: boolean; number: string; status: string; blocked: string; lang: Lang; partner: Party | null; customer: Party | null; sent: Sent[]; calls: Call[] }
 
 const LANG_KEY = 'bm_job_message_lang'
@@ -45,6 +45,31 @@ export function RequestCallPanel({ requestId, status }: { requestId: string; sta
   const [busy, setBusy] = useState('')
   const [copied, setCopied] = useState(false)
   const [preview, setPreview] = useState<Side | null>(null)
+  // call recordings: which one is loading / playing
+  const [recLoading, setRecLoading] = useState('')
+  const [recPlaying, setRecPlaying] = useState('')
+  const audio = useRef<HTMLAudioElement | null>(null)
+  useEffect(() => () => { audio.current?.pause() }, [])
+  const playRecording = async (id: string) => {
+    audio.current?.pause()
+    if (recPlaying === id) { setRecPlaying(''); return }
+    setRecPlaying('')
+    setRecLoading(id)
+    try {
+      // recordings are private files: the server hands out a link that works for a few minutes
+      const res = await adminMaskedCallAPI.recording(id)
+      const src = res.data?.data?.url
+      if (!res.data?.success || !src) { toast.error(res.data?.message || 'This recording cannot be played.'); return }
+      const a = new Audio(src)
+      a.onended = () => setRecPlaying('')
+      a.onerror = () => { setRecPlaying(''); toast.error('The browser could not play this recording.') }
+      audio.current = a
+      await a.play()
+      setRecPlaying(id)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Could not get the recording. Please try again.')
+    } finally { setRecLoading('') }
+  }
   const alive = useRef(true)
 
   useEffect(() => {
@@ -250,6 +275,14 @@ export function RequestCallPanel({ requestId, status }: { requestId: string; sta
                   <span className="w-[104px] text-[#6B7280]">{clock(c.createdAt)}</span>
                   <span>{c.direction === 'connect' ? 'Started here: ' : ''}{ROLE[c.fromRole || 'unknown'] || c.fromRole} → {ROLE[c.toRole || 'unknown'] || c.toRole || '—'}</span>
                   <span className={`font-semibold ${s.tone}`}>{s.label}{c.status === 'connected' && c.duration ? ` · ${talkTime(c.duration)}` : ''}</span>
+                  {c.recording?.status && (
+                    <button type="button" data-call-recording onClick={() => playRecording(c._id)} disabled={recLoading === c._id}
+                      title={c.recording.status === 'failed' ? 'The recording is not on our storage yet — press to try again' : 'Play the recording of this call'}
+                      className="inline-flex h-6 items-center gap-1 rounded-full border border-emerald-200 bg-white px-2 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60">
+                      {recLoading === c._id ? <Loader2 className="h-3 w-3 animate-spin" /> : recPlaying === c._id ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                      {recPlaying === c._id ? 'Stop' : 'Recording'}{c.recording.duration ? ` · ${talkTime(c.recording.duration)}` : ''}
+                    </button>
+                  )}
                 </li>
               )
             })}
