@@ -25,19 +25,19 @@ export default function ManagerLoginPage() {
 
   const sendOtp = async (e?: React.FormEvent) => {
     e?.preventDefault(); setError('')
-    if (!/^[6-9]\d{9}$/.test(phone)) { setError('Sahi 10-digit mobile number daalein'); return }
+    if (!/^[6-9]\d{9}$/.test(phone)) { setError('Enter a valid 10-digit mobile number'); return }
     setLoading(true)
     try {
       await garageFieldAPI.sendOtp(phone)
       setStep('otp'); setOtp(''); setWait(30)
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'OTP nahi bheja ja saka. Internet check karke dobara try karein.')
+      setError(err?.response?.data?.message || 'Could not send the OTP. Check your internet and try again.')
     } finally { setLoading(false) }
   }
 
   const verify = async (e?: React.FormEvent) => {
     e?.preventDefault(); setError('')
-    if (otp.length < 4) { setError('OTP daalein'); return }
+    if (otp.length < 4) { setError('Enter the OTP'); return }
     setLoading(true)
     try {
       const r = await garageFieldAPI.verifyOtp(phone, otp)
@@ -46,7 +46,7 @@ export default function ManagerLoginPage() {
       Cookies.set('staff_token', token, { expires: 30 })
       router.replace('/manager/garage')
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'OTP galat hai. Dobara try karein.')
+      setError(err?.response?.data?.message || 'Incorrect OTP. Please try again.')
       setLoading(false)
     }
   }
@@ -63,9 +63,9 @@ export default function ManagerLoginPage() {
         <p className="mt-2 text-center text-[12.5px] font-bold uppercase tracking-[0.14em] text-[#8A97AB]">Field Staff</p>
 
         <form onSubmit={step === 'phone' ? sendOtp : verify} className="mt-10">
-          <h1 className="text-[24px] font-extrabold leading-tight text-[#13203A]">{step === 'phone' ? 'Staff Login' : 'OTP daalein'}</h1>
+          <h1 className="text-[24px] font-extrabold leading-tight text-[#13203A]">{step === 'phone' ? 'Staff Login' : 'Enter OTP'}</h1>
           <p className="mb-6 mt-1.5 text-[14px] text-[#64748B]">
-            {step === 'phone' ? 'Apne registered mobile number se login karein.' : <>+91 {phone} par 6-digit OTP bheja gaya hai.</>}
+            {step === 'phone' ? 'Log in with your registered mobile number.' : <>A 6-digit OTP was sent to +91 {phone}.</>}
           </p>
 
           {step === 'phone' ? (
@@ -86,13 +86,13 @@ export default function ManagerLoginPage() {
           {error && <p role="alert" className="mt-3 rounded-lg bg-[#FEF2F2] px-3 py-2.5 text-[13.5px] font-semibold text-[#B91C1C]">{error}</p>}
 
           <button type="submit" disabled={loading} className="mt-5 flex h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-bold text-white active:opacity-90 disabled:opacity-70" style={{ background: ORANGE }}>
-            {loading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <>{step === 'phone' ? 'OTP bhejein' : 'Login karein'} <IcArrowForward size={20} /></>}
+            {loading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <>{step === 'phone' ? 'Send OTP' : 'Log In'} <IcArrowForward size={20} /></>}
           </button>
 
           {step === 'otp' && (
             <div className="mt-4 flex items-center justify-between text-[13.5px] font-bold">
-              <button type="button" onClick={() => { setStep('phone'); setError('') }} className="flex items-center gap-1 text-[#475569]"><IcArrowBack size={17} /> Number badlein</button>
-              <button type="button" onClick={() => sendOtp()} disabled={wait > 0 || loading} className="text-[#1B3B6F] disabled:text-[#9AA6B8]">{wait > 0 ? `OTP dobara bhejein (${wait}s)` : 'OTP dobara bhejein'}</button>
+              <button type="button" onClick={() => { setStep('phone'); setError('') }} className="flex items-center gap-1 text-[#475569]"><IcArrowBack size={17} /> Change number</button>
+              <button type="button" onClick={() => sendOtp()} disabled={wait > 0 || loading} className="text-[#1B3B6F] disabled:text-[#9AA6B8]">{wait > 0 ? `Resend OTP (${wait}s)` : 'Resend OTP'}</button>
             </div>
           )}
         </form>
@@ -100,9 +100,9 @@ export default function ManagerLoginPage() {
         <div className="mt-auto space-y-3 pt-10">
           <p className="flex items-start gap-2 rounded-xl bg-[#F1F5F9] px-3 py-3 text-[12.5px] leading-snug text-[#475569]">
             <span className="mt-0.5 shrink-0 text-[#1B3B6F]"><IcLock size={17} /></span>
-            Yeh app sirf Bharat Mechanics ke field staff ke liye hai. Staff account admin banata hai — yahan khud se register nahi hota.
+            This app is only for Bharat Mechanics field staff. Staff accounts are created by the admin — you cannot sign up here.
           </p>
-          <a href={`tel:+91${SUPPORT_PHONE}`} className="flex items-center justify-center gap-1.5 text-[13.5px] font-bold text-[#1B3B6F]"><IcHeadsetMic size={18} /> Login mein dikkat? Call karein</a>
+          <a href={`tel:+91${SUPPORT_PHONE}`} className="flex items-center justify-center gap-1.5 text-[13.5px] font-bold text-[#1B3B6F]"><IcHeadsetMic size={18} /> Trouble logging in? Call us</a>
         </div>
       </div>
     </div>

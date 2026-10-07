@@ -95,7 +95,7 @@ export function StaffHome() {
 
         <div className="flex items-center justify-between rounded-2xl border border-[#E6EBF2] bg-white p-4">
           <div>
-            <b className="block text-[15px] text-[#13203A]">Aaj ka progress</b>
+            <b className="block text-[15px] text-[#13203A]">Today's Progress</b>
             <span className="text-[12.5px] text-[#64748B]">{fmtDay(new Date())}</span>
           </div>
           <div className="relative h-[68px] w-[68px]">
@@ -105,7 +105,7 @@ export function StaffHome() {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
               <b className="text-[15px] text-[#13203A]">{stats.today}/{target}</b>
-              <span className="mt-0.5 text-[9.5px] font-semibold text-[#8A97AB]">Garage</span>
+              <span className="mt-0.5 text-[9.5px] font-semibold text-[#8A97AB]">Garages</span>
             </div>
           </div>
         </div>
@@ -125,15 +125,15 @@ export function StaffHome() {
 
         <div>
           <div className="mb-2.5 flex items-center justify-between">
-            <b className="text-[16px] text-[#13203A]">Haal ke garage</b>
+            <b className="text-[16px] text-[#13203A]">Recent Garages</b>
             <Link href="/manager/garage/visits" className="text-[13px] font-bold" style={{ color: NAVY }}>View All</Link>
           </div>
           {error ? (
-            <div className="rounded-2xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-center text-[13.5px] font-semibold text-[#B91C1C]">{error}<button onClick={reload} className="mt-2 block w-full font-bold underline">Dobara try karein</button></div>
+            <div className="rounded-2xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-center text-[13.5px] font-semibold text-[#B91C1C]">{error}<button onClick={reload} className="mt-2 block w-full font-bold underline">Try again</button></div>
           ) : loading ? (
             <div className="space-y-2.5">{[0, 1].map((i) => <div key={i} className="h-[92px] animate-pulse rounded-2xl bg-[#E9EEF5]" />)}</div>
           ) : garages.length === 0 ? (
-            <Empty text="Abhi tak koi garage register nahi hua. Upar wale button se pehla garage jodein." />
+            <Empty text="No garages registered yet. Use the button above to add your first one." />
           ) : (
             <div className="space-y-2.5">{garages.slice(0, 4).map((g) => <GarageCard key={g.id} g={g} />)}</div>
           )}
@@ -185,21 +185,21 @@ export function StaffVisits() {
         {view === 'list' ? (
           <div className="flex-1 space-y-2.5 overflow-y-auto p-3">
             {error ? (
-              <div className="rounded-2xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-center text-[13.5px] font-semibold text-[#B91C1C]">{error}<button onClick={reload} className="mt-2 block w-full font-bold underline">Dobara try karein</button></div>
+              <div className="rounded-2xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-center text-[13.5px] font-semibold text-[#B91C1C]">{error}<button onClick={reload} className="mt-2 block w-full font-bold underline">Try again</button></div>
             ) : loading ? [0, 1, 2].map((i) => <div key={i} className="h-[140px] animate-pulse rounded-2xl bg-[#E9EEF5]" />)
-              : shown.length === 0 ? <Empty text={tab === 'all' ? 'Abhi tak koi garage register nahi hua.' : 'Is list mein koi garage nahi hai.'} />
+              : shown.length === 0 ? <Empty text={tab === 'all' ? 'No garages registered yet.' : 'No garages in this list.'} />
                 : shown.map((g) => <GarageCard key={g.id} g={g} actions />)}
           </div>
         ) : (
           <div className="relative flex-1">
             <GarageMap pins={pins} selectedId={sel} onSelect={setSel} me={meLoc} className="h-full w-full" zoomControl={false} />
-            <button type="button" onClick={locate} aria-label="Meri location" className="absolute bottom-4 right-3 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#1B3B6F] shadow-lg active:bg-[#EEF2F8]"><IcMyLocation size={22} /></button>
+            <button type="button" onClick={locate} aria-label="My location" className="absolute bottom-4 right-3 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#1B3B6F] shadow-lg active:bg-[#EEF2F8]"><IcMyLocation size={22} /></button>
             {!loading && pins.length === 0 && (
-              <div className="pointer-events-none absolute inset-x-6 top-6 z-10 rounded-xl bg-white/95 px-3 py-2.5 text-center text-[13px] font-semibold text-[#64748B] shadow">Map pe dikhane ke liye koi garage nahi hai.</div>
+              <div className="pointer-events-none absolute inset-x-6 top-6 z-10 rounded-xl bg-white/95 px-3 py-2.5 text-center text-[13px] font-semibold text-[#64748B] shadow">No garages to show on the map.</div>
             )}
             {selG && (
               <div className="absolute inset-x-3 top-3 z-10 rounded-2xl bg-white p-3 shadow-xl">
-                <button type="button" onClick={() => setSel(null)} aria-label="Band karein" className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-[#8A97AB] active:bg-[#EEF2F8]"><IcClose size={18} /></button>
+                <button type="button" onClick={() => setSel(null)} aria-label="Close" className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-[#8A97AB] active:bg-[#EEF2F8]"><IcClose size={18} /></button>
                 <div className="flex gap-3 pr-6">
                   <Thumb src={selG.photo} size={56} />
                   <div className="min-w-0">
@@ -240,22 +240,22 @@ export function StaffProfile() {
           <div className="min-w-0">
             <b className="block truncate text-[16px] text-[#13203A]">{me.name}</b>
             <span className="text-[13px] text-[#64748B]">+91 {me.phone} · Field Executive</span>
-            <p className="mt-0.5 text-[12.5px] font-semibold text-[#8A97AB]">{stats.total} garage register kiye · {stats.active} verified</p>
+            <p className="mt-0.5 text-[12.5px] font-semibold text-[#8A97AB]">{stats.total} garages registered · {stats.active} verified</p>
           </div>
         </div>
 
         <form onSubmit={saveTarget} className="rounded-2xl border border-[#E6EBF2] bg-white p-4">
           <label className="block">
-            <span className="mb-1.5 block text-[13.5px] font-semibold text-[#13203A]">Roz ka target (kitne garage)</span>
+            <span className="mb-1.5 block text-[13.5px] font-semibold text-[#13203A]">Daily target (garages per day)</span>
             <div className="flex gap-2.5">
               <input className="h-12 min-w-0 flex-1 rounded-xl border border-[#D9E1EC] bg-white px-3.5 text-[15px] text-[#13203A] outline-none focus:border-[#1B3B6F]" value={val} onChange={(e) => setVal(e.target.value.replace(/\D/g, '').slice(0, 2))} inputMode="numeric" placeholder="5" />
               <button type="submit" className="h-12 shrink-0 rounded-xl px-5 text-[14.5px] font-bold text-white" style={{ background: ORANGE }}>Save</button>
             </div>
           </label>
-          {saved && <p className="mt-2.5 flex items-center gap-1.5 text-[13px] font-bold text-[#15803D]"><IcCheckCircle size={17} /> Save ho gaya</p>}
+          {saved && <p className="mt-2.5 flex items-center gap-1.5 text-[13px] font-bold text-[#15803D]"><IcCheckCircle size={17} /> Saved</p>}
         </form>
 
-        <p className="px-2 text-center text-[12px] leading-relaxed text-[#8A97AB]">Naam ya number badalna ho to admin se sampark karein — staff account sirf admin banata aur badalta hai.</p>
+        <p className="px-2 text-center text-[12px] leading-relaxed text-[#8A97AB]">To change your name or number, contact the admin — staff accounts are created and edited only by the admin.</p>
 
         <button type="button" onClick={logout} className="flex h-[50px] w-full items-center justify-center gap-2 rounded-2xl border border-[#FECACA] bg-white text-[15px] font-bold text-[#B91C1C] active:bg-[#FEF2F2]"><IcLogout size={20} /> Logout</button>
       </div>

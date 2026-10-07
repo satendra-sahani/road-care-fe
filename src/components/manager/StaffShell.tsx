@@ -32,7 +32,7 @@ export function useMyGarages() {
       const r = await garageFieldAPI.mine()
       setGarages(r.data?.data?.garages || [])
       setStats(r.data?.data?.stats || { total: 0, today: 0, pending: 0, active: 0, inactive: 0 })
-    } catch { setError('List load nahi hui. Internet check karke dobara try karein.') } finally { setLoading(false) }
+    } catch { setError('Could not load the list. Check your internet and try again.') } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
   return { garages, stats, loading, error, reload: load }
@@ -76,7 +76,7 @@ export function StaffShell({ title, back, right, nav = true, children }: {
               <Image src="/brand-logo-v3.png" alt="Bharat Mechanics" width={150} height={40} priority className="h-[34px] w-auto object-contain" />
               <div className="ml-auto flex items-center gap-1">
                 {right}
-                <a href={`tel:+91${SUPPORT_PHONE}`} aria-label="Support ko call karein" className="flex h-10 w-10 items-center justify-center rounded-full text-[#1B3B6F] active:bg-[#EEF2F8]"><IcHeadsetMic size={22} /></a>
+                <a href={`tel:+91${SUPPORT_PHONE}`} aria-label="Call support" className="flex h-10 w-10 items-center justify-center rounded-full text-[#1B3B6F] active:bg-[#EEF2F8]"><IcHeadsetMic size={22} /></a>
               </div>
             </>
           )}

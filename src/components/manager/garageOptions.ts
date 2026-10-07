@@ -27,15 +27,15 @@ export const SERVICES = [
 ] as const
 
 export const DAYS = [
-  { key: 'none', label: 'Koi nahi (roz khulta hai)' },
+  { key: 'none', label: 'None (open every day)' },
   { key: 'sunday', label: 'Sunday' }, { key: 'monday', label: 'Monday' }, { key: 'tuesday', label: 'Tuesday' },
   { key: 'wednesday', label: 'Wednesday' }, { key: 'thursday', label: 'Thursday' }, { key: 'friday', label: 'Friday' },
   { key: 'saturday', label: 'Saturday' },
 ] as const
 
 export const DISTANCES = [5, 10, 15, 20, 30]
-export const SIZES = [{ key: 'small', label: 'Chhota (1–2 bay)' }, { key: 'medium', label: 'Medium (3–5 bay)' }, { key: 'large', label: 'Bada (6+ bay)' }] as const
-export const MECH_VEHICLES = ['Bike', 'Scooter', 'Car', 'Koi nahi']
+export const SIZES = [{ key: 'small', label: 'Small (1–2 bays)' }, { key: 'medium', label: 'Medium (3–5 bays)' }, { key: 'large', label: 'Large (6+ bays)' }] as const
+export const MECH_VEHICLES = ['Bike', 'Scooter', 'Car', 'None']
 
 export const STATUS = {
   pending: { label: 'Pending Verification', short: 'Pending', fg: '#B45309', bg: '#FEF3C7', pin: '#F59E0B' },

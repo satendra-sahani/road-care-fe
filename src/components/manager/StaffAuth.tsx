@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import Cookies from 'js-cookie'
 import { garageFieldAPI } from '@/services/api'
@@ -21,10 +21,15 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
   const [target, setT] = useState(5)
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
 
-  const logout = useCallback(() => { Cookies.remove('staff_token'); router.replace('/manager/login') }, [router])
+  // useRouter() hands back a new object as the route settles; going through a ref
+  // keeps `load` stable so the profile is checked once, not on every route event
+  // (re-checking unmounted the page underneath the user and lost form state).
+  const routerRef = useRef(router)
+  routerRef.current = router
+  const logout = useCallback(() => { Cookies.remove('staff_token'); routerRef.current.replace('/manager/login') }, [])
   const load = useCallback(async () => {
-    if (!Cookies.get('staff_token')) { router.replace('/manager/login'); return }
-    setState('loading')
+    if (!Cookies.get('staff_token')) { routerRef.current.replace('/manager/login'); return }
+    setState((s) => (s === 'ok' ? s : 'loading'))
     try {
       const r = await garageFieldAPI.me()
       const d = r.data?.data
@@ -39,15 +44,15 @@ export function StaffAuthGuard({ children }: { children: React.ReactNode }) {
       if (status === 403) { logout(); return } // logged in, but not a field-staff account
       setState('error')
     }
-  }, [router, logout])
+  }, [logout])
   useEffect(() => { load() }, [load])
 
   if (state === 'error') {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-[#F6F8FC] p-6 text-center">
-        <b className="text-[16px] text-[#13203A]">App khul nahi paaya</b>
-        <p className="text-[13.5px] text-[#64748B]">Internet check karke dobara try karein.</p>
-        <button type="button" onClick={load} className="h-11 rounded-xl bg-[#1B3B6F] px-6 text-[14px] font-bold text-white">Dobara try karein</button>
+        <b className="text-[16px] text-[#13203A]">Could not open the app</b>
+        <p className="text-[13.5px] text-[#64748B]">Check your internet and try again.</p>
+        <button type="button" onClick={load} className="h-11 rounded-xl bg-[#1B3B6F] px-6 text-[14px] font-bold text-white">Try again</button>
       </div>
     )
   }
