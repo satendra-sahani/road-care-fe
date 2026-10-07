@@ -129,14 +129,18 @@ export function AssignDialog({
 
   const matchVehicle = (it: Item) => !reqKind || !it.vehicles.length || it.vehicles.some((v) => vehicleKind(v) === reqKind)
   const matchService = (it: Item) => { const want = norm(reqService); return !want || !it.chips.length || it.chips.some((c) => { const n = norm(c); return n.includes(want) || want.includes(n) }) }
+  // every filter except the radius
+  const passes = (it: Item) => (vehicle === 'any' || matchVehicle(it)) && (service === 'any' || matchService(it)) && (avail === 'any' || it.status === 'available') && it.rating >= minRating && (doorstep === 'any' || it.kind !== 'garage' || it.doorstep === true)
   const items = useMemo(() => {
-    let a = all.filter((it) => (vehicle === 'any' || matchVehicle(it)) && (service === 'any' || matchService(it)) && (avail === 'any' || it.status === 'available') && it.rating >= minRating && (doorstep === 'any' || it.kind !== 'garage' || it.doorstep === true))
+    let a = all.filter(passes)
     // the radius only drops candidates KNOWN to be farther; ones without a location stay (listed last)
     if (radius > 0 && cust) a = a.filter((it) => it.km == null || it.km <= radius)
     const by = { nearest: (x: Item, y: Item) => (x.km ?? 1e9) - (y.km ?? 1e9), rating: (x: Item, y: Item) => y.rating - x.rating || y.ratings - x.ratings, jobs: (x: Item, y: Item) => (y.raw.totalJobsCompleted ?? y.ratings) - (x.raw.totalJobsCompleted ?? x.ratings) }
     return a.sort(by[sort]).slice(0, 50)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, vehicle, service, avail, minRating, doorstep, radius, sort, cust?.lat])
+  // candidates that match but are only hidden by the radius — a garage 30 km away is still worth knowing about
+  const farther = radius > 0 && cust ? all.filter((it) => it.km != null && it.km > radius && passes(it)).length : 0
   const selected = items.find((x) => x.id === selId) || null
   const filtersOn = vehicle !== 'any' || service !== 'any' || avail !== 'any' || minRating > 0 || doorstep !== 'any'
   const clearFilters = () => { setVehicle('any'); setService('any'); setAvail('any'); setMinRating(0); setDoorstep('any') }
@@ -421,7 +425,7 @@ export function AssignDialog({
                       <p className="mt-1 text-[13px] text-[#6B7280]">{all.length === 0 ? `There are no active ${noun.toLowerCase()} yet.` : cust && radius > 0 ? `None within ${radius} km with these filters. Try a bigger radius or clear the filters.` : 'Try clearing the filters.'}</p>
                       {all.length > 0 && <div className="mt-3 flex justify-center gap-2">{cust && radius > 0 && <button type="button" onClick={() => setRadius(0)} className="h-9 rounded-lg border border-[#E3E8EF] px-3 text-[13px] font-bold text-[#16305C]">Any distance</button>}{filtersOn && <button type="button" onClick={clearFilters} className="h-9 rounded-lg border border-[#E3E8EF] px-3 text-[13px] font-bold text-[#16305C]">Clear filters</button>}</div>}
                     </div>
-                  ) : items.map((it, i) => {
+                  ) : <>{items.map((it, i) => {
                     const on = it.id === selId
                     return (
                       <div key={it.id} data-assign-card onClick={() => setSelId(it.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setSelId(it.id) }}
@@ -448,7 +452,11 @@ export function AssignDialog({
                         </div>
                       </div>
                     )
-                  })}
+                  })}{farther > 0 && (
+                    <button type="button" data-farther onClick={() => setRadius(0)} className="w-full rounded-xl border border-dashed border-[#CBD5E1] bg-white px-3 py-2.5 text-[13px] font-bold text-[#16305C] hover:bg-[#F8FAFD]">
+                      +{farther} more {farther === 1 ? noun.toLowerCase().replace(/s$/, '') : noun.toLowerCase()} farther than {radius} km — show any distance
+                    </button>
+                  )}</>}
               </div>
             )}
           </div>
