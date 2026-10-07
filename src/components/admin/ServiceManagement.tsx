@@ -118,6 +118,7 @@ import { ServiceRequestsMap } from '@/components/admin/ServiceRequestsMap'
 import { AssignDialog } from '@/components/admin/AssignDialog'
 import { DiagnosisDialog } from '@/components/admin/DiagnosisDialog'
 import { CreateRequestDialog } from '@/components/admin/CreateRequestDialog'
+import { RequestCallPanel } from '@/components/admin/RequestCallPanel'
 import { PRIORITY_PILL, STATUS_PILL, vehicleIconFor, kmBetween, initialsOf, vehicleName } from '@/components/admin/serviceRequestUi'
 
 // Service category options
@@ -2578,6 +2579,9 @@ export function ServiceManagement() {
                     )}
                   </div>
                 )}
+
+                {/* The company's virtual number: send it to both sides, connect them, calls so far */}
+                <RequestCallPanel requestId={selectedRequest._id} status={selectedRequest.status} />
 
                 {/* Accept on the mechanic's behalf — for mechanics without a smartphone. */}
                 {['assigned', 'mechanic_assigned'].includes(selectedRequest.status) && selectedRequest.mechanic && (

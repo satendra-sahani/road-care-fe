@@ -967,6 +967,20 @@ export const adminLocationRequestAPI = {
   get: (id: string) => api.get(`/admin/location-requests/${id}`),
 };
 
+// Calls through the company's virtual number: the customer and the garage /
+// mechanic never see each other's number (admin → request details).
+export const adminMaskedCallAPI = {
+  status: () => api.get('/admin/masked-calls/status'),
+  // both sides, the message each would get, what was sent, the calls so far
+  share: (serviceRequestId: string, lang?: 'hi' | 'en') => api.get(`/admin/masked-calls/share/${serviceRequestId}`, { params: { lang } }),
+  // job + the number to the garage / mechanic, or the number to the customer
+  send: (data: { serviceRequestId: string; to: 'partner' | 'customer'; channel: 'whatsapp' | 'sms'; lang?: 'hi' | 'en' }) =>
+    api.post('/admin/masked-calls/share', data),
+  // ring one side, then the other, and join them
+  connect: (data: { serviceRequestId: string; first?: 'partner' | 'customer' | 'me'; other?: 'customer' | 'partner'; myPhone?: string }) =>
+    api.post('/admin/masked-calls/connect', data),
+};
+
 // Public page /l/[token] — the customer shares the location once, no login.
 export const locationRequestAPI = {
   meta: (token: string) => api.get(`/common/location-request/${token}`),
