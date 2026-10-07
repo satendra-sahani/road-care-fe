@@ -24,7 +24,7 @@ interface Template {
 interface UploadedMedia { mediaId: string; kind: string; filename: string; previewUrl: string; mime: string }
 
 // ─── WhatsApp text formatting (*bold* _italic_ ~strike~) for the preview ─────
-function renderWaText(text: string, keyPrefix = ''): React.ReactNode[] {
+export function renderWaText(text: string, keyPrefix = ''): React.ReactNode[] {
   const out: React.ReactNode[] = []
   // Split on formatting tokens while keeping them; simple non-nested pass.
   const re = /(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~)/g
@@ -41,7 +41,7 @@ function renderWaText(text: string, keyPrefix = ''): React.ReactNode[] {
 
 // Body with {{n}} placeholders substituted by the live variable inputs.
 // Unfilled slots render as small amber chips so the admin can spot them.
-function renderBodyPreview(bodyText: string, vars: string[]): React.ReactNode[] {
+export function renderBodyPreview(bodyText: string, vars: string[]): React.ReactNode[] {
   const nodes: React.ReactNode[] = []
   const re = /\{\{\s*(\d+)\s*\}\}/g
   let last = 0; let m: RegExpExecArray | null; let seg = 0
@@ -59,7 +59,7 @@ function renderBodyPreview(bodyText: string, vars: string[]): React.ReactNode[] 
   return nodes
 }
 
-const btnIcon = (type: string) => {
+export const btnIcon = (type: string) => {
   const t = String(type || '').toUpperCase()
   if (t === 'URL') return <ExternalLink className="h-3.5 w-3.5" />
   if (t === 'PHONE_NUMBER') return <Phone className="h-3.5 w-3.5" />
@@ -67,7 +67,7 @@ const btnIcon = (type: string) => {
   return <CornerUpLeft className="h-3.5 w-3.5" />
 }
 
-const MEDIA_ACCEPT: Record<string, string> = {
+export const MEDIA_ACCEPT: Record<string, string> = {
   IMAGE: 'image/jpeg,image/png,image/webp',
   VIDEO: 'video/mp4,video/3gpp',
   DOCUMENT: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf',

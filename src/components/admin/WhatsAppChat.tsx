@@ -5,12 +5,12 @@
 // feels realtime); the admin can reply with text, files, emoji reactions and
 // quoted replies. Free-text/media only works inside WhatsApp's 24-hour window.
 import { useEffect, useRef, useState, useCallback } from 'react'
-import Link from 'next/link'
 import { adminWhatsappAPI } from '@/services/api'
+import { WhatsAppTemplateDialog } from './WhatsAppTemplateDialog'
 import { toast } from 'sonner'
 import {
   Loader2, Send, Search, RefreshCw, MessageSquare, Check, CheckCheck, AlertTriangle,
-  Paperclip, X, Reply, SmilePlus, FileText, Download, Play, Bell, BellOff,
+  LayoutTemplate, Paperclip, X, Reply, SmilePlus, FileText, Download, Play, Bell, BellOff,
   Maximize2, ExternalLink,
 } from 'lucide-react'
 
@@ -213,6 +213,7 @@ export function WhatsAppChat() {
     }).catch(() => {})
   }, [])
   const [windowOpen, setWindowOpen] = useState(false)
+  const [tplOpen, setTplOpen] = useState(false) // "Send a template" dialog
   const [loadingChats, setLoadingChats] = useState(true)
   const [loadingThread, setLoadingThread] = useState(false)
   const [sending, setSending] = useState(false)
@@ -553,7 +554,7 @@ export function WhatsAppChat() {
                 <div className="flex items-center gap-2 border-t border-amber-100 bg-amber-50 px-4 py-2 text-[12px] text-amber-700">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>The 24-hour reply window is closed. Send an approved{' '}
-                    <Link href="/admin/communication/whatsapp" className="font-bold underline">template</Link>{' '}to re-open the chat.</span>
+                    <button type="button" data-open-template onClick={() => setTplOpen(true)} className="font-bold underline">template</button>{' '}to re-open the chat.</span>
                 </div>
               )}
 
@@ -589,6 +590,10 @@ export function WhatsAppChat() {
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-black/5">
                   <Paperclip className="h-5 w-5" />
                 </button>
+                <button onClick={() => setTplOpen(true)} title="Send an approved template"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-black/5">
+                  <LayoutTemplate className="h-5 w-5" />
+                </button>
                 <textarea
                   value={text} onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
@@ -607,6 +612,17 @@ export function WhatsAppChat() {
       </div>
 
       {/* Full-screen media viewer */}
+      {active && (
+        <WhatsAppTemplateDialog
+          open={tplOpen}
+          toPhone={active.phone}
+          toName={active.name}
+          phoneNumberId={active.phoneNumberId}
+          onClose={() => setTplOpen(false)}
+          onSent={() => { setTplOpen(false); loadThread(active.phone); loadChats() }}
+        />
+      )}
+
       {lightbox && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4" onClick={() => setLightbox(null)}>
           <div className="absolute right-4 top-4 flex gap-2">
