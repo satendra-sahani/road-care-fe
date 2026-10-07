@@ -18,6 +18,7 @@ Disallow: /distributor-dashboard
 Disallow: /shop-dashboard
 Disallow: /shop-partner
 Disallow: /service/
+Disallow: /l/
 
 # Account & utility pages (no search value)
 Disallow: /login

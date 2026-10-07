@@ -955,6 +955,25 @@ export const adminGarageStaffAPI = {
   update: (id: string, data: { name?: string; isActive?: boolean }) => api.put(`/admin/garage-staff/${id}`, data),
 };
 
+// Phone bookings: ask a caller for their CURRENT location (one fix, not live
+// tracking) from the admin "Create Service Request" dialog.
+export const adminLocationRequestAPI = {
+  // who is this number: customer, app status, known addresses and vehicles
+  lookup: (phone: string) => api.post('/admin/location-requests/lookup', { phone }),
+  customers: (q: string) => api.get('/admin/location-requests/customers', { params: { q } }),
+  // ask — and ask again ("resend"): the same number keeps the same link
+  ask: (data: { phone: string; name?: string; channel: 'sms' | 'whatsapp' | 'link' | 'app' }) =>
+    api.post('/admin/location-requests', data),
+  get: (id: string) => api.get(`/admin/location-requests/${id}`),
+};
+
+// Public page /l/[token] — the customer shares the location once, no login.
+export const locationRequestAPI = {
+  meta: (token: string) => api.get(`/common/location-request/${token}`),
+  share: (token: string, data: { latitude: number; longitude: number; accuracy?: number }) =>
+    api.post(`/common/location-request/${token}`, data),
+};
+
 // Field executive web app (/manager/garage). Staff log in at /manager/login with
 // a phone OTP (cookie `staff_token`); accounts are created by the admin.
 export const garageFieldAPI = {
