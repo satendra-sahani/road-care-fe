@@ -91,11 +91,16 @@ const placeFrom = (j: any): Place => {
 // used when the Maps script is loaded and the key allows geocoding; otherwise —
 // and on any failure — OpenStreetMap's Nominatim answers instead.
 let googleGeocoderOff = false
+// "PRMG+QVP, Hetimpur, …" — a plus code, which nobody can read out to a mechanic
+const PLUS_CODE = /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,4},?\s*/i
+const TOO_COARSE = ['country', 'administrative_area_level_1', 'administrative_area_level_2', 'postal_code']
 const placeFromGoogle = (r: any): Place => {
   const part = (t: string) => (r?.address_components || []).find((c: any) => (c.types || []).includes(t))?.long_name || ''
   const pin = part('postal_code')
   return {
-    address: String(r?.formatted_address || '').replace(/,\s*India$/, ''),
+    // without the country, and without a place name said twice in a row ("Hetimpur, Hetimpur, …")
+    address: String(r?.formatted_address || '').replace(/,\s*India$/, '').split(/,\s*/)
+      .filter((part, n, all) => n === 0 || part.toLowerCase() !== all[n - 1].toLowerCase()).join(', '),
     city: part('locality') || part('administrative_area_level_3') || part('administrative_area_level_2'),
     state: part('administrative_area_level_1'),
     pincode: /^\d{6}$/.test(pin) ? pin : '',
@@ -137,10 +142,18 @@ const searchPlaces = async (q: string): Promise<Hit[]> => {
 const reverseGeocode = async (lat: number, lng: number): Promise<Place | null> => {
   const g = await googleGeocode({ location: { lat, lng } })
   if (g && g.length) {
-    // a "plus code" result (e.g. "Q9XF+2G Gorakhpur") is no use as a service address
-    const best = g.find((r) => !(r.types || []).includes('plus_code')) || g[0]
-    const place = placeFromGoogle(best)
-    if (place.address) return place
+    // Google lists the most exact answer first, but away from named streets that
+    // is often a plus code. Take the first answer a person can read (a road, a
+    // locality…); if there is none, drop the code from the front of the first.
+    const places = g.map(placeFromGoogle)
+    const i = g.findIndex((r, n) => {
+      const types: string[] = r.types || []
+      return !types.includes('plus_code') && !types.some((t) => TOO_COARSE.includes(t)) && !PLUS_CODE.test(places[n].address)
+    })
+    const address = i >= 0 ? places[i].address : places[0].address.replace(PLUS_CODE, '')
+    // city / state / pincode: from that answer, else from whichever answer has them
+    const part = (k: 'city' | 'state' | 'pincode') => (i >= 0 && places[i][k]) || places.find((p) => p[k])?.[k] || ''
+    if (address) return { address, city: part('city'), state: part('state'), pincode: part('pincode') }
   }
   try {
     const ctrl = new AbortController()
@@ -543,7 +556,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
                 <input className={`${field} pl-9`} placeholder="Search by name or mobile number…" value={custQ} onChange={(e) => setCustQ(e.target.value)} aria-label="Find customer" />
               </div>
               {custHits.length > 0 && (
-                <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-[#DFE5EE] bg-white py-1 shadow-xl">
+                <div className="scrollbar-admin absolute inset-x-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-[#DFE5EE] bg-white py-1 shadow-xl">
                   {custHits.map((c) => (
                     <button key={c.id} type="button" onClick={() => { autoName.current = c.name; set({ phone: c.phone, name: c.name }); setCustQ(''); setCustHits([]) }}
                       className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#F3F6FC]">
@@ -652,7 +665,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
               </button>
             </div>
             {addrHits.length > 0 && (
-              <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-xl border border-[#DFE5EE] bg-white py-1 shadow-xl">
+              <div className="scrollbar-admin absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-xl border border-[#DFE5EE] bg-white py-1 shadow-xl">
                 {addrHits.map((h) => (
                   <button key={h.key} type="button" onClick={() => pickHit(h)} className="flex w-full items-start gap-2 px-3 py-2 text-left text-[13px] text-[#1F2937] hover:bg-[#F3F6FC]">
                     <MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: BLUE }} />{h.label}
@@ -663,7 +676,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
           </div>
           <div>
             <label className={label}>Service Address <Req /></label>
-            <textarea ref={addressRef} rows={2} className={`${field} h-auto py-2`} placeholder="House / shop no., street, area" value={form.address}
+            <textarea ref={addressRef} rows={2} className={`${field} scrollbar-admin h-auto py-2`} placeholder="House / shop no., street, area" value={form.address}
               onChange={(e) => { addrAuto.current = false; set({ address: e.target.value }) }} aria-label="Service Address" />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -906,14 +919,14 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
           })}
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto px-4 pb-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_410px] lg:overflow-hidden">
+        <div className="scrollbar-admin grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto px-4 pb-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_410px] lg:overflow-hidden">
           {/* ───────── form ───────── */}
-          <div className="space-y-3 lg:overflow-y-auto lg:pr-1" data-cr-step={step + 1}>
+          <div className="scrollbar-admin space-y-3 lg:overflow-y-auto lg:pr-1.5 lg:[scrollbar-gutter:stable]" data-cr-step={step + 1}>
             {step === 0 ? StepOne : step === 1 ? StepTwo : step === 2 ? StepThree : StepFour}
           </div>
 
           {/* ───────── preview ───────── */}
-          <div className="space-y-3 lg:overflow-y-auto lg:pr-1">
+          <div className="scrollbar-admin space-y-3 lg:overflow-y-auto lg:pr-1.5 lg:[scrollbar-gutter:stable]">
             <Card className="overflow-hidden">
               <Band icon={<MapPin className="h-[18px] w-[18px]" />}>Location Preview</Band>
               <div className="relative h-[280px]">
