@@ -439,8 +439,8 @@ export function AssignDialog({
         </div>
 
         {/* body */}
-        <div className={`scrollbar-admin grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 pb-5 sm:px-7 lg:overflow-hidden ${view === 'list' ? 'lg:grid-cols-[1.2fr_1fr]' : 'lg:grid-cols-[1.5fr_1fr]'}`}>
-          <div className="flex min-h-0 flex-col">
+        <div className={`scrollbar-admin grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 pb-5 sm:px-7 lg:overflow-hidden ${view === 'list' ? 'lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'}`}>
+          <div className="flex min-h-0 min-w-0 flex-col">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
               {/* the heading doubles as the Garages / Mechanics switch */}
               <div className="flex min-w-0 items-center gap-1">
@@ -509,7 +509,7 @@ export function AssignDialog({
             )}
           </div>
 
-          <div className="flex min-h-0 flex-col gap-3">
+          <div className="flex min-h-0 min-w-0 flex-col gap-3">
             {view === 'list' && MapBox}
             <div className="flex min-h-[220px] flex-1 flex-col rounded-2xl border border-[#EAEEF3] bg-white p-3.5">{Detail}</div>
           </div>
