@@ -22,6 +22,8 @@ Disallow: /l/
 Disallow: /l?
 Disallow: /j/
 Disallow: /j?
+Disallow: /pay/
+Disallow: /pay?
 
 # Account & utility pages (no search value)
 Disallow: /login

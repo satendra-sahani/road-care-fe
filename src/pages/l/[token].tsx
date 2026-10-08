@@ -138,7 +138,9 @@ function Shell({ children }: { children: React.ReactNode }) {
 export default function ShareLocationPage() {
   const router = useRouter()
   // the button is on screen before the router is ready — read the token from the address then
-  const tokenNow = () => (router.query.token as string) || (typeof window !== 'undefined' ? decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '') : '')
+  // The approved WhatsApp button opens …/l/%7B%7B1%7D%7D<code> (its address was registered with a
+  // literal "{{1}}" before the real code): that part is not the code.
+  const tokenNow = () => ((router.query.token as string) || (typeof window !== 'undefined' ? decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '') : '')).replace(/^(?:\{\{1\}\}|%7B%7B1%7D%7D)/i, '')
   const [phase, setPhase] = useState<Phase>('ready')
   const [name, setName] = useState('')
   const [err, setErr] = useState('')

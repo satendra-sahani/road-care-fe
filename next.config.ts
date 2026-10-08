@@ -29,8 +29,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     // A link inside an SMS has its changing part after a "?" (the DLT portal whitelists a
-    // dynamic link only in that form): /l?c=<code> and /j?c=<code> open the pages
-    // /l/<code> (share my location) and /j/<code> (job for a garage / mechanic).
+    // dynamic link only in that form): /l?c=<code>, /j?c=<code> and /pay?c=<code> open the
+    // pages /l/<code> (share my location), /j/<code> (job for a garage / mechanic) and
+    // /pay/<code> (pay the booking fee).
     const smsLink = (page: string) => ({
       source: `/${page}`,
       has: [{ type: 'query' as const, key: 'c', value: '(?<code>[A-Za-z0-9_-]{6,64})' }],
@@ -41,6 +42,7 @@ const nextConfig: NextConfig = {
       { source: '/distributor-dashboard', destination: '/shop-partner', permanent: false },
       smsLink('l'),
       smsLink('j'),
+      smsLink('pay'),
     ];
   },
   // Same-origin API proxy. When the site is served over HTTPS (needed on a phone

@@ -119,6 +119,7 @@ import { AssignDialog } from '@/components/admin/AssignDialog'
 import { DiagnosisDialog } from '@/components/admin/DiagnosisDialog'
 import { CreateRequestDialog } from '@/components/admin/CreateRequestDialog'
 import { RequestCallPanel } from '@/components/admin/RequestCallPanel'
+import { PaymentLinkPanel } from '@/components/admin/PaymentLinkPanel'
 import { PRIORITY_PILL, STATUS_PILL, vehicleIconFor, kmBetween, initialsOf, vehicleName } from '@/components/admin/serviceRequestUi'
 
 // Service category options
@@ -2580,6 +2581,9 @@ export function ServiceManagement() {
                     )}
                   </div>
                 )}
+
+                {/* Booking fee not paid in the app (phone booking / closed payment window): send the link to pay it */}
+                <PaymentLinkPanel requestId={selectedRequest._id} feeStatus={selectedRequest.bookingFeeStatus} status={selectedRequest.status} />
 
                 {/* The company's virtual number: send it to both sides, connect them, calls so far */}
                 <RequestCallPanel requestId={selectedRequest._id} status={selectedRequest.status} />

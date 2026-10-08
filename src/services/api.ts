@@ -1038,6 +1038,21 @@ export const locationRequestAPI = {
     api.post(`/common/location-request/${token}`, data),
 };
 
+// Public page /pay/[token] — pay the booking fee of one service request, no login.
+export const payLinkAPI = {
+  info: (token: string) => api.get(`/common/pay-link/${encodeURIComponent(token)}`),
+  order: (token: string) => api.post(`/common/pay-link/${encodeURIComponent(token)}/order`),
+  verify: (token: string, data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    api.post(`/common/pay-link/${encodeURIComponent(token)}/verify`, data),
+};
+
+// Admin: the "pay your booking fee" link of a request — is it due, the messages, send it.
+export const adminPayLinkAPI = {
+  preview: (serviceRequestId: string, lang?: 'hi' | 'en') => api.get(`/admin/pay-links/${serviceRequestId}`, { params: { lang } }),
+  send: (serviceRequestId: string, data: { channel: 'whatsapp' | 'sms' | 'link'; lang?: 'hi' | 'en' }) =>
+    api.post(`/admin/pay-links/${serviceRequestId}/send`, data),
+};
+
 // Public page /j/[token] — the job behind the link in the SMS to a garage / mechanic, no login.
 export const jobLinkAPI = {
   get: (token: string) => api.get(`/common/job-link/${encodeURIComponent(token)}`),
