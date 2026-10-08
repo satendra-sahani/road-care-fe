@@ -22,7 +22,9 @@ import { BRANDS, MODELS, PRIORITIES, SERVICES, SERVICE_TYPES, TIME_SLOTS, VEHICL
 // Server: POST /admin/service-requests + /admin/location-requests.
 
 type Channel = 'whatsapp' | 'sms' | 'link' | 'app'
-type Delivery = { channel: Channel; mode: 'sent' | 'manual' | 'failed'; detail: string; link: string; text?: string; waLink?: string }
+type Lang = 'en' | 'hi'
+const LANG_KEY = 'bm_job_message_lang' // the same choice as the message cards inside a request
+type Delivery = { channel: Channel; mode: 'sent' | 'manual' | 'failed'; detail: string; link: string; text?: string; waLink?: string; lang?: Lang }
 type LocReq = {
   id: string; link: string; phone: string
   status: 'pending' | 'captured' | 'declined' | 'expired'
@@ -222,6 +224,13 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
   const [locReq, setLocReq] = useState<LocReq | null>(null)
   const [deliveries, setDeliveries] = useState<Partial<Record<Channel, Delivery>>>({})
   const [asking, setAsking] = useState<Channel | null>(null)
+  // language of the WhatsApp / SMS that asks for the location — remembered on this computer
+  const [msgLang, setMsgLang] = useState<Lang>('hi')
+  useEffect(() => {
+    if (!open) return
+    try { const l = localStorage.getItem(LANG_KEY); if (l === 'en' || l === 'hi') setMsgLang(l) } catch { /* ignore */ }
+  }, [open])
+  const chooseLang = (l: Lang) => { setMsgLang(l); try { localStorage.setItem(LANG_KEY, l) } catch { /* ignore */ } }
   const [fix, setFix] = useState<Fix | null>(null)
   const [addrQ, setAddrQ] = useState('')
   const [addrHits, setAddrHits] = useState<Hit[]>([])
@@ -419,7 +428,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
     if (channel === 'whatsapp' && lookup?.channels?.whatsapp !== 'auto') { tab = window.open('', '_blank'); if (tab) tab.opener = null }
     setAsking(channel)
     try {
-      const res = await adminLocationRequestAPI.ask({ phone: form.phone, name: form.name.trim(), channel })
+      const res = await adminLocationRequestAPI.ask({ phone: form.phone, name: form.name.trim(), channel, lang: msgLang })
       const { request, delivery } = (res.data?.data || {}) as { request: LocReq; delivery: Delivery }
       if (!request || !delivery) throw new Error('bad response')
       applied.current = ''; seenStatus.current = request.status // a fresh ask: the next fix is a new answer
@@ -676,7 +685,18 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
       </Card>
 
       <Card>
-        <Band icon={<MapPin className="h-[18px] w-[18px]" />}>2. Customer Location</Band>
+        <Band icon={<MapPin className="h-[18px] w-[18px]" />} right={
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] font-semibold text-[#4B5563]">Message in</span>
+            <div className="flex overflow-hidden rounded-lg border border-[#D5DDEC] bg-white text-[12.5px] font-semibold" role="group" aria-label="Message language">
+              {(['hi', 'en'] as const).map((l) => (
+                <button key={l} type="button" onClick={() => chooseLang(l)} aria-pressed={msgLang === l} data-msg-lang={l}
+                  title={`The WhatsApp message and the SMS go out in ${l === 'hi' ? 'Hindi' : 'English'}`}
+                  className={`h-8 whitespace-nowrap px-3.5 ${msgLang === l ? 'bg-[#E3EBFF] text-[#1E40E0]' : 'text-[#374151] hover:bg-[#F6F8FB]'}`}>{l === 'hi' ? 'हिंदी' : 'English'}</button>
+              ))}
+            </div>
+          </div>
+        }>2. Customer Location</Band>
         <div className="space-y-3 p-3.5">
           {Banner}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

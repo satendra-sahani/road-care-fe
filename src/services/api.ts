@@ -1007,7 +1007,8 @@ export const adminLocationRequestAPI = {
   lookup: (phone: string) => api.post('/admin/location-requests/lookup', { phone }),
   customers: (q: string) => api.get('/admin/location-requests/customers', { params: { q } }),
   // ask — and ask again ("resend"): the same number keeps the same link
-  ask: (data: { phone: string; name?: string; channel: 'sms' | 'whatsapp' | 'link' | 'app' }) =>
+  // lang = the language picked for the WhatsApp / SMS message (none: the server's settings decide)
+  ask: (data: { phone: string; name?: string; channel: 'sms' | 'whatsapp' | 'link' | 'app'; lang?: 'en' | 'hi' }) =>
     api.post('/admin/location-requests', data),
   get: (id: string) => api.get(`/admin/location-requests/${id}`),
 };
