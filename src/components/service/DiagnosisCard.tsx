@@ -14,6 +14,8 @@ interface DiagnosisCardProps {
 interface DiagnosisPayload {
   status?: string; // request status: 'diagnosis' = awaiting approval
   requestId?: string;
+  bookingFee?: number;
+  bookingFeeStatus?: string;
   customerApproval?: { status?: string; rejectionReason?: string; approvedAt?: string };
   diagnosis?: {
     notes?: string;
@@ -222,6 +224,10 @@ export default function DiagnosisCard({ requestId, onStatusChange }: DiagnosisCa
               <span className="text-amber-800">You pay</span>
               <span className="text-amber-700">{inr(cb.amountDue ?? cb.totalEstimate)}</span>
             </div>
+          )}
+          {/* a separate registration fee: paid at booking, not a part of this quote */}
+          {!((cb.bookingFeeAdjusted || 0) > 0) && data.bookingFeeStatus === 'paid' && (data.bookingFee || 0) > 0 && (
+            <div className="text-xs text-[#52667C] bg-gray-50 rounded px-2 py-1.5" data-separate-fee>Booking fee {inr(data.bookingFee)} was paid separately at booking. It is not part of this quote and is not deducted from it.</div>
           )}
         </div>
 

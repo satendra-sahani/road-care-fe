@@ -2859,6 +2859,12 @@ export function ServiceManagement() {
                           <span className="font-medium text-green-600">Yes (₹{selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted} adjusted)</span>
                         </div>
                       )}
+                      {selectedRequest.bookingFeeStatus === 'paid' && (selectedRequest.diagnosis?.costBreakdown?.totalEstimate ?? 0) > 0 && !((selectedRequest.diagnosis?.costBreakdown?.bookingFeeAdjusted ?? 0) > 0) && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#6B7280]">Adjusted in Diagnosis</span>
+                          <span className="font-medium text-[#1B3B6F]">No — separate fee, not part of the bill</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

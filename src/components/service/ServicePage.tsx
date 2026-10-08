@@ -144,11 +144,15 @@ export function ServicePage() {
   // The booking fee is admin's setting (Platform Settings). It is the only amount shown while
   // booking, on the last step — the issues are listed without prices.
   const [fees, setFees] = useState({ normal: 99, emergency: 199 })
+  // Admin's switch "Adjustable against final bill": off = the booking fee is a separate
+  // registration fee, not taken off the bill for the work.
+  const [feeSeparate, setFeeSeparate] = useState(false)
   useEffect(() => {
     let off = false
     publicConfigAPI.getConfig().then((r) => {
       const c = r.data?.data || {}
       if (!off) setFees((f) => ({ normal: Number(c.bookingFeeAmount) > 0 ? Number(c.bookingFeeAmount) : f.normal, emergency: Number(c.emergencyBookingFeeAmount) > 0 ? Number(c.emergencyBookingFeeAmount) : f.emergency }))
+      if (!off) setFeeSeparate(c.bookingFeeRefundPolicy?.adjustable === false)
     }).catch(() => { /* the server charges its own fee whatever is shown */ })
     return () => { off = true }
   }, [])
@@ -811,7 +815,7 @@ export function ServicePage() {
             {/* Step 3: payment + confirm (claude-design) */}
             {step === 3 && (
               <div className="bg-white border border-[#E7ECF3] rounded-2xl shadow-[0_8px_30px_rgba(19,32,58,0.06)] p-5 md:p-7">
-                <div className="mb-1"><h3 className="text-xl font-extrabold text-[#13203A]">Payment &amp; confirm</h3><p className="text-[13.5px] text-[#7B8AA3] mt-1">Pay just the ₹{bookingFee} booking fee now. The rest is payable after the job is done.</p></div>
+                <div className="mb-1"><h3 className="text-xl font-extrabold text-[#13203A]">Payment &amp; confirm</h3><p className="text-[13.5px] text-[#7B8AA3] mt-1">{feeSeparate ? `Pay the ₹${bookingFee} booking fee now. The bill for the work is separate and is paid after the job is done.` : `Pay just the ₹${bookingFee} booking fee now. The rest is payable after the job is done.`}</p></div>
 
                 {/* fsec 1 — payment method (pay-list) */}
                 <div className="pt-2 pb-5">
@@ -858,7 +862,7 @@ export function ServicePage() {
                 <div className="border-[1.5px] border-[#E7ECF3] rounded-2xl px-[18px] py-4 bg-white">
                   <div className="flex items-center justify-between py-2.5 border-b border-dashed border-[#EEF1F6] text-sm text-[#475569]"><span>Booking Fee ({serviceType === 'roadside' ? 'Emergency' : 'Visiting Charge'})</span><b className="text-[15px] font-extrabold text-[#13203A]" data-booking-fee>₹{bookingFee}</b></div>
                   <div className="flex items-center justify-between mt-2 px-4 py-3.5 rounded-xl bg-[#EEF3FB]"><span className="text-[15px] font-extrabold text-[#1B3B6F]">Pay Now</span><b className="text-xl font-extrabold text-[#1B3B6F]">₹{bookingFee}</b></div>
-                  <div className="text-center text-[12.5px] font-semibold text-[#7B8AA3] mt-2.5" data-fee-note>The mechanic checks the vehicle and tells you the cost of the work before starting. This fee is adjusted in that bill.</div>
+                  <div className="text-center text-[12.5px] font-semibold text-[#7B8AA3] mt-2.5" data-fee-note>The mechanic checks the vehicle and tells you the cost of the work before starting. {feeSeparate ? 'The booking fee is a separate fee — it is not part of that bill and is not deducted from it.' : 'This fee is adjusted in that bill.'}</div>
                 </div>
 
                 {/* prebook checklist */}
@@ -867,7 +871,7 @@ export function ServicePage() {
                   <ul className="space-y-2.5">
                     {[
                       'A mechanic will be assigned and will contact you.',
-                      `Booking fee of ₹${bookingFee} ${paymentMethod === 'online' ? 'will be charged via Razorpay' : 'will be collected by the mechanic'}. Remaining payment after service.`,
+                      `Booking fee of ₹${bookingFee} ${paymentMethod === 'online' ? 'will be charged via Razorpay' : 'will be collected by the mechanic'}. ${feeSeparate ? 'It is a separate fee; the bill for the work is paid after the service.' : 'Remaining payment after service.'}`,
                       'Free cancellation up to 2 hours before appointment.',
                     ].map((t, i) => <li key={i} className="flex items-start gap-2.5 text-[13px] text-[#475569] leading-relaxed"><CheckCircle className="h-4 w-4 text-[#15936B] shrink-0 mt-0.5" /><span>{t}</span></li>)}
                   </ul>

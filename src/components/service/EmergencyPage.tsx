@@ -62,6 +62,8 @@ export default function EmergencyPage() {
   // Paying first is the default until the settings arrive; it works either way.
   const [payFirst, setPayFirst] = useState(true);
   const [fee, setFee] = useState(199);
+  // Admin's switch "Adjustable against final bill": off = a separate registration fee
+  const [feeSeparate, setFeeSeparate] = useState(false);
 
   useEffect(() => {
     let off = false;
@@ -70,6 +72,7 @@ export default function EmergencyPage() {
       const c = r.data?.data || {};
       setPayFirst(c.codEnabled === false);
       if (Number(c.emergencyBookingFeeAmount) > 0) setFee(Number(c.emergencyBookingFeeAmount));
+      setFeeSeparate(c.bookingFeeRefundPolicy?.adjustable === false);
     }).catch(() => { /* keep paying first */ });
     return () => { off = true; };
   }, []);
@@ -449,8 +452,8 @@ export default function EmergencyPage() {
             </button>
             <p className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-[13px] leading-relaxed text-amber-900" data-emergency-fee>
               {payFirst
-                ? <><b>₹{fee} emergency booking fee</b> is paid online now (UPI, card or net banking). It is adjusted in your final bill — the rest you can pay the mechanic after the work.</>
-                : <><b>₹{fee} emergency booking fee</b> is collected by the mechanic. It is adjusted in your final bill.</>}
+                ? <><b>₹{fee} emergency booking fee</b> is paid online now (UPI, card or net banking). {feeSeparate ? 'It is a separate fee, not part of the bill for the work — that bill you pay the mechanic after the work.' : 'It is adjusted in your final bill — the rest you can pay the mechanic after the work.'}</>
+                : <><b>₹{fee} emergency booking fee</b> is collected by the mechanic. {feeSeparate ? 'It is a separate fee, not part of the bill for the work.' : 'It is adjusted in your final bill.'}</>}
             </p>
           </div>
         )}

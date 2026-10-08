@@ -869,7 +869,7 @@ export function PlatformSettings() {
                         </div>
                         <div>
                           <Label className="font-medium">Booking Fee</Label>
-                          <p className="text-sm text-[#6B7280]">Starting price shown to customers at booking (non-refundable, adjusted against final bill)</p>
+                          <p className="text-sm text-[#6B7280]">The fee a customer pays online to book a mechanic (non-refundable). It is the only amount shown while booking. Whether it is taken off the final bill is the switch below.</p>
                         </div>
                       </div>
                       <Switch
@@ -919,7 +919,7 @@ export function PlatformSettings() {
                         <div className="flex items-center justify-between">
                           <div>
                             <Label>Adjustable Against Final Bill</Label>
-                            <p className="text-sm text-[#6B7280]">Deduct booking fee from mechanic&apos;s diagnosis total</p>
+                            <p className="text-sm text-[#6B7280]">On: the booking fee is deducted from the mechanic&apos;s bill. Off: it is a separate registration fee — the customer pays the bill in full, and the invoice shows the fee on its own, outside the total. Applies to requests diagnosed from now on.</p>
                           </div>
                           <Switch
                             checked={serviceConfig.bookingFeeRefundPolicy?.adjustable ?? true}
