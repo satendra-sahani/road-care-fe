@@ -797,6 +797,37 @@ export const adminWhatsappAPI = {
   mediaBlob: (id: string) => api.get(`/admin/whatsapp/media/${encodeURIComponent(id)}`, { responseType: 'blob' }),
 }
 
+// WhatsApp address book: contacts, tags, Excel import, bulk / scheduled template sends.
+export type WaContactFilter = { search?: string; tag?: string; city?: string; type?: string; optIn?: string; last?: string; source?: string }
+type WaAudience = { ids?: string[]; all?: boolean; filter?: WaContactFilter }
+export const adminWhatsappContactsAPI = {
+  list: (params?: WaContactFilter & { page?: number; limit?: number }) => api.get('/admin/whatsapp-contacts', { params }),
+  meta: () => api.get('/admin/whatsapp-contacts/meta'),
+  create: (data: Record<string, any>) => api.post('/admin/whatsapp-contacts', data),
+  update: (id: string, data: Record<string, any>) => api.put(`/admin/whatsapp-contacts/${id}`, data),
+  remove: (id: string) => api.delete(`/admin/whatsapp-contacts/${id}`),
+  bulk: (data: WaAudience & { action: 'addTag' | 'removeTag' | 'optIn' | 'optOut' | 'delete'; tag?: string }) => api.post('/admin/whatsapp-contacts/bulk', data),
+  renameTag: (from: string, to: string) => api.post('/admin/whatsapp-contacts/tags/rename', { from, to }),
+  deleteTag: (tag: string) => api.post('/admin/whatsapp-contacts/tags/delete', { tag }),
+  importRows: (data: { filename: string; rows: Record<string, any>[]; options: { skipDuplicates?: boolean; tags?: string[]; optIn?: boolean } }) =>
+    api.post('/admin/whatsapp-contacts/import', data, { timeout: 120000 }),
+  imports: (limit = 20) => api.get('/admin/whatsapp-contacts/imports', { params: { limit } }),
+  syncApp: () => api.post('/admin/whatsapp-contacts/sync-app', {}, { timeout: 120000 }),
+  audience: (data: WaAudience) => api.post('/admin/whatsapp-contacts/audience', data),
+  broadcasts: (limit = 20) => api.get('/admin/whatsapp-contacts/broadcasts', { params: { limit } }),
+  broadcast: (id: string) => api.get(`/admin/whatsapp-contacts/broadcasts/${id}`),
+  createBroadcast: (data: WaAudience & { templateName: string; languageCode?: string; phoneNumberId: string; variables?: string[]; headerMediaId?: string; headerMediaKind?: string; scheduleAt?: string; audienceLabel?: string }) =>
+    api.post('/admin/whatsapp-contacts/broadcasts', data),
+  cancelBroadcast: (id: string) => api.post(`/admin/whatsapp-contacts/broadcasts/${id}/cancel`),
+  // Sent History: every message sent, its delivery status, and who wrote back
+  sent: (params?: Record<string, any>) => api.get('/admin/whatsapp-contacts/sent', { params }),
+  sentStats: (params?: Record<string, any>) => api.get('/admin/whatsapp-contacts/sent/stats', { params }),
+  sentReplies: (params?: Record<string, any>) => api.get('/admin/whatsapp-contacts/sent/replies', { params }),
+  sentResend: (ids: string[]) => api.post('/admin/whatsapp-contacts/sent/resend', { ids }, { timeout: 120000 }),
+  sentArchive: (ids: string[]) => api.post('/admin/whatsapp-contacts/sent/archive', { ids }),
+  sentTag: (ids: string[], action: 'addTag' | 'removeTag', tag: string) => api.post('/admin/whatsapp-contacts/sent/tag', { ids, action, tag }),
+}
+
 export const adminTrackerAPI = {
   getDevices: (params?: { status?: string; search?: string; page?: number; limit?: number }) =>
     api.get('/admin/tracker/devices', { params }),
