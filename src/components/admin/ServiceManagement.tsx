@@ -383,6 +383,16 @@ const priorityConfig: Record<string, { color: string; label: string }> = {
 }
 
 const selCls = 'h-11 rounded-xl border border-[#E3E8EF] bg-white px-3.5 text-[13.5px] font-medium text-[#1F2937]'
+// the booking fee's payment status, shown under the amount in the list
+const FEE_CHIP: Record<string, { cls: string; text: (fee: number) => string }> = {
+  paid: { cls: 'text-green-600', text: (f) => `✓ Fee ₹${f} paid` },
+  pending: { cls: 'text-amber-600', text: (f) => `Fee ₹${f} not paid` },
+  refunded: { cls: 'text-blue-600', text: (f) => `Fee ₹${f} refunded` },
+  forfeited: { cls: 'text-gray-500', text: (f) => `Fee ₹${f} forfeited` },
+}
+// the fee can still be paid through the payment link: pending, and the request is not over
+const feeDue = (r: { bookingFee?: number; bookingFeeStatus?: string; status?: string }) =>
+  (r.bookingFee ?? 0) > 0 && r.bookingFeeStatus === 'pending' && !['cancelled', 'paid'].includes(r.status || '')
 
 export function ServiceManagement() {
   const dispatch = useDispatch()
@@ -408,6 +418,8 @@ export function ServiceManagement() {
   const [serviceTypeFilter, setServiceTypeFilter] = useState('all')
   const [selectedRequests, setSelectedRequests] = useState<string[]>([])
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null)
+  // the row menu's "Send payment link" opens the details with the booking-fee card in view
+  const [payFocusId, setPayFocusId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('requests')
 
   // Submit-diagnosis-on-behalf dialog (used when the mechanic can't operate the app)
@@ -1023,6 +1035,12 @@ export function ServiceManagement() {
                               <FileText className="h-4 w-4 mr-2" />
                               Download Invoice PDF
                             </DropdownMenuItem>
+                            {feeDue(request) && (
+                              <DropdownMenuItem data-row-paylink onClick={() => { setPayFocusId(request._id); setSelectedRequest(request) }}>
+                                <CreditCard className="h-4 w-4 mr-2 text-amber-600" />
+                                Send payment link (fee ₹{request.bookingFee} not paid)
+                              </DropdownMenuItem>
+                            )}
                             {coords && (
                               <DropdownMenuItem onClick={() => copyToClipboard(`${coords.latitude}, ${coords.longitude}`, `table-coords-${request._id}`)}>
                                 {copiedKey === `table-coords-${request._id}` ? <CheckCircle className="h-4 w-4 mr-2 text-green-600" /> : <Copy className="h-4 w-4 mr-2" />}
@@ -1503,7 +1521,13 @@ export function ServiceManagement() {
                               </div>
                             );
                           }
-                          return <span className="text-[15px] font-extrabold text-[#111827]">{formatCurrency(diagTotal || request.finalCost || request.totalCost || request.estimatedCost || 0)}</span>;
+                          const feeChip = bkFee > 0 ? FEE_CHIP[request.bookingFeeStatus || ''] : undefined;
+                          return (
+                            <div>
+                              <span className="text-[15px] font-extrabold text-[#111827]">{formatCurrency(diagTotal || request.finalCost || request.totalCost || request.estimatedCost || 0)}</span>
+                              {feeChip && <div data-fee-chip={request.bookingFeeStatus} title={`Booking fee ₹${bkFee} — ${String(request.bookingFeeStatus).replace('pending', 'not paid yet')}`} className={`whitespace-nowrap text-[10.5px] font-semibold leading-tight ${feeChip.cls}`}>{feeChip.text(bkFee)}</div>}
+                            </div>
+                          );
                         })()}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 align-middle text-[12.5px] leading-snug text-[#6B7280]">
@@ -2583,7 +2607,14 @@ export function ServiceManagement() {
                 )}
 
                 {/* Booking fee not paid in the app (phone booking / closed payment window): send the link to pay it */}
-                <PaymentLinkPanel requestId={selectedRequest._id} feeStatus={selectedRequest.bookingFeeStatus} status={selectedRequest.status} />
+                <PaymentLinkPanel requestId={selectedRequest._id} feeStatus={selectedRequest.bookingFeeStatus} status={selectedRequest.status}
+                  focus={payFocusId === selectedRequest._id} onFocused={() => setPayFocusId(null)}
+                  onPaid={() => {
+                    // paid while this was open: the details and the list show it at once
+                    const id = selectedRequest._id
+                    setSelectedRequest((r) => (r && r._id === id ? { ...r, bookingFeeStatus: 'paid' } : r))
+                    dispatch(fetchServiceRequestsRequest(reqQuery))
+                  }} />
 
                 {/* The company's virtual number: send it to both sides, connect them, calls so far */}
                 <RequestCallPanel requestId={selectedRequest._id} status={selectedRequest.status} />
