@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  X, MapPin, Star, Clock, Phone, MessageCircle, Navigation, ArrowRight, ExternalLink, List, Map as MapIcon, Check, Loader2, Layers, Plus, Minus,
+  X, MapPin, Star, Clock, Phone, Navigation, ArrowRight, ExternalLink, List, Map as MapIcon, Check, Loader2, Layers, Plus, Minus,
   LocateFixed, Store, User, Wrench, SlidersHorizontal, BadgeCheck, ChevronDown, Home,
 } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import type { ServiceRequest } from '@/store/slices/serviceRequestSlice'
 import type { Mechanic } from '@/store/slices/mechanicSlice'
 import { loadGoogleMaps, googleMapsFailed } from '@/lib/googleMaps'
@@ -347,7 +348,7 @@ export function AssignDialog({
             </div>
             <div className="flex shrink-0 gap-1.5">
               {selected.phone && <a href={`tel:${selected.phone}`} title="Call" className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#16A34A] hover:bg-[#F0FDF4]"><Phone className="h-4 w-4" /></a>}
-              {selected.phone && <a href={`https://wa.me/91${String(selected.phone).replace(/\D/g, '').slice(-10)}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#16A34A] hover:bg-[#F0FDF4]"><MessageCircle className="h-4 w-4" /></a>}
+              {selected.phone && <a href={`https://wa.me/91${String(selected.phone).replace(/\D/g, '').slice(-10)}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#16A34A] hover:bg-[#F0FDF4]"><WhatsAppIcon className="h-4 w-4" /></a>}
               {selected.pt && <a href={`https://www.google.com/maps/dir/?api=1&destination=${selected.pt.lat},${selected.pt.lng}`} target="_blank" rel="noopener noreferrer" title="Directions" className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E3E8EF] text-[#2563EB] hover:bg-[#EFF4FF]"><Navigation className="h-4 w-4" /></a>}
             </div>
           </div>

@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Download, Search, MapPin, List, Phone, MessageCircle, Star, User, X, Loader2, Warehouse, CheckCircle2, Clock, XCircle, Users,
+  Download, Search, MapPin, List, Phone, Star, User, X, Loader2, Warehouse, CheckCircle2, Clock, XCircle, Users,
   Navigation, Trash2, ShieldCheck, Maximize2, Minimize2, Eye, UserPlus, Copy,
 } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { toast } from 'sonner'
 import { adminGarageAPI, adminGarageStaffAPI } from '@/services/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -148,7 +149,7 @@ export function GarageManagement() {
           <span className="truncate text-[11.5px] font-semibold text-[#8A97AB]">{(g.vehicleTypes || []).map(vehicleLabel).join(' · ')}</span>
           <span className="flex shrink-0 gap-1.5" onClick={(e) => e.stopPropagation()}>
             <a href={`tel:+91${g.callNumber || g.whatsapp}`} title="Call" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7ECF3] text-[#16A34A] hover:bg-[#F0FDF4]"><Phone className="h-4 w-4" /></a>
-            <a href={waLink(g.whatsapp)} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7ECF3] text-[#16A34A] hover:bg-[#F0FDF4]"><MessageCircle className="h-4 w-4" /></a>
+            <a href={waLink(g.whatsapp)} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7ECF3] text-[#16A34A] hover:bg-[#F0FDF4]"><WhatsAppIcon className="h-4 w-4" /></a>
             <button type="button" onClick={() => openGarage(g)} title="View details" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7ECF3] text-[#1B3B6F] hover:bg-[#EFF4FF]"><Eye className="h-4 w-4" /></button>
           </span>
         </div>
@@ -225,7 +226,7 @@ export function GarageManagement() {
                     <div className="flex flex-wrap items-center gap-1.5"><b className="text-[15px] text-[#13203A]">{selG.garageName}</b><Pill status={selG.status} /></div>
                     <Stars n={selG.visit?.rating} />
                     <p className="flex items-center gap-1 truncate text-[12.5px] text-[#475569]"><User className="h-3.5 w-3.5 shrink-0" />{selG.ownerName}</p>
-                    <p className="flex items-center gap-1 text-[12.5px] text-[#475569]"><MessageCircle className="h-3.5 w-3.5 shrink-0 text-[#16A34A]" />+91 {selG.whatsapp}</p>
+                    <p className="flex items-center gap-1 text-[12.5px] text-[#475569]"><WhatsAppIcon className="h-3.5 w-3.5 shrink-0" />+91 {selG.whatsapp}</p>
                     <p className="flex items-center gap-1 truncate text-[12.5px] text-[#475569]"><MapPin className="h-3.5 w-3.5 shrink-0" />{place(selG)}</p>
                   </div>
                 </div>

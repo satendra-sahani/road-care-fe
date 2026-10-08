@@ -9,7 +9,8 @@
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Check, ChevronDown, Copy, Loader2, MessageCircle, Pause, Play, MessageSquareText, PhoneCall, PhoneForwarded, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { Check, ChevronDown, Copy, Loader2, Pause, Play, MessageSquareText, PhoneCall, PhoneForwarded, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { adminMaskedCallAPI } from '@/services/api'
 
 type Side = 'partner' | 'customer'
@@ -213,7 +214,7 @@ export function RequestCallPanel({ requestId, status }: { requestId: string; sta
                     data-send={`${to}:whatsapp`} disabled={off || !!busy} onClick={() => send(to, 'whatsapp')}
                     className="flex h-8 items-center gap-1.5 rounded-md bg-[#16A34A] px-2.5 text-xs font-bold text-white transition-colors hover:bg-[#15803D] disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    {busy === `${to}:whatsapp` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />} WhatsApp
+                    {busy === `${to}:whatsapp` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <WhatsAppIcon className="h-3.5 w-3.5" color="currentColor" />} WhatsApp
                   </button>
                   <button
                     data-send={`${to}:sms`} disabled={off || !!busy} onClick={() => send(to, 'sms')}

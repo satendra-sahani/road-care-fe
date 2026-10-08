@@ -6,6 +6,7 @@ import {
   ExternalLink, Pencil, Car, Wrench, ArrowRight, ArrowLeft, Save, ImagePlus, Plus, Clock, AlertTriangle, CalendarDays, Info, History,
   SlidersHorizontal, ClipboardCheck,
 } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { toast } from 'sonner'
 import api, { serviceRequestAPI, uploadAPI, adminLocationRequestAPI } from '@/services/api'
 import { CreateRequestMap } from './CreateRequestMap'
@@ -1053,7 +1054,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
                 </div>
                 {phoneOk && (
                   <div className="flex shrink-0 gap-1.5">
-                    <a href={`https://wa.me/91${form.phone}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="flex h-9 items-center gap-1.5 rounded-lg border border-[#E3E8EF] px-2.5 text-[12.5px] font-bold text-[#15803D] hover:bg-[#F0FDF4]"><MessageCircle className="h-4 w-4" />WhatsApp</a>
+                    <a href={`https://wa.me/91${form.phone}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="flex h-9 items-center gap-1.5 rounded-lg border border-[#E3E8EF] px-2.5 text-[12.5px] font-bold text-[#15803D] hover:bg-[#F0FDF4]"><WhatsAppIcon className="h-4 w-4" />WhatsApp</a>
                     <a href={`tel:+91${form.phone}`} title="Call" className="flex h-9 items-center gap-1.5 rounded-lg border border-[#E3E8EF] px-2.5 text-[12.5px] font-bold hover:bg-[#F3F6FC]" style={{ color: BLUE }}><Phone className="h-4 w-4" />Call</a>
                   </div>
                 )}
