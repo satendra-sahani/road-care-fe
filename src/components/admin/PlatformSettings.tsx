@@ -941,7 +941,7 @@ export function PlatformSettings() {
                     <div className="flex items-center justify-between">
                       <div>
                         <Label>Cash on Delivery (COD)</Label>
-                        <p className="text-sm text-[#6B7280]">Allow customers to pay cash after service</p>
+                        <p className="text-sm text-[#6B7280]">Let customers book a service or order parts without paying online. Off = the booking fee and parts orders are online only, in the app and on the website; the rest of a service bill can still be paid to the mechanic in cash. Bookings your team makes for a caller are not affected.</p>
                       </div>
                       <Switch
                         checked={serviceConfig.codEnabled}

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { servicePricingAPI, userServiceAPI } from '@/services/api';
+import { servicePricingAPI, userServiceAPI, userPaymentAPI, publicConfigAPI } from '@/services/api';
+import { loadRazorpay } from '@/lib/loadRazorpay';
 import {
   AlertTriangle, ArrowLeft, MapPin, Clock, CheckCircle,
   Loader2, Car, Bike, AlertCircle, Battery, Fuel, Key, Zap,
@@ -56,6 +57,22 @@ export default function EmergencyPage() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
   const [step, setStep] = useState<'select' | 'location' | 'confirm'>('select');
+  // "Cash on Delivery" switched off in Platform Settings (the normal case): the emergency
+  // booking fee is paid online BEFORE the request is made — no request without payment.
+  // Paying first is the default until the settings arrive; it works either way.
+  const [payFirst, setPayFirst] = useState(true);
+  const [fee, setFee] = useState(199);
+
+  useEffect(() => {
+    let off = false;
+    publicConfigAPI.getConfig().then((r) => {
+      if (off) return;
+      const c = r.data?.data || {};
+      setPayFirst(c.codEnabled === false);
+      if (Number(c.emergencyBookingFeeAmount) > 0) setFee(Number(c.emergencyBookingFeeAmount));
+    }).catch(() => { /* keep paying first */ });
+    return () => { off = true; };
+  }, []);
 
   useEffect(() => {
     fetchEmergencyServices(selectedVehicle);
@@ -114,39 +131,110 @@ export default function EmergencyPage() {
   const handleSubmit = async () => {
     if (!selectedService || !location) return;
     setSubmitting(true);
-    try {
-      const serviceData = emergencyServices.find((s) => s.id === selectedService);
-      // Payload shape must match the backend validator and the Android
-      // ServiceConfirmationScreen.tsx contract — flat address/coords, required
-      // serviceType ('home' | 'roadside' | 'walkin'), serviceCategory,
-      // description, address, preferredDate.
-      const res = await userServiceAPI.create({
-        serviceType: 'roadside',
-        serviceCategory: selectedService,
-        description: serviceData?.description || serviceData?.label || selectedService,
-        address: location.address,
-        latitude: location.lat,
-        longitude: location.lng,
-        preferredDate: new Date().toISOString(),
-        priority: 'high',
-        isEmergency: true,
-        vehicleType: selectedVehicle,
-        issues: [selectedService],
-        estimatedCost: serviceData?.price && serviceData.price > 0 ? serviceData.price : 199,
-        paymentMethod: 'cod',
-      });
-
-      const data = res.data?.data || res.data;
+    const serviceData = emergencyServices.find((s) => s.id === selectedService);
+    // Payload shape must match the backend validator and the Android
+    // ServiceConfirmationScreen.tsx contract — flat address/coords, required
+    // serviceType ('home' | 'roadside' | 'walkin'), serviceCategory,
+    // description, address, preferredDate.
+    const request = {
+      serviceType: 'roadside',
+      serviceCategory: selectedService,
+      description: serviceData?.description || serviceData?.label || selectedService,
+      address: location.address,
+      latitude: location.lat,
+      longitude: location.lng,
+      preferredDate: new Date().toISOString(),
+      priority: 'high',
+      isEmergency: true,
+      vehicleType: selectedVehicle,
+      issues: [selectedService],
+    };
+    const open = (data: any) => {
       toast.success('Emergency request submitted! A mechanic is being dispatched.');
       const newId = data?._id || data?.serviceRequest?._id || data?.id;
-      if (newId) {
-        router.push(`/service/${newId}`);
-      } else {
-        router.push('/service');
+      router.push(newId ? `/service/${newId}` : '/service');
+    };
+
+    if (!payFirst) {
+      // cash booking is allowed: the request is made now, the fee is collected by the mechanic
+      try {
+        const res = await userServiceAPI.create({
+          ...request,
+          estimatedCost: serviceData?.price && serviceData.price > 0 ? serviceData.price : 199,
+          paymentMethod: 'cod',
+        });
+        open(res.data?.data || res.data);
+      } catch (e: any) {
+        if (e.response?.data?.code === 'COD_DISABLED') {
+          setPayFirst(true); // switched off since this page was opened
+          toast.info('The emergency fee is now paid online first. Please press the button again.');
+        } else {
+          toast.error(e.response?.data?.message || 'Failed to submit emergency request');
+        }
+      } finally {
+        setSubmitting(false);
       }
+      return;
+    }
+
+    // ── Pay first: order → payment → verify → request → link the payment ──
+    try {
+      if (!(await loadRazorpay()) || typeof (window as any).Razorpay === 'undefined') {
+        toast.error('The payment page could not be opened. Check your internet and try again.');
+        setSubmitting(false); return;
+      }
+      const orderRes = await userPaymentAPI.createEmergencyOrder(fee);
+      const order = orderRes.data?.data || {};
+      if (!order.orderId || !order.keyId) {
+        toast.error(orderRes.data?.message || 'Could not start the payment. Please try again.');
+        setSubmitting(false); return;
+      }
+      const rzp = new (window as any).Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: 'Bharat Mechanics',
+        image: 'https://bharatmechanics.com/favicon.png',
+        description: 'Roadside Emergency',
+        order_id: order.orderId,
+        theme: { color: '#B91C1C' },
+        modal: {
+          ondismiss: () => {
+            setSubmitting(false);
+            toast.info('Payment cancelled. No help was requested and you were not charged.');
+          },
+        },
+        handler: async (response: any) => {
+          const proof = {
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          };
+          try {
+            // no request until the payment is confirmed
+            try { await userPaymentAPI.verifyEmergencyPayment(proof); } catch {
+              toast.error(`Payment received but it could not be verified. Please contact support with Order ID: ${order.orderId}`, { duration: 20000 });
+              return;
+            }
+            let data: any;
+            try {
+              const res = await userServiceAPI.create({ ...request, estimatedCost: fee, paymentMethod: 'online' });
+              data = res.data?.data || res.data;
+            } catch (e: any) {
+              toast.error(`${e.response?.data?.message || 'Your request could not be created.'} Your payment is safe — please contact support with Order ID: ${order.orderId}`, { duration: 20000 });
+              return;
+            }
+            const id = data?._id || data?.serviceRequest?._id || data?.id;
+            if (id) { try { await userPaymentAPI.recordEmergencyPrepaid(id, proof); } catch { /* the money is captured; the team can link it */ } }
+            open(data);
+          } finally {
+            setSubmitting(false);
+          }
+        },
+      });
+      rzp.open();
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to submit emergency request');
-    } finally {
+      toast.error(e.response?.data?.message || 'Could not start the payment. Please try again.');
       setSubmitting(false);
     }
   };
@@ -364,6 +452,11 @@ export default function EmergencyPage() {
             >
               Change location
             </button>
+            {payFirst && (
+              <p className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-[13px] leading-relaxed text-amber-900" data-emergency-fee>
+                <b>₹{fee} emergency booking fee</b> is paid online now (UPI, card or net banking). It is adjusted in your final bill — the rest you can pay the mechanic after the work.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -402,7 +495,7 @@ export default function EmergencyPage() {
               ) : (
                 <Zap className="h-5 w-5" />
               )}
-              {submitting ? 'Requesting...' : 'Request Emergency Help Now'}
+              {submitting ? (payFirst ? 'Please wait...' : 'Requesting...') : payFirst ? `Pay ₹${fee} & Get Help Now` : 'Request Emergency Help Now'}
             </button>
           )}
         </div>

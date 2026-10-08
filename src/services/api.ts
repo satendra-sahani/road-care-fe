@@ -589,6 +589,12 @@ export const userPaymentAPI = {
     api.post('/payments/verify', data),
   createCOD: (serviceRequestId: string, amount: number) =>
     api.post('/payments/cod', { serviceRequestId, amount }),
+  // Emergency: the booking fee is paid BEFORE the request is created
+  createEmergencyOrder: (amount: number) => api.post('/payments/emergency-order', { amount }),
+  verifyEmergencyPayment: (data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    api.post('/payments/emergency-verify', data),
+  recordEmergencyPrepaid: (serviceRequestId: string, data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    api.post('/payments/emergency-record', { serviceRequestId, ...data }),
   calculateFare: (distanceKm: number, isEmergency?: boolean, vehicleType?: string) =>
     api.get('/payments/calculate-fare', { params: { distanceKm, isEmergency, vehicleType } }),
   getPricing: () => api.get('/payments/pricing'),
