@@ -10,7 +10,7 @@ import { loadRazorpay } from '@/lib/loadRazorpay'
 // or somebody paying for them, can pay. The amount comes from the server; this page never
 // decides it. After the payment is confirmed the booking fee of that request is marked paid.
 
-type Info = { requestId: string; name: string; amount: number; state: 'due' | 'paid' | 'closed' | 'none'; emergency: boolean; service: string; vehicle: string; separate: boolean }
+type Info = { requestId: string; name: string; amount: number; state: 'due' | 'paid' | 'closed' | 'none'; emergency: boolean; service: string; vehicle: string; separate: boolean; test?: boolean }
 type Phase = 'loading' | 'ready' | 'paying' | 'done' | 'invalid' | 'offline'
 
 // The approved WhatsApp button opens …/pay/%7B%7B1%7D%7D<code>: the literal "{{1}}" is not part of the code.
@@ -153,6 +153,8 @@ export default function PayBookingFeePage() {
     <Shell>
       <div className={card} data-pay-due>
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF0FE]"><IndianRupee className="h-8 w-8 text-[#1E40E0]" /></span>
+        {/* one of the team's test phone numbers: the payment runs in Razorpay test mode */}
+        {info.test && <p className="mt-3 rounded-lg bg-[#FFF8E6] px-3 py-1.5 text-[12px] font-bold uppercase tracking-wide text-[#92400E]" data-pay-test>Test mode — no real money is charged</p>}
         <h1 className="mt-4 text-[21px] font-extrabold leading-snug text-[#13203A]">{info.name ? `Hi ${info.name}, pay` : 'Pay'} your booking fee</h1>
         <p className="mt-1 text-[15px] font-semibold text-[#1B3B6F]">बुकिंग फीस का भुगतान करें</p>
 

@@ -20,6 +20,7 @@ type Sent = { channel: Channel; mode: 'sent' | 'manual' | 'failed'; detail?: str
 type Data = {
   state: 'due' | 'paid' | 'closed' | 'none'; amount: number; requestId: string; lang: Lang; customer: string; phoneOk: boolean
   separate: boolean; link: string; whatsapp: Msg | null; sms: Msg | null; sent: Sent[]; paidThroughLink?: boolean
+  test?: boolean; testPayment?: boolean // one of the team's test phone numbers: Razorpay test mode, no real money
 }
 
 const LANG_KEY = 'bm_job_message_lang' // the same choice as the "calls" card next to it
@@ -91,7 +92,7 @@ export function PaymentLinkPanel({ requestId, feeStatus, status }: { requestId: 
     return (
       <div data-pay-panel="paid" className="flex items-start gap-2 rounded-xl border border-green-100 bg-green-50/70 p-3 text-xs text-green-900">
         <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-        <span><b>Booking fee ₹{data.amount} — paid online</b>{data.paidThroughLink ? ' through the payment link' : ''}.{data.separate ? ' It is a separate fee: not part of the bill for the work.' : ' It is adjusted in the bill for the work.'}</span>
+        <span><b>Booking fee ₹{data.amount} — paid online</b>{data.paidThroughLink ? ' through the payment link' : ''}.{data.separate ? ' It is a separate fee: not part of the bill for the work.' : ' It is adjusted in the bill for the work.'}{data.testPayment && <b data-pay-testpaid className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-800">Test payment — no real money</b>}</span>
       </div>
     )
   }
@@ -115,6 +116,7 @@ export function PaymentLinkPanel({ requestId, feeStatus, status }: { requestId: 
         Send {data.customer} the link to pay it online. Anybody can pay through the link — the customer, or somebody paying for them.
       </p>
 
+      {data.test && <p data-pay-testnote className="mt-2 rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-900">Test phone number — this link takes a Razorpay TEST payment. No real money is charged.</p>}
       {!data.phoneOk && <p data-pay-nophone className="mt-2 rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-amber-900">This request has no valid customer mobile number — copy the link and pass it on yourself.</p>}
 
       <div className="mt-3 flex flex-wrap gap-2">

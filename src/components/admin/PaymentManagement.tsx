@@ -92,6 +92,7 @@ interface PaymentRecord {
   codSettledAt?: string
   createdAt: string
   updatedAt: string
+  gatewayMode?: 'live' | 'test' // 'test' = a test phone number paid in Razorpay test mode: no real money
   // Split payment fields
   isBookingFee?: boolean
   serviceTotalAmount?: number
@@ -666,6 +667,7 @@ function PaymentHistoryTab() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
+                        {p.gatewayMode === 'test' && <div data-test-payment className="mb-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800" title="Paid in Razorpay test mode by a test phone number — no real money, not counted as revenue">Test</div>}
                         {p.combinedMethod === 'online_cod' ? (
                           <div>
                             <span className="font-bold text-[#1B3B6F]">{fmt(p.srTotalCost || ((p.onlineBookingFeeAmount || 0) + p.totalAmount))}</span>
