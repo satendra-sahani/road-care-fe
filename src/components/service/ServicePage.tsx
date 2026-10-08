@@ -5,7 +5,7 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
-import { userServiceAPI, servicePricingAPI, userPaymentAPI, userAddressAPI } from '@/services/api'
+import { userServiceAPI, servicePricingAPI, userPaymentAPI, userAddressAPI, publicConfigAPI } from '@/services/api'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -141,6 +141,17 @@ export function ServicePage() {
   const [vehicleType, setVehicleType] = useState('')
   const [serviceType, setServiceType] = useState('home')
   const [pricingData, setPricingData] = useState<any>(null)
+  // The booking fee is admin's setting (Platform Settings). It is the only amount shown while
+  // booking, on the last step — the issues are listed without prices.
+  const [fees, setFees] = useState({ normal: 99, emergency: 199 })
+  useEffect(() => {
+    let off = false
+    publicConfigAPI.getConfig().then((r) => {
+      const c = r.data?.data || {}
+      if (!off) setFees((f) => ({ normal: Number(c.bookingFeeAmount) > 0 ? Number(c.bookingFeeAmount) : f.normal, emergency: Number(c.emergencyBookingFeeAmount) > 0 ? Number(c.emergencyBookingFeeAmount) : f.emergency }))
+    }).catch(() => { /* the server charges its own fee whatever is shown */ })
+    return () => { off = true }
+  }, [])
   const [selectedIssues, setSelectedIssues] = useState<string[]>([])
   const [otherIssue, setOtherIssue] = useState('')
   const [loadingPricing, setLoadingPricing] = useState(false)
@@ -348,7 +359,7 @@ export function ServicePage() {
         ...(latitude != null && longitude != null && sameSpot(pinLine.current, address)
           ? { latitude, longitude, locationAccuracy: pinAccuracy ?? undefined } : {}),
         paymentMethod,
-        estimatedCost: estimatedTotal,
+        estimatedCost: bookingFee,
         priority: serviceType === 'roadside' ? 'high' : 'normal',
         isEmergency: serviceType === 'roadside',
       })
@@ -488,13 +499,8 @@ export function ServicePage() {
     return Clock
   }
 
-  const estimatedTotal = selectedIssues.reduce((sum, id) => {
-    const issue = pricingData?.issues?.find((i: any) => (i.id || i._id) === id)
-    return sum + (issue?.estimatedPrice || issue?.estimatedCost || issue?.price || 0)
-  }, 0)
-
-  // Booking fee: ₹199 for emergency/roadside, ₹99 for normal
-  const bookingFee = serviceType === 'roadside' ? 199 : 99
+  // Booking fee: admin's setting — one for emergency / roadside, one for a normal booking
+  const bookingFee = serviceType === 'roadside' ? fees.emergency : fees.normal
 
   const todayStr = new Date().toISOString().split('T')[0]
 
@@ -528,7 +534,7 @@ export function ServicePage() {
             <Link href="/" className="hover:text-white">Home</Link> › <span>Book a Mechanic</span>
           </div>
           <h1 className="text-white font-extrabold text-[26px] sm:text-[34px] lg:text-[40px] leading-tight">Book a trusted mechanic</h1>
-          <p className="text-[#c8d4e8] text-base mt-3 max-w-xl">Doorstep car &amp; bike service with certified mechanics, genuine parts and transparent, issue-based pricing. Track your mechanic live.</p>
+          <p className="text-[#c8d4e8] text-base mt-3 max-w-xl">Doorstep car &amp; bike service with certified mechanics, genuine parts and a clear quote before any work starts. Track your mechanic live.</p>
         </div>
       </section>
 
@@ -642,7 +648,6 @@ export function ServicePage() {
                                 <span className="block text-[13.5px] font-bold text-[#13203A] leading-tight">{issue.label || issue.name}</span>
                                 {issue.description && <span className="block text-[11.5px] text-[#7B8AA3] mt-0.5 truncate">{issue.description}</span>}
                               </span>
-                              {price > 0 && <span className="text-[13px] font-bold text-[#475569] shrink-0">~₹{price}</span>}
                               <span className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 ${on ? 'bg-[#1B3B6F] border-[#1B3B6F] text-white' : 'border-[#E7ECF3] text-transparent'}`}>{on && <CheckCircle className="h-3 w-3" />}</span>
                             </button>
                           )
@@ -672,13 +677,6 @@ export function ServicePage() {
                       </div>
                     )}
 
-                    {/* est-band — green */}
-                    {estimatedTotal > 0 && (
-                      <div className="mt-5 flex items-center justify-between gap-3.5 px-[18px] py-4 rounded-2xl bg-[#E7F6EF] border border-[#bfe6d3]">
-                        <div><b className="block text-sm text-[#13203A]">Estimated service cost</b><span className="text-[12px] text-[#475569]">Booking fee ₹{bookingFee} paid now &middot; rest after service</span></div>
-                        <div className="text-[26px] font-extrabold text-[#15936B] leading-none">₹{estimatedTotal.toLocaleString('en-IN')}</div>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -858,10 +856,9 @@ export function ServicePage() {
 
                 {/* pay-box */}
                 <div className="border-[1.5px] border-[#E7ECF3] rounded-2xl px-[18px] py-4 bg-white">
-                  <div className="flex items-center justify-between py-2.5 border-b border-dashed border-[#EEF1F6] text-sm text-[#475569]"><span>Booking Fee ({serviceType === 'roadside' ? 'Emergency' : 'Visiting Charge'})</span><b className="text-[15px] font-extrabold text-[#13203A]">₹{bookingFee}</b></div>
-                  {estimatedTotal > 0 && <div className="flex items-center justify-between py-2.5 border-b border-dashed border-[#EEF1F6] text-sm text-[#475569]"><span>Estimated Service Cost</span><b className="text-[15px] font-extrabold text-[#13203A]">₹{estimatedTotal.toLocaleString('en-IN')}</b></div>}
+                  <div className="flex items-center justify-between py-2.5 border-b border-dashed border-[#EEF1F6] text-sm text-[#475569]"><span>Booking Fee ({serviceType === 'roadside' ? 'Emergency' : 'Visiting Charge'})</span><b className="text-[15px] font-extrabold text-[#13203A]" data-booking-fee>₹{bookingFee}</b></div>
                   <div className="flex items-center justify-between mt-2 px-4 py-3.5 rounded-xl bg-[#EEF3FB]"><span className="text-[15px] font-extrabold text-[#1B3B6F]">Pay Now</span><b className="text-xl font-extrabold text-[#1B3B6F]">₹{bookingFee}</b></div>
-                  {estimatedTotal > 0 && <div className="text-center text-[12.5px] font-semibold text-[#7B8AA3] mt-2.5">Remaining ₹{Math.max(0, estimatedTotal - bookingFee).toLocaleString('en-IN')} to be paid after service completion</div>}
+                  <div className="text-center text-[12.5px] font-semibold text-[#7B8AA3] mt-2.5" data-fee-note>The mechanic checks the vehicle and tells you the cost of the work before starting. This fee is adjusted in that bill.</div>
                 </div>
 
                 {/* prebook checklist */}

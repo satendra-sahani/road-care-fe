@@ -160,7 +160,7 @@ export default function EmergencyPage() {
       try {
         const res = await userServiceAPI.create({
           ...request,
-          estimatedCost: serviceData?.price && serviceData.price > 0 ? serviceData.price : 199,
+          estimatedCost: fee,
           paymentMethod: 'cod',
         });
         open(res.data?.data || res.data);
@@ -369,11 +369,7 @@ export default function EmergencyPage() {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            {service.price > 0 && (
-                              <span className={`text-sm font-bold ${isSelected ? 'text-red-200' : 'text-red-600'}`}>
-                                ₹{service.price}
-                              </span>
-                            )}
+                            {/* no price here: the only amount is the booking fee, shown at the end */}
                             {service.urgencyLevel === 'high' && (
                               <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
                                 HIGH
@@ -403,7 +399,6 @@ export default function EmergencyPage() {
                 <p className="text-sm text-red-600">
                   {selectedServiceData.label} for your{' '}
                   {VEHICLE_TYPES.find((v) => v.type === selectedVehicle)?.label}
-                  {selectedServiceData.price > 0 ? ` · Est. ₹${selectedServiceData.price}` : ''}
                 </p>
               </div>
             </div>
@@ -452,11 +447,11 @@ export default function EmergencyPage() {
             >
               Change location
             </button>
-            {payFirst && (
-              <p className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-[13px] leading-relaxed text-amber-900" data-emergency-fee>
-                <b>₹{fee} emergency booking fee</b> is paid online now (UPI, card or net banking). It is adjusted in your final bill — the rest you can pay the mechanic after the work.
-              </p>
-            )}
+            <p className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-[13px] leading-relaxed text-amber-900" data-emergency-fee>
+              {payFirst
+                ? <><b>₹{fee} emergency booking fee</b> is paid online now (UPI, card or net banking). It is adjusted in your final bill — the rest you can pay the mechanic after the work.</>
+                : <><b>₹{fee} emergency booking fee</b> is collected by the mechanic. It is adjusted in your final bill.</>}
+            </p>
           </div>
         )}
       </div>
