@@ -291,11 +291,13 @@ const fillFor = (v: string, p?: { name?: string; city?: string; phone?: string }
   return v.replace(/\{\s*name\s*\}/gi, p?.name || 'Customer').replace(/\{\s*first[_ ]?name\s*\}/gi, first).replace(/\{\s*city\s*\}/gi, p?.city || '').replace(/\{\s*phone\s*\}/gi, String(p?.phone || '').slice(-10))
 }
 
-export function SendPanel({ audience, templates, senders, loadingTemplates, templatesError, presetKey, onClear, onSent, onReloadTemplates }: {
+export function SendPanel({ audience, templates, senders, loadingTemplates, templatesError, presetKey, onClear, onSent, onReloadTemplates, inDialog }: {
   audience: Audience; templates: WaTemplate[]; senders: WaSender[]; loadingTemplates: boolean; templatesError: string
   /** `${name}::${language}` chosen elsewhere on the page (Templates tab) */
   presetKey?: string
   onClear: () => void; onSent: () => void; onReloadTemplates: () => void
+  /** shown inside a dialog: the dialog already has the frame and the title */
+  inDialog?: boolean
 }) {
   const [tplKey, setTplKey] = useState('')
   const [senderId, setSenderId] = useState('')
@@ -375,13 +377,13 @@ export function SendPanel({ audience, templates, senders, loadingTemplates, temp
   const count = info?.willSend ?? (audience.mode === 'ids' ? audience.ids.length : 0)
 
   return (
-    <section data-send-panel className="rounded-2xl border border-[#E8EDF3] bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
+    <section data-send-panel className={inDialog ? '' : 'rounded-2xl border border-[#E8EDF3] bg-white p-4 shadow-sm'}>
+      <div className={`flex items-center justify-between gap-2 ${inDialog ? 'hidden' : ''}`}>
         <h3 className="flex items-center gap-2 text-[15.5px] font-extrabold text-[#0F172A]"><WhatsAppIcon className="h-7 w-7" />Send WhatsApp Template</h3>
         {audience.mode !== 'none' && <button type="button" onClick={onClear} className="text-[12px] font-bold text-[#2563EB]">Clear All</button>}
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
+      <div className={`flex items-center justify-between gap-2 ${inDialog ? '' : 'mt-3'}`}>
         <p className="text-[12.5px] font-semibold text-[#334155]">Selected Recipients</p>
         <span data-recipient-count className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold ${audience.mode === 'none' ? 'bg-[#F1F5F9] text-[#64748B]' : 'bg-[#DCFCE7] text-[#15803D]'}`}>
           {audience.mode === 'none' ? 'None selected' : `${count.toLocaleString('en-IN')} Contact${count === 1 ? '' : 's'} Selected`}

@@ -1,16 +1,17 @@
 'use client'
 
 // Admin → Communication → WhatsApp: "WhatsApp & Contacts".
-//   Contacts       the address book: search, filters, tags, opt-in, bulk actions,
-//                  add one by hand, import an Excel / CSV file, and send an approved
-//                  template to the ticked contacts or to everybody the filters show
+//   Contacts       the address book: search, filters, tags, opt-in, bulk actions.
+//                  Three dialogs open from its buttons: Add Contact, Import from Excel,
+//                  and Send WhatsApp Template (to the ticked contacts or to everybody
+//                  the filters show)
 //   Send Template  one template to one number (the earlier page) + the bulk sends so far
 //   Sent History   every message sent, its delivery status and who wrote back (WhatsAppSentHistory.tsx)
 //   Segments       the tags, as ready-made groups to send to
 //   Templates      the approved templates
 //   Import History what each imported file added
 // Backend: /api/admin/whatsapp-contacts (services/whatsappContactService.js).
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Ban, BarChart3, Check, ChevronLeft, ChevronRight, Download, FileSpreadsheet, History, LayoutTemplate, Loader2, MoreVertical, Pencil, Plus, RefreshCw, Search,
@@ -74,8 +75,8 @@ export function WhatsAppContacts() {
   const [busy, setBusy] = useState(false)
   const [manageTags, setManageTags] = useState(false)
   const [failedOf, setFailedOf] = useState<null | { name: string; rows: { name: string; phone: string; error: string }[] }>(null)
-  const pickFile = useRef<(() => void) | null>(null)
-  const sendRef = useRef<HTMLDivElement>(null)
+  const [importOpen, setImportOpen] = useState(false) // "Import from Excel" dialog
+  const [sendOpen, setSendOpen] = useState(false)     // "Send WhatsApp Template" dialog
 
   useEffect(() => { const t = setTimeout(() => setDebounced(search.trim()), 350); return () => clearTimeout(t) }, [search])
   const query: WaContactFilter = useMemo(() => {
@@ -140,7 +141,7 @@ export function WhatsAppContacts() {
     return bits.length ? `All contacts: ${bits.join(', ')}` : 'All contacts'
   }
   const audience: Audience = allMatching ? { mode: 'all', filter: query, label: filterWords() } : picked.size ? { mode: 'ids', ids: [...picked], label: `${picked.size} selected contact${picked.size === 1 ? '' : 's'}` } : { mode: 'none' }
-  const toSend = () => { setTab('contacts'); setTimeout(() => sendRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60) }
+  const toSend = () => { setTab('contacts'); setSendOpen(true) }
 
   const bulk = async (action: 'addTag' | 'removeTag' | 'optIn' | 'optOut' | 'delete', tag?: string) => {
     setBusy(true)
@@ -222,13 +223,13 @@ export function WhatsAppContacts() {
           </div>
           <div className="flex flex-wrap gap-2 py-2">
             <button type="button" data-add-contact onClick={() => setAdding(true)} className="flex h-10 items-center gap-2 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: ORANGE }}><UserPlus className="h-4 w-4" />Add Contact</button>
-            <button type="button" onClick={() => { setTab('contacts'); setTimeout(() => pickFile.current?.(), 80) }} className="flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-white px-4 text-[13.5px] font-bold text-[#0F172A] hover:bg-[#F8FAFC]"><Upload className="h-4 w-4" />Import Excel</button>
+            <button type="button" data-import-excel onClick={() => setImportOpen(true)} className="flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-white px-4 text-[13.5px] font-bold text-[#0F172A] hover:bg-[#F8FAFC]"><Upload className="h-4 w-4" />Import Excel</button>
             <button type="button" data-bulk-send onClick={() => { if (!total) { toast.error('There are no contacts to send to'); return } setAllMatching(true); setPicked(new Set()); toSend() }} className="flex h-10 items-center gap-2 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: NAVY }}><Send className="h-4 w-4" />Bulk Send</button>
           </div>
         </div>
 
         {tab === 'contacts' && (
-          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div>
             <div className="min-w-0 space-y-4">
               {/* filters */}
               <div className="flex flex-wrap items-center gap-2">
@@ -262,7 +263,7 @@ export function WhatsAppContacts() {
                   <label className="flex h-9 items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 text-[12.5px] font-bold text-[#0F172A]">
                     <input type="checkbox" className="h-4 w-4 accent-[#2563EB]" aria-label="Select this page" checked={allMatching || pageAllPicked} onChange={togglePage} />{count.toLocaleString('en-IN')} selected
                   </label>
-                  <button type="button" className={bulkBtn} disabled={!count} onClick={toSend}><Send className="h-3.5 w-3.5" />Send Template</button>
+                  <button type="button" data-bulk-send-template className={bulkBtn} disabled={!count} onClick={toSend}><Send className="h-3.5 w-3.5" />Send Template</button>
                   <button type="button" data-bulk-add-tag className={bulkBtn} disabled={!count || busy} onClick={() => { setTagText(''); setTagDlg('add') }}><Tag className="h-3.5 w-3.5" />Add Tag</button>
                   <button type="button" className={bulkBtn} disabled={!count || busy} onClick={() => { setTagText(''); setTagDlg('remove') }}><XCircle className="h-3.5 w-3.5" />Remove Tag</button>
                   <button type="button" className={bulkBtn} onClick={exportCsv} title={count ? 'Export the selected contacts' : 'Export every contact the filters show'}><Download className="h-3.5 w-3.5" />Export</button>
@@ -282,7 +283,7 @@ export function WhatsAppContacts() {
                       {!loading && rows.length === 0 && (
                         <tr><td colSpan={8} className="px-4 py-12 text-center">
                           <b className="block text-[15px] text-[#0F172A]">{filtersOn ? 'No contact matches these filters' : 'No contacts yet'}</b>
-                          <span className="mt-1 block text-[13px] text-[#64748B]">{filtersOn ? 'Try clearing a filter or the search.' : 'Add one below, import an Excel file, or bring in the people already registered in the app.'}</span>
+                          <span className="mt-1 block text-[13px] text-[#64748B]">{filtersOn ? 'Try clearing a filter or the search.' : 'Use “Add Contact” or “Import Excel” above, or bring in the people already registered in the app.'}</span>
                           {!filtersOn && <button type="button" data-sync-app onClick={syncApp} className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E2E8F0] px-3 text-[12.5px] font-bold text-[#0F172A] hover:bg-[#F8FAFC]"><Users className="h-3.5 w-3.5" />Bring in app users</button>}
                         </td></tr>
                       )}
@@ -329,35 +330,6 @@ export function WhatsAppContacts() {
                 </div>
               </div>
 
-              {/* add + import */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className={`${card} p-4`}>
-                  <div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 text-[15.5px] font-extrabold text-[#0F172A]"><UserPlus className="h-5 w-5 text-[#2563EB]" />Add New Contact</h3><span className="text-[12.5px] font-bold text-[#2563EB]">Create Manually</span></div>
-                  <ContactForm knownTags={knownTags} cities={cities} onSaved={refresh} />
-                </div>
-                <div className={`${card} p-4`}>
-                  <div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 text-[15.5px] font-extrabold text-[#0F172A]"><Upload className="h-5 w-5 text-[#2563EB]" />Import from Excel</h3><button type="button" data-download-sample onClick={downloadSample} className="flex items-center gap-1 text-[12.5px] font-bold text-[#2563EB]"><Download className="h-3.5 w-3.5" />Download Sample</button></div>
-                  <ImportCard knownTags={knownTags} pickRef={pickFile} onImported={() => { refresh(); loadImports() }} />
-                  <button type="button" onClick={syncApp} className="mt-2 flex w-full items-center justify-center gap-1.5 text-[12.5px] font-bold text-[#2563EB]"><Users className="h-3.5 w-3.5" />Or bring in the people already registered in the app</button>
-                </div>
-              </div>
-            </div>
-
-            {/* right column */}
-            <div className="min-w-0 space-y-4" ref={sendRef}>
-              <SendPanel audience={audience} templates={templates} senders={senders} loadingTemplates={tplLoading} templatesError={tplError} presetKey={presetKey}
-                onClear={clearPicked} onReloadTemplates={loadTemplates} onSent={() => { clearPicked(); loadBroadcasts(); loadMeta(); setTimeout(() => { loadBroadcasts(); loadRows(); loadMeta() }, 2500) }} />
-              <section className={`${card} p-4`}>
-                <div className="mb-2 flex items-center justify-between"><h3 className="flex items-center gap-2 text-[15px] font-extrabold text-[#0F172A]"><Upload className="h-4 w-4 text-[#2563EB]" />Recent Imports</h3><button type="button" onClick={() => setTab('imports')} className="text-[12.5px] font-bold text-[#2563EB]">View All</button></div>
-                {imports.length === 0 && <p className="py-3 text-[12.5px] text-[#94A3B8]">Nothing imported yet.</p>}
-                {imports.slice(0, 5).map((im) => (
-                  <div key={im._id} className="flex items-center gap-2.5 border-t border-[#F1F5F9] py-2 first:border-0">
-                    <FileSpreadsheet className="h-5 w-5 shrink-0 text-[#16A34A]" />
-                    <span className="min-w-0 flex-1"><b className="block truncate text-[12.5px] text-[#0F172A]">{im.filename || 'Import'}</b><span className="text-[11.5px] text-[#64748B]">{im.total.toLocaleString('en-IN')} contacts • {im.added} new{im.invalid ? <> • <b className="text-[#DC2626]">{im.invalid} invalid</b></> : null}</span></span>
-                    <span className="shrink-0 text-right text-[10.5px] text-[#64748B]">{new Date(im.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                  </div>
-                ))}
-              </section>
             </div>
           </div>
         )}
@@ -426,7 +398,7 @@ export function WhatsAppContacts() {
                     {t.category && <span className="rounded bg-[#F1F5F9] px-1.5 py-0.5 text-[#475569]">{t.category}</span>}
                     {(t.varCount || 0) > 0 && <span className="rounded bg-[#FEF3C7] px-1.5 py-0.5 text-[#B45309]">{t.varCount} value{t.varCount === 1 ? '' : 's'}</span>}
                     {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(String(t.headerType || '').toUpperCase()) && <span className="rounded bg-[#F1F5F9] px-1.5 py-0.5 text-[#475569]">{String(t.headerType).toLowerCase()} header</span>}
-                    <button type="button" className="ml-auto h-7 rounded-lg px-2.5 text-[12px] text-white" style={{ background: ORANGE }} onClick={() => { setPresetKey(`${t.name}::${t.language}`); toSend() }}>Use this</button>
+                    <button type="button" className="ml-auto h-7 rounded-lg px-2.5 text-[12px] text-white" style={{ background: ORANGE }} onClick={() => { setPresetKey(`${t.name}::${t.language}`); setTab('contacts'); if (count) setSendOpen(true); else toast.info(`“${t.name}” is chosen. Tick contacts and press Send Template, or press Bulk Send.`) }}>Use this</button>
                   </div>
                 </div>
               ))}
@@ -456,6 +428,20 @@ export function WhatsAppContacts() {
       </div>
 
       {/* dialogs */}
+      {importOpen && (
+        <Modal title="Import from Excel" onClose={() => setImportOpen(false)}>
+          <div className="mb-3 flex items-center justify-between gap-2 text-[12.5px] text-[#64748B]"><span>An Excel (.xlsx) or CSV file with names and WhatsApp numbers.</span><button type="button" data-download-sample onClick={downloadSample} className="flex shrink-0 items-center gap-1 font-bold text-[#2563EB]"><Download className="h-3.5 w-3.5" />Download Sample</button></div>
+          <ImportCard knownTags={knownTags} onImported={() => { setImportOpen(false); refresh(); loadImports() }} />
+          <button type="button" onClick={() => { setImportOpen(false); syncApp() }} className="mt-3 flex w-full items-center justify-center gap-1.5 text-[12.5px] font-bold text-[#2563EB]"><Users className="h-3.5 w-3.5" />Or bring in the people already registered in the app</button>
+        </Modal>
+      )}
+      {sendOpen && (
+        <Modal title="Send WhatsApp Template" onClose={() => setSendOpen(false)}>
+          <SendPanel inDialog audience={audience} templates={templates} senders={senders} loadingTemplates={tplLoading} templatesError={tplError} presetKey={presetKey}
+            onClear={() => { clearPicked(); setSendOpen(false) }} onReloadTemplates={loadTemplates}
+            onSent={() => { setSendOpen(false); clearPicked(); loadBroadcasts(); loadMeta(); setTimeout(() => { loadBroadcasts(); loadRows(); loadMeta() }, 2500) }} />
+        </Modal>
+      )}
       {adding && <Modal title="Add Contact" onClose={() => setAdding(false)}><ContactForm knownTags={knownTags} cities={cities} onCancel={() => setAdding(false)} onSaved={() => { setAdding(false); refresh() }} /></Modal>}
       {editing && <Modal title="Edit Contact" onClose={() => setEditing(null)}><ContactForm contact={editing} knownTags={knownTags} cities={cities} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); refresh() }} /></Modal>}
       {tagDlg && (
