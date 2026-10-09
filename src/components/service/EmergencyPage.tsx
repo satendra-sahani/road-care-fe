@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { CUSTOMER_WEB, sendToApp } from '@/lib/customerWeb'
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { servicePricingAPI, userServiceAPI, userPaymentAPI, publicConfigAPI } from '@/services/api';
@@ -132,6 +133,8 @@ export default function EmergencyPage() {
   };
 
   const handleSubmit = async () => {
+    // booking on the website is off for now → the app (see lib/customerWeb.ts)
+    if (!CUSTOMER_WEB) { sendToApp(); return }
     if (!selectedService || !location) return;
     setSubmitting(true);
     const serviceData = emergencyServices.find((s) => s.id === selectedService);

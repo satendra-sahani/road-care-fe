@@ -3,6 +3,7 @@
 // footer). Split out of UserLayout and loaded on the first hamburger tap, so
 // the dialog library it uses isn't part of every page's initial JavaScript.
 import Link from 'next/link'
+import { CUSTOMER_WEB } from '@/lib/customerWeb'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { IcLogout as LogOut } from '@/components/icons/BmIcons'
@@ -111,7 +112,7 @@ export default function MobileDrawer({ mobileMenuOpen, setMobileMenuOpen, isAuth
             ].map((item) => {
               const isActive = router.pathname === item.href || router.pathname.startsWith(item.href + '/')
               const needsAuth = item.href !== '/cart'
-              const linkHref = !isAuthenticated && needsAuth ? `/login?redirect=${encodeURIComponent(item.href)}` : item.href
+              const linkHref = !isAuthenticated && needsAuth ? (CUSTOMER_WEB ? `/login?redirect=${encodeURIComponent(item.href)}` : '/app') : item.href
               return (
                 <Link key={item.href} href={linkHref} onClick={() => setMobileMenuOpen(false)} className={`flex min-h-[46px] items-center gap-3.5 rounded-xl px-3.5 text-[14px] active:bg-[#F2F6FB] ${isActive ? 'bg-[#FFF1E8] font-bold text-[#BE3F09]' : 'font-medium text-[#0E2B4C]'}`}>
                   <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] ${isActive ? 'bg-white text-[#BE3F09]' : 'bg-[#F2F6FB] text-[#0E2B4C]'}`}><item.Icon size={18} /></span>

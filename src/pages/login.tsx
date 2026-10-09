@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import type { GetServerSideProps } from 'next'
+import { CUSTOMER_WEB, storeUrlFor } from '@/lib/customerWeb'
 import { useRouter } from 'next/router'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
@@ -521,4 +523,12 @@ export default function CustomerLoginPage() {
     </div>
     </>
   )
+}
+
+// Customer login on the website is off for now: anyone who opens /login is sent to
+// the app's store page for their device. The page above is unchanged and comes
+// back when the switch in lib/customerWeb.ts is turned on.
+export const getServerSideProps: GetServerSideProps = async ({ req }) => {
+  if (CUSTOMER_WEB) return { props: {} }
+  return { redirect: { destination: storeUrlFor(String(req.headers['user-agent'] || '')), permanent: false } }
 }

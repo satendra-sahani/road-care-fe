@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { CUSTOMER_WEB, sendToApp } from '@/lib/customerWeb'
 import { useRouter } from 'next/router'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
@@ -589,6 +590,8 @@ export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp =
 
   function handleAddToCart(productId: string, inStock: boolean) {
     if (!inStock) return
+    // buying on the website is off for now → the app (see lib/customerWeb.ts)
+    if (!CUSTOMER_WEB) { sendToApp(); return }
     const add = () => userCartAPI.add(productId).then((res) => {
       if (res.data.success) toast.success('Added to cart!')
       else toast.error(res.data.message || 'Failed')

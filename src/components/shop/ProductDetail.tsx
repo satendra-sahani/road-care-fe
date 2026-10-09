@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { CUSTOMER_WEB, sendToApp } from '@/lib/customerWeb'
 import { useRouter } from 'next/router'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
@@ -82,6 +83,8 @@ export function ProductDetail() {
   }
 
   const handleAddToCart = async () => {
+    // buying on the website is off for now → the app (see lib/customerWeb.ts)
+    if (!CUSTOMER_WEB) { sendToApp(); return }
     if (!isAuthenticated) {
       openLogin()
       return
@@ -99,6 +102,8 @@ export function ProductDetail() {
   }
 
   const handleBuyNow = async () => {
+    // buying on the website is off for now → the app (see lib/customerWeb.ts)
+    if (!CUSTOMER_WEB) { sendToApp(); return }
     if (!isAuthenticated) {
       openLogin()
       return

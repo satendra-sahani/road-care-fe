@@ -4,6 +4,7 @@ import { createContext, useContext, useCallback, useRef, useState, useEffect } f
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import dynamic from 'next/dynamic'
+import { CUSTOMER_WEB, sendToApp } from '@/lib/customerWeb'
 
 // The OTP login dialog is only needed when someone opens it — keep it out of every page's bundle.
 const LoginModal = dynamic(() => import('./LoginModal').then((m) => m.LoginModal), { ssr: false })
@@ -24,6 +25,8 @@ export function LoginModalProvider({ children }: { children: React.ReactNode }) 
 
   const openLogin = useCallback((onSuccess?: () => void, opts?: OpenLoginOpts) => {
     if (isAuthenticated) { onSuccess?.(); return }
+    // customer login on the website is off for now → the app's store page (see lib/customerWeb.ts)
+    if (!CUSTOMER_WEB) { sendToApp(); return }
     cbRef.current = onSuccess || null
     setMandatory(!!opts?.mandatory)
     setOpen(true)

@@ -5,6 +5,7 @@
 // cart add w/ login redirect, search + filter sheet, BM Care cards, promo
 // strip, testimonials, FAQ schema, sticky mobile CTA, admin home popup).
 import { useState, useEffect, useRef } from 'react'
+import { CUSTOMER_WEB, sendToApp } from '@/lib/customerWeb'
 import { useRouter } from 'next/router'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
@@ -288,6 +289,8 @@ export default function HomePage() {
   }
 
   const handleAddToCart = async (productId: string) => {
+    // buying on the website is off for now → the app (see lib/customerWeb.ts)
+    if (!CUSTOMER_WEB) { sendToApp(); return }
     if (!isAuthenticated) {
       router.push('/login?redirect=/')
       return

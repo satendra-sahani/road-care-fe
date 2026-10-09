@@ -80,7 +80,9 @@ api.interceptors.response.use(
           window.location.href = '/manager/login';
         } else {
           Cookies.remove('customer_token');
-          window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+          // with customer login on the website switched off, /login leads to the app store —
+          // so do not leave the page; the page's own guard decides what to show
+          if (process.env.NEXT_PUBLIC_CUSTOMER_WEB === 'on') window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
         }
       }
     }

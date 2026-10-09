@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import CallScreen from '@/components/service/CallScreen'
 import RatingFlow from '@/components/service/RatingFlow'
 import { useLoginModal } from '@/components/auth/LoginModalProvider'
+import { CUSTOMER_WEB, sendToApp } from '@/lib/customerWeb'
 import { toast } from 'sonner'
 import { bestPosition, sameSpot, validCoords, PIN_MAX_M } from '@/lib/geolocate'
 import Cookies from 'js-cookie'
@@ -127,6 +128,7 @@ export function ServicePage() {
   // Prompt login automatically when a logged-out user lands on the booking page —
   // the modal opens over the (blurred) booking page; closing it lets them browse.
   useEffect(() => {
+    if (!CUSTOMER_WEB) return // no login prompt on landing — the visitor is sent to the app when they book
     if (!authLoading && !isAuthenticated && !Cookies.get('customer_token')) openLogin(undefined, { mandatory: true })
   }, [authLoading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -318,6 +320,8 @@ export function ServicePage() {
   }
 
   const handleSubmit = async () => {
+    // booking on the website is off for now → the app (also for somebody still logged in)
+    if (!CUSTOMER_WEB) { sendToApp(); return }
     loadRazorpay() // warm the payment SDK while the booking is being created
     if (!isAuthenticated) { openLogin(); return }
     // Mirror Android validation: vehicle, service, issues, address, contact
@@ -686,7 +690,7 @@ export function ServicePage() {
 
                 {/* wnav */}
                 <div className="flex justify-end pt-1">
-                  <button onClick={() => setStep(2)} disabled={!vehicleType || selectedIssues.length === 0 || (selectedIssues.includes('other') && !otherIssue.trim())}
+                  <button data-book-continue onClick={() => { if (!CUSTOMER_WEB) { sendToApp(); return } setStep(2) }} disabled={!vehicleType || selectedIssues.length === 0 || (selectedIssues.includes('other') && !otherIssue.trim())}
                     className="inline-flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152d55] disabled:opacity-40 text-white font-bold text-[15px] px-6 h-12 rounded-xl transition-colors">
                     Continue to details <ChevronRight className="h-4 w-4" />
                   </button>
