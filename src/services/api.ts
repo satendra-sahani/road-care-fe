@@ -1000,6 +1000,8 @@ export const adminGarageStaffAPI = {
   getAll: () => api.get('/admin/garage-staff'),
   create: (data: { name: string; phone: string }) => api.post('/admin/garage-staff', data),
   update: (id: string, data: { name?: string; isActive?: boolean }) => api.put(`/admin/garage-staff/${id}`, data),
+  // only somebody who registered no garage can be removed; the phone number is then free again
+  remove: (id: string) => api.delete(`/admin/garage-staff/${id}`),
 };
 
 // Phone bookings: ask a caller for their CURRENT location (one fix, not live

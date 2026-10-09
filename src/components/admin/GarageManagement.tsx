@@ -425,6 +425,16 @@ function FieldStaffDialog({ open, onClose }: { open: boolean; onClose: () => voi
       toast.success(r.data?.data?.isActive ? `${u.name} can log in again` : `${u.name}'s login is switched off`)
     } catch (err: any) { toast.error(err?.response?.data?.message || 'Could not update staff') } finally { setBusyId('') }
   }
+  // somebody added by mistake / never used: the login goes away and the number is free again
+  const removeStaff = async (u: any) => {
+    if (!window.confirm(`Remove ${u.name} (+91 ${u.phone}) from field staff?\n\nThe login is deleted permanently and this number becomes free to use again. This cannot be undone.`)) return
+    setBusyId(u.id)
+    try {
+      const r = await adminGarageStaffAPI.remove(u.id)
+      setRows((x) => x.filter((y) => y.id !== u.id))
+      toast.success(r.data?.message || `${u.name} removed`)
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Could not remove staff') } finally { setBusyId('') }
+  }
   const copy = () => navigator.clipboard?.writeText(loginUrl).then(() => toast.success('Login link copied')).catch(() => undefined)
   const inputCls = 'h-10 w-full rounded-lg border border-[#DDE4EC] bg-white px-3 text-[13.5px] outline-none focus:border-[#1B3B6F]'
 
@@ -461,7 +471,13 @@ function FieldStaffDialog({ open, onClose }: { open: boolean; onClose: () => voi
                       <td className="px-3 py-2.5 text-[#475569]"><b className="text-[#13203A]">{u.garages?.total || 0}</b> total<span className="block text-[12px]">{u.garages?.active || 0} active · {u.garages?.pending || 0} pending</span></td>
                       <td className="px-3 py-2.5 text-[#475569]">{u.lastLogin ? fmtDate(u.lastLogin) : 'Never'}</td>
                       <td className="px-3 py-2.5"><span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={u.isActive ? { color: '#15803D', background: '#DCFCE7' } : { color: '#B91C1C', background: '#FEE2E2' }}>{u.isActive ? 'Allowed' : 'Switched off'}</span></td>
-                      <td className="px-3 py-2.5 text-right"><button type="button" disabled={busyId === u.id} onClick={() => toggle(u)} className="rounded-lg border border-[#DDE4EC] px-3 py-1.5 text-[12.5px] font-bold text-[#334155] hover:bg-[#F6F8FB] disabled:opacity-60">{busyId === u.id ? '…' : u.isActive ? 'Switch off' : 'Allow login'}</button></td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                        <button type="button" disabled={busyId === u.id} onClick={() => toggle(u)} className="rounded-lg border border-[#DDE4EC] px-3 py-1.5 text-[12.5px] font-bold text-[#334155] hover:bg-[#F6F8FB] disabled:opacity-60">{busyId === u.id ? '…' : u.isActive ? 'Switch off' : 'Allow login'}</button>
+                        {/* one who registered garages stays (the garages point at them) — only the login can be switched off */}
+                        {(u.garages?.total || 0) === 0 && (
+                          <button type="button" data-staff-remove={u.phone} disabled={busyId === u.id} onClick={() => removeStaff(u)} title="Remove this staff member — the number becomes free again" className="ml-1.5 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 align-middle text-[12.5px] font-bold text-[#B91C1C] hover:bg-[#FEF2F2] disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Remove</button>
+                        )}
+                      </td>
                     </tr>
                   ))}
             </tbody>
