@@ -1,4 +1,5 @@
 import type { GetServerSideProps } from 'next'
+import { CUSTOMER_WEB } from '@/lib/customerWeb'
 
 // Generated sitemap: the main site pages + every blog guide and city page.
 // (Replaces the old hand-written public/sitemap.xml so new posts are listed
@@ -10,7 +11,8 @@ const STATIC: { path: string; changefreq: string; priority: string; lastmod: str
   { path: '/', changefreq: 'daily', priority: '1.0', lastmod: '2026-09-26' },
   { path: '/shop', changefreq: 'daily', priority: '0.9', lastmod: '2026-09-26' },
   { path: '/services', changefreq: 'weekly', priority: '0.9', lastmod: '2026-09-26' },
-  { path: '/service', changefreq: 'weekly', priority: '0.8', lastmod: '2026-09-26' },
+  // the booking page redirects to the app store while customer web is off — keep it out of the sitemap then
+  ...(CUSTOMER_WEB ? [{ path: '/service', changefreq: 'weekly', priority: '0.8', lastmod: '2026-09-26' }] : []),
   { path: '/mechanics', changefreq: 'weekly', priority: '0.8', lastmod: '2026-09-26' },
   { path: '/blog', changefreq: 'weekly', priority: '0.8', lastmod: '2026-09-26' },
   { path: '/training', changefreq: 'weekly', priority: '0.7', lastmod: '2026-09-26' },
