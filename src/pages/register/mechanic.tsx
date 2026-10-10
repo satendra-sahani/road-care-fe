@@ -10,6 +10,7 @@ import {
 } from '@/components/admin/MechanicRegistrationForm'
 import { PhoneVerifyStep, RegisterSteps, type VerifiedPhone } from '@/components/partner/PhoneVerifyStep'
 import { PartnerPlanTerms } from '@/components/partner/PartnerPlanTerms'
+import { RegisterOffer } from '@/components/partner/RegisterOffer'
 import { IcAutorenew, IcCheckCircle, IcChevronRight, IcInfo, IcVerifiedUser } from '@/components/icons/BmIcons'
 
 // Public mechanic self-registration. Creates the same MechanicProfile the admin
@@ -93,6 +94,7 @@ export default function MechanicSelfRegister() {
                 Free registration. Verify your number, tell us your skills and upload your documents — our team verifies you and you start receiving jobs in the Bharat Mechanics app.
                 <span lang="hi" className="mt-1 block text-[13px] text-[#52667C]">मुफ़्त रजिस्ट्रेशन — मोबाइल नंबर वेरिफाई करें और अपनी जानकारी भरें।</span>
               </p>
+              <RegisterOffer who="mechanic" />
               <div className="mt-6"><RegisterSteps step={step} /></div>
             </div>
           </header>

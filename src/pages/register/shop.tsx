@@ -7,6 +7,7 @@ import { partnerRegisterAPI } from '@/services/api'
 import { ShopFormFields, emptyShopForm, validateShopForm, toShopPayload, type ShopFormValues } from '@/components/admin/ShopRegistrationForm'
 import { PhoneVerifyStep, RegisterSteps, type VerifiedPhone } from '@/components/partner/PhoneVerifyStep'
 import { PartnerPlanTerms } from '@/components/partner/PartnerPlanTerms'
+import { RegisterOffer } from '@/components/partner/RegisterOffer'
 import { IcAutorenew, IcCheckCircle, IcChevronRight, IcInfo, IcVerifiedUser, IcStore } from '@/components/icons/BmIcons'
 
 // Public shop-partner self-registration. Creates the same ShopPartner (+ owner
@@ -94,6 +95,7 @@ export default function ShopSelfRegister() {
                 Join the Bharat Mechanics partner network for free. Verify your number, add your shop, KYC and bank details — once our team verifies you, jobs near your shop are routed to you.
                 <span lang="hi" className="mt-1 block text-[13px] text-[#52667C]">अपनी दुकान / गैराज मुफ़्त में रजिस्टर करें।</span>
               </p>
+              <RegisterOffer who="shop" />
               <div className="mt-6"><RegisterSteps step={step} /></div>
             </div>
           </header>
