@@ -18,6 +18,7 @@ import {
   Send, Tag, Tags, Trash2, Upload, UserPlus, Users, X, XCircle,
 } from 'lucide-react'
 import { AdminHeader } from '@/components/admin/AdminHeader'
+import { SearchSelect } from '@/components/admin/SearchSelect'
 import { WhatsAppSender } from '@/components/admin/WhatsAppSender'
 import { WhatsAppSentHistory } from '@/components/admin/WhatsAppSentHistory'
 import { WhatsAppTemplatesTab, WA_MANAGER_URL } from '@/components/admin/WhatsAppTemplatesTab'
@@ -243,12 +244,18 @@ export function WhatsAppContacts() {
                   <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#94A3B8]" />
                   <input value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search contacts" placeholder="Search by name, phone or tag…" className={`${field} pl-9`} />
                 </div>
-                <select className={sel} aria-label="Tag" value={filter.tag} onChange={(e) => setFilter((f) => ({ ...f, tag: e.target.value }))}><option value="all">All Tags</option>{meta.tags.map((t) => <option key={t.value} value={t.value}>{t.value} ({t.count})</option>)}</select>
-                <select className={sel} aria-label="City" value={filter.city} onChange={(e) => setFilter((f) => ({ ...f, city: e.target.value }))}><option value="all">All Cities</option>{meta.cities.map((t) => <option key={t.value} value={t.value}>{t.value} ({t.count})</option>)}</select>
-                <select className={sel} aria-label="Customer type" value={filter.type} onChange={(e) => setFilter((f) => ({ ...f, type: e.target.value }))}><option value="all">All Customer Types</option>{TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select>
-                <select className={sel} aria-label="Opt-in status" value={filter.optIn} onChange={(e) => setFilter((f) => ({ ...f, optIn: e.target.value }))}><option value="all">Opt-in Status</option><option value="in">Opted In</option><option value="out">Opted Out</option></select>
-                <select className={sel} aria-label="Last contacted" value={filter.last} onChange={(e) => setFilter((f) => ({ ...f, last: e.target.value }))}><option value="all">Last Contacted</option><option value="7d">In the last 7 days</option><option value="30d">In the last 30 days</option><option value="90d">In the last 90 days</option><option value="older">Not in the last 30 days</option><option value="never">Never</option></select>
-                <select className={sel} aria-label="Source" value={filter.source} onChange={(e) => setFilter((f) => ({ ...f, source: e.target.value }))}><option value="all">All Sources</option>{Object.entries(SOURCES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                <SearchSelect ariaLabel="Tag" placeholder="Search tags…" className={`${sel} min-w-[150px]`} value={filter.tag} onChange={(v) => setFilter((f) => ({ ...f, tag: v }))}
+                  options={[{ value: 'all', label: 'All Tags' }, ...meta.tags.map((t) => ({ value: t.value, label: `${t.value} (${t.count})` }))]} />
+                <SearchSelect ariaLabel="City" placeholder="Search cities…" className={`${sel} min-w-[140px]`} value={filter.city} onChange={(v) => setFilter((f) => ({ ...f, city: v }))}
+                  options={[{ value: 'all', label: 'All Cities' }, ...meta.cities.map((t) => ({ value: t.value, label: `${t.value} (${t.count})` }))]} />
+                <SearchSelect ariaLabel="Customer type" placeholder="Search types…" className={`${sel} min-w-[160px]`} value={filter.type} onChange={(v) => setFilter((f) => ({ ...f, type: v }))}
+                  options={[{ value: 'all', label: 'All Customer Types' }, ...TYPES.map((t) => ({ value: t.value, label: t.label }))]} />
+                <SearchSelect ariaLabel="Opt-in status" placeholder="Search…" className={`${sel} min-w-[140px]`} value={filter.optIn} onChange={(v) => setFilter((f) => ({ ...f, optIn: v }))}
+                  options={[{ value: 'all', label: 'Opt-in Status' }, { value: 'in', label: 'Opted In' }, { value: 'out', label: 'Opted Out' }]} />
+                <SearchSelect ariaLabel="Last contacted" placeholder="Search…" className={`${sel} min-w-[150px]`} value={filter.last} onChange={(v) => setFilter((f) => ({ ...f, last: v }))}
+                  options={[{ value: 'all', label: 'Last Contacted' }, { value: '7d', label: 'In the last 7 days' }, { value: '30d', label: 'In the last 30 days' }, { value: '90d', label: 'In the last 90 days' }, { value: 'older', label: 'Not in the last 30 days' }, { value: 'never', label: 'Never' }]} />
+                <SearchSelect ariaLabel="Source" placeholder="Search sources…" className={`${sel} min-w-[130px]`} value={filter.source} onChange={(v) => setFilter((f) => ({ ...f, source: v }))}
+                  options={[{ value: 'all', label: 'All Sources' }, ...Object.entries(SOURCES).map(([k, v]) => ({ value: k, label: v }))]} />
                 {filtersOn && <button type="button" onClick={() => { setSearch(''); setFilter({ tag: 'all', city: 'all', type: 'all', optIn: 'all', last: 'all', source: 'all' }) }} className="h-10 px-2 text-[12.5px] font-bold text-[#2563EB]">Clear</button>}
               </div>
 
