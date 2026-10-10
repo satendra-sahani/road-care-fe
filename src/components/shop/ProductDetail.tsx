@@ -7,6 +7,8 @@ import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import { catalogAPI, userCartAPI } from '@/services/api'
 import { brandHref, categoryHref } from '@/lib/shopUrls'
+import { RelatedProducts } from '@/components/shop/ShopLinks'
+import type { ProductCard } from '@/lib/shopSeo'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,14 +20,17 @@ import {
   Check, Loader2, ChevronRight, Heart,
 } from 'lucide-react'
 
-export function ProductDetail() {
+// initial = the product the page was built with on the server (so the page a search engine
+// reads has the heading, price and description in it); related = other parts of its category.
+// Without them (the API could not be reached when the page was built) it loads as before.
+export function ProductDetail({ initial = null, related = [] }: { initial?: any; related?: ProductCard[] } = {}) {
   const router = useRouter()
   const { id } = router.query
   const { isAuthenticated } = useSelector((state: RootState) => state.customerAuth)
   const { openLogin } = useLoginModal()
 
-  const [product, setProduct] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const [product, setProduct] = useState<any>(initial)
+  const [loading, setLoading] = useState(!initial)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
@@ -38,6 +43,12 @@ export function ProductDetail() {
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+
+  // from one product page to another: the new page brings its own product
+  useEffect(() => {
+    if (!initial) return
+    setProduct(initial); setLoading(false); setSelectedImage(0); setQuantity(1)
+  }, [initial?._id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!id) return
@@ -58,12 +69,14 @@ export function ProductDetail() {
   }, [product?._id])
 
   const fetchProduct = async () => {
-    setLoading(true)
+    // the page came with this product in it: refresh it quietly (current stock and price)
+    const have = !!initial && (initial.slug === id || initial._id === id)
+    if (!have) setLoading(true)
     try {
       const res = await catalogAPI.getProduct(id as string)
       if (res.data.success) setProduct(res.data.data)
     } catch (err) {
-      toast.error('Failed to load product')
+      if (!have) toast.error('Failed to load product')
     } finally {
       setLoading(false)
     }
@@ -203,6 +216,16 @@ export function ProductDetail() {
   const reviewCount = product.reviewCount || reviews.length
   const dist = [5, 4, 3, 2, 1].map((s) => reviews.filter((r) => Math.round(r.rating) === s).length)
   const distTotal = reviews.length || 1
+  // what identifies the part — brand, part number, vehicle — comes first in Specifications
+  // (it is what people search by); a part with nothing else recorded still has these
+  const fits = (Array.isArray(product.compatibility) ? product.compatibility : [])
+    .map((c: any) => [c?.vehicleBrand, c?.vehicleModel, c?.yearFrom && c?.yearTo ? `(${c.yearFrom}–${c.yearTo})` : ''].filter(Boolean).join(' ')).filter(Boolean)
+  const facts = ([
+    ['Brand', product.brand?.name], ['Part number', product.partNumber], ['SKU', product.sku],
+    ['Vehicle type', product.vehicleType], ['Category', product.category?.name], ['Fits', fits.slice(0, 6).join(', ')],
+  ] as [string, any][]).filter(([, v]) => !!v).map(([k, v]) => [k, String(v)] as [string, string])
+  const hasSpecs = !!product.specifications && Object.entries(product.specifications).some(([k, v]: [string, any]) =>
+    (k === 'custom' ? Array.isArray(v) && v.some((i: any) => i?.key && i?.value) : v != null && v !== ''))
 
   const TRUST = [
     { icon: ShieldCheck, label: 'Genuine & OEM', color: 'text-[#15936B] bg-[#E7F6F0]' },
@@ -327,11 +350,17 @@ export function ProductDetail() {
           )}
 
           {/* Specifications */}
-          {product.specifications && Object.keys(product.specifications).length > 0 && (
+          {(facts.length > 0 || hasSpecs) && (
             <div className="bg-white rounded-2xl border border-[#E7ECF3] shadow-sm p-5 md:p-6 mt-6">
               <h2 className="text-lg font-extrabold text-[#13203A] mb-3">Specifications</h2>
               <div className="rounded-xl overflow-hidden border border-[#EFF2F7]">
-                {Object.entries(product.specifications).map(([key, value]: [string, any]) => {
+                {facts.map(([k, v]) => (
+                  <div key={`fact-${k}`} className="flex py-2.5 px-4 odd:bg-[#F6F8FB]">
+                    <span className="w-1/3 text-sm font-semibold text-[#13203A]">{k}</span>
+                    <span className="text-sm text-[#475569]">{v}</span>
+                  </div>
+                ))}
+                {Object.entries(product.specifications || {}).map(([key, value]: [string, any]) => {
                   if (key === 'custom' && Array.isArray(value)) return null
                   if (value && typeof value === 'object' && !Array.isArray(value)) {
                     const display = value.value != null && value.unit ? `${value.value} ${value.unit}` : JSON.stringify(value)
@@ -350,7 +379,7 @@ export function ProductDetail() {
                     </div>
                   )
                 })}
-                {Array.isArray(product.specifications.custom) && product.specifications.custom.map((item: any, idx: number) => (
+                {Array.isArray(product.specifications?.custom) && product.specifications.custom.map((item: any, idx: number) => (
                   item.key && item.value ? (
                     <div key={`custom-${idx}`} className="flex py-2.5 px-4 odd:bg-[#F6F8FB]">
                       <span className="w-1/3 text-sm font-semibold text-[#13203A] capitalize">{item.key}</span>
@@ -426,6 +455,10 @@ export function ProductDetail() {
               </div>
             )}
           </div>
+
+          {/* other parts of the same category */}
+          <RelatedProducts title={`More ${product.category?.name || 'parts'}`} products={related}
+            allHref={product.category ? categoryHref(product.category) : undefined} allLabel={product.category?.name ? `All ${product.category.name}` : undefined} />
         </div>
 
         {/* Sticky buy bar (mobile) */}

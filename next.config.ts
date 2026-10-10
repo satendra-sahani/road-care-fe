@@ -39,6 +39,9 @@ const nextConfig: NextConfig = {
       permanent: false,
     });
     return [
+      // One address for the site: www.bharatmechanics.com/<page> → bharatmechanics.com/<page>.
+      // (Both used to answer with the same pages, which search engines read as two sites.)
+      { source: '/:path*', has: [{ type: 'host' as const, value: 'www.bharatmechanics.com' }], destination: 'https://bharatmechanics.com/:path*', statusCode: 301 as const },
       { source: '/distributor-dashboard', destination: '/shop-partner', permanent: false },
       smsLink('l'),
       smsLink('j'),

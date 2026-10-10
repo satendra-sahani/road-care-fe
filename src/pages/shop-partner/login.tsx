@@ -7,6 +7,7 @@ import Cookies from 'js-cookie'
 import { Loader2, Phone, ArrowRight, ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { SEOHead } from '@/components/SEOHead'
 
 export default function ShopLoginPage() {
   const router = useRouter()
@@ -53,6 +54,7 @@ export default function ShopLoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0F2545] via-[#1B3B6F] to-[#0F2545] flex items-center justify-center p-4">
+      <SEOHead title="Shop Partner Login" noIndex />
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">

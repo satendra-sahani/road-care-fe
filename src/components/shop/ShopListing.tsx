@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { CUSTOMER_WEB, sendToApp } from '@/lib/customerWeb'
 import { useRouter } from 'next/router'
 import { useSelector } from 'react-redux'
@@ -86,7 +86,10 @@ const CHECK = 'w-4 h-4 accent-[#1A6FD4] shrink-0'
 //   /shop/category/<slug>, /shop/brand/<slug>, /shop/category/<slug>?brand=<slug>.
 // The route pages pass the path slug in; old ?category=/?parentCategory=/?brand=
 // links (ids or slugs) still work and are rewritten to the clean URL.
-export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp = '' }: { categorySlug?: string; brandSlug?: string } = {}) {
+// heading / intro: a category or brand page's own <h1> and one line under it (the hero line is
+// then a slogan, not the page heading — it used to be the <h1> of every category and brand page).
+// extra: links written into the page on the server, shown under the results (see ShopLinks).
+export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp = '', heading = '', intro = '', extra = null }: { categorySlug?: string; brandSlug?: string; heading?: string; intro?: string; extra?: ReactNode } = {}) {
   const router = useRouter()
   const { isAuthenticated } = useSelector((state: RootState) => state.customerAuth)
   const { openLogin } = useLoginModal()
@@ -215,6 +218,7 @@ export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp =
 
   const hasFilters = selectedCategory || selectedBrand || minPrice || maxPrice || minRating > 0 || inStockOnly || searchQ
   const catName = selectedCategory ? (selCat?.name || 'Spare Parts') : ''
+  const HeroTitle = heading ? 'div' : 'h1'
   const sortLabel = SORTS.find((s) => s[0] === sortKey)![1]
 
   let displayed = inStockOnly ? products.filter((p) => qtyOf(p) > 0) : products
@@ -407,7 +411,7 @@ export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp =
             <div className="relative z-[4] grid grid-cols-1 gap-[18px] px-4 pb-[22px] pt-5 md:grid-cols-2 md:gap-[clamp(16px,2.2vw,32px)] md:px-[clamp(20px,3vw,40px)] md:pb-[clamp(22px,2.4vw,30px)] md:pt-[clamp(24px,3vw,40px)] min-[1181px]:grid-cols-[minmax(0,33.5%)_minmax(0,34.5%)]">
               <div className="flex min-w-0 flex-col">
                 <div className="text-[12.5px] font-bold tracking-[3px] text-[#BE3F09]">GENUINE AUTO PARTS</div>
-                <h1 className="mt-2.5 text-[clamp(34px,3.7vw,50px)] font-extrabold leading-[1.12] tracking-[-1.4px] text-[#0E2B4C]">Original Parts.<br />A Smoother<br /><span className="relative inline-block text-[#F4601F]">Tomorrow.<svg viewBox="0 0 240 14" preserveAspectRatio="none" className="absolute -bottom-2.5 left-0 h-[10px] w-[108%]"><path d="M2 11 C70 3 170 2 238 6" fill="none" stroke="#F4601F" strokeWidth="4" strokeLinecap="round" /></svg></span></h1>
+                <HeroTitle className="mt-2.5 text-[clamp(34px,3.7vw,50px)] font-extrabold leading-[1.12] tracking-[-1.4px] text-[#0E2B4C]">Original Parts.<br />A Smoother<br /><span className="relative inline-block text-[#F4601F]">Tomorrow.<svg viewBox="0 0 240 14" preserveAspectRatio="none" className="absolute -bottom-2.5 left-0 h-[10px] w-[108%]"><path d="M2 11 C70 3 170 2 238 6" fill="none" stroke="#F4601F" strokeWidth="4" strokeLinecap="round" /></svg></span></HeroTitle>
                 <p className="mt-[26px] max-w-[430px] text-[clamp(13.5px,1.2vw,15.5px)] leading-[1.5] text-[#41586F]">OEM-grade parts from India&rsquo;s most trusted brands — delivered to your doorstep with verified invoices.</p>
                 <div className="mt-[22px] grid grid-cols-3 gap-2 md:flex md:flex-wrap md:items-center md:gap-[clamp(8px,1vw,14px)] min-[1181px]:flex-nowrap">
                   {[[IcVerifiedUser, '50,000+', 'Parts in stock', '#F4601F', '#fff'], [IcGroups, '500+', 'Trusted brands', '#DCE8FA', '#1A6FD4'], [IcStar, '4.8/5', 'Customer rating', '#FFF1D6', '#F0A726']].map(([I, v, l, bg, c]: any) => (
@@ -483,6 +487,12 @@ export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp =
           <aside className="hidden lg:block lg:sticky lg:top-24 max-h-[calc(100vh-112px)] overflow-y-auto overscroll-contain bg-white border border-[#E6ECF3] rounded-2xl p-4 [scrollbar-width:thin]">{Filters}</aside>
 
           <div className="min-w-0">
+            {heading && (
+              <div className="mb-3.5" data-shop-heading>
+                <h1 className="text-[clamp(21px,2.3vw,27px)] font-extrabold leading-[1.2] tracking-[-0.5px] text-[#0E2B4C]">{heading}</h1>
+                {intro && <p className="mt-1.5 max-w-[760px] text-[13.5px] leading-[1.55] text-[#52667C]">{intro}</p>}
+              </div>
+            )}
             {/* Toolbar */}
             <div className="flex items-center justify-between gap-3.5 flex-wrap">
               <div className="flex items-baseline gap-2">
@@ -574,6 +584,7 @@ export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp =
             <div className="mt-5"><PartnerRegisterCta variant="banner" /></div>
           </div>
         </div>
+        {extra}
       </div>
 
       {/* Chat bubble (design) */}

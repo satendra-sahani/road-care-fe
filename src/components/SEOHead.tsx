@@ -3,6 +3,8 @@ import { useRouter } from 'next/router'
 
 interface SEOHeadProps {
   title?: string
+  /** the whole <title>, used as it is (a page that fits the wording to the length itself — see lib/shopSeo) */
+  fullTitle?: string
   description?: string
   keywords?: string
   ogImage?: string
@@ -21,6 +23,7 @@ const DEFAULT_OG_IMAGE = `${SITE_URL}/brand-logo-v3.png`
 
 export function SEOHead({
   title,
+  fullTitle,
   description = DEFAULT_DESCRIPTION,
   keywords = DEFAULT_KEYWORDS,
   ogImage = DEFAULT_OG_IMAGE,
@@ -29,7 +32,7 @@ export function SEOHead({
   noIndex = false,
 }: SEOHeadProps) {
   const router = useRouter()
-  const pageTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} – Auto Parts & Vehicle Services`
+  const pageTitle = fullTitle || (title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} – Auto Parts & Vehicle Services`)
   // Every indexable page gets a self-referencing canonical (query strings and
   // hashes stripped) unless the page passes its own.
   const path = (router?.asPath || '/').split(/[?#]/)[0]

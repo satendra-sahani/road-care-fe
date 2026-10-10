@@ -94,6 +94,13 @@ export default function App({ Component, pageProps }: AppProps) {
           guarantees no page is ever served "Untitled" to Google. */}
       <Head>
         <meta key="viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        {/* The dashboards (admin, field staff, franchise, shop partner — their login pages too) and the
+            customer's own pages. A page behind a login is built empty on the server (its guard renders in the browser),
+            so the page's own tags never reach a crawler: say "not for search results" here.
+            No key on purpose — a page's own robots tag (SEOHead) replaces this one by its name. */}
+        {(/^\/(admin|manager|franchise|shop-partner)(\/|$)/.test(router.pathname) || needsCustomerAuth(router.pathname)) && (
+          <meta name="robots" content="noindex, nofollow" />
+        )}
         <title>Bharat Mechanics – Auto Parts & Doorstep Vehicle Service</title>
         <meta
           name="description"

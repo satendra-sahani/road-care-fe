@@ -23,8 +23,9 @@ export default function Document() {
         <meta name="theme-color" content="#0A2442" />
         <meta name="author" content="Bharat Mechanics" />
 
-        {/* Robots – allow all pages to be indexed and links followed */}
-        <meta name="robots" content="index, follow" />
+        {/* No robots tag here: each page writes its own (SEOHead), and the app shell marks the
+            login-only pages "noindex" (_app.tsx). A second, fixed "index, follow" on every page
+            contradicted those. A page with no robots tag at all is indexable anyway. */}
 
         {/* JSON-LD Structured Data for Organization */}
         <script
