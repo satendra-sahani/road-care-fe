@@ -116,6 +116,7 @@ import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
 import { ServiceRequestsMap } from '@/components/admin/ServiceRequestsMap'
 import { AssignDialog } from '@/components/admin/AssignDialog'
+import { SearchSelect } from '@/components/admin/SearchSelect'
 import { PartnerDetailsDialog, type PartnerTarget } from '@/components/admin/PartnerDetailsDialog'
 import { DiagnosisDialog } from '@/components/admin/DiagnosisDialog'
 import { CreateRequestDialog } from '@/components/admin/CreateRequestDialog'
@@ -1218,16 +1219,12 @@ export function ServiceManagement() {
       <AdminHeader
         search={{ value: searchQuery, onChange: setSearchQuery, placeholder: 'Search orders, garages, mechanics, customers, services...' }}
         left={
-          <Select value={cityFilter} onValueChange={setCityFilter}>
-            <SelectTrigger className="relative hidden h-10 w-[170px] rounded-xl border-[#E3E8EF] pl-9 text-[13.5px] font-semibold text-[#111827] md:flex">
-              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#16305C]" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All India</SelectItem>
-              {((srvStats?.cities as string[]) || []).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="hidden md:block">
+            <SearchSelect value={cityFilter} onChange={setCityFilter} ariaLabel="City" placeholder="Search city…"
+              options={[{ value: 'all', label: 'All India' }, ...((srvStats?.cities as string[]) || []).map((c) => ({ value: c, label: c }))]}
+              icon={<MapPin className="h-4 w-4 shrink-0 text-[#16305C]" />}
+              className="h-10 w-[170px] rounded-xl border border-[#E3E8EF] bg-white px-3 text-[13.5px] font-semibold text-[#111827]" />
+          </div>
         }
       />
 
@@ -1338,60 +1335,20 @@ export function ServiceManagement() {
               />
             </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className={`${selCls} w-[140px]`}><SelectValue placeholder="All Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="assigned">Assigned</SelectItem>
-                <SelectItem value="accepted">Accepted</SelectItem>
-                <SelectItem value="on_way">On Way</SelectItem>
-                <SelectItem value="diagnosis">Diagnosis</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="payment_pending">Payment Pending</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="rejected_quote">Quote Rejected</SelectItem>
-                <SelectItem value="payment_refused">Payment Refused</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <SearchSelect value={statusFilter} onChange={setStatusFilter} ariaLabel="Status" placeholder="Search status…" className={`${selCls} w-[150px]`}
+              options={[['all', 'All Status'], ['pending', 'Pending'], ['assigned', 'Assigned'], ['accepted', 'Accepted'], ['on_way', 'On Way'], ['diagnosis', 'Diagnosis'], ['approved', 'Approved'], ['in_progress', 'In Progress'], ['completed', 'Completed'], ['payment_pending', 'Payment Pending'], ['paid', 'Paid'], ['rejected_quote', 'Quote Rejected'], ['payment_refused', 'Payment Refused'], ['cancelled', 'Cancelled']].map(([value, label]) => ({ value, label }))} />
 
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className={`${selCls} w-[140px]`}><SelectValue placeholder="All Priority" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
+            <SearchSelect value={priorityFilter} onChange={setPriorityFilter} ariaLabel="Priority" placeholder="Search priority…" className={`${selCls} w-[140px]`}
+              options={[['all', 'All Priority'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['urgent', 'Urgent']].map(([value, label]) => ({ value, label }))} />
 
-            <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
-              <SelectTrigger className={`${selCls} w-[160px]`}><SelectValue placeholder="All Services" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Services</SelectItem>
-                {serviceCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchSelect value={serviceTypeFilter} onChange={setServiceTypeFilter} ariaLabel="Service" placeholder="Search service…" className={`${selCls} w-[160px]`}
+              options={[{ value: 'all', label: 'All Services' }, ...serviceCategories.map((c) => ({ value: c, label: c }))]} />
 
-            <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
-              <SelectTrigger className={`${selCls} w-[170px]`}><SelectValue placeholder="All Vehicle Types" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Vehicle Types</SelectItem>
-                {((srvStats?.vehicleTypes as string[]) || []).map((v) => <SelectItem key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchSelect value={vehicleFilter} onChange={setVehicleFilter} ariaLabel="Vehicle type" placeholder="Search vehicle…" className={`${selCls} w-[170px]`}
+              options={[{ value: 'all', label: 'All Vehicle Types' }, ...((srvStats?.vehicleTypes as string[]) || []).map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }))]} />
 
-            <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className={`${selCls} w-[140px]`}><SelectValue placeholder="All Cities" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Cities</SelectItem>
-                {((srvStats?.cities as string[]) || []).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchSelect value={cityFilter} onChange={setCityFilter} ariaLabel="City" placeholder="Search city…" className={`${selCls} w-[150px]`}
+              options={[{ value: 'all', label: 'All Cities' }, ...((srvStats?.cities as string[]) || []).map((c) => ({ value: c, label: c }))]} />
 
             <button type="button" onClick={() => setMoreFilters((v) => !v)} aria-expanded={moreFilters}
               className={`relative ml-auto flex h-11 items-center gap-2 rounded-xl border bg-white px-4 text-[13.5px] font-semibold text-[#1F2937] hover:bg-[#F8FAFC] ${moreFilters ? 'border-[#1B3B6F]' : 'border-[#E3E8EF]'}`}>
