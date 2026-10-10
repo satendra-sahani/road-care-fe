@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { adminGarageAPI, adminGarageStaffAPI } from '@/services/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { GarageMap } from '@/components/manager/GarageMap'
+import { SearchSelect } from '@/components/admin/SearchSelect'
 import { DAYS, SERVICES, SIZES, STATUS, VEHICLES, GarageStatus, mapsLink, serviceLabel, time12, vehicleLabel, waLink } from '@/components/manager/garageOptions'
 
 // Admin: garages registered on site by field executives (/manager/garage). Shown on
@@ -88,6 +89,7 @@ export function GarageManagement() {
   const selG = rows.find((g) => g._id === selId) || null
   const count = (s: string) => rows.filter((g) => g.status === s).length
   const setFilter = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => setF((x) => ({ ...x, [k]: e.target.value }))
+  const pick = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }))
   const openGarage = (g: any) => { setOpen(g); setNote(g.adminNote || '') }
 
   const setStatus = async (g: any, status: GarageStatus) => {
@@ -194,11 +196,16 @@ export function GarageManagement() {
             </button>
           ))}
         </div>
-        <select className={sel} value={f.city} onChange={setFilter('city')} aria-label="City"><option value="">All Cities</option>{(stats?.cities || []).map((c: string) => <option key={c}>{c}</option>)}</select>
-        <select className={sel} value={f.area} onChange={setFilter('area')} aria-label="Area"><option value="">All Areas</option>{(stats?.areas || []).map((c: string) => <option key={c}>{c}</option>)}</select>
-        <select className={sel} value={f.vehicle} onChange={setFilter('vehicle')} aria-label="Vehicle type"><option value="">All Vehicle Types</option>{VEHICLES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}</select>
-        <select className={sel} value={f.service} onChange={setFilter('service')} aria-label="Service"><option value="">All Services</option>{SERVICES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</select>
-        <select className={sel} value={f.status} onChange={setFilter('status')} aria-label="Status"><option value="">All Status</option>{(Object.keys(STATUS) as GarageStatus[]).map((s) => <option key={s} value={s}>{STATUS[s].short}</option>)}</select>
+        <SearchSelect className={`${sel} w-[150px]`} value={f.city} onChange={pick('city')} ariaLabel="City" placeholder="Search city…"
+          options={[{ value: '', label: 'All Cities' }, ...(stats?.cities || []).map((c: string) => ({ value: c, label: c }))]} />
+        <SearchSelect className={`${sel} w-[150px]`} value={f.area} onChange={pick('area')} ariaLabel="Area" placeholder="Search area…"
+          options={[{ value: '', label: 'All Areas' }, ...(stats?.areas || []).map((c: string) => ({ value: c, label: c }))]} />
+        <SearchSelect className={`${sel} w-[165px]`} value={f.vehicle} onChange={pick('vehicle')} ariaLabel="Vehicle type" placeholder="Search vehicle…"
+          options={[{ value: '', label: 'All Vehicle Types' }, ...VEHICLES.map((v) => ({ value: v.key, label: v.label }))]} />
+        <SearchSelect className={`${sel} w-[160px]`} value={f.service} onChange={pick('service')} ariaLabel="Service" placeholder="Search service…"
+          options={[{ value: '', label: 'All Services' }, ...SERVICES.map((x) => ({ value: x.key, label: x.label }))]} />
+        <SearchSelect className={`${sel} w-[140px]`} value={f.status} onChange={pick('status')} ariaLabel="Status" placeholder="Search status…"
+          options={[{ value: '', label: 'All Status' }, ...(Object.keys(STATUS) as GarageStatus[]).map((x) => ({ value: x, label: STATUS[x].short }))]} />
         <div className="relative ml-auto min-w-[220px] flex-1 sm:max-w-[340px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
           <input className={`${sel} w-full pl-9`} value={f.search} onChange={setFilter('search')} placeholder="Search by garage name, owner, area…" />
