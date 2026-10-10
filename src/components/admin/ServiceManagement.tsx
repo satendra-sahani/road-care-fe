@@ -385,6 +385,12 @@ const priorityConfig: Record<string, { color: string; label: string }> = {
 
 const selCls = 'h-11 rounded-xl border border-[#E3E8EF] bg-white px-3.5 text-[13.5px] font-medium text-[#1F2937]'
 // the booking fee's payment status, shown under the amount in the list
+/** "10 Oct 2026, 6:51 PM" — in the time zone of the computer it is read on */
+const dateAndTime = (d?: string) => {
+  const t = d ? new Date(d) : null
+  if (!t || isNaN(t.getTime())) return '—'
+  return t.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(/\b(am|pm)\b/i, (m) => m.toUpperCase())
+}
 const FEE_CHIP: Record<string, { cls: string; text: (fee: number) => string }> = {
   paid: { cls: 'text-green-600', text: (f) => `✓ Fee ₹${f} paid` },
   pending: { cls: 'text-amber-600', text: (f) => `Fee ₹${f} not paid` },
@@ -2617,12 +2623,16 @@ export function ServiceManagement() {
                       <div className="border-t border-gray-200 pt-2 space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-[#6B7280]">Created</span>
-                          <span className="text-[#1A1D29]">{new Date(selectedRequest.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          <span className="text-[#1A1D29]" data-created-at>{dateAndTime(selectedRequest.createdAt)}</span>
                         </div>
                         {selectedRequest.scheduledDate && (
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-[#6B7280]">Scheduled</span>
-                            <span className="text-[#1A1D29]">{new Date(selectedRequest.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span className="text-right text-[#1A1D29]" data-scheduled-at>
+                              {new Date(selectedRequest.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {/* the slot the customer chose ("As soon as possible", "10 AM – 12 PM"…) — the date itself carries no time */}
+                              {selectedRequest.scheduledTime ? <span className="block text-[11px] text-[#6B7280]">{selectedRequest.scheduledTime}</span> : null}
+                            </span>
                           </div>
                         )}
                       </div>
