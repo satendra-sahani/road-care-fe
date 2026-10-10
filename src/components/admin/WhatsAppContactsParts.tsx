@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import {
   AlertTriangle, CalendarClock, CheckCheck, CheckCircle2, ChevronDown, Clock, Download, Eye, FileSpreadsheet, FileText, ImagePlus, Lightbulb, Loader2, MapPin, Package, Play, Plus, RefreshCw, Save, Send, Tag,
   Upload, UploadCloud, User, Users, X,
+  Signal, Wifi, BatteryFull, ChevronLeft, BadgeCheck, Video, Phone, MoreVertical, Smile, Paperclip, Camera, Mic,
 } from 'lucide-react'
 import { adminWhatsappAPI, adminWhatsappContactsAPI, type WaContactFilter } from '@/services/api'
 import { MEDIA_ACCEPT, btnIcon, renderWaText } from './WhatsAppSender'
@@ -61,12 +62,12 @@ export function Modal({ title, onClose, children, wide, size, plain, busy }: { t
   }, [onClose, busy])
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#0B1730]/60 p-3" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose() }}>
-      <div className={`flex max-h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${size === 'xl' ? 'max-w-[1120px]' : wide ? 'max-w-[820px]' : 'max-w-[520px]'}`}>
+      <div className={`flex max-h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${size === 'xl' ? 'h-full max-h-[960px] max-w-[1120px]' : wide ? 'max-w-[820px]' : 'max-w-[520px]'}`}>
         <div className={`flex items-center justify-between gap-3 border-b border-[#EEF2F6] px-5 py-3.5 ${plain ? 'hidden' : ''}`}>
           <h2 className="text-[17px] font-extrabold text-[#0F172A]">{title}</h2>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#F1F5F9]"><X className="h-5 w-5" /></button>
         </div>
-        <div className={`min-h-0 overflow-y-auto ${plain ? 'p-0' : 'p-5'}`}>{children}</div>
+        <div className={plain ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 overflow-y-auto p-5'}>{children}</div>
       </div>
     </div>
   )
@@ -298,6 +299,44 @@ const Step = ({ n, title, sub, right, children }: { n: number; title: string; su
   </section>
 )
 
+/** A phone showing the Bharat Mechanics chat, with the message(s) given as children. */
+export function PhoneFrame({ children, time, className = '' }: { children: React.ReactNode; time?: string; className?: string }) {
+  const clock = time || new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: false })
+  return (
+    <div data-phone-frame className={`mx-auto w-full max-w-[340px] ${className}`}>
+      <div className="relative rounded-[44px] bg-[#0B0F19] p-[9px] shadow-[0_18px_40px_-12px_rgba(2,6,23,.55),inset_0_0_0_2px_#2A3140]">
+        {/* side buttons */}
+        <span className="absolute -left-[3px] top-[96px] h-7 w-[3px] rounded-l bg-[#2A3140]" /><span className="absolute -left-[3px] top-[134px] h-12 w-[3px] rounded-l bg-[#2A3140]" /><span className="absolute -left-[3px] top-[192px] h-12 w-[3px] rounded-l bg-[#2A3140]" /><span className="absolute -right-[3px] top-[150px] h-16 w-[3px] rounded-r bg-[#2A3140]" />
+        <div className="relative flex flex-col overflow-hidden rounded-[36px] bg-[#EFEAE2]">
+          {/* dynamic island */}
+          <span className="absolute left-1/2 top-2.5 z-20 h-[22px] w-[92px] -translate-x-1/2 rounded-full bg-[#0B0F19]" />
+          {/* status bar + chat header */}
+          <div className="bg-[#075E54] px-5 pb-2.5 pt-3.5 text-white">
+            <div className="flex items-center justify-between text-[12.5px] font-semibold"><span className="pl-1">{clock}</span><span className="flex items-center gap-1 pr-1"><Signal className="h-3.5 w-3.5" /><Wifi className="h-3.5 w-3.5" /><BatteryFull className="h-4 w-4" /></span></div>
+            <div className="mt-2.5 flex items-center gap-2">
+              <ChevronLeft className="-ml-1.5 h-5 w-5 opacity-90" />
+              <img src="/apple-touch-icon.png" alt="" className="h-9 w-9 rounded-full bg-white object-cover ring-1 ring-white/30" />
+              <span className="min-w-0 flex-1"><b className="flex items-center gap-1 text-[14px] leading-tight">Bharat Mechanics <BadgeCheck className="h-4 w-4 fill-[#25D366] text-[#075E54]" /></b><span className="text-[11px] opacity-80">Online</span></span>
+              <Video className="h-5 w-5 opacity-90" /><Phone className="h-[18px] w-[18px] opacity-90" /><MoreVertical className="h-5 w-5 opacity-90" />
+            </div>
+          </div>
+          {/* chat */}
+          <div className="min-h-[330px] px-3 pb-3 pt-2.5" style={{ backgroundColor: '#E5DDD5', backgroundImage: 'radial-gradient(rgba(0,0,0,.06) 1px, transparent 1px), radial-gradient(rgba(255,255,255,.35) 1px, transparent 1px)', backgroundSize: '14px 14px, 22px 22px', backgroundPosition: '0 0, 7px 7px' }}>
+            <div className="mb-2.5 flex justify-center"><span className="rounded-lg bg-[#D4EAF7]/90 px-2.5 py-1 text-[10.5px] font-semibold text-[#334155] shadow-sm">TODAY</span></div>
+            <div className="relative ml-2 before:absolute before:-left-2 before:top-0 before:border-[7px] before:border-transparent before:border-r-white before:border-t-white before:content-['']">{children}</div>
+          </div>
+          {/* typing bar + home indicator */}
+          <div className="flex items-center gap-2 bg-[#F0F2F5] px-2.5 pb-1.5 pt-2">
+            <span className="flex h-10 flex-1 items-center gap-2 rounded-full bg-white px-3 text-[12.5px] text-[#94A3B8]"><Smile className="h-5 w-5" /><span className="flex-1">Message</span><Paperclip className="h-4 w-4" /><Camera className="h-4 w-4" /></span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#00A884] text-white"><Mic className="h-5 w-5" /></span>
+          </div>
+          <div className="flex justify-center bg-[#F0F2F5] pb-2"><span className="h-1 w-28 rounded-full bg-[#111827]" /></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const VAR_ICON = [User, Tag, Clock, MapPin, Package]
 export function SendPanel({ audience, templates, senders, loadingTemplates, templatesError, presetKey, onClear, onSent, onReloadTemplates, inDialog, onClose, onRemoveRecipient, onAddMore }: {
   audience: Audience; templates: WaTemplate[]; senders: WaSender[]; loadingTemplates: boolean; templatesError: string
@@ -418,37 +457,28 @@ export function SendPanel({ audience, templates, senders, loadingTemplates, temp
         <div className="flex items-start gap-2"><span className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-[#DCFCE7] text-[#15803D]"><Eye className="h-4 w-4" /></span><div><h3 className="text-[15px] font-extrabold leading-tight text-[#0F172A]">WhatsApp Preview</h3><p className="text-[12px] text-[#64748B]">This is how the message will appear to the recipient.</p></div></div>
         <WhatsAppIcon className="h-8 w-8" />
       </div>
-      {/* the phone */}
-      <div className="mx-auto max-w-[330px] overflow-hidden rounded-[30px] border-[6px] border-[#111827] bg-[#111827] shadow-xl">
-        <div className="flex items-center justify-between bg-[#075E54] px-4 pt-2 text-[11px] font-semibold text-white"><span>{now.replace(/\s?[ap]m/i, '')}</span><span className="tracking-tight">▂▄▆ ◉ ▮</span></div>
-        <div className="flex items-center gap-2.5 bg-[#075E54] px-3 pb-2.5 pt-1.5 text-white">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white"><WhatsAppIcon className="h-6 w-6" /></span>
-          <span className="min-w-0 flex-1"><b className="flex items-center gap-1 text-[13.5px] leading-tight">Bharat Mechanics <CheckCircle2 className="h-3.5 w-3.5 fill-[#25D366] text-[#075E54]" /></b><span className="text-[11px] opacity-80">Online</span></span>
-          <span className="text-lg leading-none">⋮</span>
-        </div>
-        <div className="min-h-[300px] bg-[#EFEAE2] p-3" style={{ backgroundImage: 'radial-gradient(rgba(0,0,0,.05) 1px, transparent 1px)', backgroundSize: '12px 12px' }}>
-          {tpl ? (
-            <div data-send-preview className="overflow-hidden rounded-xl rounded-tl-none bg-white shadow-sm">
-              {needsMedia && <div className="flex h-[120px] items-center justify-center bg-[#F1F5F9] text-[11px] text-[#64748B]">{media?.kind === 'image' ? <img src={media.previewUrl} alt="" className="h-full w-full object-cover" /> : media ? <span className="flex flex-col items-center gap-1">{headerType === 'VIDEO' ? <Play className="h-5 w-5" /> : <FileText className="h-5 w-5" />}{media.filename}</span> : <span className="flex flex-col items-center gap-1"><ImagePlus className="h-5 w-5" />{headerType.toLowerCase()} goes here</span>}</div>}
-              <div className="px-3 pb-2 pt-2.5 text-[13.5px] leading-normal text-[#0F172A]">
-                {headerType === 'TEXT' && tpl.headerText && <p className="mb-1 font-bold">{renderWaText(tpl.headerText, 'h')}</p>}
-                <p className="whitespace-pre-wrap break-words">{renderWaText((tpl.bodyText || '').replace(/\{\{\s*(\d+)\s*\}\}/g, (whole: string, n: string) => (shown[Number(n) - 1] || '').trim() || whole), 'b')}</p>
-                {tpl.footerText && <p className="mt-1 text-[11px] text-[#64748B]">{tpl.footerText}</p>}
-                <p className="mt-0.5 text-right text-[10.5px] text-[#64748B]">{now}</p>
-              </div>
-              {(tpl.buttons || []).map((b, i) => <div key={i} className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg border border-[#E2E8F0] py-2 text-[13px] font-semibold text-[#027EB5]">{btnIcon(b.type)}{b.text}</div>)}
+      <PhoneFrame>
+        {tpl ? (
+          <div data-send-preview className="max-w-[94%] overflow-hidden rounded-xl rounded-tl-none bg-white shadow-sm">
+            {needsMedia && <div className="flex h-[120px] items-center justify-center bg-[#F1F5F9] text-[11px] text-[#64748B]">{media?.kind === 'image' ? <img src={media.previewUrl} alt="" className="h-full w-full object-cover" /> : media ? <span className="flex flex-col items-center gap-1">{headerType === 'VIDEO' ? <Play className="h-5 w-5" /> : <FileText className="h-5 w-5" />}{media.filename}</span> : <span className="flex flex-col items-center gap-1"><ImagePlus className="h-5 w-5" />{headerType.toLowerCase()} goes here</span>}</div>}
+            <div className="px-3 pb-2 pt-2.5 text-[13.5px] leading-normal text-[#0F172A]">
+              {headerType === 'TEXT' && tpl.headerText && <p className="mb-1 font-bold">{renderWaText(tpl.headerText, 'h')}</p>}
+              <p className="whitespace-pre-wrap break-words">{renderWaText((tpl.bodyText || '').replace(/\{\{\s*(\d+)\s*\}\}/g, (whole: string, n: string) => (shown[Number(n) - 1] || '').trim() || whole), 'b')}</p>
+              {tpl.footerText && <p className="mt-1 text-[11px] text-[#64748B]">{tpl.footerText}</p>}
+              <p className="mt-0.5 text-right text-[10.5px] text-[#64748B]">{now}</p>
             </div>
-          ) : <p className="pt-24 text-center text-[12px] text-[#64748B]">Choose a template to see it here.</p>}
-        </div>
-      </div>
+            {(tpl.buttons || []).map((b, i) => <div key={i} className="flex items-center justify-center gap-1.5 border-t border-[#E2E8F0] py-2.5 text-[13px] font-semibold text-[#027EB5]">{btnIcon(b.type)}{b.text}</div>)}
+          </div>
+        ) : <p className="pt-24 text-center text-[12px] text-[#64748B]">Choose a template to see it here.</p>}
+      </PhoneFrame>
       <p className="mt-3 flex items-start gap-2 rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2.5 text-[11.5px] text-[#1E3A8A]"><Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2563EB]" /><span><b>Tip:</b> This is a real-time preview. The message will look exactly like this on the customer's WhatsApp{sample?.name ? `, shown here as ${sample.name.split(/\s+/)[0]} gets it` : ''}.</span></p>
     </div>
   )
 
   return (
-    <section data-send-panel className="bg-[#F6F8FB]">
+    <section data-send-panel className="flex min-h-0 flex-1 flex-col bg-[#F6F8FB]">
       {/* header */}
-      <div className="flex items-start justify-between gap-3 bg-white px-5 pb-4 pt-5 sm:px-6">
+      <div data-send-header className="flex shrink-0 items-start justify-between gap-3 border-b border-[#EEF2F6] bg-white px-5 pb-4 pt-5 sm:px-6">
         <div className="flex items-start gap-3.5">
           <WhatsAppIcon className="h-14 w-14 shrink-0" />
           <div><h2 className="text-[24px] font-extrabold leading-tight text-[#0F172A]">Send WhatsApp Template</h2><p className="text-[13.5px] text-[#64748B]">Fill the details below and send a personalized message to your customer.</p></div>
@@ -456,7 +486,7 @@ export function SendPanel({ audience, templates, senders, loadingTemplates, temp
         {onClose && <button type="button" onClick={onClose} disabled={sending} aria-label="Close" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#F1F5F9]"><X className="h-5 w-5" /></button>}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 px-4 pb-5 sm:px-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div data-send-body className="scrollbar-admin grid min-h-0 flex-1 grid-cols-1 content-start gap-4 overflow-y-auto px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-3">
           <Step n={1} title="Select Recipients" sub="Choose one or more contacts to send this template." right={
             <span data-recipient-count className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11.5px] font-bold ${audience.mode === 'none' ? 'bg-[#F1F5F9] text-[#64748B]' : 'bg-[#DCFCE7] text-[#15803D]'}`}>{audience.mode !== 'none' && <CheckCircle2 className="h-3.5 w-3.5" />}{audience.mode === 'none' ? 'None selected' : `${count.toLocaleString('en-IN')} Contact${count === 1 ? '' : 's'} Selected`}</span>}>
@@ -522,16 +552,20 @@ export function SendPanel({ audience, templates, senders, loadingTemplates, temp
             </div>
           </Step>
 
-          {missing && audience.mode !== 'none' && <p className="text-[12.5px] font-semibold text-[#B45309]">{missing}</p>}
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <button type="button" data-send-test-open onClick={() => setTestOpen(true)} disabled={!tpl} className="flex h-12 items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[14px] font-bold text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-50"><Send className="h-4 w-4" />Send Test Message</button>
-            <button type="button" data-send-go disabled={!!missing || sending} onClick={() => setConfirm(true)} className="flex h-12 items-center gap-2 rounded-xl px-6 text-[14px] font-bold text-white shadow-[0_6px_14px_rgba(244,81,30,.3)] disabled:opacity-50" style={{ background: ORANGE }}>
-              <WhatsAppIcon className="h-5 w-5" color="#fff" />{when === 'later' ? 'Schedule WhatsApp Message' : 'Send WhatsApp Message'}{count ? ` (${count.toLocaleString('en-IN')})` : ''}
-            </button>
-          </div>
         </div>
 
         <div>{preview}</div>
+      </div>
+
+      {/* footer: always in view */}
+      <div data-send-footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[#EEF2F6] bg-white px-5 py-3 sm:px-6">
+        <p className="min-w-0 flex-1 text-[12.5px]">{audience.mode !== 'none' && missing ? <span className="font-semibold text-[#B45309]">{missing}</span> : tpl && audience.mode !== 'none' ? <span className="text-[#64748B]">Ready — WhatsApp charges for every template delivered.</span> : null}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" data-send-test-open onClick={() => setTestOpen(true)} disabled={!tpl} className="flex h-12 items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[14px] font-bold text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-50"><Send className="h-4 w-4" />Send Test Message</button>
+          <button type="button" data-send-go disabled={!!missing || sending} onClick={() => setConfirm(true)} className="flex h-12 items-center gap-2 rounded-xl px-6 text-[14px] font-bold text-white shadow-[0_6px_14px_rgba(244,81,30,.3)] disabled:opacity-50" style={{ background: ORANGE }}>
+            <WhatsAppIcon className="h-5 w-5" color="#fff" />{when === 'later' ? 'Schedule WhatsApp Message' : 'Send WhatsApp Message'}{count ? ` (${count.toLocaleString('en-IN')})` : ''}
+          </button>
+        </div>
       </div>
 
       {testOpen && tpl && (

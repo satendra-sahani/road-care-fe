@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { adminWhatsappAPI } from '@/services/api'
 import { renderWaText } from './WhatsAppSender'
-import { Modal, NAVY, ORANGE, field, prettyPhone, type WaSender } from './WhatsAppContactsParts'
+import { Modal, NAVY, ORANGE, PhoneFrame, field, prettyPhone, type WaSender } from './WhatsAppContactsParts'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 
 export interface WaTemplateFull {
@@ -52,8 +52,7 @@ const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en
 function Preview({ t, values, time = '10:30 AM', compact }: { t: WaTemplateFull; values?: string[]; time?: string; compact?: boolean }) {
   const v = values && values.some((x) => x?.trim()) ? values : t.bodyExample
   const media = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(String(t.headerType || '').toUpperCase())
-  return (
-    <div data-template-preview className="rounded-xl bg-[#EFEAE2] p-2.5" style={{ backgroundImage: 'radial-gradient(rgba(0,0,0,.04) 1px, transparent 1px)', backgroundSize: '12px 12px' }}>
+  const bubble = (
       <div className="overflow-hidden rounded-lg rounded-tl-none bg-white shadow-sm">
         {media && (
           <div className={`flex ${compact ? 'h-[118px]' : 'h-[160px]'} items-center justify-center overflow-hidden bg-[#F1F5F9] text-[#64748B]`}>
@@ -69,6 +68,11 @@ function Preview({ t, values, time = '10:30 AM', compact }: { t: WaTemplateFull;
         </div>
         {t.buttons.map((b, i) => <div key={i} className="flex items-center justify-center gap-1.5 border-t border-black/10 py-1.5 text-[12.5px] font-medium text-[#027EB5]">{btnIcon(b.type)}{b.text}</div>)}
       </div>
+  )
+  if (!compact) return <div data-template-preview><PhoneFrame time={time}>{bubble}</PhoneFrame></div>
+  return (
+    <div data-template-preview className="rounded-xl bg-[#EFEAE2] p-2.5" style={{ backgroundImage: 'radial-gradient(rgba(0,0,0,.04) 1px, transparent 1px)', backgroundSize: '12px 12px' }}>
+      {bubble}
     </div>
   )
 }
