@@ -1106,6 +1106,8 @@ export const adminShopAPI = {
     api.get('/admin/shops/available-mechanics', { params: { search } }),
   getShopMechanics: (shopId: string) =>
     api.get(`/admin/shops/${shopId}/mechanics`),
+  // every active garage's mechanics with their numbers: { <shop id>: [{ name, phone }] }
+  getTeams: () => api.get('/admin/shops/teams'),
   assignMechanicToShop: (shopId: string, mechanicProfileId: string) =>
     api.post(`/admin/shops/${shopId}/assign-mechanic`, { mechanicProfileId }),
   unassignMechanicFromShop: (shopId: string, mechanicId: string) =>

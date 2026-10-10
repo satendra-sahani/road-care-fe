@@ -10,7 +10,7 @@ import type { ServiceRequest } from '@/store/slices/serviceRequestSlice'
 import type { Mechanic } from '@/store/slices/mechanicSlice'
 import { loadGoogleMaps, googleMapsFailed } from '@/lib/googleMaps'
 import { initialsOf, vehicleIconFor, vehicleName } from './serviceRequestUi'
-import { garageItem, geocodeAddress, mechanicItem, numPin, PARTNER_STATUS, type PartnerItem as Item, type Pt } from './partnerItems'
+import { garageItem, geocodeAddress, mechanicItem, numPin, PARTNER_STATUS, phone10, prettyPhone, telHref, type PartnerItem as Item, type Pt } from './partnerItems'
 
 // "Assign Mechanic / Garage" — pick who does a service request.
 //  • Garages  = shop partners + the garages our field staff registered (those become
@@ -24,6 +24,14 @@ const NAVY = '#16305C'
 const vehicleKind = (t?: string) => { const s = String(t || '').toLowerCase(); return /scoot/.test(s) ? 'scooter' : /bike|motor|two/.test(s) ? 'bike' : /truck|bus|tempo/.test(s) ? 'truck' : /car|suv|sedan|hatch/.test(s) ? 'car' : '' }
 const norm = (s: string) => s.toLowerCase().replace(/service|repair|system|replacement|work|[^a-z]/g, '')
 const STATUS = PARTNER_STATUS
+/** the numbers to ring for a row: the garage's own, then each of its mechanics' — one per number */
+const numbersOf = (it: Item): { label: string; phone: string }[] => {
+  const seen = new Set<string>()
+  const out: { label: string; phone: string }[] = []
+  const add = (label: string, phone?: string) => { const p = phone10(phone); if (p.length !== 10 || seen.has(p)) return; seen.add(p); out.push({ label, phone: p }) }
+  if (it.kind === 'garage') { add('Garage', it.phone); it.team.forEach((m) => add(m.name, m.phone)) } else add('', it.phone)
+  return out
+}
 const sel = 'h-11 appearance-none rounded-xl border border-[#E3E8EF] bg-white pl-10 pr-8 text-[13.5px] font-medium text-[#1F2937] outline-none focus:border-[#16305C]'
 
 export function AssignDialog({
@@ -209,7 +217,7 @@ export function AssignDialog({
     )
   }
   const shopMechs: { name: string; sub: string; phone?: string }[] = selected?.kind === 'garage'
-    ? (selected.raw.mechanics || []).filter((m: any) => m?.isActive !== false && m?.name).map((m: any) => ({ name: m.name, sub: m.specialization || 'Mechanic', phone: m.phone }))
+    ? selected.team.map((m) => ({ name: m.name, sub: (selected.raw.mechanics || []).find((x: any) => x?.name === m.name)?.specialization || 'Mechanic', phone: m.phone || undefined }))
     : []
 
   const MapBox = (
@@ -412,6 +420,21 @@ export function AssignDialog({
                               <AssignBtn it={it} solid={on} />
                             </div>
                           </div>
+                          {(() => {
+                            // who to ring: the garage and every one of its mechanics (a mechanic's row: the mechanic)
+                            const nums = numbersOf(it)
+                            return nums.length > 0 && (
+                              <div data-row-numbers className="mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1">
+                                {nums.slice(0, 8).map((n) => (
+                                  <a key={n.phone} href={telHref(n.phone)} onClick={(e) => e.stopPropagation()} title={`Call ${n.label || it.name}`}
+                                    className="inline-flex items-center gap-1 whitespace-nowrap text-[12.5px] font-bold text-[#16305C] hover:text-[#EA580C]">
+                                    <Phone className="h-3.5 w-3.5 shrink-0 text-[#16A34A]" />{n.label && <span className="font-medium text-[#475569]">{n.label}</span>}{prettyPhone(n.phone)}
+                                  </a>
+                                ))}
+                                {nums.length > 8 && <span className="text-[12px] font-medium text-[#64748B]">+{nums.length - 8} more</span>}
+                              </div>
+                            )
+                          })()}
                           {(it.chips.length > 0 || it.doorstep != null || it.field) && <div className="mt-1.5 flex gap-1.5 overflow-hidden"><Tags it={it} />{it.chips.slice(0, 4).map((c) => <span key={c} className="shrink-0 whitespace-nowrap rounded-lg bg-[#EEF3FB] px-2.5 py-1 text-[11.5px] font-medium text-[#16305C]">{c}</span>)}{it.chips.length > 4 && <span className="shrink-0 rounded-lg bg-[#F1F5F9] px-2 py-1 text-[11.5px] font-medium text-[#64748B]" title={it.chips.slice(4).join(', ')}>+{it.chips.length - 4}</span>}</div>}
                         </div>
                       </div>

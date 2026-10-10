@@ -13,6 +13,8 @@ export type PartnerItem = {
   rating: number; ratings: number; place: string; pt: Pt | null; km: number | null
   open: boolean | null; hours: string; status: 'available' | 'busy' | 'closed' | 'offline'
   chips: string[]; vehicles: string[]; phone?: string; raw: any
+  // a garage's mechanics with their numbers (those with their own accounts and the ones the garage only listed)
+  team: { name: string; phone: string }[]
   // field = registered by our field staff, not a shop partner yet; doorstep = sends a mechanic to the customer (null = not recorded)
   field: boolean; fieldBy: string; pending: boolean; doorstep: boolean | null
 }
@@ -50,13 +52,16 @@ export const garageItem = (s: any, cust: Pt | null): PartnerItem => {
   const co = s.address?.coordinates
   const pt = co?.latitude != null && co?.longitude != null ? { lat: co.latitude, lng: co.longitude } : null
   const openNow = isOpenNow(s.operatingHours)
+  // `team` comes with the admin's list (GET /admin/shops/teams); without it, the names the garage listed itself
+  const team: { name: string; phone: string }[] = (Array.isArray(s.team) ? s.team : (s.mechanics || []).filter((m: any) => m?.isActive !== false))
+    .filter((m: any) => m?.name || m?.phone).map((m: any) => ({ name: String(m.name || 'Mechanic'), phone: String(m.phone || '') }))
   return {
     id: s._id, kind: 'garage', name: s.shopName || 'Garage', photo: s.shopImages?.[0]?.url || s.logo || undefined, verified: !!s.isVerified,
     rating: s.rating || 0, ratings: s.totalRatings || 0, place: [s.address?.area || s.address?.street, s.address?.city].filter(Boolean).join(', ') || s.address?.city || '—',
     pt, km: kmFrom(cust, pt),
     open: openNow, hours: s.operatingHours?.open ? `${to12(s.operatingHours.open)} – ${to12(s.operatingHours.close)}` : '',
     status: s.isAvailable === false ? 'offline' : openNow === false ? 'closed' : 'available',
-    chips: s.specializations || [], vehicles: s.vehicleTypes || [], phone: s.shopPhone || s.user?.phone, raw: s,
+    chips: s.specializations || [], vehicles: s.vehicleTypes || [], phone: s.shopPhone || s.user?.phone, raw: s, team,
     field: s.source === 'field', fieldBy: s.fieldStaff || '', pending: s.source === 'field' && s.fieldStatus !== 'active', doorstep: typeof s.doorstepService === 'boolean' ? s.doorstepService : null,
   }
 }
@@ -70,7 +75,7 @@ export const mechanicItem = (m: Mechanic, cust: Pt | null): PartnerItem => {
     pt, km: kmFrom(cust, pt),
     open: null, hours: m.experience ? `${m.experience} experience` : '',
     status: m.availability === 'available' ? 'available' : m.availability === 'busy' ? 'busy' : 'offline',
-    chips: m.specializations || [], vehicles: m.vehicleTypes || [], phone: m.phone, raw: m,
+    chips: m.specializations || [], vehicles: m.vehicleTypes || [], phone: m.phone, raw: m, team: [],
     field: false, fieldBy: '', pending: false, doorstep: null,
   }
 }

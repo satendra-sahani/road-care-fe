@@ -931,8 +931,12 @@ export function ServiceManagement() {
   // the garages a job can go to: shop partners + the garages our field staff registered that are not partners yet
   const loadShops = async () => {
     setShopsLoading(true)
-    const [shopsRes, fieldRes] = await Promise.allSettled([adminShopAPI.getAll({ limit: 300 }), adminGarageAPI.assignable()])
-    const partners = shopsRes.status === 'fulfilled' && shopsRes.value.data?.success ? (shopsRes.value.data.data || []).filter((s: any) => s.isActive) : null
+    const [shopsRes, fieldRes, teamsRes] = await Promise.allSettled([adminShopAPI.getAll({ limit: 300 }), adminGarageAPI.assignable(), adminShopAPI.getTeams()])
+    // each garage's mechanics with their numbers (shown on its row); without them the row has the garage's own number
+    const teams: Record<string, { name: string; phone: string }[]> = teamsRes.status === 'fulfilled' && teamsRes.value.data?.success ? (teamsRes.value.data.data || {}) : {}
+    const partners = shopsRes.status === 'fulfilled' && shopsRes.value.data?.success
+      ? (shopsRes.value.data.data || []).filter((s: any) => s.isActive).map((s: any) => (teams[s._id] ? { ...s, team: teams[s._id] } : s))
+      : null
     const fieldGarages = fieldRes.status === 'fulfilled' && fieldRes.value.data?.success ? (fieldRes.value.data.data || []) : []
     if (partners || fieldGarages.length) setShopsList([...(partners || []), ...fieldGarages])
     setShopsLoading(false)
