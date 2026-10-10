@@ -426,8 +426,10 @@ export function WhatsAppContacts() {
         </Modal>
       )}
       {sendOpen && (
-        <Modal title="Send WhatsApp Template" onClose={() => setSendOpen(false)}>
+        <Modal title="Send WhatsApp Template" onClose={() => setSendOpen(false)} size="xl" plain>
           <SendPanel inDialog audience={audience} templates={templates} senders={senders} loadingTemplates={tplLoading} templatesError={tplError} presetKey={presetKey}
+            onClose={() => setSendOpen(false)} onAddMore={() => { setSendOpen(false); toast.info('Tick more contacts in the list, then press Send Template.') }}
+            onRemoveRecipient={(id) => setPicked((p) => { const n = new Set(p); n.delete(id); if (!n.size) setSendOpen(false); return n })}
             onClear={() => { clearPicked(); setSendOpen(false) }} onReloadTemplates={loadTemplates}
             onSent={() => { setSendOpen(false); clearPicked(); loadBroadcasts(); loadMeta(); setTimeout(() => { loadBroadcasts(); loadRows(); loadMeta() }, 2500) }} />
         </Modal>

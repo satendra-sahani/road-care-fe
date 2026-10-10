@@ -24,7 +24,7 @@ const STALE_MIN = 30 // a mechanic's position older than this is shown with its 
 const keyOf = (it: PartnerItem) => `${it.kind}:${it.id}`
 const pinColor = (it: PartnerItem) => (it.status !== 'available' ? '#64748B' : it.kind === 'garage' ? '#4F46E5' : '#2563EB')
 
-export function NearbyPartners({ pos, addressQueries, shops, mechanics, loading, onOpen, onPins, onShowOnMap }: {
+export function NearbyPartners({ pos, addressQueries, shops, mechanics, loading, onOpen, onPins, onShowOnMap, radiusKm = NEAR_KM }: {
   /** the pin on the map, when there is one */
   pos: Pt | null
   /** the typed address in a few forms (full first) — used only while there is no pin */
@@ -37,6 +37,8 @@ export function NearbyPartners({ pos, addressQueries, shops, mechanics, loading,
   onPins?: (pins: NearbyPin[]) => void
   /** zoom the map out so the customer and the rows are all in view */
   onShowOnMap?: () => void
+  /** only garages / mechanics within this many km (0 = any distance) */
+  radiusKm?: number
 }) {
   const [tab, setTab] = useState<Tab>('all')
   const [limit, setLimit] = useState(FIRST)
@@ -71,9 +73,11 @@ export function NearbyPartners({ pos, addressQueries, shops, mechanics, loading,
   }, [shops, mechanics, cust?.lat, cust?.lng])
 
   const count = (k: Tab) => (k === 'all' ? located : located.filter((it) => it.kind === k)).length
-  const list = tab === 'all' ? located : located.filter((it) => it.kind === tab)
+  const kindList = tab === 'all' ? located : located.filter((it) => it.kind === tab)
+  const list = radiusKm > 0 ? kindList.filter((it) => (it.km as number) <= radiusKm) : kindList
+  const farther = kindList.length - list.length
   const rows = list.slice(0, limit)
-  const near = list.filter((it) => (it.km as number) <= NEAR_KM).length
+  const near = list.filter((it) => (it.km as number) <= (radiusKm || NEAR_KM)).length
 
   // the rows on screen go on the map, numbered the same way
   const pinSig = rows.map((it) => `${keyOf(it)}@${it.pt?.lat},${it.pt?.lng}|${it.status}`).join(';')
@@ -117,7 +121,7 @@ export function NearbyPartners({ pos, addressQueries, shops, mechanics, loading,
           )}
         </div>
         <p className="mt-2 text-[12px] font-semibold text-[#4B5563]" data-nearby-summary>
-          {loading && list.length === 0 ? 'Loading…' : list.length === 0 ? '' : `${near > 0 ? `${near} within ${NEAR_KM} km` : `None within ${NEAR_KM} km`} · nearest ${kmText(list[0].km, isApprox)} away`}
+          {loading && kindList.length === 0 ? 'Loading…' : list.length === 0 ? (kindList.length ? `None within ${radiusKm} km — ${farther} farther away; widen the radius on the map` : '') : `${radiusKm > 0 ? `${near} within ${radiusKm} km` : `${list.length} at any distance`} · nearest ${kmText(list[0].km, isApprox)} away${farther > 0 ? ` · ${farther} farther than ${radiusKm} km` : ''}`}
         </p>
 
         {isApprox && (

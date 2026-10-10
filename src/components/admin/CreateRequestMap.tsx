@@ -25,7 +25,7 @@ const PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" view
 const centreFor = (p: LatLng, z: number, px: number): LatLng => ({ lat: p.lat, lng: p.lng + (px * 360) / (256 * 2 ** z) })
 const ctl = 'flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#16305C] shadow-[0_2px_8px_rgba(15,23,42,.18)] hover:bg-[#F3F5F9]'
 
-export function CreateRequestMap({ value, accuracy, onChange, className = '', offsetX = 0, focusKey = '', nearby, fitKey = 0 }: {
+export function CreateRequestMap({ value, accuracy, onChange, className = '', offsetX = 0, focusKey = '', nearby, fitKey = 0, radiusKm = 0 }: {
   value: LatLng | null
   /** metres, when the phone reported it */
   accuracy?: number | null
@@ -39,6 +39,8 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
   nearby?: NearbyPin[]
   /** each change zooms out until the customer and those pins are all in view */
   fitKey?: number
+  /** the search radius drawn around the customer, km (0 = none) */
+  radiusKm?: number
 }) {
   const [engine, setEngine] = useState<'loading' | 'google' | 'osm'>('loading')
   const [mapType, setMapType] = useState<'roadmap' | 'hybrid'>('roadmap')
@@ -46,6 +48,7 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
   const el = useRef<HTMLDivElement | null>(null)
   const map = useRef<any>(null)
   const marker = useRef<any>(null)
+  const ring = useRef<any>(null) // the search radius
   const circle = useRef<any>(null)
   const pins = useRef<any[]>([])
   const cb = useRef(onChange)
@@ -86,8 +89,8 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
     const g = (window as any).google?.maps, m = map.current
     if (engine !== 'google' || !g || !m) return
     if (!value) {
-      marker.current?.setMap(null); circle.current?.setMap(null)
-      marker.current = null; circle.current = null
+      marker.current?.setMap(null); circle.current?.setMap(null); ring.current?.setMap(null)
+      marker.current = null; circle.current = null; ring.current = null
       return
     }
     const radius = accuracy && accuracy > 0 ? Math.max(accuracy, MIN_RADIUS_M) : 0 // a hand-placed pin has no margin
@@ -108,6 +111,17 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
     if (!m.getBounds()?.contains(value) || (m.getZoom() || 0) < 11) { m.setZoom(AREA_ZOOM); m.setCenter(centreFor(value, AREA_ZOOM, offsetX)) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, value?.lat, value?.lng, accuracy])
+
+  // the search radius: a light ring around the customer; a new radius brings it whole into view
+  useEffect(() => {
+    const g = (window as any).google?.maps, m = map.current
+    if (engine !== 'google' || !g || !m) return
+    if (!value || !radiusKm) { ring.current?.setMap(null); ring.current = null; return }
+    if (!ring.current) ring.current = new g.Circle({ map: m, strokeColor: '#2563EB', strokeOpacity: 0.9, strokeWeight: 1.5, fillColor: '#3B82F6', fillOpacity: 0.07, clickable: false, zIndex: 1 })
+    ring.current.setMap(m); ring.current.setCenter(value); ring.current.setRadius(radiusKm * 1000)
+    const b = ring.current.getBounds(); if (b) m.fitBounds(b, { top: 24, bottom: 48, left: 52, right: 24 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, value?.lat, value?.lng, radiusKm])
 
   // A position that came from the customer's phone (or a picked address) may sit at
   // the edge of what is on screen: bring it into the middle, keeping the admin's zoom.

@@ -250,6 +250,7 @@ export function CreateRequestDialog({ open, onClose, onCreated, shops = NONE, me
   // nearest garages / mechanics: their pins on the map, and the contact card of the one that was tapped
   const [nearPins, setNearPins] = useState<NearbyPin[]>([])
   const [fitKey, setFitKey] = useState(0)
+  const [radiusKm, setRadiusKm] = useState(10) // search radius around the customer, km (0 = any)
   const [partner, setPartner] = useState<PartnerTarget | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const addressRef = useRef<HTMLTextAreaElement>(null)
@@ -1056,17 +1057,19 @@ export function CreateRequestDialog({ open, onClose, onCreated, shops = NONE, me
             <Card className="overflow-hidden">
               <Band icon={<MapPin className="h-[18px] w-[18px]" />}>Location Preview</Band>
               <div className="relative h-[280px]">
-                <CreateRequestMap value={pos} accuracy={fix?.accuracy} onChange={(p) => placePin(p.lat, p.lng, { source: 'manual' })} className="h-full w-full" offsetX={70}
+                <CreateRequestMap value={pos} accuracy={fix?.accuracy} onChange={(p) => placePin(p.lat, p.lng, { source: 'manual' })} className="h-full w-full" offsetX={0} radiusKm={radiusKm}
                   focusKey={fix && fix.source !== 'manual' ? `${fix.source}|${fix.at || ''}|${form.lat},${form.lng}` : ''}
                   nearby={nearPins} fitKey={fitKey} />
                 {pos ? (
                   <>
-                    <div className="pointer-events-none absolute right-2.5 top-2.5 z-10 w-[178px] rounded-lg bg-white/95 px-2.5 py-2 text-[11.5px] leading-snug text-[#374151] shadow-[0_2px_8px_rgba(15,23,42,.18)]" data-loc-card>
-                      <b className="block truncate text-[12.5px] text-[#0F1E46]">{form.city || 'Customer location'}</b>
-                      Lat: {lat.toFixed(4)}<br />Long: {lng.toFixed(4)}
-                      {fix?.accuracy ? <><br /><span className={rough ? 'font-bold text-[#B45309]' : undefined}>Accuracy: ±{fix.accuracy} m{fix.refining ? ' …' : ''}</span></> : null}
-                      {form.address && <span className="mt-1 line-clamp-2 border-t border-[#E6ECF5] pt-1 text-[11px] text-[#4B5563]">{joinAddr(form.address, form.city, form.pincode)}</span>}
-                    </div>
+                    {/* the search radius around the customer — the nearest list and the ring on the map follow it */}
+                    <label data-radius className="absolute right-2.5 top-2.5 z-10 flex h-9 items-center gap-1 rounded-lg bg-white px-2.5 text-[12.5px] font-bold text-[#0F1E46] shadow-[0_2px_8px_rgba(15,23,42,.18)]">
+                      <span className="font-semibold text-[#4B5563]">Radius:</span>
+                      <select value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} aria-label="Radius" className="bg-transparent font-bold outline-none">
+                        {[5, 10, 20, 50].map((k) => <option key={k} value={k}>{k} km</option>)}<option value={0}>Any</option>
+                      </select>
+                    </label>
+                    {fix?.accuracy && rough ? <span className="pointer-events-none absolute right-2.5 top-12 z-10 rounded-lg bg-white/95 px-2 py-1 text-[11px] font-bold text-[#B45309] shadow">Accuracy ±{fix.accuracy} m{fix.refining ? ' …' : ''}</span> : null}
                     <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer"
                       className="absolute bottom-8 left-2.5 z-10 flex h-9 items-center gap-1.5 rounded-lg bg-white px-3 text-[12.5px] font-bold text-[#0F1E46] shadow-[0_2px_8px_rgba(15,23,42,.18)] hover:bg-[#F3F6FC]"><MapPin className="h-4 w-4" style={{ color: BLUE }} />View on Google Maps</a>
                   </>
@@ -1087,7 +1090,7 @@ export function CreateRequestDialog({ open, onClose, onCreated, shops = NONE, me
             </Card>
 
             {/* who is closest to this customer — fills in as soon as there is a location */}
-            <NearbyPartners pos={pos} addressQueries={addrQueries} shops={shops} mechanics={mechanics} loading={partnersLoading}
+            <NearbyPartners pos={pos} addressQueries={addrQueries} shops={shops} mechanics={mechanics} loading={partnersLoading} radiusKm={radiusKm}
               onOpen={(it, from) => setPartner({ show: it.kind, ...(it.kind === 'garage' ? { garage: { id: it.id, field: it.field, raw: it.raw, name: it.name, phone: it.phone } } : { mechanic: { id: it.id, raw: it.raw, name: it.name, phone: it.phone } }), customer: from.customer, approx: from.approx })}
               onPins={setNearPins} onShowOnMap={() => setFitKey((k) => k + 1)} />
             {Recent && pos && <Card><div className="px-3.5 py-2.5" data-recent-below>{Recent}</div></Card>}

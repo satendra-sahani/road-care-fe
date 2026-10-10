@@ -6,8 +6,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  AlertTriangle, CalendarClock, CheckCheck, CheckCircle2, Download, FileSpreadsheet, FileText, ImagePlus, Loader2, Play, RefreshCw, Save, Send,
-  Upload, UploadCloud, Users, X,
+  AlertTriangle, CalendarClock, CheckCheck, CheckCircle2, ChevronDown, Clock, Download, Eye, FileSpreadsheet, FileText, ImagePlus, Lightbulb, Loader2, MapPin, Package, Play, Plus, RefreshCw, Save, Send, Tag,
+  Upload, UploadCloud, User, Users, X,
 } from 'lucide-react'
 import { adminWhatsappAPI, adminWhatsappContactsAPI, type WaContactFilter } from '@/services/api'
 import { MEDIA_ACCEPT, btnIcon, renderWaText } from './WhatsAppSender'
@@ -53,7 +53,7 @@ export const TagPill = ({ tag, onRemove }: { tag: string; onRemove?: () => void 
 export const field = 'h-10 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-[13.5px] text-[#0F172A] outline-none placeholder:text-[#94A3B8] focus:border-[#F4511E]'
 export const label = 'mb-1 block text-[12.5px] font-semibold text-[#334155]'
 
-export function Modal({ title, onClose, children, wide, busy }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean; busy?: boolean }) {
+export function Modal({ title, onClose, children, wide, size, plain, busy }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean; size?: 'xl'; plain?: boolean; busy?: boolean }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose() }
     window.addEventListener('keydown', onKey)
@@ -61,12 +61,12 @@ export function Modal({ title, onClose, children, wide, busy }: { title: string;
   }, [onClose, busy])
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#0B1730]/60 p-3" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose() }}>
-      <div className={`flex max-h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${wide ? 'max-w-[820px]' : 'max-w-[520px]'}`}>
-        <div className="flex items-center justify-between gap-3 border-b border-[#EEF2F6] px-5 py-3.5">
+      <div className={`flex max-h-full w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${size === 'xl' ? 'max-w-[1120px]' : wide ? 'max-w-[820px]' : 'max-w-[520px]'}`}>
+        <div className={`flex items-center justify-between gap-3 border-b border-[#EEF2F6] px-5 py-3.5 ${plain ? 'hidden' : ''}`}>
           <h2 className="text-[17px] font-extrabold text-[#0F172A]">{title}</h2>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#F1F5F9]"><X className="h-5 w-5" /></button>
         </div>
-        <div className="min-h-0 overflow-y-auto p-5">{children}</div>
+        <div className={`min-h-0 overflow-y-auto ${plain ? 'p-0' : 'p-5'}`}>{children}</div>
       </div>
     </div>
   )
@@ -287,13 +287,30 @@ const fillFor = (v: string, p?: { name?: string; city?: string; phone?: string }
   return v.replace(/\{\s*name\s*\}/gi, p?.name || 'Customer').replace(/\{\s*first[_ ]?name\s*\}/gi, first).replace(/\{\s*city\s*\}/gi, p?.city || '').replace(/\{\s*phone\s*\}/gi, String(p?.phone || '').slice(-10))
 }
 
-export function SendPanel({ audience, templates, senders, loadingTemplates, templatesError, presetKey, onClear, onSent, onReloadTemplates, inDialog }: {
+/** One numbered step of the send dialog. Lives outside SendPanel so React does not remount it on every keystroke. */
+const Step = ({ n, title, sub, right, children }: { n: number; title: string; sub: string; right?: React.ReactNode; children: React.ReactNode }) => (
+  <section className="rounded-xl border border-[#E8EDF3] bg-white p-4">
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#B91C1C] text-[13px] font-extrabold text-white">{n}</span><div><h3 className="text-[15px] font-extrabold leading-tight text-[#0F172A]">{title}</h3><p className="text-[12px] text-[#64748B]">{sub}</p></div></div>
+      {right}
+    </div>
+    <div className="mt-3">{children}</div>
+  </section>
+)
+
+const VAR_ICON = [User, Tag, Clock, MapPin, Package]
+export function SendPanel({ audience, templates, senders, loadingTemplates, templatesError, presetKey, onClear, onSent, onReloadTemplates, inDialog, onClose, onRemoveRecipient, onAddMore }: {
   audience: Audience; templates: WaTemplate[]; senders: WaSender[]; loadingTemplates: boolean; templatesError: string
   /** `${name}::${language}` chosen elsewhere on the page (Templates tab) */
   presetKey?: string
   onClear: () => void; onSent: () => void; onReloadTemplates: () => void
   /** shown inside a dialog: the dialog already has the frame and the title */
   inDialog?: boolean
+  onClose?: () => void
+  /** untick one of the selected contacts */
+  onRemoveRecipient?: (id: string) => void
+  /** go back to the list to tick more */
+  onAddMore?: () => void
 }) {
   const [tplKey, setTplKey] = useState('')
   const [senderId, setSenderId] = useState('')
@@ -305,6 +322,9 @@ export function SendPanel({ audience, templates, senders, loadingTemplates, temp
   const [info, setInfo] = useState<{ total: number; optedOut: number; willSend: number; sample: { name: string; phone: string; city?: string }[] } | null>(null)
   const [confirm, setConfirm] = useState(false)
   const [sending, setSending] = useState(false)
+  const [testOpen, setTestOpen] = useState(false)
+  const [testPhone, setTestPhone] = useState(() => { try { return localStorage.getItem('bm_wa_test_phone') || '' } catch { return '' } })
+  const [testing, setTesting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const keyOf = (t: WaTemplate) => `${t.name}::${t.language}`
   const tpl = templates.find((t) => keyOf(t) === tplKey)
@@ -367,111 +387,164 @@ export function SendPanel({ audience, templates, senders, loadingTemplates, temp
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Could not start the send') } finally { setSending(false) }
   }
 
+  const sendTest = async () => {
+    const d = testPhone.replace(/\D/g, '')
+    const ten = d.length === 12 && d.startsWith('91') ? d.slice(2) : d
+    if (!/^[6-9]\d{9}$/.test(ten)) { toast.error('Enter a 10-digit WhatsApp number'); return }
+    if (!tpl) { toast.error('Choose a template'); return }
+    if (needsMedia && !media) { toast.error(`Upload the ${headerType.toLowerCase()} first`); return }
+    setTesting(true)
+    try {
+      try { localStorage.setItem('bm_wa_test_phone', ten) } catch {}
+      const res = await adminWhatsappAPI.send({
+        phoneNumberId: senderId, templateName: tpl.name, languageCode: tpl.language, toPhone: ten,
+        variables: varCount > 0 ? vars.slice(0, varCount).map((v) => fillFor(v.trim(), { name: 'Test User', city: 'Gorakhpur', phone: ten })) : undefined,
+        ...(needsMedia && media ? { headerMediaId: media.mediaId, headerMediaKind: headerType.toLowerCase() } : {}),
+      })
+      if (res.data?.success) { toast.success(`Test message sent to +91 ${ten}`); setTestOpen(false) }
+      else toast.error(res.data?.message || 'The test could not be sent')
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'The test could not be sent') } finally { setTesting(false) }
+  }
+
   const sample = info?.sample?.[0]
   const shown = vars.map((v) => fillFor(v, sample))
   const now = useMemo(() => new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }), [])
   const count = info?.willSend ?? (audience.mode === 'ids' ? audience.ids.length : 0)
 
+  const chips = audience.mode === 'ids' ? (info?.sample || []).slice(0, 4) : []
+  const preview = (
+    <div data-send-preview-box className="rounded-2xl bg-[#EEF7F0] p-4">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2"><span className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-[#DCFCE7] text-[#15803D]"><Eye className="h-4 w-4" /></span><div><h3 className="text-[15px] font-extrabold leading-tight text-[#0F172A]">WhatsApp Preview</h3><p className="text-[12px] text-[#64748B]">This is how the message will appear to the recipient.</p></div></div>
+        <WhatsAppIcon className="h-8 w-8" />
+      </div>
+      {/* the phone */}
+      <div className="mx-auto max-w-[330px] overflow-hidden rounded-[30px] border-[6px] border-[#111827] bg-[#111827] shadow-xl">
+        <div className="flex items-center justify-between bg-[#075E54] px-4 pt-2 text-[11px] font-semibold text-white"><span>{now.replace(/\s?[ap]m/i, '')}</span><span className="tracking-tight">▂▄▆ ◉ ▮</span></div>
+        <div className="flex items-center gap-2.5 bg-[#075E54] px-3 pb-2.5 pt-1.5 text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white"><WhatsAppIcon className="h-6 w-6" /></span>
+          <span className="min-w-0 flex-1"><b className="flex items-center gap-1 text-[13.5px] leading-tight">Bharat Mechanics <CheckCircle2 className="h-3.5 w-3.5 fill-[#25D366] text-[#075E54]" /></b><span className="text-[11px] opacity-80">Online</span></span>
+          <span className="text-lg leading-none">⋮</span>
+        </div>
+        <div className="min-h-[300px] bg-[#EFEAE2] p-3" style={{ backgroundImage: 'radial-gradient(rgba(0,0,0,.05) 1px, transparent 1px)', backgroundSize: '12px 12px' }}>
+          {tpl ? (
+            <div data-send-preview className="overflow-hidden rounded-xl rounded-tl-none bg-white shadow-sm">
+              {needsMedia && <div className="flex h-[120px] items-center justify-center bg-[#F1F5F9] text-[11px] text-[#64748B]">{media?.kind === 'image' ? <img src={media.previewUrl} alt="" className="h-full w-full object-cover" /> : media ? <span className="flex flex-col items-center gap-1">{headerType === 'VIDEO' ? <Play className="h-5 w-5" /> : <FileText className="h-5 w-5" />}{media.filename}</span> : <span className="flex flex-col items-center gap-1"><ImagePlus className="h-5 w-5" />{headerType.toLowerCase()} goes here</span>}</div>}
+              <div className="px-3 pb-2 pt-2.5 text-[13.5px] leading-normal text-[#0F172A]">
+                {headerType === 'TEXT' && tpl.headerText && <p className="mb-1 font-bold">{renderWaText(tpl.headerText, 'h')}</p>}
+                <p className="whitespace-pre-wrap break-words">{renderWaText((tpl.bodyText || '').replace(/\{\{\s*(\d+)\s*\}\}/g, (whole: string, n: string) => (shown[Number(n) - 1] || '').trim() || whole), 'b')}</p>
+                {tpl.footerText && <p className="mt-1 text-[11px] text-[#64748B]">{tpl.footerText}</p>}
+                <p className="mt-0.5 text-right text-[10.5px] text-[#64748B]">{now}</p>
+              </div>
+              {(tpl.buttons || []).map((b, i) => <div key={i} className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg border border-[#E2E8F0] py-2 text-[13px] font-semibold text-[#027EB5]">{btnIcon(b.type)}{b.text}</div>)}
+            </div>
+          ) : <p className="pt-24 text-center text-[12px] text-[#64748B]">Choose a template to see it here.</p>}
+        </div>
+      </div>
+      <p className="mt-3 flex items-start gap-2 rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2.5 text-[11.5px] text-[#1E3A8A]"><Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2563EB]" /><span><b>Tip:</b> This is a real-time preview. The message will look exactly like this on the customer's WhatsApp{sample?.name ? `, shown here as ${sample.name.split(/\s+/)[0]} gets it` : ''}.</span></p>
+    </div>
+  )
+
   return (
-    <section data-send-panel className={inDialog ? '' : 'rounded-2xl border border-[#E8EDF3] bg-white p-4 shadow-sm'}>
-      <div className={`flex items-center justify-between gap-2 ${inDialog ? 'hidden' : ''}`}>
-        <h3 className="flex items-center gap-2 text-[15.5px] font-extrabold text-[#0F172A]"><WhatsAppIcon className="h-7 w-7" />Send WhatsApp Template</h3>
-        {audience.mode !== 'none' && <button type="button" onClick={onClear} className="text-[12px] font-bold text-[#2563EB]">Clear All</button>}
+    <section data-send-panel className="bg-[#F6F8FB]">
+      {/* header */}
+      <div className="flex items-start justify-between gap-3 bg-white px-5 pb-4 pt-5 sm:px-6">
+        <div className="flex items-start gap-3.5">
+          <WhatsAppIcon className="h-14 w-14 shrink-0" />
+          <div><h2 className="text-[24px] font-extrabold leading-tight text-[#0F172A]">Send WhatsApp Template</h2><p className="text-[13.5px] text-[#64748B]">Fill the details below and send a personalized message to your customer.</p></div>
+        </div>
+        {onClose && <button type="button" onClick={onClose} disabled={sending} aria-label="Close" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#F1F5F9]"><X className="h-5 w-5" /></button>}
       </div>
 
-      <div className={`flex items-center justify-between gap-2 ${inDialog ? '' : 'mt-3'}`}>
-        <p className="text-[12.5px] font-semibold text-[#334155]">Selected Recipients</p>
-        <span data-recipient-count className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold ${audience.mode === 'none' ? 'bg-[#F1F5F9] text-[#64748B]' : 'bg-[#DCFCE7] text-[#15803D]'}`}>
-          {audience.mode === 'none' ? 'None selected' : `${count.toLocaleString('en-IN')} Contact${count === 1 ? '' : 's'} Selected`}
-        </span>
-      </div>
-      {audience.mode === 'none' ? (
-        <p className="mt-1.5 flex items-center gap-2 rounded-lg bg-[#F8FAFC] px-3 py-2.5 text-[12px] text-[#64748B]"><Users className="h-4 w-4 shrink-0" />Tick contacts in the list, or press “Bulk Send” to send to everybody the filters show.</p>
-      ) : (
-        <div className="mt-1.5">
-          <div className="flex items-center gap-1">
-            {(info?.sample || []).slice(0, 5).map((p) => <span key={p.phone} title={p.name || prettyPhone(p.phone)} className="-ml-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#E2E8F0] text-[10px] font-bold text-[#334155] first:ml-0">{initials(p.name)}</span>)}
-            {info && info.willSend > 5 && <span className="ml-1 text-[11.5px] text-[#64748B]">+ {(info.willSend - 5).toLocaleString('en-IN')} more</span>}
-          </div>
-          <p className="mt-1 text-[11.5px] text-[#64748B]">{audience.label}{info && info.optedOut > 0 && <b className="text-[#B45309]"> · {info.optedOut} opted out, left out</b>}{info && info.total - info.optedOut > info.willSend && <b className="text-[#B45309]"> · only the first {info.willSend.toLocaleString('en-IN')} per send</b>}</p>
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-4 px-4 pb-5 sm:px-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-3">
+          <Step n={1} title="Select Recipients" sub="Choose one or more contacts to send this template." right={
+            <span data-recipient-count className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11.5px] font-bold ${audience.mode === 'none' ? 'bg-[#F1F5F9] text-[#64748B]' : 'bg-[#DCFCE7] text-[#15803D]'}`}>{audience.mode !== 'none' && <CheckCircle2 className="h-3.5 w-3.5" />}{audience.mode === 'none' ? 'None selected' : `${count.toLocaleString('en-IN')} Contact${count === 1 ? '' : 's'} Selected`}</span>}>
+            <div className="flex flex-wrap items-center gap-2">
+              {audience.mode === 'none' && <p className="flex items-center gap-2 rounded-lg bg-[#F8FAFC] px-3 py-2.5 text-[12.5px] text-[#64748B]"><Users className="h-4 w-4 shrink-0" />Tick contacts in the list, or press “Bulk Send” to send to everybody the filters show.</p>}
+              {audience.mode === 'all' && <span className="flex items-center gap-2.5 rounded-xl bg-[#F8FAFC] px-3 py-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#DBEAFE] text-[#1D4ED8]"><Users className="h-4 w-4" /></span><span className="text-[12.5px]"><b className="block text-[#0F172A]">{audience.label}</b><span className="text-[#64748B]">{info ? `${info.willSend.toLocaleString('en-IN')} will receive it${info.optedOut ? ` · ${info.optedOut} opted out, left out` : ''}` : 'counting…'}</span></span></span>}
+              {chips.map((p: any) => (
+                <span key={p._id || p.phone} className="flex items-center gap-2.5 rounded-xl bg-[#F8FAFC] px-3 py-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#DBEAFE] text-[11px] font-bold text-[#1D4ED8]">{initials(p.name)}</span>
+                  <span className="text-[12.5px]"><b className="block text-[#0F172A]">{p.name || 'No name'}</b><span className="text-[#64748B]">{prettyPhone(p.phone)}</span></span>
+                  {onRemoveRecipient && p._id && <button type="button" aria-label={`Remove ${p.name || p.phone}`} onClick={() => onRemoveRecipient(String(p._id))} className="ml-1 text-[#94A3B8] hover:text-[#0F172A]"><X className="h-4 w-4" /></button>}
+                </span>
+              ))}
+              {audience.mode === 'ids' && count > chips.length && <span className="text-[12px] font-semibold text-[#64748B]">+ {(count - chips.length).toLocaleString('en-IN')} more</span>}
+              {audience.mode === 'ids' && info && info.optedOut > 0 && <span className="text-[11.5px] font-semibold text-[#B45309]">{info.optedOut} opted out, left out</span>}
+              {onAddMore && <button type="button" onClick={onAddMore} className="flex h-[52px] items-center gap-1.5 rounded-xl border border-dashed border-[#CBD5E1] px-4 text-[13px] font-bold text-[#0F172A] hover:bg-[#F8FAFC]"><Plus className="h-4 w-4" />Add More Contacts</button>}
+            </div>
+          </Step>
 
-      <div className="mt-3.5 flex items-center justify-between"><p className="text-[12.5px] font-semibold text-[#334155]">Approved Template</p><button type="button" title="Reload templates" onClick={onReloadTemplates} className="text-[#64748B] hover:text-[#0F172A]"><RefreshCw className={`h-3.5 w-3.5 ${loadingTemplates ? 'animate-spin' : ''}`} /></button></div>
-      {templatesError && !templates.length ? <p className="mt-1 rounded-lg bg-[#FFFBEB] px-3 py-2 text-[12px] text-[#B45309]">{templatesError}</p> : (
-        <div className="mt-1 flex items-center gap-2">
-          <select value={tplKey} onChange={(e) => setTplKey(e.target.value)} aria-label="Approved Template" className={field}>
-            {!templates.length && <option value="">{loadingTemplates ? 'Loading…' : 'No approved templates'}</option>}
-            {templates.map((t) => <option key={keyOf(t)} value={keyOf(t)}>{t.name} ({t.language})</option>)}
-          </select>
-          {tpl && <span className="flex shrink-0 items-center gap-1 rounded-md bg-[#DCFCE7] px-2 py-1 text-[11.5px] font-bold text-[#15803D]"><CheckCircle2 className="h-3.5 w-3.5" />Approved</span>}
-        </div>
-      )}
-      {senders.length > 1 && (
-        <select value={senderId} onChange={(e) => setSenderId(e.target.value)} aria-label="Send from" className={`${field} mt-2`}>{senders.map((s) => <option key={s.id} value={s.id}>From {s.display}{s.name ? ` — ${s.name}` : ''}</option>)}</select>
-      )}
-
-      {needsMedia && (
-        <div className="mt-3">
-          <p className="mb-1 text-[12.5px] font-semibold text-[#334155]">Header {headerType.toLowerCase()} <span className="text-red-500">*</span></p>
-          <input ref={fileRef} type="file" hidden accept={MEDIA_ACCEPT[headerType]} onChange={(e) => onFile(e.target.files?.[0])} />
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[#CBD5E1] bg-[#F8FAFC] text-[12.5px] font-semibold text-[#334155]">
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4 text-[#16A34A]" />}{media ? `${media.filename} — change` : `Upload the ${headerType.toLowerCase()}`}
-          </button>
-        </div>
-      )}
-
-      {varCount > 0 && (
-        <div className="mt-3">
-          <p className="mb-1 text-[12.5px] font-semibold text-[#334155]">Template Variables</p>
-          <div className="space-y-2">
-            {Array.from({ length: varCount }, (_, i) => (
-              <div key={i}>
-                <div className="flex h-10 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white focus-within:border-[#F4511E]">
-                  <span className="flex w-12 shrink-0 items-center justify-center border-r border-[#E2E8F0] bg-[#F8FAFC] text-[11.5px] font-bold text-[#475569]">{`{{${i + 1}}}`}</span>
-                  <input value={vars[i] || ''} aria-label={`Variable ${i + 1}`} placeholder={i === 0 ? 'e.g. Customer Name' : `Value ${i + 1}`} className="min-w-0 flex-1 px-3 text-[13.5px] outline-none placeholder:text-[#94A3B8]"
-                    onChange={(e) => setVars((v) => { const n = [...v]; n[i] = e.target.value; return n })} />
-                </div>
-                <div className="mt-1 flex flex-wrap gap-1">{PLACEHOLDERS.map((p) => <button key={p.token} type="button" title={`Each person gets their own ${p.label.toLowerCase()}`} onClick={() => setVars((v) => { const n = [...v]; n[i] = `${(n[i] || '').trim()} ${p.token}`.trim(); return n })} className="rounded bg-[#EFF6FF] px-1.5 py-0.5 text-[10.5px] font-semibold text-[#1D4ED8] hover:bg-[#DBEAFE]">+ {p.label}</button>)}</div>
+          <Step n={2} title="Choose Template" sub="Select an approved template from the list." right={<button type="button" title="Reload templates" onClick={onReloadTemplates} className="text-[#64748B] hover:text-[#0F172A]"><RefreshCw className={`h-4 w-4 ${loadingTemplates ? 'animate-spin' : ''}`} /></button>}>
+            {templatesError && !templates.length ? <p className="rounded-lg bg-[#FFFBEB] px-3 py-2 text-[12px] text-[#B45309]">{templatesError}</p> : (
+              <div className="relative">
+                <select value={tplKey} onChange={(e) => setTplKey(e.target.value)} aria-label="Approved Template" className="h-12 w-full appearance-none rounded-xl border border-[#E2E8F0] bg-white pl-4 pr-36 text-[14px] font-semibold text-[#0F172A] outline-none focus:border-[#F4511E]">
+                  {!templates.length && <option value="">{loadingTemplates ? 'Loading…' : 'No approved templates'}</option>}
+                  {templates.map((t) => <option key={keyOf(t)} value={keyOf(t)}>{t.name} ({t.language})</option>)}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">{tpl && <span className="flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[11.5px] font-bold text-[#15803D]"><CheckCircle2 className="h-3.5 w-3.5" />Approved</span>}<ChevronDown className="h-4 w-4 text-[#64748B]" /></span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            )}
+            {senders.length > 1 && <select value={senderId} onChange={(e) => setSenderId(e.target.value)} aria-label="Send from" className={`${field} mt-2`}>{senders.map((s) => <option key={s.id} value={s.id}>From {s.display}{s.name ? ` — ${s.name}` : ''}</option>)}</select>}
+          </Step>
 
-      <p className="mt-3.5 text-[12.5px] font-semibold text-[#334155]">Send Schedule</p>
-      <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-[#0F172A]">
-        <label className="flex cursor-pointer items-center gap-2"><input type="radio" name="wa-when" className="h-4 w-4 accent-[#F4511E]" checked={when === 'now'} onChange={() => setWhen('now')} />Send Now</label>
-        <label className="flex cursor-pointer items-center gap-2"><input type="radio" name="wa-when" className="h-4 w-4 accent-[#F4511E]" checked={when === 'later'} onChange={() => setWhen('later')} />Schedule for Later</label>
-      </div>
-      {when === 'later' && <div className="mt-2 flex items-center gap-2"><CalendarClock className="h-4 w-4 shrink-0 text-[#64748B]" /><input type="datetime-local" value={at} min={minAt} aria-label="Send at" onChange={(e) => setAt(e.target.value)} className={field} /></div>}
-
-      {/* phone preview */}
-      <div className="mt-3.5 rounded-xl bg-[#F1F5F9] p-3">
-        <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-[#334155]"><WhatsAppIcon className="h-4 w-4" />WhatsApp Preview{sample?.name ? <span className="font-normal text-[#64748B]"> · as {sample.name.split(/\s+/)[0]} gets it</span> : null}</p>
-        <div className="mx-auto max-w-[290px] overflow-hidden rounded-[22px] border-[5px] border-[#111827] bg-[#EFEAE2]">
-          <div className="flex items-center gap-2 bg-[#075E54] px-3 py-2 text-white"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">BM</span><span className="min-w-0"><b className="block truncate text-[12.5px] leading-tight">Bharat Mechanics</b><span className="text-[10px] opacity-80">Online</span></span></div>
-          <div className="min-h-[120px] p-2.5" style={{ backgroundImage: 'radial-gradient(rgba(0,0,0,.04) 1px, transparent 1px)', backgroundSize: '12px 12px' }}>
-            {tpl ? (
-              <div data-send-preview className="max-w-[92%] overflow-hidden rounded-lg rounded-tl-none bg-white shadow-sm">
-                {needsMedia && <div className="flex h-[92px] items-center justify-center bg-black/10 text-[11px] text-[#64748B]">{media?.kind === 'image' ? <img src={media.previewUrl} alt="" className="h-full w-full object-cover" /> : media ? <span className="flex flex-col items-center gap-1">{headerType === 'VIDEO' ? <Play className="h-5 w-5" /> : <FileText className="h-5 w-5" />}{media.filename}</span> : <span className="flex flex-col items-center gap-1"><ImagePlus className="h-5 w-5" />{headerType.toLowerCase()}</span>}</div>}
-                <div className="px-2.5 pb-1.5 pt-2 text-[12.5px] leading-normal text-[#0F172A]">
-                  {headerType === 'TEXT' && tpl.headerText && <p className="mb-0.5 font-bold">{renderWaText(tpl.headerText, 'h')}</p>}
-                  <p className="whitespace-pre-wrap break-words">{renderWaText((tpl.bodyText || '').replace(/\{\{\s*(\d+)\s*\}\}/g, (whole: string, n: string) => (shown[Number(n) - 1] || '').trim() || whole), 'b')}</p>
-                  {tpl.footerText && <p className="mt-1 text-[10.5px] text-[#64748B]">{tpl.footerText}</p>}
-                  <p className="mt-0.5 flex items-center justify-end gap-1 text-[9.5px] text-[#64748B]">{now}<CheckCheck className="h-3 w-3 text-[#53BDEB]" /></p>
-                </div>
-                {(tpl.buttons || []).map((b, i) => <div key={i} className="flex items-center justify-center gap-1.5 border-t border-black/10 py-1.5 text-[12px] font-medium text-[#027EB5]">{btnIcon(b.type)}{b.text}</div>)}
+          <Step n={3} title="Fill Template Details" sub="The message will be sent with these details.">
+            {needsMedia && (
+              <div className="mb-3">
+                <input ref={fileRef} type="file" hidden accept={MEDIA_ACCEPT[headerType]} onChange={(e) => onFile(e.target.files?.[0])} />
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] text-[12.5px] font-semibold text-[#334155]">
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4 text-[#16A34A]" />}{media ? `${media.filename} — change` : `Upload the header ${headerType.toLowerCase()} (required)`}
+                </button>
               </div>
-            ) : <p className="py-8 text-center text-[11.5px] text-[#64748B]">Choose a template to see it here.</p>}
+            )}
+            {varCount > 0 ? (
+              <div className="space-y-2.5">
+                {Array.from({ length: varCount }, (_, i) => { const Ic = VAR_ICON[i % VAR_ICON.length]; return (
+                  <div key={i}>
+                    <div className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] p-1.5 pl-3">
+                      <span className="flex w-[150px] shrink-0 items-center gap-2.5 text-[13px] font-semibold text-[#334155]"><Ic className="h-4 w-4 text-[#475569]" />Value {i + 1} <span className="font-normal text-[#94A3B8]">{`{{${i + 1}}}`}</span></span>
+                      <input value={vars[i] || ''} aria-label={`Variable ${i + 1}`} placeholder={i === 0 ? 'e.g. Customer Name' : `Value ${i + 1}`} className="h-10 min-w-0 flex-1 rounded-lg border border-[#E2E8F0] bg-white px-3 text-[13.5px] text-[#0F172A] outline-none placeholder:text-[#94A3B8] focus:border-[#F4511E]"
+                        onChange={(e) => setVars((v) => { const n = [...v]; n[i] = e.target.value; return n })} />
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1 pl-3">{PLACEHOLDERS.map((p) => <button key={p.token} type="button" title={`Each person gets their own ${p.label.toLowerCase()}`} onClick={() => setVars((v) => { const n = [...v]; n[i] = `${(n[i] || '').trim()} ${p.token}`.trim(); return n })} className="rounded bg-[#EFF6FF] px-1.5 py-0.5 text-[10.5px] font-semibold text-[#1D4ED8] hover:bg-[#DBEAFE]">+ {p.label}</button>)}</div>
+                  </div>
+                ) })}
+              </div>
+            ) : <p className="rounded-xl bg-[#F8FAFC] px-3 py-3 text-[12.5px] text-[#64748B]">{tpl ? 'This template has nothing to fill in — it is sent exactly as shown in the preview.' : 'Choose a template first.'}</p>}
+          </Step>
+
+          <Step n={4} title="Send Schedule" sub="Choose when to send this message.">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px] font-semibold text-[#0F172A]">
+              <label className="flex cursor-pointer items-center gap-2.5"><input type="radio" name="wa-when" className="h-5 w-5 accent-[#F4511E]" checked={when === 'now'} onChange={() => setWhen('now')} />Send Now</label>
+              <label className="flex cursor-pointer items-center gap-2.5"><input type="radio" name="wa-when" className="h-5 w-5 accent-[#F4511E]" checked={when === 'later'} onChange={() => setWhen('later')} />Schedule for Later</label>
+              {when === 'later' && <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4 shrink-0 text-[#64748B]" /><input type="datetime-local" value={at} min={minAt} aria-label="Send at" onChange={(e) => setAt(e.target.value)} className={`${field} w-auto`} /></span>}
+            </div>
+          </Step>
+
+          {missing && audience.mode !== 'none' && <p className="text-[12.5px] font-semibold text-[#B45309]">{missing}</p>}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button type="button" data-send-test-open onClick={() => setTestOpen(true)} disabled={!tpl} className="flex h-12 items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[14px] font-bold text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-50"><Send className="h-4 w-4" />Send Test Message</button>
+            <button type="button" data-send-go disabled={!!missing || sending} onClick={() => setConfirm(true)} className="flex h-12 items-center gap-2 rounded-xl px-6 text-[14px] font-bold text-white shadow-[0_6px_14px_rgba(244,81,30,.3)] disabled:opacity-50" style={{ background: ORANGE }}>
+              <WhatsAppIcon className="h-5 w-5" color="#fff" />{when === 'later' ? 'Schedule WhatsApp Message' : 'Send WhatsApp Message'}{count ? ` (${count.toLocaleString('en-IN')})` : ''}
+            </button>
           </div>
         </div>
+
+        <div>{preview}</div>
       </div>
 
-      {missing && audience.mode !== 'none' && <p className="mt-2.5 text-[12px] font-semibold text-[#B45309]">{missing}</p>}
-      <button type="button" data-send-go disabled={!!missing || sending} onClick={() => setConfirm(true)} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#12A34B] text-[14px] font-bold text-white hover:bg-[#0F8F41] disabled:opacity-50">
-        {when === 'later' ? <CalendarClock className="h-4 w-4" /> : <Send className="h-4 w-4" />}{when === 'later' ? 'Schedule' : 'Send'}{count ? ` to ${count.toLocaleString('en-IN')} contact${count === 1 ? '' : 's'}` : ' Template'}
-      </button>
+      {testOpen && tpl && (
+        <Modal title="Send a test message" onClose={() => setTestOpen(false)} busy={testing}>
+          <p className="mb-3 text-[12.5px] text-[#64748B]">Sends <b className="text-[#0F172A]">{tpl.name}</b> with the values filled above to one number, so you can see it on a real phone. Placeholders like {'{first_name}'} are shown as “Test User”.</p>
+          <label className="mb-1 block text-[12.5px] font-semibold text-[#334155]">WhatsApp number</label>
+          <div className="flex h-10 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white focus-within:border-[#F4511E]"><span className="flex items-center border-r border-[#E2E8F0] px-2.5 text-[13px] text-[#475569]">+91</span><input autoFocus value={testPhone} inputMode="numeric" aria-label="Test number" placeholder="98765 43210" onChange={(e) => setTestPhone(e.target.value.replace(/[^\d ]/g, ''))} onKeyDown={(e) => { if (e.key === 'Enter') sendTest() }} className="min-w-0 flex-1 px-3 text-[13.5px] outline-none" /></div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setTestOpen(false)} disabled={testing} className="h-10 rounded-lg border border-[#E2E8F0] px-4 text-[13.5px] font-bold text-[#334155]">Cancel</button>
+            <button type="button" data-send-test onClick={sendTest} disabled={testing} className="flex h-10 items-center gap-2 rounded-lg bg-[#12A34B] px-5 text-[13.5px] font-bold text-white disabled:opacity-60">{testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send test</button>
+          </div>
+        </Modal>
+      )}
 
       {confirm && tpl && (
         <Confirm title={when === 'later' ? 'Schedule this send?' : 'Send this template now?'} action={when === 'later' ? 'Yes, schedule it' : `Yes, send to ${count.toLocaleString('en-IN')}`} busy={sending} onNo={() => setConfirm(false)} onYes={send}
