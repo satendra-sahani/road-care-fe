@@ -20,6 +20,7 @@ import {
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { WhatsAppSender } from '@/components/admin/WhatsAppSender'
 import { WhatsAppSentHistory } from '@/components/admin/WhatsAppSentHistory'
+import { WhatsAppTemplatesTab, WA_MANAGER_URL } from '@/components/admin/WhatsAppTemplatesTab'
 import { adminWhatsappAPI, adminWhatsappContactsAPI, type WaContactFilter } from '@/services/api'
 import { downloadCsv } from '@/lib/contactsFile'
 import {
@@ -66,6 +67,7 @@ export function WhatsAppContacts() {
   const [tplLoading, setTplLoading] = useState(true)
   const [tplError, setTplError] = useState('')
   const [presetKey, setPresetKey] = useState('')
+  const [tplCounts, setTplCounts] = useState<{ approved: number; total: number } | null>(null)
   const [editing, setEditing] = useState<WaContact | null>(null)
   const [adding, setAdding] = useState(false)
   const [menu, setMenu] = useState('')
@@ -202,12 +204,14 @@ export function WhatsAppContacts() {
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E9FBF0]"><WhatsAppIcon className="h-7 w-7" /></span>
             <div>
-              <h1 className="text-[24px] font-extrabold leading-tight tracking-tight text-[#0F172A]">WhatsApp &amp; Contacts</h1>
-              <p className="text-[13.5px] text-[#64748B]">Manage your contacts and send approved WhatsApp templates to engage with your customers.</p>
+              <h1 className="text-[24px] font-extrabold leading-tight tracking-tight text-[#0F172A]">{tab === 'templates' ? 'WhatsApp Templates' : 'WhatsApp & Contacts'}</h1>
+              <p className="text-[13.5px] text-[#64748B]">{tab === 'templates' ? 'Create and manage approved WhatsApp templates to engage with your customers.' : 'Manage your contacts and send approved WhatsApp templates to engage with your customers.'}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <div className={`${card} flex items-center gap-3 px-4 py-3`}><WhatsAppIcon className="h-10 w-10" /><div><b data-total-contacts className="block text-[19px] font-extrabold leading-tight text-[#0F172A]">{meta.total.toLocaleString('en-IN')}</b><span className="text-[12px] text-[#64748B]">Total Contacts{meta.optedOut ? ` · ${meta.optedOut} opted out` : ''}</span></div></div>
+            <div className={`${card} flex items-center gap-3 px-4 py-3`}><WhatsAppIcon className="h-10 w-10" /><div>{tab === 'templates'
+              ? <><b className="block text-[19px] font-extrabold leading-tight text-[#0F172A]">{tplCounts ? tplCounts.approved : '…'}</b><span className="text-[12px] text-[#64748B]">Total Templates{tplCounts && tplCounts.total > tplCounts.approved ? ` · ${tplCounts.total - tplCounts.approved} in review / rejected` : ''}</span></>
+              : <><b data-total-contacts className="block text-[19px] font-extrabold leading-tight text-[#0F172A]">{meta.total.toLocaleString('en-IN')}</b><span className="text-[12px] text-[#64748B]">Total Contacts{meta.optedOut ? ` · ${meta.optedOut} opted out` : ''}</span></>}</div></div>
             <div className={`${card} flex items-center gap-3 px-4 py-3`}><span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E0F2FE] text-[#0284C7]"><Send className="h-5 w-5" /></span><div><b className="block text-[19px] font-extrabold leading-tight text-[#0F172A]">{meta.sent30d.toLocaleString('en-IN')}</b><span className="text-[12px] text-[#64748B]">Messages Sent (Last 30 days)</span></div></div>
           </div>
         </div>
@@ -222,7 +226,9 @@ export function WhatsAppContacts() {
             ))}
           </div>
           <div className="flex flex-wrap gap-2 py-2">
-            <button type="button" data-add-contact onClick={() => setAdding(true)} className="flex h-10 items-center gap-2 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: ORANGE }}><UserPlus className="h-4 w-4" />Add Contact</button>
+            {tab === 'templates'
+              ? <a href={WA_MANAGER_URL} target="_blank" rel="noopener noreferrer" data-create-template title="Templates are made and approved in Meta's WhatsApp Manager" className="flex h-10 items-center gap-2 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: ORANGE }}><Plus className="h-4 w-4" />Create Template</a>
+              : <button type="button" data-add-contact onClick={() => setAdding(true)} className="flex h-10 items-center gap-2 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: ORANGE }}><UserPlus className="h-4 w-4" />Add Contact</button>}
             <button type="button" data-import-excel onClick={() => setImportOpen(true)} className="flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-white px-4 text-[13.5px] font-bold text-[#0F172A] hover:bg-[#F8FAFC]"><Upload className="h-4 w-4" />Import Excel</button>
             <button type="button" data-bulk-send onClick={() => { if (!total) { toast.error('There are no contacts to send to'); return } setAllMatching(true); setPicked(new Set()); toSend() }} className="flex h-10 items-center gap-2 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: NAVY }}><Send className="h-4 w-4" />Bulk Send</button>
           </div>
@@ -386,24 +392,8 @@ export function WhatsAppContacts() {
         )}
 
         {tab === 'templates' && (
-          <section className={`${card} p-4`} data-templates>
-            <div className="mb-3 flex items-center justify-between"><div><h3 className="text-[15.5px] font-extrabold text-[#0F172A]">Approved templates</h3><p className="text-[12.5px] text-[#64748B]">Templates are created and approved in WhatsApp Manager. Only approved ones can be sent.</p></div><button type="button" onClick={loadTemplates} className="flex items-center gap-1 text-[12.5px] font-bold text-[#2563EB]"><RefreshCw className={`h-3.5 w-3.5 ${tplLoading ? 'animate-spin' : ''}`} />Reload</button></div>
-            {tplError && !templates.length && <p className="rounded-lg bg-[#FFFBEB] px-3 py-2.5 text-[13px] text-[#B45309]">{tplError}</p>}
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {templates.map((t) => (
-                <div key={`${t.name}::${t.language}`} data-template-card className="flex flex-col rounded-xl border border-[#EEF2F6] p-3">
-                  <div className="flex items-center justify-between gap-2"><b className="truncate text-[13.5px] text-[#0F172A]">{t.name}</b><span className="shrink-0 text-[10.5px] font-bold uppercase text-[#94A3B8]">{t.language}</span></div>
-                  <p className="mt-1.5 flex-1 whitespace-pre-wrap rounded-lg bg-[#F0FDF4] p-2.5 text-[12.5px] leading-snug text-[#0F172A]">{t.headerType === 'TEXT' && t.headerText ? <b className="block">{t.headerText}</b> : null}{t.bodyText}{t.footerText ? <span className="mt-1 block text-[11px] text-[#64748B]">{t.footerText}</span> : null}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10.5px] font-bold">
-                    {t.category && <span className="rounded bg-[#F1F5F9] px-1.5 py-0.5 text-[#475569]">{t.category}</span>}
-                    {(t.varCount || 0) > 0 && <span className="rounded bg-[#FEF3C7] px-1.5 py-0.5 text-[#B45309]">{t.varCount} value{t.varCount === 1 ? '' : 's'}</span>}
-                    {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(String(t.headerType || '').toUpperCase()) && <span className="rounded bg-[#F1F5F9] px-1.5 py-0.5 text-[#475569]">{String(t.headerType).toLowerCase()} header</span>}
-                    <button type="button" className="ml-auto h-7 rounded-lg px-2.5 text-[12px] text-white" style={{ background: ORANGE }} onClick={() => { setPresetKey(`${t.name}::${t.language}`); setTab('contacts'); if (count) setSendOpen(true); else toast.info(`“${t.name}” is chosen. Tick contacts and press Send Template, or press Bulk Send.`) }}>Use this</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          <WhatsAppTemplatesTab senders={senders} onCounts={setTplCounts}
+            onUse={(key) => { setPresetKey(key); setTab('contacts'); if (count) setSendOpen(true); else toast.info(`“${key.split('::')[0]}” is chosen. Tick contacts and press Send Template, or press Bulk Send.`) }} />
         )}
 
         {tab === 'imports' && (

@@ -786,7 +786,9 @@ export const adminApiKeysAPI = {
 export const adminWhatsappAPI = {
   getSenders: () => api.get('/admin/whatsapp/senders'),
   getTemplates: () => api.get('/admin/whatsapp/templates'),
-  send: (data: { phoneNumberId: string; templateName: string; languageCode?: string; toPhone: string; variables?: string[]; headerMediaId?: string; headerMediaKind?: string }) =>
+  // every template, whatever its status, with the sample banner and example values (Templates page)
+  getAllTemplates: (fresh = false) => api.get('/admin/whatsapp/templates/all', { params: fresh ? { fresh: 1 } : undefined }),
+  send: (data: { phoneNumberId: string; templateName: string; languageCode?: string; toPhone: string; variables?: string[]; headerMediaId?: string; headerMediaKind?: string; headerMediaLink?: string }) =>
     api.post('/admin/whatsapp/send', data),
   // Upload a header media file (image/video/document) → Meta media id for templates.
   uploadMedia: (form: FormData) =>
