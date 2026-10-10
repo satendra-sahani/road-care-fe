@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LocateFixed, Minus, Plus, Loader2, MapPin, Map as MapIcon, Layers } from 'lucide-react'
 import { loadGoogleMaps, googleMapsFailed } from '@/lib/googleMaps'
 import { GarageMap } from '@/components/manager/GarageMap'
+import { numPin, type NearbyPin } from './partnerItems'
 
 // Location preview of the "Create Service Request" dialog: a Google map opened
 // wide enough to read the area and city names around the customer, with the pin
@@ -24,7 +25,7 @@ const PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" view
 const centreFor = (p: LatLng, z: number, px: number): LatLng => ({ lat: p.lat, lng: p.lng + (px * 360) / (256 * 2 ** z) })
 const ctl = 'flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#16305C] shadow-[0_2px_8px_rgba(15,23,42,.18)] hover:bg-[#F3F5F9]'
 
-export function CreateRequestMap({ value, accuracy, onChange, className = '', offsetX = 0, focusKey = '' }: {
+export function CreateRequestMap({ value, accuracy, onChange, className = '', offsetX = 0, focusKey = '', nearby, fitKey = 0 }: {
   value: LatLng | null
   /** metres, when the phone reported it */
   accuracy?: number | null
@@ -34,6 +35,10 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
   offsetX?: number
   /** changes whenever a position arrives that the admin did not place by hand — the map then centres on it */
   focusKey?: string
+  /** the nearest garages / mechanics, drawn as small numbered pins (Google map only) */
+  nearby?: NearbyPin[]
+  /** each change zooms out until the customer and those pins are all in view */
+  fitKey?: number
 }) {
   const [engine, setEngine] = useState<'loading' | 'google' | 'osm'>('loading')
   const [mapType, setMapType] = useState<'roadmap' | 'hybrid'>('roadmap')
@@ -42,6 +47,7 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
   const map = useRef<any>(null)
   const marker = useRef<any>(null)
   const circle = useRef<any>(null)
+  const pins = useRef<any[]>([])
   const cb = useRef(onChange)
   cb.current = onChange
 
@@ -69,6 +75,7 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
     return () => {
       clearInterval(t); clearTimeout(stop)
       marker.current?.setMap(null); circle.current?.setMap(null)
+      pins.current.forEach((x) => x.setMap(null)); pins.current = []
       marker.current = null; circle.current = null; map.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -113,6 +120,30 @@ export function CreateRequestMap({ value, accuracy, onChange, className = '', of
     m.setZoom(z); m.setCenter(centreFor(value, z, offsetX))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, focusKey])
+
+  // the nearest garages / mechanics, numbered like the list beside the map; a tap opens that one's card
+  const nearSig = (nearby || []).map((p) => `${p.id}:${p.n}:${p.lat},${p.lng}:${p.color}`).join(';')
+  useEffect(() => {
+    const g = (window as any).google?.maps, m = map.current
+    pins.current.forEach((x) => x.setMap(null)); pins.current = []
+    if (engine !== 'google' || !g || !m) return
+    ;(nearby || []).forEach((p) => {
+      const { url, s } = numPin(p.n, p.color, false)
+      const mk = new g.Marker({ map: m, position: { lat: p.lat, lng: p.lng }, zIndex: 5, title: p.title, icon: { url, scaledSize: new g.Size(s, s), anchor: new g.Point(s / 2, s - 2) } })
+      mk.addListener('click', () => p.onClick?.())
+      pins.current.push(mk)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, nearSig])
+  useEffect(() => {
+    const g = (window as any).google?.maps, m = map.current
+    if (engine !== 'google' || !g || !m || !fitKey || !value || !(nearby || []).length) return
+    const b = new g.LatLngBounds()
+    b.extend(value)
+    ;(nearby || []).forEach((p) => b.extend({ lat: p.lat, lng: p.lng }))
+    m.fitBounds(b, { top: 40, bottom: 48, left: 52, right: 36 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, fitKey])
 
   useEffect(() => { if (engine === 'google') map.current?.setMapTypeId(mapType) }, [engine, mapType])
 

@@ -10,6 +10,10 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { toast } from 'sonner'
 import api, { serviceRequestAPI, uploadAPI, adminLocationRequestAPI } from '@/services/api'
 import { CreateRequestMap } from './CreateRequestMap'
+import { NearbyPartners } from './NearbyPartners'
+import { PartnerDetailsDialog, type PartnerTarget } from './PartnerDetailsDialog'
+import type { NearbyPin } from './partnerItems'
+import type { Mechanic } from '@/store/slices/mechanicSlice'
 import { initialsOf, vehicleIconFor } from './serviceRequestUi'
 import { BRANDS, MODELS, PRIORITIES, SERVICES, SERVICE_TYPES, TIME_SLOTS, VEHICLE_KINDS, type VehicleKind } from './createRequestData'
 
@@ -66,6 +70,7 @@ const BLUE = '#1E40E0'
 const NAVY = '#0F2A5F'
 const DRAFT_KEY = 'bm_new_request_draft'
 const MAX_PHOTOS = 10
+const NONE: any[] = []
 const MAX_MB = 5
 // the local calendar date (toISOString alone is UTC — before 5:30 am IST that is still yesterday)
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]
@@ -209,11 +214,15 @@ const Line = ({ k, children }: { k: string; children: React.ReactNode }) => (
   <div className="flex gap-3 text-[13.5px]"><span className="w-[118px] shrink-0 text-[#6B7280]">{k}</span><span className="min-w-0 flex-1 break-words font-semibold text-[#111827]">{children}</span></div>
 )
 
-export function CreateRequestDialog({ open, onClose, onCreated }: {
+export function CreateRequestDialog({ open, onClose, onCreated, shops = NONE, mechanics = NONE, partnersLoading = false }: {
   open: boolean
   onClose: () => void
   /** called with the new service request after it is created */
   onCreated: (request: any) => void
+  /** garages (shop partners + field garages) and mechanics, for the nearest list — the same ones the assign dialog offers */
+  shops?: any[]
+  mechanics?: Mechanic[]
+  partnersLoading?: boolean
 }) {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<Form>(emptyForm)
@@ -238,6 +247,10 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [fees, setFees] = useState<{ normal: number; emergency: number } | null>(null)
+  // nearest garages / mechanics: their pins on the map, and the contact card of the one that was tapped
+  const [nearPins, setNearPins] = useState<NearbyPin[]>([])
+  const [fitKey, setFitKey] = useState(0)
+  const [partner, setPartner] = useState<PartnerTarget | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const addressRef = useRef<HTMLTextAreaElement>(null)
   const lastLooked = useRef('')
@@ -262,6 +275,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
   useEffect(() => {
     if (!open) return
     setStep(0); setLookup(null); setLocReq(null); setDeliveries({}); setFix(null); setAddrQ(''); setAddrHits([]); setCustQ(''); setCustHits([])
+    setNearPins([]); setPartner(null)
     lastLooked.current = ''; addrAuto.current = true; autoName.current = ''
     applied.current = ''; handMoved.current = false; seenStatus.current = ''; lastGeo.current = null
     let draft: { form?: Form; locReqId?: string; fix?: Fix | null } | null = null
@@ -301,7 +315,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) requestClose() }
     window.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -557,6 +571,10 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
   const modelList = MODELS[`${form.vehicleType}:${form.brand.trim()}`] || []
   const prio = PRIORITIES.find((p) => p.key === form.priority)!
   const fee = fees ? (form.priority === 'urgent' ? fees.emergency : fees.normal) : null
+  // the typed address in two forms, for the nearest list while there is no pin
+  const addrQueries = form.address.trim().length >= 4
+    ? [joinAddr(form.address.trim(), form.city.trim(), form.state.trim(), form.pincode.trim()), form.city.trim() ? [form.city.trim(), form.state.trim(), form.pincode.trim()].filter(Boolean).join(', ') : ''].filter((q, i, all) => q && all.indexOf(q) === i)
+    : []
   const fixLabel = fix?.source === 'app' ? 'From the customer app' : fix?.source === 'web' ? 'From the customer (web link)' : fix?.source === 'recent' ? 'From an earlier address' : fix?.source === 'search' ? 'From address search' : fix ? 'Pinned by you' : ''
 
   // ── location status banner ──
@@ -982,6 +1000,22 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
     </>
   )
 
+  // the customer's earlier addresses: in the map card until a location is on the map,
+  // under the nearest list after that (so that list is in view without scrolling)
+  const Recent = lookup && lookup.recentLocations.length > 0 ? (
+    <>
+      <span className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-bold text-[#0F1E46]"><History className="h-4 w-4" style={{ color: BLUE }} />Recent Locations</span>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {lookup.recentLocations.map((r, i) => (
+          <button key={i} type="button" onClick={() => { pickRecent(r); setStep(0) }} data-recent={i} className="rounded-lg border border-[#E6ECF5] bg-[#FAFBFE] px-2.5 py-2 text-left hover:bg-[#F1F5FB]">
+            <b className="block truncate text-[12.5px] text-[#111827]">{r.label}</b>
+            <span className="line-clamp-2 text-[11.5px] text-[#6B7280]">{joinAddr(r.address, r.city)}</span>
+          </button>
+        ))}
+      </div>
+    </>
+  ) : null
+
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#0B1730]/60 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label="Create Service Request">
       <div className="flex h-full max-h-[980px] w-full max-w-[1180px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -1023,7 +1057,8 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
               <Band icon={<MapPin className="h-[18px] w-[18px]" />}>Location Preview</Band>
               <div className="relative h-[280px]">
                 <CreateRequestMap value={pos} accuracy={fix?.accuracy} onChange={(p) => placePin(p.lat, p.lng, { source: 'manual' })} className="h-full w-full" offsetX={70}
-                  focusKey={fix && fix.source !== 'manual' ? `${fix.source}|${fix.at || ''}|${form.lat},${form.lng}` : ''} />
+                  focusKey={fix && fix.source !== 'manual' ? `${fix.source}|${fix.at || ''}|${form.lat},${form.lng}` : ''}
+                  nearby={nearPins} fitKey={fitKey} />
                 {pos ? (
                   <>
                     <div className="pointer-events-none absolute right-2.5 top-2.5 z-10 w-[178px] rounded-lg bg-white/95 px-2.5 py-2 text-[11.5px] leading-snug text-[#374151] shadow-[0_2px_8px_rgba(15,23,42,.18)]" data-loc-card>
@@ -1048,20 +1083,14 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
                 </div>
                 <button type="button" onClick={() => { setStep(0); setTimeout(() => addressRef.current?.focus(), 60) }} className="flex shrink-0 items-center gap-1.5 text-[13px] font-bold hover:underline" style={{ color: BLUE }}><Pencil className="h-3.5 w-3.5" />Edit</button>
               </div>
-              {lookup && lookup.recentLocations.length > 0 && (
-                <div className="border-t border-[#EEF1F6] px-3.5 py-2.5">
-                  <span className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-bold text-[#0F1E46]"><History className="h-4 w-4" style={{ color: BLUE }} />Recent Locations</span>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {lookup.recentLocations.map((r, i) => (
-                      <button key={i} type="button" onClick={() => { pickRecent(r); setStep(0) }} data-recent={i} className="rounded-lg border border-[#E6ECF5] bg-[#FAFBFE] px-2.5 py-2 text-left hover:bg-[#F1F5FB]">
-                        <b className="block truncate text-[12.5px] text-[#111827]">{r.label}</b>
-                        <span className="line-clamp-2 text-[11.5px] text-[#6B7280]">{joinAddr(r.address, r.city)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {Recent && !pos && <div className="border-t border-[#EEF1F6] px-3.5 py-2.5">{Recent}</div>}
             </Card>
+
+            {/* who is closest to this customer — fills in as soon as there is a location */}
+            <NearbyPartners pos={pos} addressQueries={addrQueries} shops={shops} mechanics={mechanics} loading={partnersLoading}
+              onOpen={(it, from) => setPartner({ show: it.kind, ...(it.kind === 'garage' ? { garage: { id: it.id, field: it.field, raw: it.raw, name: it.name, phone: it.phone } } : { mechanic: { id: it.id, raw: it.raw, name: it.name, phone: it.phone } }), customer: from.customer, approx: from.approx })}
+              onPins={setNearPins} onShowOnMap={() => setFitKey((k) => k + 1)} />
+            {Recent && pos && <Card><div className="px-3.5 py-2.5" data-recent-below>{Recent}</div></Card>}
 
             <Card>
               <Band icon={<User className="h-[18px] w-[18px]" />}>Customer Preview</Band>
@@ -1126,6 +1155,7 @@ export function CreateRequestDialog({ open, onClose, onCreated }: {
           </div>
         </div>
       </div>
+      <PartnerDetailsDialog target={partner} mechanics={mechanics} onClose={() => setPartner(null)} />
     </div>
   )
 }

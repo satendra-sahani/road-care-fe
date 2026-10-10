@@ -9,7 +9,8 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import type { ServiceRequest } from '@/store/slices/serviceRequestSlice'
 import type { Mechanic } from '@/store/slices/mechanicSlice'
 import { loadGoogleMaps, googleMapsFailed } from '@/lib/googleMaps'
-import { initialsOf, kmBetween, vehicleIconFor, vehicleName } from './serviceRequestUi'
+import { initialsOf, vehicleIconFor, vehicleName } from './serviceRequestUi'
+import { garageItem, geocodeAddress, mechanicItem, numPin, PARTNER_STATUS, type PartnerItem as Item, type Pt } from './partnerItems'
 
 // "Assign Mechanic / Garage" — pick who does a service request.
 //  • Garages  = shop partners + the garages our field staff registered (those become
@@ -18,71 +19,12 @@ import { initialsOf, kmBetween, vehicleIconFor, vehicleName } from './serviceReq
 // A map shows the customer, the search radius and the numbered candidates.
 // Assigning calls the same APIs the old dialog used.
 
-type Pt = { lat: number; lng: number }
-type Item = {
-  id: string; kind: 'garage' | 'mechanic'; name: string; photo?: string; verified: boolean
-  rating: number; ratings: number; place: string; pt: Pt | null; km: number | null
-  open: boolean | null; hours: string; status: 'available' | 'busy' | 'closed' | 'offline'
-  chips: string[]; vehicles: string[]; phone?: string; raw: any
-  // field = registered by our field staff, not a shop partner yet; doorstep = sends a mechanic to the customer (null = not recorded)
-  field: boolean; fieldBy: string; pending: boolean; doorstep: boolean | null
-}
-
 const ORANGE = '#FF5A1F'
 const NAVY = '#16305C'
-const to12 = (t?: string) => { const m = /^(\d{1,2}):(\d{2})/.exec(t || ''); if (!m) return ''; const h = +m[1]; return `${h % 12 || 12}:${m[2]} ${h >= 12 ? 'PM' : 'AM'}` }
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const isOpenNow = (h?: { open?: string; close?: string; workingDays?: string[] }): boolean | null => {
-  if (!h?.open || !h?.close) return null
-  const now = new Date()
-  if (h.workingDays?.length && !h.workingDays.includes(DAYS[now.getDay()])) return false
-  const mins = (t: string) => { const [a, b] = t.split(':').map(Number); return a * 60 + (b || 0) }
-  const n = now.getHours() * 60 + now.getMinutes()
-  return n >= mins(h.open) && n < mins(h.close)
-}
 const vehicleKind = (t?: string) => { const s = String(t || '').toLowerCase(); return /scoot/.test(s) ? 'scooter' : /bike|motor|two/.test(s) ? 'bike' : /truck|bus|tempo/.test(s) ? 'truck' : /car|suv|sedan|hatch/.test(s) ? 'car' : '' }
 const norm = (s: string) => s.toLowerCase().replace(/service|repair|system|replacement|work|[^a-z]/g, '')
-const STATUS = {
-  available: { label: 'Available Now', fg: '#15803D', bg: '#DCFCE7', dot: '#16A34A' },
-  busy: { label: 'Busy', fg: '#B45309', bg: '#FEF3C7', dot: '#F59E0B' },
-  closed: { label: 'Closed', fg: '#B91C1C', bg: '#FEE2E2', dot: '#DC2626' },
-  offline: { label: 'Offline', fg: '#475569', bg: '#E2E8F0', dot: '#64748B' },
-} as const
-const numPin = (n: number | string, color: string, big: boolean) => {
-  const s = big ? 44 : 36
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24"><path fill="${color}" stroke="#fff" stroke-width="1.2" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><text x="12" y="12.2" text-anchor="middle" font-family="Arial,sans-serif" font-size="7.5" font-weight="700" fill="#fff">${n}</text></svg>`
-  return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, s }
-}
+const STATUS = PARTNER_STATUS
 const sel = 'h-11 appearance-none rounded-xl border border-[#E3E8EF] bg-white pl-10 pr-8 text-[13.5px] font-medium text-[#1F2937] outline-none focus:border-[#16305C]'
-
-/** where a written address is, roughly — Google first (same key as the map), OpenStreetMap otherwise */
-const geocodeOne = async (q: string): Promise<Pt | null> => {
-  try {
-    const g = await loadGoogleMaps()
-    const Geocoder = g.Geocoder || (g.importLibrary ? (await g.importLibrary('geocoding'))?.Geocoder : null)
-    if (Geocoder) {
-      const res: any = await Promise.race([
-        new Geocoder().geocode({ address: q, componentRestrictions: { country: 'IN' } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
-      ])
-      const r = res?.results?.[0]
-      // "India" or a whole state is not a place to measure from
-      const coarse = (r?.types || []).some((t: string) => ['country', 'administrative_area_level_1'].includes(t))
-      if (r?.geometry?.location && !coarse) return { lat: r.geometry.location.lat(), lng: r.geometry.location.lng() }
-    }
-  } catch { /* fall through */ }
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&countrycodes=in&limit=1`)
-    const h = (await r.json())?.[0]
-    if (h && isFinite(parseFloat(h.lat)) && !['state', 'country'].includes(h.addresstype)) return { lat: parseFloat(h.lat), lng: parseFloat(h.lon) }
-  } catch { /* no network */ }
-  return null
-}
-/** the full address first, then simpler forms of it (village + state, village) */
-const geocodeAddress = async (queries: string[]): Promise<Pt | null> => {
-  for (const q of queries) { const p = await geocodeOne(q); if (p) return p }
-  return null
-}
 
 export function AssignDialog({
   open, request, mechanics, shops, shopsLoading, displayId, onClose, onAssignShop, onAssignMechanic,
@@ -143,35 +85,8 @@ export function AssignDialog({
   useEffect(() => { if (!confirmId) return; const t = setTimeout(() => setConfirmId(null), 4000); return () => clearTimeout(t) }, [confirmId])
 
   const all: Item[] = useMemo(() => {
-    const c = cust ? { latitude: cust.lat, longitude: cust.lng } : null
-    if (kind === 'garage') {
-      return (shops || []).map((s: any) => {
-        const co = s.address?.coordinates
-        const pt = co?.latitude != null && co?.longitude != null ? { lat: co.latitude, lng: co.longitude } : null
-        const openNow = isOpenNow(s.operatingHours)
-        return {
-          id: s._id, kind: 'garage' as const, name: s.shopName || 'Garage', photo: s.shopImages?.[0]?.url || s.logo || undefined, verified: !!s.isVerified,
-          rating: s.rating || 0, ratings: s.totalRatings || 0, place: [s.address?.area || s.address?.street, s.address?.city].filter(Boolean).join(', ') || s.address?.city || '—',
-          pt, km: pt && c ? kmBetween(c, { latitude: pt.lat, longitude: pt.lng }) : null,
-          open: openNow, hours: s.operatingHours?.open ? `${to12(s.operatingHours.open)} – ${to12(s.operatingHours.close)}` : '',
-          status: s.isAvailable === false ? 'offline' as const : openNow === false ? 'closed' as const : 'available' as const,
-          chips: s.specializations || [], vehicles: s.vehicleTypes || [], phone: s.shopPhone || s.user?.phone, raw: s,
-          field: s.source === 'field', fieldBy: s.fieldStaff || '', pending: s.source === 'field' && s.fieldStatus !== 'active', doorstep: typeof s.doorstepService === 'boolean' ? s.doorstepService : null,
-        }
-      })
-    }
-    return (mechanics || []).map((m) => {
-      const pt = m.currentLocation?.latitude != null && m.currentLocation?.longitude != null ? { lat: m.currentLocation.latitude, lng: m.currentLocation.longitude } : null
-      return {
-        id: m._id, kind: 'mechanic' as const, name: m.name || 'Mechanic', photo: m.kyc?.photo || undefined, verified: !!m.isVerified,
-        rating: m.rating || 0, ratings: m.completedServices || 0, place: [m.location, m.city].filter(Boolean).join(', ') || '—',
-        pt, km: pt && c ? kmBetween(c, { latitude: pt.lat, longitude: pt.lng }) : null,
-        open: null, hours: m.experience ? `${m.experience} experience` : '',
-        status: m.availability === 'available' ? 'available' as const : m.availability === 'busy' ? 'busy' as const : 'offline' as const,
-        chips: m.specializations || [], vehicles: m.vehicleTypes || [], phone: m.phone, raw: m,
-        field: false, fieldBy: '', pending: false, doorstep: null,
-      }
-    })
+    if (kind === 'garage') return (shops || []).map((s: any) => garageItem(s, cust))
+    return (mechanics || []).map((m) => mechanicItem(m, cust))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, shops, mechanics, cust?.lat, cust?.lng])
 

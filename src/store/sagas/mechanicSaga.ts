@@ -67,7 +67,7 @@ const api = {
 };
 
 // Normalize MechanicProfile (backend) → Mechanic (frontend slice type)
-function normalizeMechanic(p: any): Mechanic {
+export function normalizeMechanic(p: any): Mechanic {
   const addr = p.address || {};
   return {
     _id: p._id,

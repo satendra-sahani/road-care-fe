@@ -116,6 +116,7 @@ import { AdminHeader } from './AdminHeader'
 import { cn } from '@/lib/utils'
 import { ServiceRequestsMap } from '@/components/admin/ServiceRequestsMap'
 import { AssignDialog } from '@/components/admin/AssignDialog'
+import { PartnerDetailsDialog, type PartnerTarget } from '@/components/admin/PartnerDetailsDialog'
 import { DiagnosisDialog } from '@/components/admin/DiagnosisDialog'
 import { CreateRequestDialog } from '@/components/admin/CreateRequestDialog'
 import { RequestCallPanel } from '@/components/admin/RequestCallPanel'
@@ -436,6 +437,8 @@ export function ServiceManagement() {
   const [shopsList, setShopsList] = useState<any[]>([])
   const [selectedShopId, setSelectedShopId] = useState('')
   const [shopsLoading, setShopsLoading] = useState(false)
+  // contact card of the garage / mechanic a request is assigned to (opened from its name)
+  const [partnerCard, setPartnerCard] = useState<{ target: PartnerTarget; request: ServiceRequest } | null>(null)
 
   // Cancel request dialog
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
@@ -919,6 +922,16 @@ export function ServiceManagement() {
     } finally { setProxyBusy(null) }
   }
 
+  // the garages a job can go to: shop partners + the garages our field staff registered that are not partners yet
+  const loadShops = async () => {
+    setShopsLoading(true)
+    const [shopsRes, fieldRes] = await Promise.allSettled([adminShopAPI.getAll({ limit: 300 }), adminGarageAPI.assignable()])
+    const partners = shopsRes.status === 'fulfilled' && shopsRes.value.data?.success ? (shopsRes.value.data.data || []).filter((s: any) => s.isActive) : null
+    const fieldGarages = fieldRes.status === 'fulfilled' && fieldRes.value.data?.success ? (fieldRes.value.data.data || []) : []
+    if (partners || fieldGarages.length) setShopsList([...(partners || []), ...fieldGarages])
+    setShopsLoading(false)
+  }
+
   const handleOpenAssignDialog = async (request: ServiceRequest) => {
     setAssigningRequest(request)
     setAssignMechanicId(request.mechanic?._id || '')
@@ -926,13 +939,35 @@ export function ServiceManagement() {
     setSelectedShopId('')
     setAssignDialogOpen(true)
     // Fetch shops in background
-    setShopsLoading(true)
-    // shop partners + the garages our field staff registered that are not partners yet
-    const [shopsRes, fieldRes] = await Promise.allSettled([adminShopAPI.getAll({ limit: 300 }), adminGarageAPI.assignable()])
-    const partners = shopsRes.status === 'fulfilled' && shopsRes.value.data?.success ? (shopsRes.value.data.data || []).filter((s: any) => s.isActive) : null
-    const fieldGarages = fieldRes.status === 'fulfilled' && fieldRes.value.data?.success ? (fieldRes.value.data.data || []) : []
-    if (partners || fieldGarages.length) setShopsList([...(partners || []), ...fieldGarages])
-    setShopsLoading(false)
+    await loadShops()
+  }
+
+  // Create Service Request shows the nearest garages / mechanics as soon as the customer's
+  // location is known — have them (and fresh mechanic positions) ready when it opens
+  useEffect(() => {
+    if (!addRequestOpen) return
+    loadShops()
+    dispatch(fetchMechanicsRequest())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addRequestOpen])
+
+  // who a request is assigned to, as a contact card: the garage, the mechanic on the job, or both
+  const openPartner = (r: ServiceRequest, show: 'garage' | 'mechanic') => {
+    const co = r.location?.coordinates
+    const onJob = r.mechanic
+      ? { id: r.mechanic._id, name: r.mechanic.name, phone: r.mechanic.phone }
+      : r.shopOrder?.assignedMechanic?.name ? { name: r.shopOrder.assignedMechanic.name, phone: r.shopOrder.assignedMechanic.phone || undefined } : undefined
+    const garage = r.shopPartner?._id ? { id: r.shopPartner._id, name: r.shopPartner.shopName, phone: r.shopPartner.phone, city: r.shopPartner.city } : undefined
+    if (!garage && !onJob) return
+    setPartnerCard({
+      request: r,
+      target: {
+        show: show === 'mechanic' ? (onJob ? 'mechanic' : 'garage') : (garage ? 'garage' : 'mechanic'),
+        garage, mechanic: onJob,
+        customer: co?.latitude != null && co?.longitude != null ? { lat: co.latitude, lng: co.longitude } : null,
+        job: { id: generateDisplayRequestId(r), status: statusConfig[r.status]?.label || String(r.status || '').replace(/_/g, ' ') },
+      },
+    })
   }
 
   const closeAssignDialog = () => { setAssignDialogOpen(false); setAssigningRequest(null); setAssignMechanicId(''); setSelectedShopId('') }
@@ -1479,7 +1514,8 @@ export function ServiceManagement() {
                           <div className="flex items-center gap-2.5">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EAF1FF] text-[12px] font-bold text-[#2563EB]">{initialsOf(request.mechanic.name)}</span>
                             <div className="min-w-0 max-w-[118px]">
-                              <div className="truncate text-[13.5px] font-bold text-[#111827]" title={request.mechanic.name}>{request.mechanic.name}</div>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); openPartner(request, 'mechanic') }} data-partner-open="mechanic" title={`${request.mechanic.name} — details and numbers to call`}
+                                className="block max-w-full truncate text-left text-[13.5px] font-bold text-[#111827] underline decoration-[#CBD5E1] decoration-dotted underline-offset-[3px] hover:text-[#1E40E0] hover:decoration-[#1E40E0]">{request.mechanic.name}</button>
                               <div className="text-[12.5px] text-[#6B7280]">{request.mechanic.phone || 'Mechanic'}</div>
                             </div>
                           </div>
@@ -1487,7 +1523,8 @@ export function ServiceManagement() {
                           <div className="flex items-center gap-2.5">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600"><Store className="h-4 w-4" /></span>
                             <div className="min-w-0 max-w-[150px]">
-                              <div className="truncate text-[13.5px] font-bold text-indigo-700" title={request.shopPartner.shopName}>{request.shopPartner.shopName || 'Shop partner'}</div>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); openPartner(request, 'garage') }} data-partner-open="garage" title={`${request.shopPartner.shopName || 'Garage'} — details and numbers to call`}
+                                className="block max-w-full truncate text-left text-[13.5px] font-bold text-indigo-700 underline decoration-indigo-200 decoration-dotted underline-offset-[3px] hover:text-indigo-900 hover:decoration-indigo-700">{request.shopPartner.shopName || 'Shop partner'}</button>
                               <div className="text-[12px] text-[#6B7280]">
                                 {request.shopOrder
                                   ? (request.shopOrder.assignedMechanic?.name
@@ -3094,7 +3131,7 @@ export function ServiceManagement() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-[#1A1D29]">{selectedRequest.mechanic.name}</p>
+                          <button type="button" onClick={() => openPartner(selectedRequest, 'mechanic')} data-partner-open="mechanic" title="Details and numbers to call" className="block max-w-full truncate text-left font-semibold text-[#1A1D29] underline decoration-[#CBD5E1] decoration-dotted underline-offset-[3px] hover:text-[#1E40E0]">{selectedRequest.mechanic.name}</button>
                           <p className="text-xs text-[#6B7280] flex items-center gap-1 mt-0.5">
                             <Phone className="h-3 w-3" />
                             {selectedRequest.mechanic.phone || '—'}
@@ -3166,12 +3203,16 @@ export function ServiceManagement() {
                         <div className="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">
                           {selectedRequest.shopPartner.shopName?.charAt(0)?.toUpperCase() || 'S'}
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{selectedRequest.shopPartner.shopName}</p>
+                        <div className="min-w-0 flex-1">
+                          <button type="button" onClick={() => openPartner(selectedRequest, 'garage')} data-partner-open="garage" title="Details and numbers to call" className="block max-w-full truncate text-left font-semibold text-gray-900 underline decoration-indigo-200 decoration-dotted underline-offset-[3px] hover:text-indigo-800">{selectedRequest.shopPartner.shopName}</button>
                           {selectedRequest.shopPartner.city && (
                             <p className="text-xs text-gray-500">{selectedRequest.shopPartner.city}</p>
                           )}
                         </div>
+                        <Button size="sm" variant="outline" className="shrink-0 border-indigo-200 text-indigo-700 hover:bg-indigo-100" onClick={() => openPartner(selectedRequest, 'garage')}>
+                          <Phone className="h-3.5 w-3.5 mr-1.5" />
+                          Details &amp; call
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -3409,6 +3450,19 @@ export function ServiceManagement() {
         open={addRequestOpen}
         onClose={() => setAddRequestOpen(false)}
         onCreated={() => { setAddRequestOpen(false); dispatch(fetchServiceRequestsRequest()) }}
+        shops={shopsList}
+        mechanics={mechanics ?? []}
+        partnersLoading={shopsLoading}
+      />
+
+      {/* ── who the request is assigned to: numbers to call, address, the mechanic on the job ── */}
+      <PartnerDetailsDialog
+        target={partnerCard?.target || null}
+        mechanics={mechanics ?? []}
+        onClose={() => setPartnerCard(null)}
+        onReassign={partnerCard && !['completed', 'paid', 'cancelled'].includes(partnerCard.request.status)
+          ? () => { const r = partnerCard.request; setPartnerCard(null); setSelectedRequest(null); handleOpenAssignDialog(r) }
+          : undefined}
       />
       </div>
     </div>
