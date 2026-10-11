@@ -6,13 +6,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  AlertTriangle, CalendarClock, CheckCheck, CheckCircle2, ChevronDown, Clock, Download, Eye, FileSpreadsheet, FileText, ImagePlus, Lightbulb, Loader2, MapPin, Package, Play, Plus, RefreshCw, Save, Send, Tag,
+  AlertTriangle, CalendarClock, CheckCheck, CheckCircle2, Clock, Download, Eye, FileSpreadsheet, FileText, ImagePlus, Lightbulb, Loader2, MapPin, Package, Play, Plus, RefreshCw, Save, Send, Tag,
   Upload, UploadCloud, User, Users, X,
   Signal, Wifi, BatteryFull, ChevronLeft, BadgeCheck, Video, Phone, MoreVertical, Smile, Paperclip, Camera, Mic,
 } from 'lucide-react'
 import { adminWhatsappAPI, adminWhatsappContactsAPI, type WaContactFilter } from '@/services/api'
 import { MEDIA_ACCEPT, btnIcon, renderWaText } from './WhatsAppSender'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { SearchSelect } from './SearchSelect'
 import { SAMPLE_ROWS, downloadCsv, normalizePhone, readContactsFile, type ParsedContacts } from '@/lib/contactsFile'
 
 export interface WaContact {
@@ -508,13 +509,13 @@ export function SendPanel({ audience, templates, senders, loadingTemplates, temp
 
           <Step n={2} title="Choose Template" sub="Select an approved template from the list." right={<button type="button" title="Reload templates" onClick={onReloadTemplates} className="text-[#64748B] hover:text-[#0F172A]"><RefreshCw className={`h-4 w-4 ${loadingTemplates ? 'animate-spin' : ''}`} /></button>}>
             {templatesError && !templates.length ? <p className="rounded-lg bg-[#FFFBEB] px-3 py-2 text-[12px] text-[#B45309]">{templatesError}</p> : (
-              <div className="relative">
-                <select value={tplKey} onChange={(e) => setTplKey(e.target.value)} aria-label="Approved Template" className="h-12 w-full appearance-none rounded-xl border border-[#E2E8F0] bg-white pl-4 pr-36 text-[14px] font-semibold text-[#0F172A] outline-none focus:border-[#F4511E]">
-                  {!templates.length && <option value="">{loadingTemplates ? 'Loading…' : 'No approved templates'}</option>}
-                  {templates.map((t) => <option key={keyOf(t)} value={keyOf(t)}>{t.name} ({t.language})</option>)}
-                </select>
-                <span className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">{tpl && <span className="flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[11.5px] font-bold text-[#15803D]"><CheckCircle2 className="h-3.5 w-3.5" />Approved</span>}<ChevronDown className="h-4 w-4 text-[#64748B]" /></span>
-              </div>
+              // a dropdown you can type into: there are dozens of templates, and their names are long
+              <SearchSelect value={tplKey} onChange={setTplKey} ariaLabel="Approved Template" placeholder="Search by name or language — e.g. payment hi" menuClassName="w-full"
+                className="h-12 w-full rounded-xl border border-[#E2E8F0] bg-white pl-4 pr-3 text-[14px] font-semibold text-[#0F172A] outline-none focus:border-[#F4511E]"
+                trailing={tpl ? <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[11.5px] font-bold text-[#15803D]"><CheckCircle2 className="h-3.5 w-3.5" />Approved</span> : undefined}
+                options={templates.length
+                  ? templates.map((t) => ({ value: keyOf(t), label: `${t.name} (${t.language})`, hint: t.category ? t.category.charAt(0) + t.category.slice(1).toLowerCase() : undefined }))
+                  : [{ value: '', label: loadingTemplates ? 'Loading…' : 'No approved templates' }]} />
             )}
             {senders.length > 1 && <select value={senderId} onChange={(e) => setSenderId(e.target.value)} aria-label="Send from" className={`${field} mt-2`}>{senders.map((s) => <option key={s.id} value={s.id}>From {s.display}{s.name ? ` — ${s.name}` : ''}</option>)}</select>}
           </Step>

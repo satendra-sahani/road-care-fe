@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { adminWhatsappAPI } from '@/services/api'
 import { toast } from 'sonner'
+import { SearchSelect } from './SearchSelect'
 import {
   Loader2, Send, MessageSquare, RefreshCw, Phone, Video, MoreVertical,
   ExternalLink, Copy, CornerUpLeft, FileText, Play, ImagePlus, X, UploadCloud,
@@ -210,13 +211,12 @@ export function WhatsAppSender() {
               {/* Dropdown 2 — approved templates */}
               <div>
                 <label className="mb-1 block text-[12px] font-bold text-slate-600">Template (approved)</label>
-                <select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#008069]/60">
-                  {templates.length === 0 && <option value="">No approved templates</option>}
-                  {templates.map((t) => (
-                    <option key={t.id} value={`${t.name}::${t.language}`}>{t.name} ({t.language})</option>
-                  ))}
-                </select>
+                {/* a dropdown you can type into — dozens of templates with long names */}
+                <SearchSelect value={templateKey} onChange={setTemplateKey} ariaLabel="Template (approved)" placeholder="Search by name or language…" menuClassName="w-full min-w-[260px]"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#008069]/60"
+                  options={templates.length
+                    ? templates.map((t) => ({ value: `${t.name}::${t.language}`, label: `${t.name} (${t.language})` }))
+                    : [{ value: '', label: 'No approved templates' }]} />
                 {selectedTemplate?.category && (
                   <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     {selectedTemplate.category}{needsMedia ? ` · ${headerType.toLowerCase()} header` : ''}
