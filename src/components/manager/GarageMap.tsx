@@ -3,11 +3,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadLeaflet, OSM_TILES } from '@/lib/leaflet'
 import { loadGoogleMaps, googleMapsFailed } from '@/lib/googleMaps'
+import type { MapArea } from '@/lib/cityAreas'
 
 export type MapPin = { id: string; lat: number; lng: number; color: string }
 export type LatLng = { lat: number; lng: number }
 
 const INDIA: [number, number] = [22.6, 79.0]
+
+/** a city's name as a small pill, drawn above its area */
+const areaLabel = (text: string, color: string) => {
+  const w = Math.max(44, Math.round(text.length * 7.4) + 20)
+  const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  return { w, h: 22, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="22" viewBox="0 0 ${w} 22"><rect x="1" y="1" width="${w - 2}" height="20" rx="10" fill="${color}" stroke="#fff" stroke-width="1.5"/><text x="${w / 2}" y="15" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#fff">${safe}</text></svg>` }
+}
+/** the outer rings of an area as lists of points, whatever kind of shape it is */
+const ringsOf = (a: MapArea): LatLng[][][] => (!a.geometry ? [] : (a.geometry.type === 'Polygon' ? [a.geometry.coordinates] : a.geometry.coordinates)
+  .map((rings: number[][][]) => rings.map((r) => r.map(([lng, lat]) => ({ lat, lng })))))
+const areaSig = (areas?: MapArea[]) => (areas || []).map((a) => `${a.id}|${a.color}|${a.geometry ? 'outline' : a.circle ? `${a.circle.lat},${a.circle.lng},${a.circle.radius}` : ''}`).join(';')
 
 const pinHtml = (color: string, big: boolean) => {
   const s = big ? 44 : 32
@@ -23,6 +35,8 @@ type Props = {
   className?: string
   zoomControl?: boolean
   interactive?: boolean
+  /** areas to highlight — a city's outline, or a circle where there is none — shaded in their colour with a name tag */
+  areas?: MapArea[]
 }
 
 /**
@@ -30,6 +44,7 @@ type Props = {
  *  • `pins` + `onSelect`  — garages on a map (staff "My Visits", admin page)
  *  • `picker`             — pick the garage's exact spot: tap the map or drag the pin
  *  • `me`                 — the viewer's own position as a blue dot
+ *  • `areas`              — highlighted areas (the cities picked on the admin's Garages page)
  *
  * It is a Google map (shop / landmark names, Map ⇄ Satellite). If Google Maps
  * can't load — no key, key refused, blocked network — the same props are served
@@ -51,13 +66,14 @@ const svgUrl = (color: string, big: boolean) => `data:image/svg+xml;charset=UTF-
 
 // ───────────────────────── Google Maps ─────────────────────────
 function GoogleGarageMap({
-  pins = [], selectedId, onSelect, picker, me, className = '', zoomControl = true, interactive = true, onFail,
+  pins = [], selectedId, onSelect, picker, me, className = '', zoomControl = true, interactive = true, areas, onFail,
 }: Props & { onFail: () => void }) {
   const el = useRef<HTMLDivElement | null>(null)
   const map = useRef<any>(null)
   const markers = useRef<Map<string, any>>(new Map())
   const pickMarker = useRef<any>(null)
   const meMarker = useRef<any>(null)
+  const shapes = useRef<any[]>([])
   const fitted = useRef('')
   const cb = useRef({ onSelect, picker })
   cb.current = { onSelect, picker }
@@ -85,7 +101,7 @@ function GoogleGarageMap({
     // Google reports a refused key (billing / referrer) only after the map exists
     const t = setInterval(() => { if (googleMapsFailed()) { clearInterval(t); onFail() } }, 1000)
     const stop = setTimeout(() => clearInterval(t), 8000)
-    return () => { clearInterval(t); clearTimeout(stop); markers.current.forEach((x) => x.setMap(null)); markers.current.clear(); map.current = null }
+    return () => { clearInterval(t); clearTimeout(stop); markers.current.forEach((x) => x.setMap(null)); markers.current.clear(); shapes.current.forEach((x) => x.setMap(null)); shapes.current = []; map.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -115,6 +131,36 @@ function GoogleGarageMap({
       }
     }
   }, [ready, pins, selectedId, interactive])
+
+  // highlighted areas: shaded under the pins, named, and brought into view when they change
+  const sig = areaSig(areas)
+  useEffect(() => {
+    const g = (window as any).google?.maps, m = map.current
+    shapes.current.forEach((x) => x.setMap(null)); shapes.current = []
+    if (!ready || !g || !m || !areas?.length) return
+    const b = new g.LatLngBounds()
+    for (const a of areas) {
+      const look = { map: m, strokeColor: a.color, strokeOpacity: 0.95, strokeWeight: 2.5, fillColor: a.color, fillOpacity: 0.12, clickable: false, zIndex: 0 }
+      let top: LatLng | null = null
+      for (const paths of ringsOf(a)) {
+        shapes.current.push(new g.Polygon({ ...look, paths }))
+        for (const p of paths[0] || []) { b.extend(p); if (!top || p.lat > top.lat) top = p }
+      }
+      if (!a.geometry && a.circle) {
+        const c = new g.Circle({ ...look, center: { lat: a.circle.lat, lng: a.circle.lng }, radius: a.circle.radius })
+        shapes.current.push(c)
+        b.union(c.getBounds())
+        top = { lat: c.getBounds().getNorthEast().lat(), lng: a.circle.lng }
+      }
+      if (top) {
+        const tag = areaLabel(a.label, a.color)
+        shapes.current.push(new g.Marker({ map: m, position: top, clickable: false, zIndex: 2, icon: { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(tag.svg)}`, scaledSize: new g.Size(tag.w, tag.h), anchor: new g.Point(tag.w / 2, tag.h + 2) } }))
+      }
+    }
+    pins.forEach((p) => b.extend({ lat: p.lat, lng: p.lng }))
+    if (!b.isEmpty()) m.fitBounds(b, 40)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, sig])
 
   // bring the selected garage into view
   useEffect(() => {
@@ -160,7 +206,7 @@ function GoogleGarageMap({
   }, [ready, me?.lat, me?.lng])
 
   return (
-    <div className={`relative overflow-hidden bg-[#E8EEF4] ${className}`}>
+    <div className={`relative overflow-hidden bg-[#E8EEF4] ${className}`} data-map-engine="google" data-map-areas={ready ? (areas?.length || 0) : undefined}>
       <div ref={el} className="absolute inset-0 z-0" />
     </div>
   )
@@ -169,12 +215,13 @@ function GoogleGarageMap({
 // ───────────────────────── OpenStreetMap fallback ─────────────────────────
 function LeafletGarageMap({
 
-  pins = [], selectedId, onSelect, picker, me, className = '', zoomControl = true, interactive = true,
+  pins = [], selectedId, onSelect, picker, me, className = '', zoomControl = true, interactive = true, areas,
 }: Props) {
   const el = useRef<HTMLDivElement | null>(null)
   const map = useRef<any>(null)
   const L = useRef<any>(null)
   const layer = useRef<any>(null)
+  const areaLayer = useRef<any>(null)
   const pickMarker = useRef<any>(null)
   const meMarker = useRef<any>(null)
   const fitted = useRef('')
@@ -194,6 +241,7 @@ function LeafletGarageMap({
       }).setView(INDIA, 5)
       lib.tileLayer(OSM_TILES, { maxZoom: 19, subdomains: 'abc' }).addTo(m)
       if (zoomControl && interactive) lib.control.zoom({ position: 'bottomright' }).addTo(m)
+      areaLayer.current = lib.layerGroup().addTo(m)
       layer.current = lib.layerGroup().addTo(m)
       m.on('click', (e: any) => {
         if (cb.current.picker) cb.current.picker.onChange({ lat: e.latlng.lat, lng: e.latlng.lng })
@@ -230,6 +278,36 @@ function LeafletGarageMap({
       else m.fitBounds(pins.map((p) => [p.lat, p.lng]), { padding: [40, 40], maxZoom: 15 })
     }
   }, [ready, pins, selectedId])
+
+  // highlighted areas: shaded under the pins, named, and brought into view when they change
+  const sig = areaSig(areas)
+  useEffect(() => {
+    const lib = L.current, m = map.current
+    if (!ready || !lib || !m) return
+    areaLayer.current.clearLayers()
+    if (!areas?.length) return
+    const pts: [number, number][] = pins.map((p) => [p.lat, p.lng])
+    for (const a of areas) {
+      const look = { color: a.color, weight: 2.5, opacity: 0.95, fillColor: a.color, fillOpacity: 0.12, interactive: false }
+      let top: LatLng | null = null
+      for (const paths of ringsOf(a)) {
+        lib.polygon(paths.map((r) => r.map((p) => [p.lat, p.lng])), look).addTo(areaLayer.current)
+        for (const p of paths[0] || []) { pts.push([p.lat, p.lng]); if (!top || p.lat > top.lat) top = p }
+      }
+      if (!a.geometry && a.circle) {
+        const c = lib.circle([a.circle.lat, a.circle.lng], { ...look, radius: a.circle.radius }).addTo(areaLayer.current)
+        const cb2 = c.getBounds()
+        pts.push([cb2.getNorth(), cb2.getWest()], [cb2.getSouth(), cb2.getEast()])
+        top = { lat: cb2.getNorth(), lng: a.circle.lng }
+      }
+      if (top) {
+        const tag = areaLabel(a.label, a.color)
+        lib.marker([top.lat, top.lng], { interactive: false, zIndexOffset: -50, icon: lib.divIcon({ className: '', iconSize: [tag.w, tag.h], iconAnchor: [tag.w / 2, tag.h + 2], html: tag.svg }) }).addTo(areaLayer.current)
+      }
+    }
+    if (pts.length) m.fitBounds(pts, { padding: [40, 40] })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, sig])
 
   // bring the selected garage into view
   useEffect(() => {
@@ -274,7 +352,7 @@ function LeafletGarageMap({
   }, [ready, me?.lat, me?.lng])
 
   return (
-    <div className={`relative overflow-hidden bg-[#E8EEF4] ${className}`}>
+    <div className={`relative overflow-hidden bg-[#E8EEF4] ${className}`} data-map-engine="osm" data-map-areas={ready ? (areas?.length || 0) : undefined}>
       <div ref={el} className="absolute inset-0 z-0" />
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center text-[13px] font-semibold text-[#64748B]">

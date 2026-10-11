@@ -11,6 +11,8 @@ import { adminGarageAPI, adminGarageStaffAPI } from '@/services/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { GarageMap } from '@/components/manager/GarageMap'
 import { SearchSelect } from '@/components/admin/SearchSelect'
+import { MultiSearchSelect } from '@/components/admin/MultiSearchSelect'
+import { cityArea, cityColour, type MapArea } from '@/lib/cityAreas'
 import { DAYS, SERVICES, SIZES, STATUS, VEHICLES, GarageStatus, mapsLink, serviceLabel, time12, vehicleLabel, waLink } from '@/components/manager/garageOptions'
 
 // Admin: garages registered on site by field executives (/manager/garage). Shown on
@@ -21,6 +23,8 @@ const sel = 'h-10 rounded-lg border border-[#DDE4EC] bg-white px-3 text-[13px] f
 const thumb = (url?: string, w = 160, h = 160) => (url ? `${url}?tr=w-${w},h-${h},fo-auto` : '')
 const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
 const place = (g: any) => [g.area, g.city].filter(Boolean).join(', ') || g.address
+const sameCity = (a?: string, b?: string) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
+const CITY_KEY = 'bm_garage_cities' // the cities picked for highlighting, remembered on this computer
 
 function Pill({ status }: { status: GarageStatus }) {
   const s = STATUS[status] || STATUS.pending
@@ -58,7 +62,13 @@ export function GarageManagement() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'map' | 'list'>('map')
-  const [f, setF] = useState({ city: '', area: '', vehicle: '', service: '', status: '', search: '' })
+  const [f, setF] = useState({ area: '', vehicle: '', service: '', status: '', search: '' })
+  // Cities picked to be highlighted: their outline is shaded on the map, and (unless switched
+  // off) only their garages are listed. None picked = every city, as before.
+  const [cities, setCities] = useState<string[]>([])
+  const [onlyCities, setOnlyCities] = useState(true)
+  const [areas, setAreas] = useState<MapArea[]>([])
+  const [areasFor, setAreasFor] = useState('')
   const [sort, setSort] = useState<'newest' | 'name' | 'rating'>('newest')
   const [selId, setSelId] = useState<string | null>(null)
   const [open, setOpen] = useState<any | null>(null)
@@ -68,14 +78,46 @@ export function GarageManagement() {
   const [staffOpen, setStaffOpen] = useState(false)
 
   const loadStats = useCallback(() => adminGarageAPI.getStats().then((r) => setStats(r.data?.data)).catch(() => undefined), [])
+  const cityKey = cities.join('|')
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const params = Object.fromEntries(Object.entries(f).filter(([, v]) => String(v).trim()))
-      const r = await adminGarageAPI.getAll(params)
-      setRows(r.data?.data || [])
+      if (onlyCities && cities.length) {
+        // the server takes one city at a time: one request each, put together newest first
+        const parts = await Promise.all(cities.map((city) => adminGarageAPI.getAll({ ...params, city })))
+        const seen = new Set<string>()
+        setRows(parts.flatMap((r) => r.data?.data || []).filter((g: any) => (seen.has(g._id) ? false : !!seen.add(g._id))).sort((a: any, b: any) => +new Date(b.createdAt) - +new Date(a.createdAt)))
+      } else {
+        const r = await adminGarageAPI.getAll(params)
+        setRows(r.data?.data || [])
+      }
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Could not load garages') } finally { setLoading(false) }
-  }, [f])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f, cityKey, onlyCities])
+  const chooseCities = (list: string[], only = onlyCities) => {
+    setCities(list); setOnlyCities(only)
+    try { localStorage.setItem(CITY_KEY, JSON.stringify({ cities: list, only })) } catch { /* not remembered */ }
+  }
+  useEffect(() => {
+    try { const s = JSON.parse(localStorage.getItem(CITY_KEY) || 'null'); if (Array.isArray(s?.cities)) { setCities(s.cities.filter((c: any) => typeof c === 'string')); setOnlyCities(s.only !== false) } } catch { /* nothing remembered */ }
+  }, [])
+  // a remembered city that has no garage any more is dropped
+  useEffect(() => {
+    const known: string[] | undefined = stats?.cities
+    if (known && cities.some((c) => !known.some((k) => sameCity(k, c)))) chooseCities(cities.filter((c) => known.some((k) => sameCity(k, c))))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats?.cities, cityKey])
+  // the outline of each picked city (OpenStreetMap; a circle round its garages when there is none)
+  useEffect(() => {
+    if (!cities.length) { setAreas([]); setAreasFor(''); return }
+    let off = false
+    const all: string[] = stats?.cities || cities
+    const pinsOf = (c: string) => rows.filter((g) => sameCity(g.city, c) && g.location?.lat != null && g.location?.lng != null).map((g) => ({ lat: g.location.lat, lng: g.location.lng }))
+    Promise.all(cities.map((c) => cityArea(c, cityColour(c, all), pinsOf(c)))).then((list) => { if (!off) { setAreas(list.filter(Boolean) as MapArea[]); setAreasFor(cityKey) } })
+    return () => { off = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cityKey, rows, stats?.cities])
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t) }, [load])
   useEffect(() => { loadStats() }, [loadStats])
 
@@ -196,8 +238,9 @@ export function GarageManagement() {
             </button>
           ))}
         </div>
-        <SearchSelect className={`${sel} w-[150px]`} value={f.city} onChange={pick('city')} ariaLabel="City" placeholder="Search city…"
-          options={[{ value: '', label: 'All Cities' }, ...(stats?.cities || []).map((c: string) => ({ value: c, label: c }))]} />
+        {/* tick one city or several: they are highlighted on the map */}
+        <MultiSearchSelect className={`${sel} w-[170px]`} values={cities} onChange={(v) => chooseCities(v)} ariaLabel="Cities" allLabel="All Cities" noun="cities" placeholder="Search city…"
+          options={(stats?.cities || []).map((c: string) => ({ value: c, label: c, color: cityColour(c, stats?.cities || []) }))} />
         <SearchSelect className={`${sel} w-[150px]`} value={f.area} onChange={pick('area')} ariaLabel="Area" placeholder="Search area…"
           options={[{ value: '', label: 'All Areas' }, ...(stats?.areas || []).map((c: string) => ({ value: c, label: c }))]} />
         <SearchSelect className={`${sel} w-[165px]`} value={f.vehicle} onChange={pick('vehicle')} ariaLabel="Vehicle type" placeholder="Search vehicle…"
@@ -212,10 +255,32 @@ export function GarageManagement() {
         </div>
       </div>
 
+      {cities.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2" data-city-highlight>
+          <span className="text-[12.5px] font-semibold text-[#64748B]">Highlighted on the map:</span>
+          {cities.map((c) => {
+            const col = cityColour(c, stats?.cities || cities)
+            const drawn = areas.find((a) => sameCity(a.label, c))
+            return (
+              <span key={c} data-city-chip={c} title={areasFor !== cityKey ? 'Finding its outline…' : !drawn ? 'No outline found and no garage with a map pin — nothing to draw' : drawn.geometry ? 'Outline from OpenStreetMap' : 'No outline on OpenStreetMap — a circle round its garages is drawn'}
+                className="inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12.5px] font-bold" style={{ borderColor: col, color: col, background: `${col}14` }}>
+                <i className="h-2 w-2 rounded-full" style={{ background: col }} />{c}
+                <button type="button" aria-label={`Remove ${c}`} onClick={() => chooseCities(cities.filter((x) => x !== c))} className="-mr-1 flex h-4 w-4 items-center justify-center rounded-full opacity-70 hover:bg-black/10 hover:opacity-100"><X className="h-3 w-3" /></button>
+              </span>
+            )
+          })}
+          <label className="ml-1 flex cursor-pointer items-center gap-1.5 text-[12.5px] font-semibold text-[#334155]">
+            <input type="checkbox" checked={onlyCities} onChange={(e) => chooseCities(cities, e.target.checked)} className="h-4 w-4" style={{ accentColor: ORANGE }} data-only-cities />
+            Show only these cities’ garages
+          </label>
+          <button type="button" onClick={() => chooseCities([])} className="text-[12.5px] font-bold text-[#2563EB] hover:underline">Clear</button>
+        </div>
+      )}
+
       {view === 'map' ? (
         <div className={full ? 'fixed inset-0 z-[80] bg-white p-3' : 'grid gap-4 xl:grid-cols-[1fr_400px]'}>
           <div className={`relative overflow-hidden rounded-xl border border-[#E7ECF3] ${full ? 'h-full' : 'h-[640px]'}`}>
-            <GarageMap pins={pins} selectedId={selId} onSelect={setSelId} className="h-full w-full" />
+            <GarageMap pins={pins} selectedId={selId} onSelect={setSelId} areas={areas} className="h-full w-full" />
             <div className="pointer-events-none absolute left-3 right-3 top-3 z-10 flex flex-wrap items-start gap-2">
               <span className="rounded-lg bg-white px-3 py-2 text-[12.5px] font-semibold text-[#334155] shadow">Showing <b>{rows.length}</b> garages{pins.length < rows.length ? ` · ${rows.length - pins.length} without a map pin` : ''}</span>
               {(['active', 'pending', 'inactive'] as const).map((s) => (
