@@ -101,7 +101,7 @@ export default function MechanicSelfRegister() {
 
           <div className="mx-auto max-w-[1000px] px-[clamp(14px,3vw,24px)] pt-7">
             {step === 1 && (
-              <PhoneVerifyStep initialPhone={q.phone} onVerified={onVerified} loginHint="This number will be your login for the Bharat Mechanics mechanic app. We’ll send a one-time code by SMS." />
+              <PhoneVerifyStep initialPhone={q.phone} onVerified={onVerified} loginHint="This number will be your login for the Bharat Mechanics mechanic app. We’ll send a one-time code on WhatsApp (by SMS if the number is not on WhatsApp)." />
             )}
 
             {step === 3 && (

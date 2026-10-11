@@ -19,7 +19,8 @@ const primaryBtn =
   'inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#C94309] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[#A93807] disabled:cursor-not-allowed disabled:opacity-60'
 
 /**
- * Step 1 of self-registration: verify the mobile number with an SMS OTP.
+ * Step 1 of self-registration: verify the mobile number with an OTP sent on
+ * WhatsApp (the DLT SMS when the number is not on WhatsApp).
  * The number becomes the partner's login (mechanic app / Shop Partner panel).
  */
 export function PhoneVerifyStep({ initialPhone = '', onVerified, loginHint }: {
@@ -33,6 +34,7 @@ export function PhoneVerifyStep({ initialPhone = '', onVerified, loginHint }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [cooldown, setCooldown] = useState(0)
+  const [channel, setChannel] = useState<'whatsapp' | 'sms'>('whatsapp') // where the code went
   const otpRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { if (initialPhone && !phone) setPhone(initialPhone.replace(/\D/g, '').slice(-10)) }, [initialPhone]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -43,13 +45,13 @@ export function PhoneVerifyStep({ initialPhone = '', onVerified, loginHint }: {
   }, [cooldown])
   useEffect(() => { if (stage === 'otp') otpRef.current?.focus() }, [stage])
 
-  const send = async () => {
+  const send = async (via?: 'sms') => {
     setError('')
     if (phone.length !== 10) { setError('Enter your 10-digit mobile number'); return }
     setBusy(true)
     try {
-      const r = await partnerRegisterAPI.sendOtp(phone)
-      if (r.data?.success) { setStage('otp'); setOtp(''); setCooldown(30) }
+      const r = await partnerRegisterAPI.sendOtp(phone, via)
+      if (r.data?.success) { setChannel(r.data?.data?.channel === 'sms' ? 'sms' : 'whatsapp'); setStage('otp'); setOtp(''); setCooldown(30) }
       else setError(r.data?.message || 'Could not send OTP. Please try again.')
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Could not send OTP. Please try again.')
@@ -78,7 +80,7 @@ export function PhoneVerifyStep({ initialPhone = '', onVerified, loginHint }: {
       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#FFEDE1] text-[#C94309]">{stage === 'phone' ? <IcPhone size={24} /> : <IcLock size={24} />}</span>
       <h2 className="mt-4 text-[20px] font-bold text-[#0E2B4C]">{stage === 'phone' ? 'Verify your mobile number' : 'Enter the OTP'}</h2>
       <p className="mt-1 text-[13.5px] leading-relaxed text-[#52667C]">
-        {stage === 'phone' ? loginHint : <>We sent a 6-digit code to <b className="text-[#0E2B4C]">+91 {phone}</b>.</>}
+        {stage === 'phone' ? loginHint : <>We sent a 6-digit code {channel === 'sms' ? 'by SMS' : 'on WhatsApp'} to <b className="text-[#0E2B4C]">+91 {phone}</b>.{channel === 'sms' ? '' : <> Not on WhatsApp? <button type="button" onClick={() => send('sms')} disabled={busy} className="font-semibold text-[#1864C8] underline disabled:opacity-60">Send it by SMS instead</button>.</>}</>}
       </p>
 
       <form
@@ -128,7 +130,7 @@ export function PhoneVerifyStep({ initialPhone = '', onVerified, loginHint }: {
         {stage === 'otp' && (
           <div className="flex items-center justify-between pt-1 text-[13px]">
             <button type="button" onClick={() => { setStage('phone'); setOtp(''); setError('') }} className="font-medium text-[#1864C8] hover:underline">Change number</button>
-            <button type="button" onClick={send} disabled={cooldown > 0 || busy} className="font-semibold text-[#C94309] hover:underline disabled:text-[#94A3B8] disabled:no-underline">
+            <button type="button" onClick={() => send()} disabled={cooldown > 0 || busy} className="font-semibold text-[#C94309] hover:underline disabled:text-[#94A3B8] disabled:no-underline">
               {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend OTP'}
             </button>
           </div>

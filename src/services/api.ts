@@ -488,7 +488,7 @@ export const partnerAPI = {
 // Public self-registration for mechanics / shop partners (/register/mechanic, /register/shop).
 // Phone is OTP-verified first; the returned partnerToken authorises uploads + the final submit.
 export const partnerRegisterAPI = {
-  sendOtp: (phone: string) => api.post('/common/partner-register/send-otp', { phone }),
+  sendOtp: (phone: string, channel?: 'whatsapp' | 'sms') => api.post('/common/partner-register/send-otp', { phone, ...(channel ? { channel } : {}) }),
   verifyOtp: (phone: string, otp: string) => api.post('/common/partner-register/verify-otp', { phone, otp }),
   uploadImage: (file: File, folder: string, partnerToken: string) => {
     // Token travels as a form field (fields before the file so multer parses it) —

@@ -102,7 +102,7 @@ export default function ShopSelfRegister() {
 
           <div className="mx-auto max-w-[1000px] px-[clamp(14px,3vw,24px)] pt-7">
             {step === 1 && (
-              <PhoneVerifyStep initialPhone={q.phone} onVerified={onVerified} loginHint="Use the shop owner’s mobile number — it becomes the login for your Shop Partner panel. We’ll send a one-time code by SMS." />
+              <PhoneVerifyStep initialPhone={q.phone} onVerified={onVerified} loginHint="Use the shop owner’s mobile number — it becomes the login for your Shop Partner panel. We’ll send a one-time code on WhatsApp (by SMS if the number is not on WhatsApp)." />
             )}
 
             {step === 3 && (
