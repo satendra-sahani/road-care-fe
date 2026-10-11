@@ -27,6 +27,10 @@ type Stats = {
 type Row = {
   _id: string; waMessageId?: string; contactPhone: string; contactName: string; tags: string[]; type: string; templateName?: string; body?: string
   status: string; error?: string; createdAt: string; deliveredAt?: string; readAt?: string; failedAt?: string; repliedAt?: string; canResend: boolean
+  /** a failed message: why, in plain words, and what to do (said = WhatsApp's own sentence) */
+  failure?: { key: string; title: string; help: string; todo: string; said?: string; code?: number }
+  /** WhatsApp's limit per person: this template can be sent to them again only from this time */
+  waitUntil?: string | null
 }
 type Reply = { phone: string; name: string; template: string; at: string; text: string; kind: string }
 
@@ -37,6 +41,9 @@ const SERIES: { key: 'sent' | 'delivered' | 'read' | 'replied'; label: string }[
 const n = (v: number) => v.toLocaleString('en-IN')
 const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 const time = (s?: string) => (s ? new Date(s).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '')
+const dayTime = (s: string) => new Date(s).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })
+/** WhatsApp refused it for this person a short while ago — sending again now would be refused again */
+const mustWait = (r: Row) => !!r.waitUntil && new Date(r.waitUntil).getTime() > Date.now()
 const dayLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 const sel = 'h-10 rounded-lg border border-[#E2E8F0] bg-white px-3 text-[13px] font-medium text-[#0F172A] outline-none focus:border-[#F4511E]'
 const card = 'rounded-2xl border border-[#E8EDF3] bg-white shadow-sm'
@@ -171,6 +178,7 @@ export function WhatsAppSentHistory({ senders, knownTags }: { senders: WaSender[
   const [loading, setLoading] = useState(true)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [menu, setMenu] = useState('')
+  const [why, setWhy] = useState<Row | null>(null) // "why was it not delivered" for one failed message
   const [busy, setBusy] = useState(false)
   const [tagDlg, setTagDlg] = useState<'addTag' | 'removeTag' | null>(null)
   const [tagText, setTagText] = useState('')
@@ -209,7 +217,9 @@ export function WhatsAppSentHistory({ senders, knownTags }: { senders: WaSender[
   const senderName = (id: string) => { const s = senders.find((x) => x.id === id); return s ? s.display : `Number …${id.slice(-4)}` }
   const pageIds = rows.map((r) => r._id)
   const allPicked = pageIds.length > 0 && pageIds.every((id) => picked.has(id))
-  const pickedFailed = rows.filter((r) => picked.has(r._id) && r.canResend).map((r) => r._id)
+  const pickedFailed = rows.filter((r) => picked.has(r._id) && r.canResend && !mustWait(r)).map((r) => r._id)
+  const pickedWaiting = rows.filter((r) => picked.has(r._id) && r.canResend && mustWait(r))
+  const waitNote = pickedWaiting.length ? `${pickedWaiting.length === 1 ? 'One' : pickedWaiting.length} of the selected must wait — WhatsApp’s limit per person; can be sent after ${dayTime(pickedWaiting.map((r) => r.waitUntil!).sort().pop()!)}` : ''
   const filtersOn = f.sender !== 'all' || f.template !== 'all' || f.status !== 'all' || f.tag !== 'all' || f.campaign !== 'all' || !!search
   const act = async (fn: () => Promise<any>) => {
     setBusy(true)
@@ -230,7 +240,7 @@ export function WhatsAppSentHistory({ senders, knownTags }: { senders: WaSender[
       const dt = (s?: string) => (s ? new Date(s).toLocaleString('en-IN') : '')
       downloadCsv(`whatsapp-sent-${from}-to-${to}.csv`, [
         ['Message ID', 'Recipient', 'Number', 'Tags', 'Template', 'Sent At', 'Delivered At', 'Read At', 'Replied At', 'Status', 'Failure Reason'],
-        ...list.map((x) => [x.waMessageId || '', x.contactName, x.contactPhone.slice(-10), x.tags.join(', '), x.templateName || 'Chat message', dt(x.createdAt), dt(x.deliveredAt), dt(x.readAt), dt(x.repliedAt), STATUS[standingOf(x)]?.label || x.status, x.error || '']),
+        ...list.map((x) => [x.waMessageId || '', x.contactName, x.contactPhone.slice(-10), x.tags.join(', '), x.templateName || 'Chat message', dt(x.createdAt), dt(x.deliveredAt), dt(x.readAt), dt(x.repliedAt), STATUS[standingOf(x)]?.label || x.status, x.failure ? `${x.failure.title}${x.error ? ` — ${x.error}` : ''}` : x.error || '']),
       ])
       toast.success(`${n(list.length)} messages exported`)
     } catch { toast.error('Could not export') }
@@ -303,7 +313,7 @@ export function WhatsAppSentHistory({ senders, knownTags }: { senders: WaSender[
       <div className={`${card} overflow-hidden`}>
         <div className="flex flex-wrap items-center gap-2 border-b border-[#EEF2F6] px-3 py-2.5">
           <label className="flex h-9 items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 text-[12.5px] font-bold text-[#0F172A]"><input type="checkbox" className="h-4 w-4 accent-[#2563EB]" aria-label="Select this page" checked={allPicked} onChange={() => setPicked((p) => { const s = new Set(p); if (allPicked) pageIds.forEach((id) => s.delete(id)); else pageIds.forEach((id) => s.add(id)); return s })} />{picked.size} selected</label>
-          <button type="button" data-resend-failed className={bulkBtn} disabled={!pickedFailed.length || busy} title={picked.size && !pickedFailed.length ? 'None of the selected messages failed' : undefined} onClick={() => askResend(pickedFailed)}><RotateCw className="h-3.5 w-3.5" />Resend Failed{pickedFailed.length ? ` (${pickedFailed.length})` : ''}</button>
+          <button type="button" data-resend-failed className={bulkBtn} disabled={!pickedFailed.length || busy} title={waitNote || (picked.size && !pickedFailed.length ? 'None of the selected messages failed' : undefined)} onClick={() => askResend(pickedFailed)}><RotateCw className="h-3.5 w-3.5" />Resend Failed{pickedFailed.length ? ` (${pickedFailed.length})` : ''}</button>
           <button type="button" className={bulkBtn} disabled={!picked.size || busy} onClick={() => { setTagText(''); setTagDlg('addTag') }}><Tag className="h-3.5 w-3.5" />Add Tag</button>
           <button type="button" className={bulkBtn} disabled={!picked.size || busy} onClick={() => { setTagText(''); setTagDlg('removeTag') }}><XCircle className="h-3.5 w-3.5" />Remove Tag</button>
           <button type="button" className={bulkBtn} onClick={exportCsv}><Download className="h-3.5 w-3.5" />Export</button>
@@ -329,13 +339,19 @@ export function WhatsAppSentHistory({ senders, knownTags }: { senders: WaSender[
                     <td className="px-2 py-2 text-[#334155]">{step(r.deliveredAt)}</td>
                     <td className="px-2 py-2 text-[#334155]">{step(r.readAt, '#2563EB')}</td>
                     <td className="px-2 py-2 text-[#334155]">{step(r.repliedAt, C.replied)}</td>
-                    <td className="px-2 py-2"><span title={r.status === 'failed' && r.error ? r.error : undefined} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[11.5px] font-bold ${st.cls}`}><st.Icon className="h-3 w-3" />{st.label}</span>{r.status === 'failed' && r.error && <span className="mt-0.5 block max-w-[150px] truncate text-[10.5px] text-[#B91C1C]" title={r.error}>{r.error}</span>}</td>
+                    <td className="px-2 py-2"><span title={r.status === 'failed' && r.error ? r.error : undefined} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[11.5px] font-bold ${st.cls}`}><st.Icon className="h-3 w-3" />{st.label}</span>
+                      {r.status === 'failed' && (r.failure || r.error) && <button type="button" data-why-failed onClick={() => setWhy(r)} title="Why it was not delivered, and what to do" className="mt-0.5 block max-w-[170px] text-left text-[10.5px] font-semibold leading-snug text-[#B91C1C] underline decoration-dotted underline-offset-2 hover:text-[#7F1D1D]">{r.failure?.title || r.error}</button>}
+                      {r.status === 'failed' && mustWait(r) && <span data-wait-until className="mt-0.5 block whitespace-nowrap text-[10.5px] font-semibold text-[#92400E]">Send again after {dayTime(r.waitUntil!)}</span>}
+                    </td>
                     <td className="px-3 py-2">
                       <span className="relative flex justify-end">
                         <button type="button" aria-label="More actions" onClick={(e) => { e.stopPropagation(); setMenu((m) => (m === r._id ? '' : r._id)) }} className="flex h-8 w-8 items-center justify-center rounded-lg text-[#475569] hover:bg-[#F1F5F9]"><MoreVertical className="h-[18px] w-[18px]" /></button>
                         {menu === r._id && (
                           <span className="absolute right-0 top-9 z-20 w-48 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white py-1 text-left text-[13px] shadow-lg">
-                            {r.canResend && <button type="button" className="flex w-full items-center gap-2 px-3 py-2 hover:bg-[#F8FAFC]" onClick={() => askResend([r._id])}><RotateCw className="h-3.5 w-3.5" />Send again</button>}
+                            {r.status === 'failed' && <button type="button" className="flex w-full items-center gap-2 px-3 py-2 hover:bg-[#F8FAFC]" onClick={() => setWhy(r)}><CircleAlert className="h-3.5 w-3.5" />Why did it fail?</button>}
+                            {r.canResend && (mustWait(r)
+                              ? <span className="flex w-full items-center gap-2 px-3 py-2 text-[#94A3B8]" title="WhatsApp’s limit for this person — sending now would be refused again"><RotateCw className="h-3.5 w-3.5 shrink-0" />Send again after {dayTime(r.waitUntil!)}</span>
+                              : <button type="button" className="flex w-full items-center gap-2 px-3 py-2 hover:bg-[#F8FAFC]" onClick={() => askResend([r._id])}><RotateCw className="h-3.5 w-3.5" />Send again</button>)}
                             {r.waMessageId && <button type="button" className="flex w-full items-center gap-2 px-3 py-2 hover:bg-[#F8FAFC]" onClick={() => { navigator.clipboard?.writeText(r.waMessageId || ''); toast.success('Message ID copied') }}><Copy className="h-3.5 w-3.5" />Copy message ID</button>}
                             <button type="button" className="flex w-full items-center gap-2 px-3 py-2 hover:bg-[#F8FAFC]" onClick={() => act(() => adminWhatsappContactsAPI.sentArchive([r._id]))}><Archive className="h-3.5 w-3.5" />Archive</button>
                           </span>
@@ -393,6 +409,22 @@ export function WhatsAppSentHistory({ senders, knownTags }: { senders: WaSender[
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" onClick={() => setTagDlg(null)} className="h-10 rounded-lg border border-[#E2E8F0] px-4 text-[13.5px] font-bold text-[#334155]">Cancel</button>
             <button type="button" disabled={!tagText.trim() || busy} onClick={() => act(() => adminWhatsappContactsAPI.sentTag([...picked], tagDlg, tagText)).then(() => setTagDlg(null))} className="h-10 rounded-lg px-5 text-[13.5px] font-bold text-white disabled:opacity-50" style={{ background: ORANGE }}>{tagDlg === 'addTag' ? 'Add Tag' : 'Remove Tag'}</button>
+          </div>
+        </Modal>
+      )}
+      {why && (
+        <Modal title="Why it was not delivered" onClose={() => setWhy(null)}>
+          <div className="space-y-3 text-[13.5px] leading-relaxed text-[#334155]" data-why-dialog>
+            <p className="text-[12.5px] text-[#64748B]">{why.contactName || 'Not in contacts'} · {prettyPhone(why.contactPhone)} · {why.templateName || 'Chat message'} · {dayTime(why.createdAt)}</p>
+            <p className="flex items-start gap-2 rounded-xl bg-[#FEF2F2] px-3 py-2.5 font-bold text-[#991B1B]"><XCircle className="mt-0.5 h-4 w-4 shrink-0" />{why.failure?.title || 'WhatsApp did not deliver it'}</p>
+            <p>{why.failure?.help || why.error}</p>
+            {why.failure?.todo && <p><b className="text-[#0F172A]">What to do: </b>{why.failure.todo}</p>}
+            {mustWait(why) && <p data-why-wait className="rounded-xl bg-[#FFFBEB] px-3 py-2.5 font-semibold text-[#92400E]">It can be sent to them again after {dayTime(why.waitUntil!)}.</p>}
+            {why.failure?.said && why.failure.said !== why.failure.help && <p className="text-[12px] text-[#94A3B8]">WhatsApp’s own words: “{why.failure.said}”{why.failure.code ? ` (code ${why.failure.code})` : ''}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setWhy(null)} className="h-10 rounded-lg border border-[#E2E8F0] px-4 text-[13px] font-bold text-[#0F172A] hover:bg-[#F8FAFC]">Close</button>
+              {why.canResend && !mustWait(why) && <button type="button" onClick={() => { const id = why._id; setWhy(null); askResend([id]) }} className="h-10 rounded-lg px-4 text-[13px] font-bold text-white" style={{ background: NAVY }}>Send again</button>}
+            </div>
           </div>
         </Modal>
       )}
