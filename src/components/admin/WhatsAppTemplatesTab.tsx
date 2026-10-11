@@ -4,7 +4,7 @@
 // account, as the customer sees it — the sample banner, the text with its example
 // values, the buttons — with its approval status. Search, category / language /
 // status / date filters, grid or list, pages of 9. View Details, Send Test (to one
-// number), Use Template (hands it to the send dialog).
+// number, or to several people — see SendTest), Use Template (hands it to the send dialog).
 // Templates themselves are created and approved in Meta's WhatsApp Manager.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -12,10 +12,11 @@ import {
   AlertTriangle, CalendarDays, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock, Copy, ExternalLink, Eye, FileText, LayoutGrid, List, Loader2, MoreVertical, Phone,
   Play, RefreshCw, Search, Send, Upload, X, XCircle,
 } from 'lucide-react'
-import { adminWhatsappAPI } from '@/services/api'
+import { adminWhatsappAPI, adminWhatsappContactsAPI } from '@/services/api'
 import { renderWaText } from './WhatsAppSender'
 import { Modal, NAVY, ORANGE, PhoneFrame, field, prettyPhone, type WaSender } from './WhatsAppContactsParts'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { WaRecipientPicker, groupTitle, splitRecipients, waNumber, type WaRecipient } from './WaRecipientPicker'
 
 export interface WaTemplateFull {
   id: string; name: string; language: string; status: string; category: string; rejectedReason: string; quality: string; updatedAt: string | null
@@ -258,20 +259,49 @@ export function WhatsAppTemplatesTab({ senders, onUse, onCounts }: { senders: Wa
   )
 }
 
-/** Send one template to one number, to see it on a real phone. */
+/** "{name}" in a value → this person's name, as the bulk send does it on the server (a typed number has no name). */
+const personal = (v: string, name: string, phone: string) => v
+  .replace(/\{\s*name\s*\}/gi, name || 'Customer')
+  .replace(/\{\s*first[_ ]?name\s*\}/gi, name.trim().split(/\s+/)[0] || 'Customer')
+  .replace(/\{\s*city\s*\}/gi, '')
+  .replace(/\{\s*phone\s*\}/gi, phone.slice(-10))
+  .replace(/\s+/g, ' ').trim() || '-'
+const MAX_CONTACTS = 5000  // one bulk send (the server's limit)
+const MAX_NUMBERS = 50     // typed numbers go out one by one
+
+/**
+ * Send one template — to one number, to see it on a real phone, or to several people:
+ * contacts found by name / number, typed numbers, and everyone with a tag, of a type or from
+ * a city (WaRecipientPicker). One person goes out as the single test send it always was;
+ * two or more contacts go out as one bulk send (it leaves out opted-out contacts, shows in
+ * Sent History and fills {name} per person); typed numbers are sent one by one.
+ */
 function SendTest({ t, senders, onClose }: { t: WaTemplateFull; senders: WaSender[]; onClose: () => void }) {
-  const [phone, setPhone] = useState(() => { try { return localStorage.getItem('bm_wa_test_phone') || '' } catch { return '' } })
+  // the number used last time is offered again
+  const [to, setTo] = useState<WaRecipient[]>(() => { try { const p = waNumber(localStorage.getItem('bm_wa_test_phone') || ''); return p ? [{ kind: 'number', phone: p }] : [] } catch { return [] } })
   const [values, setValues] = useState<string[]>(() => Array.from({ length: t.varCount }, (_, i) => t.bodyExample[i] || ''))
   const [senderId, setSenderId] = useState(senders[0]?.id || '')
   const [media, setMedia] = useState<{ mediaId: string; kind: string; filename: string } | null>(null)
   const [uploading, setUploading] = useState(false)
   const [sending, setSending] = useState(false)
+  const [armed, setArmed] = useState(false) // several people: the button asks once more before it sends
   const fileRef = useRef<HTMLInputElement>(null)
   const mediaKind = String(t.headerType || '').toLowerCase()
   const needsMedia = ['image', 'video', 'document'].includes(mediaKind)
-  const digits = phone.replace(/\D/g, '')
-  const okPhone = /^[6-9]\d{9}$/.test(digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits)
-  const missing = !okPhone ? 'Enter a 10-digit WhatsApp number' : values.some((v) => !v.trim()) ? 'Fill in every value' : !senderId ? 'No WhatsApp number to send from' : needsMedia && !media && !t.headerSample ? `Upload the ${mediaKind} for the header` : ''
+  const who = useMemo(() => splitRecipients(to), [to])
+  const many = who.total > 1
+  const bulk = who.contacts.length > 1
+  useEffect(() => { setArmed(false) }, [who.total])
+  useEffect(() => { if (!armed) return; const x = setTimeout(() => setArmed(false), 6000); return () => clearTimeout(x) }, [armed])
+  const missing = who.loading ? 'Counting the people in the group…'
+    : who.failed ? 'A group could not be loaded — remove it and add it again'
+    : !who.total ? 'Add at least one WhatsApp number'
+    : who.contacts.length > MAX_CONTACTS ? `One send can reach at most ${MAX_CONTACTS.toLocaleString('en-IN')} contacts — choose a smaller group`
+    : who.numbers.length > MAX_NUMBERS ? `At most ${MAX_NUMBERS} typed numbers at a time — save the rest as contacts first`
+    : values.some((v) => !v.trim()) ? 'Fill in every value'
+    : !senderId ? 'No WhatsApp number to send from'
+    : needsMedia && !media && bulk ? `Upload the ${mediaKind} — it is needed to send to several contacts`
+    : needsMedia && !media && !t.headerSample ? `Upload the ${mediaKind} for the header` : ''
   const onFile = async (f?: File | null) => {
     if (!f) return
     setUploading(true)
@@ -282,40 +312,85 @@ function SendTest({ t, senders, onClose }: { t: WaTemplateFull; senders: WaSende
       else toast.error(r.data?.message || 'Upload failed')
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Upload failed') } finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
   }
-  const send = async () => {
-    if (missing) { toast.error(missing); return }
-    setSending(true)
+  /** one message to one number; '' when it went, otherwise the reason */
+  const one = async (phone: string, name: string): Promise<string> => {
     try {
-      try { localStorage.setItem('bm_wa_test_phone', phone) } catch {}
       const r = await adminWhatsappAPI.send({
-        phoneNumberId: senderId, templateName: t.name, languageCode: t.language, toPhone: phone, variables: values.length ? values.map((v) => v.trim()) : undefined,
+        phoneNumberId: senderId, templateName: t.name, languageCode: t.language, toPhone: phone, variables: values.length ? values.map((v) => personal(v.trim(), name, phone)) : undefined,
         ...(needsMedia ? (media ? { headerMediaId: media.mediaId, headerMediaKind: mediaKind } : { headerMediaLink: t.headerSample, headerMediaKind: mediaKind }) : {}),
       })
-      if (r.data?.success) { toast.success(`Test sent to ${prettyPhone(digits.length === 10 ? `91${digits}` : digits)}`); onClose() }
-      else toast.error(r.data?.message || 'Could not send the test')
-    } catch (e: any) { toast.error(e?.response?.data?.message || 'Could not send the test') } finally { setSending(false) }
+      return r.data?.success ? '' : (r.data?.message || 'Could not send the test')
+    } catch (e: any) { return e?.response?.data?.message || 'Could not send the test' }
+  }
+  const send = async () => {
+    if (missing) { toast.error(missing); return }
+    if (many && !armed) { setArmed(true); return }
+    setSending(true); setArmed(false)
+    try {
+      if (!many) {
+        const c = who.contacts[0]
+        const phone = c ? c.phone : who.numbers[0]
+        if (!c) { try { localStorage.setItem('bm_wa_test_phone', phone.slice(2)) } catch {} }
+        const err = await one(phone, c?.name || '')
+        if (err) toast.error(err)
+        else { toast.success(`Test sent to ${prettyPhone(phone)}`); onClose() }
+        return
+      }
+      let queued = 0, sent = 0
+      const failed: string[] = []
+      if (bulk) {
+        const groups = to.filter((r) => r.kind === 'group').map((r) => groupTitle(r as { by: 'tag' | 'type' | 'city'; value: string }))
+        try {
+          const r = await adminWhatsappContactsAPI.createBroadcast({
+            ids: who.contacts.map((c) => c.id), templateName: t.name, languageCode: t.language, phoneNumberId: senderId, variables: values.map((v) => v.trim()),
+            ...(needsMedia && media ? { headerMediaId: media.mediaId, headerMediaKind: mediaKind } : {}),
+            audienceLabel: groups.length ? groups.join(', ') : `${who.contacts.length} chosen contacts`,
+          })
+          if (r.data?.success) queued = r.data.data?.total || who.contacts.length
+          else failed.push(r.data?.message || 'The send to the contacts could not be started')
+        } catch (e: any) { failed.push(e?.response?.data?.message || 'The send to the contacts could not be started') }
+      }
+      for (const d of [...(bulk ? [] : who.contacts), ...who.numbers.map((phone) => ({ phone, name: '' }))]) {
+        const err = await one(d.phone, d.name)
+        if (err) failed.push(`${prettyPhone(d.phone)}: ${err}`); else sent++
+      }
+      const done = [queued ? `sending to ${queued.toLocaleString('en-IN')} contact${queued === 1 ? '' : 's'} now — see Sent History` : '', sent ? `${sent} sent` : ''].filter(Boolean).join(' · ')
+      if (done) toast.success(done.charAt(0).toUpperCase() + done.slice(1))
+      if (failed.length) toast.error(`${failed.length} could not be sent — ${failed[0]}`)
+      else onClose()
+    } finally { setSending(false) }
   }
   return (
     <Modal title={`Send a test — ${t.name}`} onClose={onClose} wide busy={sending}>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
         <div className="space-y-3">
-          <p className="text-[12.5px] text-[#64748B]">Sends this template once to a number of your choice, so you can see it on a real phone. WhatsApp charges for it like any template.</p>
-          <div><label className="mb-1 block text-[12.5px] font-semibold text-[#334155]">Send to (WhatsApp number)</label>
-            <div className="flex h-10 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white focus-within:border-[#F4511E]"><span className="flex items-center border-r border-[#E2E8F0] px-2.5 text-[13px] text-[#475569]">+91</span><input value={phone} inputMode="numeric" aria-label="Test number" placeholder="98765 43210" onChange={(e) => setPhone(e.target.value.replace(/[^\d ]/g, ''))} className="min-w-0 flex-1 px-3 text-[13.5px] outline-none" /></div>
+          <p className="text-[12.5px] text-[#64748B]">Sends this template to the people you choose — one number, to see it on a real phone, or several at once. WhatsApp charges for each message like any template.</p>
+          <div><label className="mb-1 block text-[12.5px] font-semibold text-[#334155]">Send to</label>
+            <WaRecipientPicker value={to} onChange={setTo} disabled={sending} />
+            {who.total > 0 && (
+              <p className="mt-1.5 text-[12px] text-[#475569]" data-recipient-total>
+                <b className="text-[#0F172A]">{who.total.toLocaleString('en-IN')}</b> {who.total === 1 ? 'person gets' : 'people get'} it{who.optedOut > 0 ? ` · ${who.optedOut} opted out ${who.optedOut === 1 ? 'is' : 'are'} left out` : ''}{many ? ' · nobody is sent it twice' : ''}
+              </p>
+            )}
           </div>
           {senders.length > 1 && <div><label className="mb-1 block text-[12.5px] font-semibold text-[#334155]">Send from</label><select value={senderId} onChange={(e) => setSenderId(e.target.value)} aria-label="Send from" className={field}>{senders.map((s) => <option key={s.id} value={s.id}>{s.display}{s.name ? ` — ${s.name}` : ''}</option>)}</select></div>}
           {needsMedia && (
             <div><label className="mb-1 block text-[12.5px] font-semibold text-[#334155]">Header {mediaKind}</label>
               <input ref={fileRef} type="file" hidden accept={mediaKind === 'image' ? 'image/*' : mediaKind === 'video' ? 'video/*' : '.pdf,.doc,.docx'} onChange={(e) => onFile(e.target.files?.[0])} />
-              <div className="flex items-center gap-2 text-[12.5px] text-[#475569]"><span className="flex-1">{media ? <b className="text-[#0F172A]">{media.filename}</b> : t.headerSample ? 'The template’s sample is used.' : 'Upload one to send.'}</span><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="h-8 rounded-lg border border-[#E2E8F0] px-3 text-[12px] font-bold text-[#0F172A]">{uploading ? 'Uploading…' : media ? 'Change' : 'Upload another'}</button></div>
+              <div className="flex items-center gap-2 text-[12.5px] text-[#475569]"><span className="flex-1">{media ? <b className="text-[#0F172A]">{media.filename}</b> : bulk ? 'Upload one — the template’s sample can only go to one person.' : t.headerSample ? 'The template’s sample is used.' : 'Upload one to send.'}</span><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="h-8 rounded-lg border border-[#E2E8F0] px-3 text-[12px] font-bold text-[#0F172A]">{uploading ? 'Uploading…' : media ? 'Change' : 'Upload another'}</button></div>
             </div>
           )}
-          {t.varCount > 0 && <div><p className="mb-1 text-[12.5px] font-semibold text-[#334155]">Values</p><div className="space-y-2">{values.map((v, i) => <div key={i} className="flex h-10 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white focus-within:border-[#F4511E]"><span className="flex w-12 shrink-0 items-center justify-center border-r border-[#E2E8F0] bg-[#F8FAFC] text-[11.5px] font-bold text-[#475569]">{`{{${i + 1}}}`}</span><input value={v} aria-label={`Value ${i + 1}`} onChange={(e) => setValues((a) => { const n = [...a]; n[i] = e.target.value; return n })} className="min-w-0 flex-1 px-3 text-[13.5px] outline-none" /></div>)}</div></div>}
+          {t.varCount > 0 && <div><p className="mb-1 text-[12.5px] font-semibold text-[#334155]">Values</p><div className="space-y-2">{values.map((v, i) => <div key={i} className="flex h-10 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white focus-within:border-[#F4511E]"><span className="flex w-12 shrink-0 items-center justify-center border-r border-[#E2E8F0] bg-[#F8FAFC] text-[11.5px] font-bold text-[#475569]">{`{{${i + 1}}}`}</span><input value={v} aria-label={`Value ${i + 1}`} onChange={(e) => setValues((a) => { const n = [...a]; n[i] = e.target.value; return n })} className="min-w-0 flex-1 px-3 text-[13.5px] outline-none" /></div>)}</div>
+            {many && <p className="mt-1.5 text-[11.5px] text-[#64748B]">Everybody gets the same values. Write <b className="text-[#334155]">{'{name}'}</b> in a value to put each person’s own name there.</p>}
+          </div>}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} disabled={sending} className="h-10 rounded-lg border border-[#E2E8F0] px-4 text-[13.5px] font-bold text-[#334155]">Cancel</button>
-            <button type="button" data-send-test onClick={send} disabled={sending || !!missing} className="flex h-10 items-center gap-2 rounded-lg bg-[#12A34B] px-5 text-[13.5px] font-bold text-white disabled:opacity-50">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send test</button>
+            <button type="button" data-send-test onClick={send} disabled={sending || !!missing} className={`flex h-10 items-center gap-2 rounded-lg px-5 text-[13.5px] font-bold text-white disabled:opacity-50 ${armed ? 'bg-[#F4511E]' : 'bg-[#12A34B]'}`}>
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{armed ? `Confirm — send to ${who.total.toLocaleString('en-IN')} people` : many ? `Send to ${who.total.toLocaleString('en-IN')} people` : 'Send test'}
+            </button>
           </div>
           {missing && <p className="text-right text-[12px] text-[#B45309]">{missing}</p>}
+          {armed && !missing && <p className="text-right text-[12px] text-[#B45309]">Press again to send — WhatsApp charges for each of the {who.total.toLocaleString('en-IN')} messages.</p>}
         </div>
         <div><p className="mb-1.5 flex items-center justify-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-[#64748B]"><WhatsAppIcon className="h-3.5 w-3.5" />Preview</p><Preview t={t} values={values} /></div>
       </div>
