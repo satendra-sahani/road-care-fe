@@ -26,7 +26,11 @@ const MAX_LOOKUPS = 200
 const FRAME_KM = 300
 /** the map is as tall as the window allows, so it is seen whole with the filters above it */
 const TALL = 'clamp(420px, calc(100vh - 300px), 640px)'
+/** the place of a city's name is taken over the middle of the app's garages there when it is this near them */
+const OWN_KM = 40
 const key = (c: string) => c.replace(/\s+/g, ' ').trim().toLowerCase()
+/** the middle of the app's own garages of that city, when it has any */
+const own = (c: CityRow): LatLng | null => (c.lat != null && c.lng != null ? { lat: c.lat, lng: c.lng } : null)
 const num = (n: number) => n.toLocaleString('en-IN')
 const short = (n: number) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n))
 const people = (n: number) => `${num(n)} contact${n === 1 ? '' : 's'}`
@@ -72,10 +76,12 @@ export function WhatsAppContactsMap({ query, city, onCity, onShowList, onSend }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [othersKey, again])
 
-  // put the names on the map: what this browser knows at once, the rest asked one by one
+  // Put the names on the map: what this browser knows at once, the rest asked one by one.
+  // A city the app has garages in is shown there straight away and asked about all the same —
+  // the middle of a few garages is not the middle of the town.
   useEffect(() => {
     if (!data) return
-    const need = data.cities.filter((c) => c.lat == null && !(key(c.city) in spotsNow.current))
+    const need = data.cities.filter((c) => !(key(c.city) in spotsNow.current))
     if (!need.length) { setPlacing(null); return }
     const known = knownCityPoints(need.map((c) => c.city))
     if (Object.keys(known).length) setSpots((s) => ({ ...s, ...known }))
@@ -85,12 +91,12 @@ export function WhatsAppContactsMap({ query, city, onCity, onShowList, onSend }:
     ;(async () => {
       const have = { ...spotsNow.current, ...known }
       // where most of the contacts are: a village's name is matched to the one near them
-      let hubs: LatLng[] = data.cities.map((c) => (c.lat != null && c.lng != null ? { lat: c.lat, lng: c.lng } : have[key(c.city)])).filter((p): p is LatLng => !!p).slice(0, 3)
+      let hubs: LatLng[] = data.cities.map((c) => own(c) || have[key(c.city)]).filter((p): p is LatLng => !!p).slice(0, 3)
       setPlacing({ done: 0, of: ask.length }); setOffline(false)
       let misses = 0
       for (let i = 0; i < ask.length && !off; i++) {
-        const name = ask[i].city
-        const hit = await findCityPoint(name, hubs)
+        const name = ask[i].city, mine = own(ask[i])
+        const hit = await findCityPoint(name, mine ? [mine] : hubs)
         if (off) return
         if (hit === undefined) { if (++misses >= 3) { setOffline(true); break } } else {
           misses = 0
@@ -106,7 +112,12 @@ export function WhatsAppContactsMap({ query, city, onCity, onShowList, onSend }:
   }, [data])
 
   const cities = data?.cities || []
-  const at = (c: CityRow): LatLng | null => (c.lat != null && c.lng != null ? { lat: c.lat, lng: c.lng } : spots[key(c.city)] || null)
+  /** where a city is: the place of that name — which, for a city the app has garages in, must be near them */
+  const at = (c: CityRow): LatLng | null => {
+    const mine = own(c), found = spots[key(c.city)] || null
+    if (!mine) return found
+    return found && kmBetween(found, mine) <= OWN_KM ? found : mine
+  }
   const sel = key(city)
   const chosen = sel ? cities.find((c) => key(c.city) === sel) || null : null
   const chosenAt = chosen ? at(chosen) : null
