@@ -11,14 +11,15 @@
 //   Templates      the approved templates
 //   Import History what each imported file added
 // Backend: /api/admin/whatsapp-contacts (services/whatsappContactService.js).
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  Ban, BarChart3, Check, ChevronLeft, ChevronRight, Download, FileSpreadsheet, History, LayoutTemplate, Loader2, MoreVertical, Pencil, Plus, RefreshCw, Search,
+  Ban, BarChart3, Check, ChevronLeft, ChevronRight, Download, FileSpreadsheet, History, LayoutTemplate, List, Loader2, MapPin, MoreVertical, Pencil, Plus, RefreshCw, Search,
   Send, Tag, Tags, Trash2, Upload, UserPlus, Users, X, XCircle,
 } from 'lucide-react'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { SearchSelect } from '@/components/admin/SearchSelect'
+import { WhatsAppContactsMap } from '@/components/admin/WhatsAppContactsMap'
 import { WhatsAppSender } from '@/components/admin/WhatsAppSender'
 import { WhatsAppSentHistory } from '@/components/admin/WhatsAppSentHistory'
 import { WhatsAppTemplatesTab, WA_MANAGER_URL } from '@/components/admin/WhatsAppTemplatesTab'
@@ -80,6 +81,10 @@ export function WhatsAppContacts() {
   const [failedOf, setFailedOf] = useState<null | { name: string; rows: { name: string; phone: string; error: string }[] }>(null)
   const [importOpen, setImportOpen] = useState(false) // "Import from Excel" dialog
   const [sendOpen, setSendOpen] = useState(false)     // "Send WhatsApp Template" dialog
+  const [view, setView] = useState<'list' | 'map'>('list') // the Contacts tab: the table, or the cities on a map
+  const filtersRow = useRef<HTMLDivElement>(null)
+  // the map sits under the filters: bring them to the top so it is seen whole
+  const showView = (v: 'list' | 'map') => { setView(v); if (v === 'map') setTimeout(() => filtersRow.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80) }
 
   useEffect(() => { const t = setTimeout(() => setDebounced(search.trim()), 350); return () => clearTimeout(t) }, [search])
   const query: WaContactFilter = useMemo(() => {
@@ -239,8 +244,15 @@ export function WhatsAppContacts() {
           <div>
             <div className="min-w-0 space-y-4">
               {/* filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative min-w-[220px] flex-1">
+              <div ref={filtersRow} className="flex scroll-mt-4 flex-wrap items-center gap-2">
+                <div className="flex shrink-0 overflow-hidden rounded-lg border border-[#DDE4EC] bg-white" data-contacts-view={view}>
+                  {(['list', 'map'] as const).map((v) => (
+                    <button key={v} type="button" data-view={v} aria-pressed={view === v} onClick={() => showView(v)} className="flex h-10 items-center gap-1.5 px-3 text-[13px] font-bold" style={view === v ? { background: ORANGE, color: '#fff' } : { color: '#334155' }}>
+                      {v === 'map' ? <MapPin className="h-4 w-4" /> : <List className="h-4 w-4" />}{v === 'map' ? 'Map View' : 'List View'}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative min-w-[200px] flex-1">
                   <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#94A3B8]" />
                   <input value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search contacts" placeholder="Search by name, phone or tag…" className={`${field} pl-9`} />
                 </div>
@@ -270,8 +282,16 @@ export function WhatsAppContacts() {
                 <button type="button" onClick={() => setManageTags(true)} className="ml-auto flex items-center gap-1 text-[12.5px] font-bold text-[#2563EB]"><Plus className="h-3.5 w-3.5" />Manage Tags</button>
               </div>
 
+              {/* the cities on a map — its chosen city is the City filter above */}
+              {view === 'map' && (
+                <WhatsAppContactsMap query={query} city={filter.city === 'all' ? '' : filter.city}
+                  onCity={(c) => setFilter((f) => ({ ...f, city: c ? (meta.cities.find((x) => x.value.toLowerCase() === c.toLowerCase())?.value || c) : 'all' }))}
+                  onShowList={() => setView('list')}
+                  onSend={() => { setAllMatching(true); setPicked(new Set()); toSend() }} />
+              )}
+
               {/* table */}
-              <div className={`${card} overflow-hidden`}>
+              <div className={`${card} overflow-hidden ${view === 'map' ? 'hidden' : ''}`}>
                 <div className="flex flex-wrap items-center gap-2 border-b border-[#EEF2F6] px-3 py-2.5">
                   <label className="flex h-9 items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 text-[12.5px] font-bold text-[#0F172A]">
                     <input type="checkbox" className="h-4 w-4 accent-[#2563EB]" aria-label="Select this page" checked={allMatching || pageAllPicked} onChange={togglePage} />{count.toLocaleString('en-IN')} selected

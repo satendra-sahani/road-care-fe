@@ -5,7 +5,15 @@ import { loadLeaflet, OSM_TILES } from '@/lib/leaflet'
 import { loadGoogleMaps, googleMapsFailed } from '@/lib/googleMaps'
 import type { MapArea } from '@/lib/cityAreas'
 
-export type MapPin = { id: string; lat: number; lng: number; color: string }
+export type MapPin = {
+  id: string; lat: number; lng: number; color: string
+  /** drawn as a round bubble with this text in it (a count) instead of a pin */
+  text?: string
+  /** the bubble's width in px (34 when not given) */
+  size?: number
+  /** shown when the pointer rests on it */
+  title?: string
+}
 export type LatLng = { lat: number; lng: number }
 
 const INDIA: [number, number] = [22.6, 79.0]
@@ -26,6 +34,19 @@ const pinHtml = (color: string, big: boolean) => {
   return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))"><path fill="${color}" stroke="#fff" stroke-width="1.2" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.7" fill="#fff"/></svg>`
 }
 
+/** what to draw for a pin — the usual drop, or a round bubble with its text — and where its point sits in it */
+const pinArt = (p: MapPin, big: boolean) => {
+  if (p.text == null) { const s = big ? 44 : 32; return { html: pinHtml(p.color, big), w: s, h: s, ax: s / 2, ay: s - 2 } }
+  const s = Math.round((p.size || 34) * (big ? 1.18 : 1)), r = s / 2
+  const safe = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  const fs = Math.max(10, Math.round(s * (safe.length >= 4 ? 0.29 : safe.length === 3 ? 0.34 : 0.4)))
+  return {
+    html: `<svg data-bubble="1" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))"><circle cx="${r}" cy="${r}" r="${r - 2.5}" fill="${p.color}" fill-opacity="${big ? 1 : 0.9}" stroke="${big ? '#0F172A' : '#fff'}" stroke-width="${big ? 2.5 : 2}"/><text x="${r}" y="${r + fs * 0.36}" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="${fs}" font-weight="700" fill="#fff">${safe}</text></svg>`,
+    w: s, h: s, ax: r, ay: r,
+  }
+}
+const artUrl = (html: string) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(html.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '))}`
+
 type Props = {
   pins?: MapPin[]
   selectedId?: string | null
@@ -37,6 +58,12 @@ type Props = {
   interactive?: boolean
   /** areas to highlight — a city's outline, or a circle where there is none — shaded in their colour with a name tag */
   areas?: MapArea[]
+  /** when the areas change, frame the areas alone — not the pins as well */
+  fitAreasOnly?: boolean
+  /** frame the pins again whenever this changes (instead of whenever the set of pins does) */
+  fitKey?: string
+  /** …and frame these points rather than every pin */
+  fitPoints?: LatLng[]
 }
 
 /**
@@ -45,6 +72,7 @@ type Props = {
  *  • `picker`             — pick the garage's exact spot: tap the map or drag the pin
  *  • `me`                 — the viewer's own position as a blue dot
  *  • `areas`              — highlighted areas (the cities picked on the admin's Garages page)
+ *  • a pin with a `text`  — a round bubble with a number in it (contacts per city)
  *
  * It is a Google map (shop / landmark names, Map ⇄ Satellite). If Google Maps
  * can't load — no key, key refused, blocked network — the same props are served
@@ -66,7 +94,7 @@ const svgUrl = (color: string, big: boolean) => `data:image/svg+xml;charset=UTF-
 
 // ───────────────────────── Google Maps ─────────────────────────
 function GoogleGarageMap({
-  pins = [], selectedId, onSelect, picker, me, className = '', zoomControl = true, interactive = true, areas, onFail,
+  pins = [], selectedId, onSelect, picker, me, className = '', zoomControl = true, interactive = true, areas, fitAreasOnly, fitKey, fitPoints, onFail,
 }: Props & { onFail: () => void }) {
   const el = useRef<HTMLDivElement | null>(null)
   const map = useRef<any>(null)
@@ -113,24 +141,27 @@ function GoogleGarageMap({
     markers.current.clear()
     for (const p of pins) {
       const big = p.id === selectedId
-      const s = big ? 44 : 32
+      const art = pinArt(p, big)
       const mk = new g.Marker({
-        map: m, position: { lat: p.lat, lng: p.lng }, zIndex: big ? 1000 : 1,
-        icon: { url: svgUrl(p.color, big), scaledSize: new g.Size(s, s), anchor: new g.Point(s / 2, s - 2) },
+        // bubbles: the small ones lie over the big ones, so each can be clicked
+        map: m, position: { lat: p.lat, lng: p.lng }, zIndex: big ? 1000 : p.text != null ? 200 - art.w : 1, ...(p.title ? { title: p.title } : {}), ...(p.text != null ? { optimized: false } : {}),
+        icon: { url: artUrl(art.html), scaledSize: new g.Size(art.w, art.h), anchor: new g.Point(art.ax, art.ay) },
       })
       mk.addListener('click', () => cb.current.onSelect?.(p.id))
       markers.current.set(p.id, mk)
     }
-    const sig = pins.map((p) => p.id).join(',')
+    const sig = fitKey ?? pins.map((p) => p.id).join(',')
     if (pins.length && sig !== fitted.current) {
       fitted.current = sig
-      if (pins.length === 1) { m.setCenter({ lat: pins[0].lat, lng: pins[0].lng }); m.setZoom(interactive ? 16 : 17) } else {
+      const frame: LatLng[] = fitPoints?.length ? fitPoints : pins
+      if (frame.length === 1) { m.setCenter({ lat: frame[0].lat, lng: frame[0].lng }); m.setZoom(pins[0].text != null ? 10 : interactive ? 16 : 17) } else {
         const b = new g.LatLngBounds()
-        pins.forEach((p) => b.extend({ lat: p.lat, lng: p.lng }))
+        frame.forEach((p) => b.extend({ lat: p.lat, lng: p.lng }))
         m.fitBounds(b, 48)
       }
     }
-  }, [ready, pins, selectedId, interactive])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, pins, selectedId, interactive, fitKey])
 
   // highlighted areas: shaded under the pins, named, and brought into view when they change
   const sig = areaSig(areas)
@@ -157,7 +188,7 @@ function GoogleGarageMap({
         shapes.current.push(new g.Marker({ map: m, position: top, clickable: false, zIndex: 2, icon: { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(tag.svg)}`, scaledSize: new g.Size(tag.w, tag.h), anchor: new g.Point(tag.w / 2, tag.h + 2) } }))
       }
     }
-    pins.forEach((p) => b.extend({ lat: p.lat, lng: p.lng }))
+    if (!fitAreasOnly) pins.forEach((p) => b.extend({ lat: p.lat, lng: p.lng }))
     if (!b.isEmpty()) m.fitBounds(b, 40)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, sig])
@@ -206,7 +237,7 @@ function GoogleGarageMap({
   }, [ready, me?.lat, me?.lng])
 
   return (
-    <div className={`relative overflow-hidden bg-[#E8EEF4] ${className}`} data-map-engine="google" data-map-areas={ready ? (areas?.length || 0) : undefined}>
+    <div className={`relative overflow-hidden bg-[#E8EEF4] ${className}`} data-map-engine="google" data-map-areas={ready ? (areas?.length || 0) : undefined} data-map-pins={ready ? pins.length : undefined}>
       <div ref={el} className="absolute inset-0 z-0" />
     </div>
   )
@@ -215,7 +246,7 @@ function GoogleGarageMap({
 // ───────────────────────── OpenStreetMap fallback ─────────────────────────
 function LeafletGarageMap({
 
-  pins = [], selectedId, onSelect, picker, me, className = '', zoomControl = true, interactive = true, areas,
+  pins = [], selectedId, onSelect, picker, me, className = '', zoomControl = true, interactive = true, areas, fitAreasOnly, fitKey, fitPoints,
 }: Props) {
   const el = useRef<HTMLDivElement | null>(null)
   const map = useRef<any>(null)
@@ -262,22 +293,24 @@ function LeafletGarageMap({
     layer.current.clearLayers()
     for (const p of pins) {
       const big = p.id === selectedId
-      const s = big ? 44 : 32
+      const art = pinArt(p, big)
       const mk = lib.marker([p.lat, p.lng], {
-        icon: lib.divIcon({ className: '', iconSize: [s, s], iconAnchor: [s / 2, s - 2], html: pinHtml(p.color, big) }),
-        zIndexOffset: big ? 1000 : 0,
+        icon: lib.divIcon({ className: '', iconSize: [art.w, art.h], iconAnchor: [art.ax, art.ay], html: art.html }),
+        zIndexOffset: big ? 1000 : p.text != null ? 200 - art.w : 0, ...(p.title ? { title: p.title } : {}),
       })
       mk.on('click', (e: any) => { lib.DomEvent.stopPropagation(e); cb.current.onSelect?.(p.id) })
       mk.addTo(layer.current)
     }
     // frame the pins once per pin set (not on every selection)
-    const sig = pins.map((p) => p.id).join(',')
+    const sig = fitKey ?? pins.map((p) => p.id).join(',')
     if (pins.length && sig !== fitted.current) {
       fitted.current = sig
-      if (pins.length === 1) m.setView([pins[0].lat, pins[0].lng], 15)
-      else m.fitBounds(pins.map((p) => [p.lat, p.lng]), { padding: [40, 40], maxZoom: 15 })
+      const frame: LatLng[] = fitPoints?.length ? fitPoints : pins
+      if (frame.length === 1) m.setView([frame[0].lat, frame[0].lng], pins[0].text != null ? 10 : 15)
+      else m.fitBounds(frame.map((p) => [p.lat, p.lng]), { padding: [40, 40], maxZoom: 15 })
     }
-  }, [ready, pins, selectedId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, pins, selectedId, fitKey])
 
   // highlighted areas: shaded under the pins, named, and brought into view when they change
   const sig = areaSig(areas)
@@ -286,7 +319,7 @@ function LeafletGarageMap({
     if (!ready || !lib || !m) return
     areaLayer.current.clearLayers()
     if (!areas?.length) return
-    const pts: [number, number][] = pins.map((p) => [p.lat, p.lng])
+    const pts: [number, number][] = fitAreasOnly ? [] : pins.map((p) => [p.lat, p.lng])
     for (const a of areas) {
       const look = { color: a.color, weight: 2.5, opacity: 0.95, fillColor: a.color, fillOpacity: 0.12, interactive: false }
       let top: LatLng | null = null
@@ -352,7 +385,7 @@ function LeafletGarageMap({
   }, [ready, me?.lat, me?.lng])
 
   return (
-    <div className={`relative overflow-hidden bg-[#E8EEF4] ${className}`} data-map-engine="osm" data-map-areas={ready ? (areas?.length || 0) : undefined}>
+    <div className={`relative overflow-hidden bg-[#E8EEF4] ${className}`} data-map-engine="osm" data-map-areas={ready ? (areas?.length || 0) : undefined} data-map-pins={ready ? pins.length : undefined}>
       <div ref={el} className="absolute inset-0 z-0" />
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center text-[13px] font-semibold text-[#64748B]">

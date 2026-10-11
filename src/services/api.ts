@@ -813,6 +813,8 @@ type WaAudience = { ids?: string[]; all?: boolean; filter?: WaContactFilter }
 export const adminWhatsappContactsAPI = {
   list: (params?: WaContactFilter & { page?: number; limit?: number }) => api.get('/admin/whatsapp-contacts', { params }),
   meta: () => api.get('/admin/whatsapp-contacts/meta'),
+  // the map view: per city, how many of the contacts these filters show (the city filter is left out)
+  cityCounts: (params?: WaContactFilter) => api.get('/admin/whatsapp-contacts/cities', { params }),
   create: (data: Record<string, any>) => api.post('/admin/whatsapp-contacts', data),
   update: (id: string, data: Record<string, any>) => api.put(`/admin/whatsapp-contacts/${id}`, data),
   remove: (id: string) => api.delete(`/admin/whatsapp-contacts/${id}`),
