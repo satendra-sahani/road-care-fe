@@ -815,6 +815,10 @@ export const adminWhatsappContactsAPI = {
   meta: () => api.get('/admin/whatsapp-contacts/meta'),
   // the map view: per city, how many of the contacts these filters show (the city filter is left out)
   cityCounts: (params?: WaContactFilter) => api.get('/admin/whatsapp-contacts/cities', { params }),
+  // find every contact's exact place from its written address (Google geocoder, on the server, in the background)
+  locateStatus: () => api.get('/admin/whatsapp-contacts/locate'),
+  locateStart: (data?: { filter?: WaContactFilter; again?: boolean }) => api.post('/admin/whatsapp-contacts/locate', data || {}),
+  setLocation: (id: string, lat: number, lng: number) => api.put(`/admin/whatsapp-contacts/${id}/location`, { lat, lng }),
   create: (data: Record<string, any>) => api.post('/admin/whatsapp-contacts', data),
   update: (id: string, data: Record<string, any>) => api.put(`/admin/whatsapp-contacts/${id}`, data),
   remove: (id: string) => api.delete(`/admin/whatsapp-contacts/${id}`),

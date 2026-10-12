@@ -2,7 +2,9 @@
 
 // WhatsApp contacts → Map View.
 //
-// A contact has the name of a city (or a village), not a position — so this is a map of cities:
+// A contact that has an exact place (found from its written address with "Locate contacts", given
+// in the import file, or set by hand) is drawn where it is, as a small pin. The others only have
+// the name of a city (or a village), so for them this is a map of cities:
 // a bubble on each one with how many of the contacts the filters above show are there. A city is
 // put where the app's own garages of that name are; the other names are looked up
 // (OpenStreetMap, one a second as it asks; Google for a name it does not have) and
@@ -10,14 +12,22 @@
 // The city marked here IS the list's city filter: picking one narrows the list and the
 // "Send Template" button to it.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { List, Loader2, MapPin, MapPinOff, RefreshCw, Search, Send, X } from 'lucide-react'
+import { Crosshair, ExternalLink, List, Loader2, MapPin, MapPinOff, Phone, RefreshCw, Search, Send, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { GarageMap, type MapPin as Pin } from '@/components/manager/GarageMap'
 import { cityArea, findCityPoint, kmBetween, knownCityPoints, type LatLng, type MapArea } from '@/lib/cityAreas'
 import { adminWhatsappContactsAPI, type WaContactFilter } from '@/services/api'
 import { NAVY, ORANGE, TYPES } from './WhatsAppContactsParts'
 
-type CityRow = { city: string; total: number; optedIn: number; types: Record<string, number>; lat?: number; lng?: number }
-type Counts = { total: number; noCity: number; cities: CityRow[] }
+type CityRow = { city: string; total: number; optedIn: number; unlocated?: number; types: Record<string, number>; lat?: number; lng?: number }
+type Point = { _id: string; name: string; phone: string; type: string; optIn: boolean; city: string; tags: string[]; lat: number; lng: number; precision: string }
+type Counts = { total: number; noCity: number; cities: CityRow[]; points?: Point[]; located?: number; unlocated?: number }
+type Locate = { running: boolean; of: number; done: number; located: number; cityOnly: number; missed: number; failed: number; error: string; keyReady: boolean }
+/** a pin's colour by what the contact is */
+const TYPE_COLOR: Record<string, string> = { garage: '#2563EB', mechanic: '#7C3AED', customer: '#16A34A', lead: '#0D9488', other: '#64748B' }
+const PRECISION_WORDS: Record<string, string> = { rooftop: 'exact spot', interpolated: 'on the street', center: 'the building or road', approx: 'roughly — the area' }
+const prettyPhone = (p: string) => (p?.length > 10 ? `+${p.slice(0, p.length - 10)} ${p.slice(-10)}` : p)
 
 const GREEN = '#16A34A', GREY = '#94A3B8'
 /** names asked of OpenStreetMap in one sitting; more than that wait for the next visit */
@@ -60,6 +70,34 @@ export function WhatsAppContactsMap({ query, city, onCity, onShowList, onSend }:
   const [q, setQ] = useState('')
   const [frame, setFrame] = useState(0)
   const [everything, setEverything] = useState(false)
+  /** the contact whose pin was tapped */
+  const [picked, setPicked] = useState<Point | null>(null)
+  const [job, setJob] = useState<Locate | null>(null)
+  const [starting, setStarting] = useState(false)
+
+  // the locate job: ask how far it is while it runs, then show the places it found
+  useEffect(() => {
+    let off = false
+    const look = () => adminWhatsappContactsAPI.locateStatus().then((r) => { if (!off) setJob(r.data?.data || null) }).catch(() => {})
+    look()
+    const t = setInterval(() => { if (job?.running) look() }, 3000)
+    return () => { off = true; clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.running])
+  const wasRunning = useRef(false)
+  useEffect(() => {
+    if (job?.running) wasRunning.current = true
+    else if (wasRunning.current) { wasRunning.current = false; setAgain((n) => n + 1); if (job) toast.success(`${num(job.located)} contact${job.located === 1 ? '' : 's'} placed on the map${job.cityOnly ? `, ${num(job.cityOnly)} only by town` : ''}${job.missed ? `, ${num(job.missed)} not found` : ''}`) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.running])
+  const startLocate = async (againAll = false) => {
+    setStarting(true)
+    try {
+      const r = await adminWhatsappContactsAPI.locateStart({ filter: others, again: againAll })
+      if (r.data?.success) { toast.info(r.data.message || 'Locating…'); setJob({ ...(job || { of: 0, done: 0, located: 0, cityOnly: 0, missed: 0, failed: 0, error: '', keyReady: true }), ...(r.data.data || {}), running: true }) }
+      else toast.error(r.data?.message || 'Could not start')
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Could not start') } finally { setStarting(false) }
+  }
 
   // the map shows every city, so the city filter is not sent
   const others = useMemo(() => { const rest = { ...query }; delete rest.city; return rest }, [query])
@@ -122,21 +160,29 @@ export function WhatsAppContactsMap({ query, city, onCity, onShowList, onSend }:
   const chosen = sel ? cities.find((c) => key(c.city) === sel) || null : null
   const chosenAt = chosen ? at(chosen) : null
 
+  const points = data?.points || []
   const pins: Pin[] = useMemo(() => {
-    const max = Math.max(1, ...cities.map((c) => c.total))
+    const max = Math.max(1, ...cities.map((c) => c.unlocated ?? c.total))
     const out: Pin[] = []
+    // a bubble on each city for the contacts there that have no exact place
     for (const c of cities) {
+      const n = c.unlocated ?? c.total
       const p = at(c)
-      if (!p) continue
-      const size = Math.round(26 + 34 * Math.min(1, Math.log10(1 + c.total) / Math.max(2, Math.log10(1 + max))))
-      out.push({ id: key(c.city), lat: p.lat, lng: p.lng, text: short(c.total), size, color: key(c.city) === sel ? ORANGE : c.optedIn ? GREEN : GREY, title: `${c.city} — ${people(c.total)}` })
+      if (!p || (!n && key(c.city) !== sel)) continue
+      const size = Math.round(26 + 34 * Math.min(1, Math.log10(1 + n) / Math.max(2, Math.log10(1 + max))))
+      out.push({ id: key(c.city), lat: p.lat, lng: p.lng, text: short(n), size, color: key(c.city) === sel ? ORANGE : c.optedIn ? GREEN : GREY, title: `${c.city} — ${people(n)} without an exact place${n !== c.total ? ` (${people(c.total)} in all)` : ''}` })
+    }
+    // a pin on every contact that has one
+    for (const p of points) {
+      if (sel && key(p.city) !== sel) continue
+      out.push({ id: `c:${p._id}`, lat: p.lat, lng: p.lng, color: p.optIn ? (TYPE_COLOR[p.type] || TYPE_COLOR.other) : GREY, title: `${p.name || prettyPhone(p.phone)} — ${p.type}${p.city ? `, ${p.city}` : ''}` })
     }
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, spots, sel])
 
   // the first view: the cities around where most contacts are (a namesake far away does not shrink the map to a dot)
-  const hub = pins[0]
+  const hub = pins.find((p) => p.text != null) || pins[0]
   const nearPins = useMemo(() => (hub ? pins.filter((p) => kmBetween(p, hub) <= FRAME_KM) : []), [pins, hub])
   const far = pins.length - nearPins.length
 
@@ -168,6 +214,10 @@ export function WhatsAppContactsMap({ query, city, onCity, onShowList, onSend }:
           </p>
         </div>
         <div className="flex items-center gap-2 text-[12.5px] font-bold">
+          {data && (data.located || 0) > 0 && !job?.running && <span className="font-semibold text-[#64748B]" data-map-located>{num(data.located || 0)} placed exactly{data.unlocated ? ` · ${num(data.unlocated)} by city only` : ''}</span>}
+          {job?.running
+            ? <span className="flex items-center gap-1.5 font-semibold text-[#64748B]" data-locate-progress><Loader2 className="h-3.5 w-3.5 animate-spin" />Locating contacts… {num(job.done)} of {num(job.of)}</span>
+            : data && (data.unlocated || 0) > 0 && <button type="button" data-locate onClick={() => startLocate(false)} disabled={starting || job?.keyReady === false} title={job?.keyReady === false ? 'The Google Maps key is not set on the server' : 'Find the exact place of every contact from its written address (Google)'} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-white disabled:opacity-50" style={{ background: NAVY }}><Crosshair className="h-3.5 w-3.5" />{starting ? 'Starting…' : `Locate ${num(data.unlocated || 0)} contact${(data.unlocated || 0) === 1 ? '' : 's'}`}</button>}
           {placing && <span className="flex items-center gap-1.5 font-semibold text-[#64748B]" data-map-progress><Loader2 className="h-3.5 w-3.5 animate-spin" />Placing cities on the map… {placing.done} of {placing.of}</span>}
           {offline && !placing && <span className="font-semibold text-[#B45309]">The map service did not answer — some cities are not placed yet.</span>}
           {sel
@@ -178,12 +228,14 @@ export function WhatsAppContactsMap({ query, city, onCity, onShowList, onSend }:
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="relative" style={{ height: TALL }}>
-          <GarageMap className="h-full w-full" pins={pins} selectedId={sel || null} onSelect={(id) => { const c = id && cities.find((x) => key(x.city) === id); if (c) pick(c.city) }}
+          <GarageMap className="h-full w-full" pins={pins} selectedId={picked ? `c:${picked._id}` : sel || null}
+            onSelect={(id) => { if (id?.startsWith('c:')) { const p = points.find((x) => `c:${x._id}` === id); if (p) setPicked(p); return } const c = id && cities.find((x) => key(x.city) === id); if (c) pick(c.city) }}
             areas={area ? [area] : undefined} fitAreasOnly fitKey={`${othersKey}|${frame}|${everything ? 'all' : 'near'}|${pins.length ? 1 : 0}`} fitPoints={everything ? undefined : nearPins} />
           <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-x-3 gap-y-1 rounded-lg bg-white/95 px-3 py-1.5 text-[11.5px] font-semibold text-[#334155] shadow">
             <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: GREEN }} />Contacts in a city</span>
             <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: ORANGE }} />Chosen</span>
             <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: GREY }} />All opted out</span>
+            {points.length > 0 && <><span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: TYPE_COLOR.garage }} />Garage</span><span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: TYPE_COLOR.mechanic }} />Mechanic</span><span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: TYPE_COLOR.customer }} />Customer</span></>}
           </div>
           {loading && <div className="absolute inset-x-0 bottom-3 flex justify-center"><span className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#334155] shadow"><Loader2 className="h-3.5 w-3.5 animate-spin" />Counting contacts…</span></div>}
         </div>
@@ -192,6 +244,25 @@ export function WhatsAppContactsMap({ query, city, onCity, onShowList, onSend }:
           {failed && (
             <div className="p-4 text-[13px] text-[#B91C1C]">Could not load the numbers for the map.
               <button type="button" onClick={() => setAgain((n) => n + 1)} className="ml-2 inline-flex items-center gap-1 font-bold text-[#2563EB]"><RefreshCw className="h-3.5 w-3.5" />Try again</button>
+            </div>
+          )}
+
+          {picked && (
+            <div className="border-b border-[#EEF2F6] bg-[#F0F6FF] p-4" data-contact-card>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <b className="block truncate text-[15px] font-extrabold text-[#0F172A]">{picked.name || 'No name'}</b>
+                  <span className="text-[12.5px] text-[#475569]">{prettyPhone(picked.phone)} · {picked.type}{picked.city ? ` · ${picked.city}` : ''}{picked.optIn ? '' : ' · opted out'}</span>
+                </div>
+                <button type="button" aria-label="Close" onClick={() => setPicked(null)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#64748B] hover:bg-white"><X className="h-4 w-4" /></button>
+              </div>
+              {picked.tags.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{picked.tags.map((t) => <span key={t} className="rounded-md bg-white px-2 py-0.5 text-[11.5px] font-semibold text-[#334155] ring-1 ring-[#E2E8F0]">{t}</span>)}</div>}
+              <p className="mt-1.5 text-[11.5px] text-[#64748B]">Place: {PRECISION_WORDS[picked.precision] || picked.precision}</p>
+              <div className="mt-3 flex gap-2">
+                <a href={`https://wa.me/${picked.phone}`} target="_blank" rel="noopener noreferrer" className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white text-[12.5px] font-bold text-[#15803D] hover:bg-[#F0FDF4]"><WhatsAppIcon className="h-4 w-4" />WhatsApp</a>
+                <a href={`tel:+${picked.phone}`} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white text-[12.5px] font-bold text-[#0F172A] hover:bg-[#F8FAFC]"><Phone className="h-4 w-4" />Call</a>
+                <a href={`https://www.google.com/maps/search/?api=1&query=${picked.lat},${picked.lng}`} target="_blank" rel="noopener noreferrer" className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white text-[12.5px] font-bold text-[#0F172A] hover:bg-[#F8FAFC]"><ExternalLink className="h-4 w-4" />Maps</a>
+              </div>
             </div>
           )}
 

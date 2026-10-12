@@ -2,7 +2,7 @@
 // address book: find which column is what, pull the rows out, and say what is
 // wrong with the ones that cannot be used. The server checks every row again.
 
-export type ContactRow = { name: string; phone: string; altPhone: string; city: string; type: string; tags: string; notes: string }
+export type ContactRow = { name: string; phone: string; altPhone: string; city: string; type: string; tags: string; notes: string; lat: string; lng: string }
 export type ParsedContacts = {
   rows: ContactRow[]
   /** which column of the file was used for what (shown to the admin before importing) */
@@ -20,6 +20,8 @@ const FIELDS: { field: keyof ContactRow; match: RegExp }[] = [
   { field: 'tags', match: /tag|label|segment|group/i },
   { field: 'type', match: /type|category|role/i },
   { field: 'notes', match: /note|remark|comment|detail/i },
+  { field: 'lat', match: /^lat/i },
+  { field: 'lng', match: /^(lng|lon|long)/i },
 ]
 
 /** "98765 43210", "+91-98765-43210", "09876543210" → "919876543210"; '' when it is not an Indian mobile. */
@@ -104,7 +106,7 @@ export function rowsToContacts(table: unknown[][]): ParsedContacts {
     else if (seen.has(phone)) repeated++
     else seen.add(phone)
     // every row goes to the server (it reports the same numbers); the counts above are for the preview
-    rows.push({ name: at(r, 'name'), phone: raw, altPhone: at(r, 'altPhone'), city: at(r, 'city'), type: at(r, 'type'), tags: at(r, 'tags'), notes: at(r, 'notes') })
+    rows.push({ name: at(r, 'name'), phone: raw, altPhone: at(r, 'altPhone'), city: at(r, 'city'), type: at(r, 'type'), tags: at(r, 'tags'), notes: at(r, 'notes'), lat: at(r, 'lat'), lng: at(r, 'lng') })
   })
   const columns = (Object.keys(map) as (keyof ContactRow)[]).map((field) => ({ field, header: hadHeader ? head[map[field] as number] : `Column ${(map[field] as number) + 1}` }))
   return { rows, columns, total: body.length, valid: seen.size, invalid, repeated, invalidRows, hadHeader }
