@@ -150,6 +150,29 @@ export function WhatsAppContacts() {
   }
   const audience: Audience = allMatching ? { mode: 'all', filter: query, label: filterWords() } : picked.size ? { mode: 'ids', ids: [...picked], label: `${picked.size} selected contact${picked.size === 1 ? '' : 's'}` } : { mode: 'none' }
   const toSend = () => { setTab('contacts'); setSendOpen(true) }
+  // A row's WhatsApp button. With contacts ticked it sends to the ticked ones, this row with them — it used to
+  // throw the ticks away and open the dialog for this one contact. Nothing ticked: this contact, as before.
+  const sendFromRow = (id: string) => {
+    const mine = !allMatching && !picked.has(id)
+    if (!allMatching) setPicked((p) => new Set([...p, id]))
+    toSend()
+    rowAdded.current = mine ? id : ''
+  }
+  // the contact that a row's button — not a tick by hand — put into the selection
+  const rowAdded = useRef('')
+  useEffect(() => { if (!sendOpen) rowAdded.current = '' }, [sendOpen])
+  // Closing the dialog without sending: that contact goes out again (else the next row's button would open
+  // with it still in); contacts ticked by hand stay ticked.
+  const closeSend = () => {
+    const id = rowAdded.current
+    if (id) setPicked((p) => { const n = new Set(p); n.delete(id); return n })
+    setSendOpen(false)
+  }
+  const rowSendTitle = (id: string) => {
+    if (allMatching) return `Send a template to all ${total.toLocaleString('en-IN')} selected contacts`
+    const n = picked.has(id) ? picked.size : picked.size + 1
+    return picked.size && n > 1 ? `Send a template to the ${n.toLocaleString('en-IN')} selected contacts${picked.has(id) ? '' : ' (this one with them)'}` : 'Send a template to this contact'
+  }
 
   const bulk = async (action: 'addTag' | 'removeTag' | 'optIn' | 'optOut' | 'delete', tag?: string) => {
     setBusy(true)
@@ -335,7 +358,7 @@ export function WhatsAppContacts() {
                             <td className="whitespace-nowrap px-2 py-2 text-[#334155]">{ago(c.lastContactedAt)}</td>
                             <td className={`sticky right-0 px-3 py-2 ${on ? 'bg-[#F8FAFF]' : 'bg-white'} ${menu === c._id ? 'z-10' : ''}`}>
                               <span className="relative flex items-center justify-end gap-1">
-                                <button type="button" title={c.optIn ? 'Send a template to this contact' : 'Opted out — cannot be sent templates'} disabled={!c.optIn} onClick={() => { setAllMatching(false); setPicked(new Set([c._id])); toSend() }} className="flex h-8 w-8 items-center justify-center rounded-lg text-[#16A34A] hover:bg-[#F0FDF4] disabled:opacity-30"><WhatsAppIcon className="h-[18px] w-[18px]" /></button>
+                                <button type="button" data-row-send title={c.optIn ? rowSendTitle(c._id) : 'Opted out — cannot be sent templates'} disabled={!c.optIn} onClick={() => sendFromRow(c._id)} className="flex h-8 w-8 items-center justify-center rounded-lg text-[#16A34A] hover:bg-[#F0FDF4] disabled:opacity-30"><WhatsAppIcon className="h-[18px] w-[18px]" /></button>
                                 <button type="button" data-row-menu aria-label="More actions" onClick={(e) => { e.stopPropagation(); setMenu((m) => (m === c._id ? '' : c._id)) }} className="flex h-8 w-8 items-center justify-center rounded-lg text-[#475569] hover:bg-[#F1F5F9]"><MoreVertical className="h-[18px] w-[18px]" /></button>
                                 {menu === c._id && (
                                   <span className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white py-1 text-left shadow-lg">
@@ -453,9 +476,9 @@ export function WhatsAppContacts() {
         </Modal>
       )}
       {sendOpen && (
-        <Modal title="Send WhatsApp Template" onClose={() => setSendOpen(false)} size="xl" plain>
+        <Modal title="Send WhatsApp Template" onClose={closeSend} size="xl" plain>
           <SendPanel inDialog audience={audience} templates={templates} senders={senders} loadingTemplates={tplLoading} templatesError={tplError} presetKey={presetKey}
-            onClose={() => setSendOpen(false)} onAddMore={() => { setSendOpen(false); toast.info('Tick more contacts in the list, then press Send Template.') }}
+            onClose={closeSend} onAddMore={() => { setSendOpen(false); toast.info('Tick more contacts in the list, then press Send Template.') }}
             onRemoveRecipient={(id) => setPicked((p) => { const n = new Set(p); n.delete(id); if (!n.size) setSendOpen(false); return n })}
             onClear={() => { clearPicked(); setSendOpen(false) }} onReloadTemplates={loadTemplates}
             onSent={() => { setSendOpen(false); clearPicked(); loadBroadcasts(); loadMeta(); setTimeout(() => { loadBroadcasts(); loadRows(); loadMeta() }, 2500) }} />
