@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Download, Search, MapPin, List, Phone, Star, User, X, Loader2, Warehouse, CheckCircle2, Clock, XCircle, Users,
-  Navigation, Trash2, ShieldCheck, Maximize2, Minimize2, Eye, UserPlus, Copy,
+  Navigation, Trash2, ShieldCheck, Maximize2, Minimize2, Eye, UserPlus, Copy, Plus,
 } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { toast } from 'sonner'
 import { adminGarageAPI, adminGarageStaffAPI } from '@/services/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { GarageMap } from '@/components/manager/GarageMap'
+import { AddGarageDialog } from '@/components/admin/AddGarageDialog'
 import { SearchSelect } from '@/components/admin/SearchSelect'
 import { MultiSearchSelect } from '@/components/admin/MultiSearchSelect'
 import { cityArea, cityColour, type MapArea } from '@/lib/cityAreas'
@@ -36,6 +37,8 @@ function Photo({ url, size = 76 }: { url?: string; size?: number }) {
     ? <img src={thumb(url, size * 2, size * 2)} alt="" loading="lazy" className="shrink-0 rounded-lg object-cover" style={{ width: size, height: size }} />
     : <div className="flex shrink-0 items-center justify-center rounded-lg bg-[#EEF2F7] text-[#94A3B8]" style={{ width: size, height: size }}><Warehouse className="h-6 w-6" /></div>
 }
+// a garage the office added that nobody of ours has been to (older records = visited)
+const NotVisited = () => <span data-not-visited title="Added by the office — nobody has visited it in person yet" className="inline-flex items-center whitespace-nowrap rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-bold text-[#4338CA]">Not visited</span>
 const Stars = ({ n }: { n?: number }) => (n ? <span className="inline-flex items-center gap-1 text-[12.5px] font-bold text-[#B45309]"><Star className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />{n}/5</span> : null)
 
 function csv(rows: any[]) {
@@ -46,7 +49,10 @@ function csv(rows: any[]) {
     ['Open', (g) => g.openTime], ['Close', (g) => g.closeTime], ['Weekly off', (g) => g.weeklyOff], ['Emergency', (g) => (g.emergency ? 'Yes' : 'No')],
     ['Doorstep service', (g) => (g.sendsMechanic ? 'Yes' : 'No')], ['Travel km', (g) => g.travelKm], ['Mechanics', (g) => (g.mechanics || []).length],
     ['UPI', (g) => g.upi], ['GST', (g) => g.gst], ['Staff rating', (g) => g.visit?.rating], ['Status', (g) => g.status],
-    ['Visited by', (g) => g.visit?.by || g.staff?.name], ['Staff phone', (g) => g.staff?.phone], ['Registered', (g) => (g.createdAt ? new Date(g.createdAt).toISOString().slice(0, 10) : '')],
+    ['Visited in person', (g) => (g.visited === false ? 'No' : 'Yes')],
+    ['Visited by', (g) => (g.visited === false ? '' : g.visit?.by || g.staff?.name)], ['Staff phone', (g) => g.staff?.phone],
+    ['Added by', (g) => (g.source === 'admin' ? `Office${g.addedBy?.name ? ` (${g.addedBy.name})` : ''}` : 'Field visit')], ['Google Maps link', (g) => g.mapUrl],
+    ['Registered', (g) => (g.createdAt ? new Date(g.createdAt).toISOString().slice(0, 10) : '')],
   ]
   const q = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`
   const text = [cols.map((c) => q(c[0])).join(','), ...rows.map((g) => cols.map((c) => q(c[1](g))).join(','))].join('\r\n')
@@ -62,7 +68,7 @@ export function GarageManagement() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'map' | 'list'>('map')
-  const [f, setF] = useState({ area: '', vehicle: '', service: '', status: '', search: '' })
+  const [f, setF] = useState({ area: '', vehicle: '', service: '', status: '', visited: '', search: '' })
   // Cities picked to be highlighted: their outline is shaded on the map, and (unless switched
   // off) only their garages are listed. None picked = every city, as before.
   const [cities, setCities] = useState<string[]>([])
@@ -76,6 +82,7 @@ export function GarageManagement() {
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
   const [staffOpen, setStaffOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   const loadStats = useCallback(() => adminGarageAPI.getStats().then((r) => setStats(r.data?.data)).catch(() => undefined), [])
   const cityKey = cities.join('|')
@@ -157,6 +164,18 @@ export function GarageManagement() {
       toast.success(yes ? 'Doorstep service marked available' : 'Doorstep service marked not available')
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Could not update the garage') } finally { setBusy('') }
   }
+  // visited in person = somebody of ours has been to the garage (a garage the office adds starts at No)
+  const setVisited = async (g: any, yes: boolean) => {
+    setBusy('visited')
+    try {
+      const r = await adminGarageAPI.update(g._id, { visited: yes })
+      const u = r.data?.data
+      setRows((list) => list.map((x) => (x._id === g._id ? u : x)))
+      setOpen(u)
+      toast.success(yes ? 'Marked as visited in person' : 'Marked as not visited')
+      loadStats()
+    } catch (e: any) { toast.error(e?.response?.data?.message || 'Could not update the garage') } finally { setBusy('') }
+  }
   const remove = async (g: any) => {
     if (!window.confirm(`Delete "${g.garageName}" permanently? This cannot be undone.`)) return
     setBusy('delete')
@@ -186,7 +205,7 @@ export function GarageManagement() {
           <b className="truncate text-[14px] text-[#13203A]">{g.garageName}</b>
           <Pill status={g.status} />
         </div>
-        <div className="mt-0.5 flex items-center gap-2 text-[12px] text-[#64748B]"><Stars n={g.visit?.rating} /><span>{g.code}</span></div>
+        <div className="mt-0.5 flex items-center gap-2 text-[12px] text-[#64748B]"><Stars n={g.visit?.rating} /><span>{g.code}</span>{g.visited === false && <NotVisited />}</div>
         <p className="mt-0.5 flex items-center gap-1 truncate text-[12px] text-[#64748B]"><User className="h-3 w-3 shrink-0" />{g.ownerName}</p>
         <p className="flex items-center gap-1 truncate text-[12px] text-[#64748B]"><MapPin className="h-3 w-3 shrink-0" />{place(g)}</p>
         <div className="mt-1.5 flex items-center justify-between gap-2">
@@ -210,6 +229,7 @@ export function GarageManagement() {
           <p className="text-[13.5px] text-[#64748B]">View all registered garages on map or list, manage details, verify, and track performance.</p>
         </div>
         <div className="flex gap-2">
+          <button type="button" data-add-garage onClick={() => setAddOpen(true)} className="flex h-10 items-center gap-1.5 rounded-lg border border-[#FF5A1F] bg-white px-4 text-[13.5px] font-bold text-[#FF5A1F] hover:bg-[#FFF5F0]"><Plus className="h-4 w-4" /> Add Garage</button>
           <button type="button" onClick={() => setStaffOpen(true)} className="flex h-10 items-center gap-1.5 rounded-lg px-4 text-[13.5px] font-bold text-white" style={{ background: ORANGE }}><Users className="h-4 w-4" /> Field Staff</button>
           <button type="button" onClick={() => csv(sorted)} disabled={!rows.length} className="flex h-10 items-center gap-1.5 rounded-lg border border-[#DDE4EC] bg-white px-4 text-[13.5px] font-bold text-[#13203A] disabled:opacity-50"><Download className="h-4 w-4" /> Export</button>
         </div>
@@ -249,6 +269,8 @@ export function GarageManagement() {
           options={[{ value: '', label: 'All Services' }, ...SERVICES.map((x) => ({ value: x.key, label: x.label }))]} />
         <SearchSelect className={`${sel} w-[140px]`} value={f.status} onChange={pick('status')} ariaLabel="Status" placeholder="Search status…"
           options={[{ value: '', label: 'All Status' }, ...(Object.keys(STATUS) as GarageStatus[]).map((x) => ({ value: x, label: STATUS[x].short }))]} />
+        <SearchSelect className={`${sel} w-[150px]`} value={f.visited} onChange={pick('visited')} ariaLabel="Visited in person" placeholder="Search…"
+          options={[{ value: '', label: 'Visited: All' }, { value: 'yes', label: 'Visited' }, { value: 'no', label: `Not visited${stats?.notVisited ? ` (${stats.notVisited})` : ''}` }]} />
         <div className="relative ml-auto min-w-[220px] flex-1 sm:max-w-[340px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
           <input className={`${sel} w-full pl-9`} value={f.search} onChange={setFilter('search')} placeholder="Search by garage name, owner, area…" />
@@ -344,7 +366,7 @@ export function GarageManagement() {
                       <td className="px-3.5 py-2.5 text-[#475569]">{(g.vehicleTypes || []).map(vehicleLabel).join(', ')}</td>
                       <td className="px-3.5 py-2.5 text-[#475569]">{(g.mechanics || []).length}</td>
                       <td className="px-3.5 py-2.5">{g.visit?.rating ? <Stars n={g.visit.rating} /> : '—'}</td>
-                      <td className="px-3.5 py-2.5 text-[#475569]">{g.visit?.by || g.staff?.name || '—'}</td>
+                      <td className="px-3.5 py-2.5 text-[#475569]">{g.visited === false ? <NotVisited /> : (g.visit?.by || g.staff?.name || '—')}</td>
                       <td className="px-3.5 py-2.5"><Pill status={g.status} /></td>
                       <td className="px-3.5 py-2.5 text-right"><button type="button" onClick={() => openGarage(g)} className="rounded-lg border border-[#DDE4EC] px-3 py-1.5 text-[12.5px] font-bold text-[#1B3B6F] hover:bg-[#EFF4FF]">View</button></td>
                     </tr>
@@ -355,6 +377,11 @@ export function GarageManagement() {
       )}
 
       <FieldStaffDialog open={staffOpen} onClose={() => setStaffOpen(false)} />
+      <AddGarageDialog open={addOpen} onClose={() => setAddOpen(false)} onCreated={(g) => {
+        setAddOpen(false)
+        if (g?._id) { setRows((list) => [g, ...list.filter((x) => x._id !== g._id)]); setSelId(g._id); openGarage(g) }
+        loadStats()
+      }} />
 
       {/* details */}
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
@@ -363,7 +390,9 @@ export function GarageManagement() {
             <>
               <DialogHeader>
                 <DialogTitle className="flex flex-wrap items-center gap-2 pr-6 text-[19px]">{open.garageName} <Pill status={open.status} /></DialogTitle>
-                <DialogDescription>{open.code} · registered {fmtDate(open.createdAt)} by {open.staff?.name || '—'}{open.staff?.phone ? ` (+91 ${open.staff.phone})` : ''}{open.shopPartner ? ' · now also a Shop Partner (it has been given a job)' : ''}</DialogDescription>
+                <DialogDescription>{open.code} · {open.source === 'admin'
+                  ? `added ${fmtDate(open.createdAt)} by the office${open.addedBy?.name ? ` (${open.addedBy.name})` : ''}`
+                  : `registered ${fmtDate(open.createdAt)} by ${open.staff?.name || '—'}${open.staff?.phone ? ` (+91 ${open.staff.phone})` : ''}`}{open.shopPartner ? ' · now also a Shop Partner (it has been given a job)' : ''}</DialogDescription>
               </DialogHeader>
 
               {!!open.photos?.length && (
@@ -381,6 +410,8 @@ export function GarageManagement() {
                 <Info l="Call number" v={open.callNumber ? <a className="font-semibold text-[#1B3B6F] underline" href={`tel:+91${open.callNumber}`}>+91 {open.callNumber}</a> : '—'} />
                 <Info l="Timing" v={`${time12(open.openTime)} – ${time12(open.closeTime)} · off: ${DAYS.find((d) => d.key === open.weeklyOff)?.label.replace(/ \(.*/, '') || open.weeklyOff}`} />
                 <Info wide l="Address" v={<>{open.address}{open.location?.lat != null && <a href={mapsLink(open.location, open.address)} target="_blank" rel="noopener noreferrer" className="ml-2 inline-flex items-center gap-1 font-semibold text-[#1B3B6F] underline"><Navigation className="h-3.5 w-3.5" />Open in Maps</a>}</>} />
+                <Info l="Visited in person" v={<span className="flex flex-wrap items-center gap-2" data-visited-row>{open.visited === false ? <><NotVisited /> <span className="text-[12.5px] text-[#64748B]">added by the office</span></> : 'Yes'}<button type="button" data-visited-toggle disabled={!!busy} onClick={() => setVisited(open, open.visited === false)} className="rounded-md border border-[#DDE4EC] px-2 py-0.5 text-[12px] font-bold text-[#1B3B6F] hover:bg-[#EFF4FF] disabled:opacity-60">{busy === 'visited' ? 'Saving…' : open.visited === false ? 'Mark visited' : 'Mark not visited'}</button></span>} />
+                <Info l="Google Maps link" v={open.mapUrl ? <a href={open.mapUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#1B3B6F] underline">Open the link</a> : ''} />
                 <Info l="Vehicles" v={(open.vehicleTypes || []).map(vehicleLabel).join(', ')} />
                 <Info l="Emergency / night" v={open.emergency ? 'Yes' : 'No'} />
                 <Info wide l="Services" v={<span className="flex flex-wrap gap-1.5">{(open.services || []).map((s: string) => <span key={s} className="rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-[12px] font-semibold text-[#334155]">{serviceLabel(s)}{s === 'other' && open.otherWork ? `: ${open.otherWork}` : ''}</span>)}</span>} />
@@ -412,7 +443,7 @@ export function GarageManagement() {
               </div>
 
               <div className="rounded-lg bg-[#F6F8FB] p-3">
-                <b className="mb-2 block text-[14px] text-[#13203A]">Field visit (internal)</b>
+                <b className="mb-2 block text-[14px] text-[#13203A]">Field visit (internal){open.visited === false ? ' — not visited yet' : ''}</b>
                 <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
                   <Info l="Visited on" v={fmtDate(open.visit?.date)} />
                   <Info l="Visited by" v={open.visit?.by || open.staff?.name} />
@@ -448,7 +479,7 @@ const Empty = () => (
   <div className="px-4 py-14 text-center">
     <Warehouse className="mx-auto mb-2 h-9 w-9 text-[#CBD5E1]" />
     <b className="block text-[14.5px] text-[#334155]">No garages found</b>
-    <p className="text-[13px] text-[#8A97AB]">Garages registered by your field staff at /manager/garage appear here. Add staff with the Field Staff button.</p>
+    <p className="text-[13px] text-[#8A97AB]">Garages registered by your field staff at /manager/garage appear here. Add staff with the Field Staff button, or add a garage yourself with Add Garage.</p>
   </div>
 )
 

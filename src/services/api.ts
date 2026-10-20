@@ -997,6 +997,10 @@ export const adminGarageAPI = {
   setStatus: (id: string, status: 'pending' | 'active' | 'inactive', adminNote?: string) => api.put(`/admin/garages/${id}/status`, { status, adminNote }),
   update: (id: string, data: any) => api.put(`/admin/garages/${id}`, data),
   remove: (id: string) => api.delete(`/admin/garages/${id}`),
+  // the office adds a garage itself (not at a field visit) — "visited in person" starts at No
+  create: (data: any) => api.post('/admin/garages', data),
+  // the point of "26.7409, 83.8901" or a Google Maps link (the server follows short links)
+  locate: (text: string) => api.post('/admin/garages/locate', { text }),
   // field garages that can be given a job and are not shop partners yet (shaped like shop partners)
   assignable: () => api.get('/admin/garages/assignable'),
   // give a request to a field garage — with its first job it becomes a shop partner
