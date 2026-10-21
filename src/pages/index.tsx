@@ -825,7 +825,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="flex min-w-0 items-center justify-center">
-                <DImg sizes="(max-width: 767px) 92vw, 520px" src="/design/home-hero-v2.webp" alt="Har Gaadi Ka Saathi — Bharat Mechanics certified mechanic with 10,000+ happy customers, 500+ certified mechanics, 4.8/5 rating" className="block h-auto w-full max-w-[520px]" />
+                <DImg sizes="(max-width: 767px) 92vw, 520px" src="/design/home-hero-v2.webp" alt="Mechanics in Minutes. — Bharat Mechanics certified mechanic with 10,000+ happy customers, 500+ certified mechanics, 4.8/5 rating" className="block h-auto w-full max-w-[520px]" />
               </div>
             </div>
             <div className="mt-[18px] grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

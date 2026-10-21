@@ -36,6 +36,7 @@ export default function Document() {
               "@type": "Organization",
               name: "Bharat Mechanics",
               legalName: "Bharat Mechanics Private Limited",
+              slogan: "Mechanics in Minutes.",
               url: "https://bharatmechanics.com",
               logo: "https://bharatmechanics.com/brand-logo-v3.png",
               description:

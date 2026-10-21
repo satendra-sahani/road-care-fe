@@ -239,7 +239,7 @@ export function WhatsAppChat() {
     playPing()
     try {
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
-        const n = new Notification(title, { body, icon: '/logo.png', tag: 'wa-chat' })
+        const n = new Notification(title, { body, icon: '/apple-touch-icon.png', tag: 'wa-chat' })
         n.onclick = () => { window.focus(); n.close() }
       }
     } catch { /* ignore */ }

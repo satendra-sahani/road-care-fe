@@ -128,7 +128,7 @@ export default function ServicesLandingPage() {
           </div>
         ))}
       </div>
-      <DImg src="/design/sv-script2.webp" alt="Har Gaadi Ka Saathi" sizes="(max-width: 767px) 96px, 250px" className="ml-1.5 mt-3.5 block h-auto w-[250px] max-md:hidden" />
+      <DImg src="/design/sv-script2.webp" alt="Mechanics in Minutes." sizes="(max-width: 767px) 96px, 250px" className="ml-1.5 mt-3.5 block h-auto w-[250px] max-md:hidden" />
     </>
   )
 

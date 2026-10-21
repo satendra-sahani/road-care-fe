@@ -425,7 +425,7 @@ export function ShopListing({ categorySlug: catProp = '', brandSlug: brandProp =
                 </div>
               </div>
               <div className="flex min-w-0 flex-col">
-                <DImg src="/design/sh-script1.webp" alt="Har Gaadi Ka Saathi" loading="eager" sizes="230px" className="-mt-2.5 block h-auto w-[clamp(170px,17vw,230px)] md:ml-[clamp(0px,2vw,24px)]" />
+                <DImg src="/design/sh-script1.webp" alt="Mechanics in Minutes." loading="eager" sizes="230px" className="-mt-2.5 block h-auto w-[clamp(170px,17vw,230px)] md:ml-[clamp(0px,2vw,24px)]" />
                 <form onSubmit={(e) => { e.preventDefault(); goSearch(heroQ) }} className="mt-3.5 flex items-center gap-2.5 rounded-[14px] bg-white py-1.5 pl-[18px] pr-1.5 shadow-[0_10px_26px_rgba(12,42,77,0.10)]">
                   <IcSearch size={20} className="shrink-0 text-[#7B8DA3]" />
                   <input type="search" aria-label="Search parts" value={heroQ} onChange={(e) => setHeroQ(e.target.value)} placeholder="Search for parts, brands, or your vehicle (e.g. Brake Pad)" className="h-11 min-w-0 flex-1 bg-transparent text-[13.5px] text-[#0E2B4C] outline-none placeholder:text-ellipsis" />
