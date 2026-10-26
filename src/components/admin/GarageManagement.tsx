@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Download, Search, MapPin, List, Phone, Star, User, X, Loader2, Warehouse, CheckCircle2, Clock, XCircle, Users,
-  Navigation, Trash2, ShieldCheck, Maximize2, Minimize2, Eye, UserPlus, Copy, Plus,
+  Navigation, Trash2, ShieldCheck, Maximize2, Minimize2, Eye, UserPlus, Copy, Plus, Pencil,
 } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { toast } from 'sonner'
@@ -83,6 +83,7 @@ export function GarageManagement() {
   const [note, setNote] = useState('')
   const [staffOpen, setStaffOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  const [editG, setEditG] = useState<any | null>(null) // the garage open in the Edit dialog
 
   const loadStats = useCallback(() => adminGarageAPI.getStats().then((r) => setStats(r.data?.data)).catch(() => undefined), [])
   const cityKey = cities.join('|')
@@ -140,6 +141,8 @@ export function GarageManagement() {
   const setFilter = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => setF((x) => ({ ...x, [k]: e.target.value }))
   const pick = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }))
   const openGarage = (g: any) => { setOpen(g); setNote(g.adminNote || '') }
+  // the details close while the Edit dialog is open, and open again with the saved garage
+  const editGarage = (g: any) => { setOpen(null); setEditG(g) }
 
   const setStatus = async (g: any, status: GarageStatus) => {
     setBusy(status)
@@ -214,6 +217,7 @@ export function GarageManagement() {
             <a href={`tel:+91${g.callNumber || g.whatsapp}`} title="Call" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7ECF3] text-[#16A34A] hover:bg-[#F0FDF4]"><Phone className="h-4 w-4" /></a>
             <a href={waLink(g.whatsapp)} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7ECF3] text-[#16A34A] hover:bg-[#F0FDF4]"><WhatsAppIcon className="h-4 w-4" /></a>
             <button type="button" onClick={() => openGarage(g)} title="View details" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7ECF3] text-[#1B3B6F] hover:bg-[#EFF4FF]"><Eye className="h-4 w-4" /></button>
+            <button type="button" data-edit-garage={g._id} onClick={() => editGarage(g)} title="Edit garage" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7ECF3] text-[#C2410C] hover:bg-[#FFF5F0]"><Pencil className="h-4 w-4" /></button>
           </span>
         </div>
       </div>
@@ -368,7 +372,7 @@ export function GarageManagement() {
                       <td className="px-3.5 py-2.5">{g.visit?.rating ? <Stars n={g.visit.rating} /> : '—'}</td>
                       <td className="px-3.5 py-2.5 text-[#475569]">{g.visited === false ? <NotVisited /> : (g.visit?.by || g.staff?.name || '—')}</td>
                       <td className="px-3.5 py-2.5"><Pill status={g.status} /></td>
-                      <td className="px-3.5 py-2.5 text-right"><button type="button" onClick={() => openGarage(g)} className="rounded-lg border border-[#DDE4EC] px-3 py-1.5 text-[12.5px] font-bold text-[#1B3B6F] hover:bg-[#EFF4FF]">View</button></td>
+                      <td className="whitespace-nowrap px-3.5 py-2.5 text-right"><button type="button" onClick={() => openGarage(g)} className="rounded-lg border border-[#DDE4EC] px-3 py-1.5 text-[12.5px] font-bold text-[#1B3B6F] hover:bg-[#EFF4FF]">View</button><button type="button" data-edit-garage={g._id} onClick={() => editGarage(g)} className="ml-1.5 rounded-lg border border-[#FFD3C2] px-3 py-1.5 text-[12.5px] font-bold text-[#C2410C] hover:bg-[#FFF5F0]">Edit</button></td>
                     </tr>
                   ))}
             </tbody>
@@ -377,6 +381,11 @@ export function GarageManagement() {
       )}
 
       <FieldStaffDialog open={staffOpen} onClose={() => setStaffOpen(false)} />
+      <AddGarageDialog open={!!editG} garage={editG} onClose={() => setEditG(null)} onCreated={(g) => {
+        setEditG(null)
+        if (g?._id) { setRows((list) => list.map((x) => (x._id === g._id ? g : x))); setSelId(g._id); openGarage(g) }
+        loadStats()
+      }} />
       <AddGarageDialog open={addOpen} onClose={() => setAddOpen(false)} onCreated={(g) => {
         setAddOpen(false)
         if (g?._id) { setRows((list) => [g, ...list.filter((x) => x._id !== g._id)]); setSelId(g._id); openGarage(g) }
@@ -465,7 +474,8 @@ export function GarageManagement() {
                 {open.status !== 'active' && <button type="button" disabled={!!busy} onClick={() => setStatus(open, 'active')} className="flex h-10 items-center gap-1.5 rounded-lg bg-[#16A34A] px-4 text-[13.5px] font-bold text-white disabled:opacity-60">{busy === 'active' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Verify &amp; Activate</button>}
                 {open.status !== 'inactive' && <button type="button" disabled={!!busy} onClick={() => setStatus(open, 'inactive')} className="flex h-10 items-center gap-1.5 rounded-lg border border-[#FECACA] bg-white px-4 text-[13.5px] font-bold text-[#B91C1C] disabled:opacity-60">{busy === 'inactive' ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />} Mark Inactive</button>}
                 {open.status !== 'pending' && <button type="button" disabled={!!busy} onClick={() => setStatus(open, 'pending')} className="flex h-10 items-center gap-1.5 rounded-lg border border-[#DDE4EC] bg-white px-4 text-[13.5px] font-bold text-[#334155] disabled:opacity-60">{busy === 'pending' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />} Back to Pending</button>}
-                <button type="button" disabled={!!busy} onClick={() => remove(open)} className="ml-auto flex h-10 items-center gap-1.5 rounded-lg px-3 text-[13px] font-bold text-[#B91C1C] hover:bg-[#FEF2F2] disabled:opacity-60"><Trash2 className="h-4 w-4" /> Delete</button>
+                <button type="button" data-edit-garage-details disabled={!!busy} onClick={() => editGarage(open)} className="ml-auto flex h-10 items-center gap-1.5 rounded-lg border border-[#FF5A1F] bg-white px-4 text-[13.5px] font-bold text-[#FF5A1F] hover:bg-[#FFF5F0] disabled:opacity-60"><Pencil className="h-4 w-4" /> Edit</button>
+                <button type="button" disabled={!!busy} onClick={() => remove(open)} className="flex h-10 items-center gap-1.5 rounded-lg px-3 text-[13px] font-bold text-[#B91C1C] hover:bg-[#FEF2F2] disabled:opacity-60"><Trash2 className="h-4 w-4" /> Delete</button>
               </div>
             </>
           )}

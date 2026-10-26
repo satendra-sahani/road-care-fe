@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, MapPin, Navigation, Plus, Search, X, Camera } from 'lucide-react'
+import { Loader2, MapPin, Navigation, Plus, Save, Search, X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
 import { adminGarageAPI, uploadAPI } from '@/services/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -13,6 +13,9 @@ import { DAYS, DISTANCES, SERVICES, VEHICLES, mapsLink } from '@/components/mana
 // visit. Its place is picked on the map, or pasted as "lat, long" or a Google Maps
 // link. "Visited in person" starts at No — that is how the team can tell a garage
 // we added from one somebody has been to.
+// The same dialog edits a garage (given `garage`): every field is filled in from it,
+// and saving changes it (PUT) instead of adding a new one. Its status is not changed
+// here — that stays with the Verify / Inactive / Pending buttons of the details.
 const ORANGE = '#FF5A1F'
 const inp = 'h-10 w-full rounded-lg border border-[#DDE4EC] bg-white px-3 text-[13.5px] text-[#13203A] outline-none focus:border-[#1B3B6F]'
 const digits = (v: string) => v.replace(/\D/g, '').slice(0, 10)
@@ -25,13 +28,28 @@ type Form = {
   vehicleTypes: string[]; services: string[]; otherWork: string
   openTime: string; closeTime: string; weeklyOff: string
   emergency: boolean; sendsMechanic: boolean; travelKm: string
+  upi: string; partsWarranty: string; gst: string
   visited: boolean; status: 'pending' | 'active'; adminNote: string
 }
 const blank = (): Form => ({
   garageName: '', ownerName: '', whatsapp: '', callNumber: '', address: '', area: '', city: '', pincode: '',
   location: null, mapUrl: '', photos: [],
   vehicleTypes: [], services: [], otherWork: '', openTime: '09:00', closeTime: '21:00', weeklyOff: 'none',
-  emergency: false, sendsMechanic: false, travelKm: '', visited: false, status: 'pending', adminNote: '',
+  emergency: false, sendsMechanic: false, travelKm: '', upi: '', partsWarranty: '', gst: '',
+  visited: false, status: 'pending', adminNote: '',
+})
+const s = (v: any) => (v == null ? '' : String(v))
+/** an existing garage → the form (for Edit) */
+const fromGarage = (g: any): Form => ({
+  garageName: s(g.garageName), ownerName: s(g.ownerName), whatsapp: s(g.whatsapp), callNumber: s(g.callNumber),
+  address: s(g.address), area: s(g.area), city: s(g.city), pincode: s(g.pincode),
+  location: g.location?.lat != null && g.location?.lng != null ? { lat: Number(g.location.lat), lng: Number(g.location.lng) } : null,
+  mapUrl: s(g.mapUrl), photos: Array.isArray(g.photos) ? g.photos.filter(Boolean) : [],
+  vehicleTypes: Array.isArray(g.vehicleTypes) ? g.vehicleTypes : [], services: Array.isArray(g.services) ? g.services : [], otherWork: s(g.otherWork),
+  openTime: g.openTime || '09:00', closeTime: g.closeTime || '21:00', weeklyOff: g.weeklyOff || 'none',
+  emergency: !!g.emergency, sendsMechanic: !!g.sendsMechanic, travelKm: s(g.travelKm),
+  upi: s(g.upi), partsWarranty: s(g.partsWarranty), gst: s(g.gst),
+  visited: g.visited !== false, status: g.status === 'active' ? 'active' : 'pending', adminNote: s(g.adminNote),
 })
 
 /** the address at a point (OpenStreetMap) — a bonus, the pin is what matters */
@@ -68,7 +86,8 @@ const Chip = ({ on, onClick, children }: { on: boolean; onClick: () => void; chi
   <button type="button" onClick={onClick} className="h-8 rounded-full border px-3 text-[12.5px] font-semibold" style={on ? { borderColor: ORANGE, background: '#FFF1EB', color: '#C2410C' } : { borderColor: '#DDE4EC', color: '#334155', background: '#fff' }}>{children}</button>
 )
 
-export function AddGarageDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (g: any) => void }) {
+export function AddGarageDialog({ open, onClose, onCreated, garage }: { open: boolean; onClose: () => void; onCreated: (g: any) => void; garage?: any | null }) {
+  const editing = !!garage?._id
   const [f, setF] = useState<Form>(blank)
   const [paste, setPaste] = useState('')
   const [finding, setFinding] = useState(false)
@@ -78,7 +97,13 @@ export function AddGarageDialog({ open, onClose, onCreated }: { open: boolean; o
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
 
-  useEffect(() => { if (open) { setF(blank()); setPaste(''); setWhere('') } }, [open])
+  useEffect(() => {
+    if (!open) return
+    setF(garage?._id ? fromGarage(garage) : blank())
+    setPaste(garage?._id ? s(garage.mapUrl) : '')
+    setWhere(garage?._id && garage.location?.lat != null ? 'The saved location' : '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, garage?._id])
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((x) => ({ ...x, [k]: v }))
   const txt = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => set(k, e.target.value as any)
@@ -138,7 +163,8 @@ export function AddGarageDialog({ open, onClose, onCreated }: { open: boolean; o
     if (f.ownerName.trim().length < 2) return 'Enter the owner name'
     if (!isPhone(f.whatsapp)) return 'Enter a valid 10-digit WhatsApp number'
     if (f.callNumber && !isPhone(f.callNumber)) return 'The calling number must be a valid 10-digit number (or leave it empty)'
-    if (!f.location) return 'Set the location: tap the map, or paste the latitude, longitude or a Google Maps link and press Find'
+    // (an older garage that never had a pin can still be edited without one)
+    if (!f.location && (!editing || garage?.location?.lat != null)) return 'Set the location: tap the map, or paste the latitude, longitude or a Google Maps link and press Find'
     if (f.address.trim().length < 6) return 'Enter the address'
     if (!f.vehicleTypes.length) return 'Select at least one vehicle type'
     if (!f.services.length) return 'Select at least one service'
@@ -151,14 +177,21 @@ export function AddGarageDialog({ open, onClose, onCreated }: { open: boolean; o
     if (m) return toast.error(m)
     setSaving(true)
     try {
-      const r = await adminGarageAPI.create({ ...f, travelKm: f.sendsMechanic ? f.travelKm : '', force })
-      toast.success(r.data?.message || 'Garage added')
+      const payload: any = { ...f, travelKm: f.sendsMechanic ? f.travelKm : '', force }
+      let r
+      if (editing) {
+        delete payload.status // the status has its own buttons (verify = verifiedAt / verifiedBy)
+        r = await adminGarageAPI.update(garage._id, payload)
+      } else {
+        r = await adminGarageAPI.create(payload)
+      }
+      toast.success(editing ? 'Garage updated' : r.data?.message || 'Garage added')
       onCreated(r.data?.data)
     } catch (e: any) {
       const d = e?.response?.data
       if (e?.response?.status === 409 && d?.duplicate && !force) {
         setSaving(false)
-        if (window.confirm(`${d.message}.\n\nAdd this garage anyway?`)) return save(true)
+        if (window.confirm(`${d.message}.\n\n${editing ? 'Save it anyway?' : 'Add this garage anyway?'}`)) return save(true)
         return
       }
       toast.error(d?.message || 'Could not add the garage')
@@ -167,11 +200,16 @@ export function AddGarageDialog({ open, onClose, onCreated }: { open: boolean; o
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !saving && onClose()}>
-      <DialogContent className="max-h-[94vh] max-w-[860px] overflow-y-auto" data-add-garage-dialog>
+      <DialogContent className="max-h-[94vh] max-w-[860px] overflow-y-auto" data-add-garage-dialog data-garage-form={editing ? 'edit' : 'add'}>
         <DialogHeader>
-          <DialogTitle className="text-[19px]">Add Garage</DialogTitle>
-          <DialogDescription>Add a garage from the office — found on Google Maps, over the phone or from a reference. Field executives keep registering garages from /manager/garage as before.</DialogDescription>
+          <DialogTitle className="text-[19px]">{editing ? `Edit Garage · ${garage.code || ''}` : 'Add Garage'}</DialogTitle>
+          <DialogDescription>{editing
+            ? 'Change any detail and press Save Changes. Mechanics, rates and the field visit notes stay as they are; the status is changed with the buttons on the garage.'
+            : 'Add a garage from the office — found on Google Maps, over the phone or from a reference. Field executives keep registering garages from /manager/garage as before.'}</DialogDescription>
         </DialogHeader>
+        {editing && garage.shopPartner && (
+          <p className="rounded-lg bg-[#FFF7E6] px-3 py-2 text-[12.5px] text-[#92400E]" data-partner-note>This garage is also a Shop Partner (it has been given a job). Saving here changes the garage record; its Shop Partner profile is edited on the Shop Partners page.</p>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <L t="Garage name" req><input className={inp} value={f.garageName} onChange={txt('garageName')} maxLength={120} placeholder="e.g. Ram Auto Garage" data-f="garageName" /></L>
@@ -244,6 +282,12 @@ export function AddGarageDialog({ open, onClose, onCreated }: { open: boolean; o
           </div>
         </div>
 
+        <div className="grid gap-3 sm:grid-cols-3">
+          <L t="UPI ID / number"><input className={inp} value={f.upi} onChange={txt('upi')} maxLength={80} placeholder="optional" data-f="upi" /></L>
+          <L t="Warranty on parts"><input className={inp} value={f.partsWarranty} onChange={txt('partsWarranty')} maxLength={200} placeholder="optional" data-f="partsWarranty" /></L>
+          <L t="GST / registration"><input className={inp} value={f.gst} onChange={txt('gst')} maxLength={40} placeholder="optional" data-f="gst" /></L>
+        </div>
+
         <div>
           <span className="mb-1.5 block text-[12.5px] font-semibold text-[#475569]">Photos (optional)</span>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={upload} />
@@ -269,20 +313,22 @@ export function AddGarageDialog({ open, onClose, onCreated }: { open: boolean; o
             <YesNo name="visited" value={f.visited} onChange={(v) => set('visited', v)} />
             <p className="mt-1 text-[11.5px] text-[#64748B]">{f.visited ? 'Yes — somebody of ours has been to this garage.' : 'No — added by the office (e.g. from Google Maps), nobody has visited it yet.'}</p>
           </div>
-          <div>
-            <span className="mb-1 block text-[12.5px] font-semibold text-[#475569]">Status</span>
-            <select className={`${inp} w-[220px]`} value={f.status} onChange={(e) => set('status', e.target.value as Form['status'])} data-f="status">
-              <option value="pending">Pending verification</option>
-              <option value="active">Active (verified now)</option>
-            </select>
-          </div>
+          {!editing && (
+            <div>
+              <span className="mb-1 block text-[12.5px] font-semibold text-[#475569]">Status</span>
+              <select className={`${inp} w-[220px]`} value={f.status} onChange={(e) => set('status', e.target.value as Form['status'])} data-f="status">
+                <option value="pending">Pending verification</option>
+                <option value="active">Active (verified now)</option>
+              </select>
+            </div>
+          )}
           <div className="sm:col-span-2"><L t="Admin note"><textarea value={f.adminNote} onChange={txt('adminNote')} rows={2} maxLength={1000} placeholder="e.g. Found on Google Maps, owner agreed on the phone" className="w-full rounded-lg border border-[#DDE4EC] p-2.5 text-[13.5px] outline-none focus:border-[#1B3B6F]" /></L></div>
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-[#EEF2F7] pt-3">
           <button type="button" onClick={onClose} disabled={saving} className="h-10 rounded-lg border border-[#DDE4EC] bg-white px-4 text-[13.5px] font-bold text-[#334155] disabled:opacity-60">Cancel</button>
           <button type="button" onClick={() => save()} disabled={saving} className="flex h-10 items-center gap-1.5 rounded-lg px-5 text-[13.5px] font-bold text-white disabled:opacity-60" style={{ background: ORANGE }} data-save-garage>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Add Garage
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {editing ? 'Save Changes' : 'Add Garage'}
           </button>
         </div>
       </DialogContent>
