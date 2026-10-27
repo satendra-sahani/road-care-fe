@@ -112,13 +112,13 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        // `font-sans` (default) → Poppins for body and UI.
-        // `font-display` → Poppins as well (same next/font family).
+        // `font-sans` (default) → Geist for body and UI.
+        // `font-display` → Bricolage Grotesque for headings.
+        // `font-mono` → Geist Mono for codes and IDs.
         // Fallback chain runs through system fonts so we never get an
         // invisible flash if next/font fails to load.
         sans: [
           'var(--font-body)',
-          'Poppins',
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
@@ -131,9 +131,15 @@ module.exports = {
         display: [
           'var(--font-display)',
           'var(--font-body)',
-          'Poppins',
           'system-ui',
           'sans-serif',
+        ],
+        mono: [
+          'var(--font-mono)',
+          'ui-monospace',
+          'SFMono-Regular',
+          'Consolas',
+          'monospace',
         ],
       },
       letterSpacing: {

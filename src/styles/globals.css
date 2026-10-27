@@ -1,15 +1,16 @@
-/* Fonts are loaded via next/font in src/pages/_app.tsx — Poppins (body)
-   and display, per the Claude Design handoff). The CSS variables --font-body and
-   --font-display are wired into Tailwind's `font-sans` / `font-display`
-   utilities (see tailwind.config.js). */
+/* Fonts are loaded via next/font in src/pages/_app.tsx — Geist (body),
+   Bricolage Grotesque (headings) and Geist Mono (codes). The CSS variables
+   --font-body, --font-display and --font-mono are wired into Tailwind's
+   `font-sans` / `font-display` / `font-mono` utilities (see tailwind.config.js). */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ─── Typography baseline ──────────────────────────────────────────────
-   Poppins everywhere (single next/font family, see _app.tsx). No stylistic
-   sets are forced, so glyphs render exactly as in the Claude Design handoff. */
+   Geist for text, Bricolage Grotesque for h1–h3 (see _app.tsx). Headings are
+   set lighter and tighter than before (the voicestudio.sh look) — the heavy
+   Poppins 800 headings read as a template. */
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
@@ -18,9 +19,9 @@
   }
 
   body {
-    font-family: var(--font-body), Poppins, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body), system-ui, -apple-system, sans-serif;
     font-weight: 400;
-    line-height: 1.55;
+    line-height: 1.6;
     color: hsl(var(--foreground));
     background-color: hsl(var(--background));
   }
@@ -28,22 +29,42 @@
   /* Display family + tighter tracking for all headings. Individual
      pages can still override via Tailwind utility classes. */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display), var(--font-body), Poppins, system-ui, sans-serif;
-    letter-spacing: -0.022em;
-    line-height: 1.14;
+    font-family: var(--font-body), system-ui, sans-serif;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
     text-wrap: balance;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.12;
   }
 
   /* Larger headings get more negative tracking for weight balance and
      use a fluid clamp() so they scale gracefully between phone and
      desktop without manual breakpoint juggling. */
   h1 {
-    letter-spacing: -0.035em;
-    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 1.04;
   }
   h2 {
-    letter-spacing: -0.028em;
-    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.08;
+  }
+
+  /* Headings across the site carry font-bold / font-extrabold from the Poppins
+     days; in Bricolage those read heavy, so they are eased down here (the
+     element + class selector outranks the plain Tailwind utility). */
+  :is(h1, h2, h3).font-black,
+  :is(h1, h2, h3).font-extrabold {
+    font-weight: 680;
+  }
+  :is(h1, h2, h3).font-bold {
+    font-weight: 620;
+  }
+  :is(h1, h2, h3).font-semibold {
+    font-weight: 570;
   }
 
   /* Inputs and buttons should inherit the body font (some browsers don't
@@ -159,8 +180,8 @@
     @apply bg-background text-foreground font-sans;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display), var(--font-body), Poppins, sans-serif;
+  h1, h2, h3 {
+    font-family: var(--font-display), var(--font-body), sans-serif;
   }
 }
 
@@ -372,24 +393,25 @@
      where clamp() isn't supported. */
   .text-display-xl {
     font-size: clamp(1.875rem, 1.2rem + 3.4vw, 3.75rem);
-    line-height: 1.05;
-    letter-spacing: -0.04em;
-    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.05em;
+    font-weight: 600;
     text-wrap: balance;
   }
   .text-display-lg {
     font-size: clamp(1.5rem, 1rem + 2.5vw, 2.75rem);
-    line-height: 1.1;
-    letter-spacing: -0.032em;
-    font-weight: 700;
+    line-height: 1.06;
+    letter-spacing: -0.042em;
+    font-weight: 600;
     text-wrap: balance;
   }
 
   /* Eyebrow / kicker labels above section headlines. */
   .text-eyebrow {
+    font-family: var(--font-mono), ui-monospace, monospace;
     font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
+    font-weight: 500;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: hsl(16 100% 45%);
   }

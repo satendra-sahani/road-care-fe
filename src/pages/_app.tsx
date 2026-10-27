@@ -9,7 +9,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
-import { Poppins } from "next/font/google";
+import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
 
 // Admin / shop-partner / logged-in-customer guards are only used on protected
 // (noindex) routes — split them out so public pages don't download them.
@@ -28,21 +28,31 @@ const FranchiseLayout = dynamic(() => import("@/components/franchise/FranchiseLa
 // Toast host is client-only and not needed for first paint.
 const Toaster = dynamic(() => import("sonner").then((m) => m.Toaster), { ssr: false });
 
-// ─── Self-hosted, preloaded font via next/font ─────────────────────────
-// Poppins for BOTH body and display text — matches the Claude Design
-// handoff (website-design-buildout) used for the site redesign.
-// Geometric, friendly and highly legible at UI sizes.
-// The same family is exposed under both CSS variables so every existing
-// `font-sans` / `font-display` utility keeps working unchanged
-// (see tailwind.config.js).
-// Both are exposed as CSS variables so Tailwind can wire them into
-// `font-sans` and `font-display` utility classes (see tailwind.config.js).
-const poppins = Poppins({
+// ─── Self-hosted, preloaded fonts via next/font ────────────────────────
+// Geist for body and UI text, Bricolage Grotesque for headings (h1–h3),
+// Geist Mono for codes and IDs — the type pairing of voicestudio.sh, which
+// replaced Poppins everywhere on 2026-10-27.
+// Exposed as CSS variables that Tailwind wires into `font-sans`,
+// `font-display` and `font-mono` (see tailwind.config.js).
+const geist = Geist({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
   fallback: ["system-ui", "Segoe UI", "Roboto", "Arial", "sans-serif"],
+});
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  // optical size: small headings get a sturdier cut, big ones a finer one
+  axes: ["opsz"],
+  fallback: ["system-ui", "Segoe UI", "Roboto", "Arial", "sans-serif"],
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+  fallback: ["ui-monospace", "SFMono-Regular", "Consolas", "monospace"],
 });
 
 // Admin pages that don't need admin auth
@@ -112,14 +122,15 @@ export default function App({ Component, pageProps }: AppProps) {
           uses the app font instead of falling back to a system serif/sans. */}
       <style jsx global>{`
         :root {
-          --font-body: ${poppins.style.fontFamily};
-          --font-display: ${poppins.style.fontFamily};
+          --font-body: ${geist.style.fontFamily};
+          --font-display: ${bricolage.style.fontFamily};
+          --font-mono: ${geistMono.style.fontFamily};
         }
       `}</style>
       <LoginModalProvider>
       <AdminCallProvider>
       <IncomingCallProvider>
-      <div className={`${poppins.variable} font-sans`}>
+      <div className={`${geist.variable} ${bricolage.variable} ${geistMono.variable} font-sans`}>
         <Toaster position="top-right" richColors closeButton />
         {needsAdminAuth(router.pathname) ? (
           <AuthGuard>
