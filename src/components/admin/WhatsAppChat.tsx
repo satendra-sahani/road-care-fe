@@ -401,9 +401,9 @@ export function WhatsAppChat() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:grid-cols-[330px_1fr]" style={{ height: 'calc(100vh - 180px)' }}>
+      <div className="grid grid-cols-1 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:grid-cols-[330px_minmax(0,1fr)]" style={{ height: 'calc(100vh - 180px)' }}>
         {/* ── Conversation list ── */}
-        <div className="flex min-h-0 flex-col border-r border-gray-100">
+        <div className="flex min-h-0 min-w-0 flex-col border-r border-gray-100">
           <div className="flex items-center gap-2 border-b border-gray-100 p-3">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -450,7 +450,7 @@ export function WhatsAppChat() {
         </div>
 
         {/* ── Thread ── */}
-        <div className="flex min-h-0 flex-col" style={active ? chatBg : { backgroundColor: '#F5F7FA' }}>
+        <div className="flex min-h-0 min-w-0 flex-col" style={active ? chatBg : { backgroundColor: '#F5F7FA' }}>
           {!active ? (
             <div className="flex flex-1 flex-col items-center justify-center text-center text-slate-400">
               <MessageSquare className="mb-2 h-8 w-8 text-slate-300" />
@@ -561,7 +561,7 @@ export function WhatsAppChat() {
               {/* Reply preview */}
               {replyTo && (
                 <div className="flex items-center gap-2 border-t border-black/5 bg-[#F0F2F5] px-3 pt-2">
-                  <div className="flex-1 border-l-[3px] border-emerald-500 bg-white px-2 py-1 rounded">
+                  <div className="min-w-0 flex-1 border-l-[3px] border-emerald-500 bg-white px-2 py-1 rounded">
                     <p className="text-[11px] font-bold text-emerald-700">{replyTo.direction === 'out' ? 'You' : (active.name || 'User')}</p>
                     <p className="truncate text-[12px] text-slate-500">{previewText(replyTo.body, replyTo.type)}</p>
                   </div>
@@ -572,7 +572,7 @@ export function WhatsAppChat() {
               {/* Pending file preview */}
               {pendingFile && (
                 <div className="flex items-center gap-2 border-t border-black/5 bg-[#F0F2F5] px-3 pt-2">
-                  <div className="flex flex-1 items-center gap-2 rounded bg-white px-2 py-1.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-2 rounded bg-white px-2 py-1.5">
                     {pendingFile.type.startsWith('image/')
                       ? <img src={URL.createObjectURL(pendingFile)} alt="" className="h-10 w-10 rounded object-cover" />
                       : <FileText className="h-6 w-6 text-[#1B3B6F]" />}
