@@ -21,6 +21,7 @@ import { useBmCareSub, planById } from '@/lib/bmCare'
 import { ScaledStage } from '@/components/home/ScaledStage'
 import { DImg, ikUrl } from '@/components/ui/DImg'
 import { PLAY_STORE_URL, APP_STORE_URL } from '@/lib/appLinks'
+import { AREAS_COMING_SOON } from '@/data/launch'
 import Link from 'next/link'
 import Head from 'next/head'
 // sonner is only needed after an "Add to cart" click — load it then, not with the page.
@@ -849,19 +850,26 @@ export default function HomePage() {
         <Section pad="lg">
           <div className="grid grid-cols-1 items-center gap-[clamp(16px,2.5vw,26px)] md:grid-cols-3">
             <div>
-              <div className="text-[11px] font-bold tracking-[1.8px] text-[#BE3F09]">OUR PRESENCE</div>
-              <h2 className="mt-2.5 text-[clamp(21px,2.7vw,30px)] font-bold leading-[1.2] tracking-[-0.6px]">Serving 100+ cities across India</h2>
-              <p className="mt-3 text-[13px] leading-[1.6] text-[#41586F]">From Delhi NCR, Mumbai, Bengaluru, Hyderabad, Chennai, Pune, Ahmedabad, Kolkata, Jaipur, Indore and many more — Bharat Mechanics is just a tap away.</p>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold tracking-[1.8px] text-[#BE3F09]">
+                OUR PRESENCE
+                {AREAS_COMING_SOON && <span className="rounded-full bg-[#E7F7EE] px-2.5 py-0.5 text-[10.5px] tracking-[1px] text-[#127A43]">COMING SOON</span>}
+              </div>
+              <h2 className="mt-2.5 text-[clamp(21px,2.7vw,30px)] font-bold leading-[1.2] tracking-[-0.6px]">{AREAS_COMING_SOON ? 'Coming soon to 100+ cities across India' : 'Serving 100+ cities across India'}</h2>
+              <p className="mt-3 text-[13px] leading-[1.6] text-[#41586F]">
+                {AREAS_COMING_SOON
+                  ? 'We start with Gorakhpur, Deoria and Kushinagar, then grow to Delhi NCR, Mumbai, Bengaluru, Hyderabad, Chennai, Pune, Ahmedabad, Kolkata, Jaipur, Indore and many more — Bharat Mechanics is coming soon to your city.'
+                  : 'From Delhi NCR, Mumbai, Bengaluru, Hyderabad, Chennai, Pune, Ahmedabad, Kolkata, Jaipur, Indore and many more — Bharat Mechanics is just a tap away.'}
+              </p>
               <Link href="/service" className="mt-[18px] inline-flex items-center gap-[9px] rounded-3xl border border-[#BBD5F2] bg-white px-5 py-3 text-[13px] font-semibold text-[#1864C8] transition-colors hover:border-[#1A6FD4]">
                 Check service availability <IcArrowForward size={15} />
               </Link>
             </div>
             <div className="flex justify-center">
-              <DImg sizes="(max-width: 767px) 92vw, 440px" src="/design/india-map-sm.webp" alt="Bharat Mechanics service cities across India" className="block h-auto w-full max-w-[440px]" />
+              <DImg sizes="(max-width: 767px) 92vw, 440px" src={AREAS_COMING_SOON ? '/design/india-map-sm-soon.webp' : '/design/india-map-sm.webp'} alt="Bharat Mechanics service cities across India" className="block h-auto w-full max-w-[440px]" />
             </div>
             <div className="grid gap-4">
               {[
-                { Icon: IcLocalShipping, tone: 'blue', t: 'Pan India Service', d: '100+ cities and growing' },
+                { Icon: IcLocalShipping, tone: 'blue', t: 'Pan India Service', d: AREAS_COMING_SOON ? 'Coming soon' : '100+ cities and growing' },
                 { Icon: IcSpeed, tone: 'orange', t: 'Fast Response', d: 'Mechanics at your doorstep' },
                 { Icon: IcHeadsetMic, tone: 'purple', t: '24×7 Support', d: "We're always here for you" },
               ].map((r) => (

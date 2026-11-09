@@ -72,6 +72,7 @@ export const DESIGN_DIMS: Record<string, [number, number]> = {
   '/design/home-banner.jpg': [1600, 589],
   '/design/home-hero-v2.webp': [1100, 1136],
   '/design/india-map-sm.webp': [700, 636],
+  '/design/india-map-sm-soon.webp': [700, 636],
   '/design/join-mechanic-v2-o.webp': [900, 595],
   '/design/logo-white.png': [1332, 398],
   '/design/logo.png': [818, 244],
