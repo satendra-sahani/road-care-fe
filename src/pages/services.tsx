@@ -6,6 +6,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { SEOHead } from '@/components/SEOHead'
+import { AREAS_COMING_SOON } from '@/data/launch'
 import { UserLayout } from '@/components/layout/UserLayout'
 import { ScaledStage } from '@/components/home/ScaledStage'
 import { DImg } from '@/components/ui/DImg'
@@ -329,10 +330,10 @@ export default function ServicesLandingPage() {
 
           {/* ═══ Service areas — links to the city guides (local SEO) ═══ */}
           <section className="mx-auto max-w-[1200px] px-[clamp(14px,3vw,24px)] pt-[clamp(22px,3vw,32px)]">
-            <Eyebrow>SERVICE AREAS</Eyebrow>
+            <Eyebrow>SERVICE AREAS{AREAS_COMING_SOON ? ' · COMING SOON' : ''}</Eyebrow>
             <H2>Mechanic near you in Purvanchal</H2>
             <p className="mt-1.5 max-w-[760px] text-[13px] leading-relaxed text-[#52667C]">
-              Doorstep car &amp; bike service, puncture repair and 24/7 roadside help across Gorakhpur, Deoria, Kushinagar and Maharajganj districts.
+              Doorstep car &amp; bike service, puncture repair and 24/7 roadside help across Gorakhpur, Deoria, Kushinagar and Maharajganj districts{AREAS_COMING_SOON ? ' — coming soon. We are onboarding partner garages now.' : '.'}
             </p>
             <ul className="mt-3.5 flex flex-wrap gap-2">
               {SERVICE_AREAS.map(([slug, name]) => (

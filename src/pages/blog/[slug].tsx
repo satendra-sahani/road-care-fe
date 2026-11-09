@@ -6,6 +6,7 @@ import { UserLayout } from '@/components/layout/UserLayout'
 import { DImg } from '@/components/ui/DImg'
 import { BlogBlock, PHONE, PHONE_HREF } from '@/components/blog/BlogBlocks'
 import type { Post, PostCard } from '@/data/blog/types'
+import { AREAS_COMING_SOON } from '@/data/launch'
 import { IcCall, IcBuild, IcSchedule, IcLocationOn, IcChevronRight, IcVerifiedUser, IcExpandMore } from '@/components/icons/BmIcons'
 
 const SITE = 'https://bharatmechanics.com'
@@ -22,6 +23,7 @@ export default function BlogPost({ post, related }: Props) {
   const url = `${SITE}/blog/${post.slug}`
   const city = post.city
   const bookHref = city ? `/service?location=${encodeURIComponent(city.name)}` : '/service'
+  const soon = AREAS_COMING_SOON && !!city
 
   const jsonLd = [
     {
@@ -101,6 +103,7 @@ export default function BlogPost({ post, related }: Props) {
                     {city ? <IcLocationOn size={14} /> : null}
                     {post.category}
                   </span>
+                  {soon && <span className="ml-2 inline-flex items-center rounded-full bg-[#E7F7EE] px-3 py-1 text-[12px] font-bold uppercase tracking-wide text-[#127A43]">Coming soon</span>}
                   <h1 className="mt-3 text-[26px] font-bold leading-[1.18] tracking-[-0.01em] sm:text-[32px] lg:text-[40px]">{post.title}</h1>
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[#52667C]">
                     <span>By Bharat Mechanics Team</span>
@@ -108,10 +111,19 @@ export default function BlogPost({ post, related }: Props) {
                     <span className="inline-flex items-center gap-1"><IcSchedule size={14} /> {post.readMins} min read</span>
                   </div>
                   <p className="mt-4 max-w-[720px] text-[15.5px] leading-[1.75] text-[#41586F] sm:text-[16.5px]">{post.intro}</p>
+                  {soon && city && (
+                    <div role="status" className="mt-4 max-w-[720px] rounded-2xl border border-[#BFE6CF] bg-[#EEFAF3] px-4 py-3 text-[14.5px] leading-relaxed text-[#14532D]">
+                      <strong>Coming soon in {city.name}.</strong> We are onboarding partner garages here right now, and doorstep booking for {city.name} opens soon. Call {PHONE} to know the launch date.
+                    </div>
+                  )}
                   <div className="mt-5 flex flex-wrap gap-2.5">
-                    <Link href={bookHref} className="inline-flex h-12 items-center gap-2 rounded-full bg-[#C94309] px-6 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(201,67,9,0.28)] hover:bg-[#A93807] hover:text-white">
-                      <IcBuild size={18} /> Book a Service
-                    </Link>
+                    {soon ? (
+                      <span className="inline-flex h-12 items-center gap-2 rounded-full bg-[#E7F7EE] px-6 text-[15px] font-semibold text-[#127A43]">Booking opens soon</span>
+                    ) : (
+                      <Link href={bookHref} className="inline-flex h-12 items-center gap-2 rounded-full bg-[#C94309] px-6 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(201,67,9,0.28)] hover:bg-[#A93807] hover:text-white">
+                        <IcBuild size={18} /> Book a Service
+                      </Link>
+                    )}
                     <a href={PHONE_HREF} className="inline-flex h-12 items-center gap-2 rounded-full border border-[#D6E2F0] bg-white px-6 text-[15px] font-semibold text-[#0E2B4C] hover:bg-[#F2F6FC]">
                       <IcCall size={18} /> {PHONE}
                     </a>
@@ -171,7 +183,7 @@ export default function BlogPost({ post, related }: Props) {
               {city && city.nearby.length > 0 && (
                 <section className="mt-10 rounded-2xl border border-[#E6ECF3] bg-white p-5">
                   <h2 className="text-[18px] font-bold text-[#0E2B4C]">Mechanic service near {city.name}</h2>
-                  <p className="mt-1 text-[14px] text-[#52667C]">We also serve these nearby towns and villages:</p>
+                  <p className="mt-1 text-[14px] text-[#52667C]">{soon ? 'Also coming soon to these nearby towns and villages:' : 'We also serve these nearby towns and villages:'}</p>
                   <ul className="mt-3 flex flex-wrap gap-2">
                     {city.nearby.map((n) => (
                       <li key={n.slug}>
@@ -198,15 +210,19 @@ export default function BlogPost({ post, related }: Props) {
                 </ol>
               </nav>
               <div className="rounded-2xl bg-[linear-gradient(160deg,#0E2B4C,#15406F)] p-5 text-white">
-                <p className="text-[18px] font-bold leading-snug">{city ? `Need a mechanic in ${city.name}?` : 'Need a mechanic?'}</p>
+                <p className="text-[18px] font-bold leading-snug">{city ? (soon ? `Coming soon to ${city.name}` : `Need a mechanic in ${city.name}?`) : 'Need a mechanic?'}</p>
                 <ul className="mt-3 space-y-2 text-[13.5px] text-[#D5E1EF]">
                   {['Verified, trained mechanics', 'Genuine parts with invoice', '30-day service warranty', 'Pay after service'].map((t) => (
                     <li key={t} className="flex items-center gap-2"><IcVerifiedUser size={16} className="shrink-0 text-[#7BD6A3]" /> {t}</li>
                   ))}
                 </ul>
-                <Link href={bookHref} className="mt-4 flex h-11 items-center justify-center gap-2 rounded-full bg-[#C94309] text-[14.5px] font-semibold text-white hover:bg-[#A93807] hover:text-white">
-                  <IcBuild size={17} /> Book a Service
-                </Link>
+                {soon ? (
+                  <span className="mt-4 flex h-11 items-center justify-center rounded-full border border-white/40 text-[14.5px] font-semibold text-white/90">Booking opens soon</span>
+                ) : (
+                  <Link href={bookHref} className="mt-4 flex h-11 items-center justify-center gap-2 rounded-full bg-[#C94309] text-[14.5px] font-semibold text-white hover:bg-[#A93807] hover:text-white">
+                    <IcBuild size={17} /> Book a Service
+                  </Link>
+                )}
                 <a href={PHONE_HREF} className="mt-2.5 flex h-11 items-center justify-center gap-2 rounded-full bg-white text-[14.5px] font-semibold text-[#0E2B4C] hover:bg-[#EEF2F7]">
                   <IcCall size={17} /> {PHONE}
                 </a>

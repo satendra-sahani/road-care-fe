@@ -21,6 +21,7 @@ const MobileDrawer = dynamic(() => import('./MobileDrawer'), { ssr: false })
 import Cookies from 'js-cookie'
 import { useLoginModal } from '@/components/auth/LoginModalProvider'
 import { productHref, brandHref, categoryHref } from '@/lib/shopUrls'
+import { AREAS_COMING_SOON } from '@/data/launch'
 // Brand icon pack (Material glyphs from the Bharat Mechanics icon set)
 import {
   IcLocationOn, IcCall, IcLocalShipping, IcHelpCenter, IcStore, IcPerson, IcSearch,
@@ -680,7 +681,7 @@ export function UserLayout({ children, mobileTopBar = true }: { children: React.
         {/* Service areas — internal links to the city guides */}
         <div className="border-t border-white/10">
           <nav aria-label="Service areas" className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-3 gap-y-1.5 px-[clamp(14px,4vw,28px)] py-4 text-[12.5px]">
-            <span className="font-bold text-white">Mechanic near you:</span>
+            <span className="font-bold text-white">Mechanic near you{AREAS_COMING_SOON && <span className="ml-1.5 rounded-full bg-[#1F7A4A] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-white">Coming soon</span>}:</span>
             {[['gorakhpur', 'Gorakhpur'], ['deoria', 'Deoria'], ['kushinagar', 'Kushinagar'], ['padrauna', 'Padrauna'], ['kasia', 'Kasia'], ['hata', 'Hata'], ['kaptanganj', 'Kaptanganj'], ['ramkola', 'Ramkola'], ['rudrapur', 'Rudrapur'], ['salempur', 'Salempur'], ['maharajganj', 'Maharajganj']].map(([slug, name]) => (
               <Link key={slug} href={`/blog/mechanic-in-${slug}`} className="text-[#A9BFD6] transition-colors hover:text-[#FFB68C]">{name}</Link>
             ))}

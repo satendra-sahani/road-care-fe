@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import type { Block } from '@/data/blog/types'
+import { AREAS_COMING_SOON } from '@/data/launch'
 import { IcCall, IcArrowForward, IcLightbulb, IcBuild } from '@/components/icons/BmIcons'
 
 /** Inline markup: **bold** and [label](/href). Internal links use next/link. */
@@ -26,10 +27,13 @@ export const PHONE_HREF = 'tel:+919310694349'
 
 function Cta({ type, city }: { type: 'book' | 'call' | 'roadside'; city?: string }) {
   const book = city ? `/service?location=${encodeURIComponent(city)}` : '/service'
-  const title =
-    type === 'roadside' ? 'Stuck on the road?' : city ? `Book a mechanic in ${city}` : 'Book a doorstep service'
-  const sub =
-    type === 'roadside'
+  const soon = AREAS_COMING_SOON && !!city
+  const title = soon
+    ? `Coming soon in ${city}`
+    : type === 'roadside' ? 'Stuck on the road?' : city ? `Book a mechanic in ${city}` : 'Book a doorstep service'
+  const sub = soon
+    ? `We are onboarding partner garages in ${city} right now. Call us to know the day booking opens.`
+    : type === 'roadside'
       ? 'Jump-start, puncture, fuel delivery or towing — share your location and help is on the way.'
       : 'Verified mechanics · Genuine parts · 30-day warranty · Pay after service'
   return (
@@ -39,7 +43,10 @@ function Cta({ type, city }: { type: 'book' | 'call' | 'roadside'; city?: string
         <p className="mt-1 text-[13px] leading-relaxed text-[#C9D6E6]">{sub}</p>
       </div>
       <div className="flex flex-wrap gap-2.5">
-        {type !== 'roadside' && (
+        {soon && (
+          <span className="inline-flex h-11 items-center rounded-full border border-white/40 px-5 text-[14px] font-semibold text-white/90">Booking opens soon</span>
+        )}
+        {type !== 'roadside' && !soon && (
           <Link href={book} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#C94309] px-5 text-[14px] font-semibold text-white hover:bg-[#A93807] hover:text-white">
             <IcBuild size={17} /> Book a Service
           </Link>

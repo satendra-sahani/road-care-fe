@@ -6,6 +6,7 @@ import { UserLayout } from '@/components/layout/UserLayout'
 import { DImg } from '@/components/ui/DImg'
 import { PHONE, PHONE_HREF } from '@/components/blog/BlogBlocks'
 import type { PostCard } from '@/data/blog/types'
+import { AREAS_COMING_SOON } from '@/data/launch'
 import { IcCall, IcBuild, IcLocationOn, IcChevronRight, IcSchedule } from '@/components/icons/BmIcons'
 
 const SITE = 'https://bharatmechanics.com'
@@ -76,7 +77,7 @@ export default function BlogIndex({ guides, districts }: Props) {
                   Car &amp; bike care guides for <span className="text-[#F4601F]">Purvanchal</span>
                 </h1>
                 <p className="mt-4 max-w-[640px] text-[15.5px] leading-[1.75] text-[#41586F] sm:text-[16.5px]">
-                  Honest advice on servicing, prices and safe driving for Gorakhpur, Deoria, Kushinagar and Maharajganj — plus doorstep mechanic service in {total}+ towns and villages.
+                  Honest advice on servicing, prices and safe driving for Gorakhpur, Deoria, Kushinagar and Maharajganj — plus doorstep mechanic service {AREAS_COMING_SOON ? 'coming soon to' : 'in'} {total}+ towns and villages.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2.5">
                   <a href="#service-areas" className="inline-flex h-12 items-center gap-2 rounded-full bg-[#C94309] px-6 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(201,67,9,0.28)] hover:bg-[#A93807] hover:text-white">
@@ -119,9 +120,11 @@ export default function BlogIndex({ guides, districts }: Props) {
           {/* ── Service areas ── */}
           <section id="service-areas" className="scroll-mt-20 border-t border-[#E6ECF3] bg-white">
             <div className="mx-auto max-w-[1220px] px-[clamp(14px,3vw,24px)] py-10">
-              <h2 className="flex items-center gap-3 text-[22px] font-bold sm:text-[26px]"><span aria-hidden className="h-[3px] w-6 rounded-full bg-[#F4601F]" />Find a mechanic near you</h2>
+              <h2 className="flex items-center gap-3 text-[22px] font-bold sm:text-[26px]"><span aria-hidden className="h-[3px] w-6 rounded-full bg-[#F4601F]" />Find a mechanic near you{AREAS_COMING_SOON && <span className="inline-flex items-center rounded-full bg-[#E7F7EE] px-3 py-1 text-[12px] font-bold uppercase tracking-wide text-[#127A43]">Coming soon</span>}</h2>
               <p className="mt-1 max-w-[720px] text-[14px] leading-relaxed text-[#52667C]">
-                Doorstep car and bike service, repairs and roadside help across four districts. Pick your town for local prices, driving tips and booking details.
+                {AREAS_COMING_SOON
+                  ? 'Doorstep car and bike service, repairs and roadside help are coming soon to these four districts — we are onboarding partner garages now. Pick your town for local prices and driving tips.'
+                  : 'Doorstep car and bike service, repairs and roadside help across four districts. Pick your town for local prices, driving tips and booking details.'}
               </p>
 
               <div className="mt-6 space-y-8">
@@ -138,7 +141,9 @@ export default function BlogIndex({ guides, districts }: Props) {
                             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#FFEDE1] text-[#C94309]"><IcLocationOn size={16} /></span>
                             <span className="min-w-0">
                               <span className="block text-[14px] font-semibold leading-tight">{c.cityName}</span>
-                              <span className="block truncate text-[11.5px] text-[#52667C]">Car &amp; bike mechanic</span>
+                              {AREAS_COMING_SOON
+                                ? <span className="block truncate text-[11.5px] font-semibold text-[#127A43]">Coming soon</span>
+                                : <span className="block truncate text-[11.5px] text-[#52667C]">Car &amp; bike mechanic</span>}
                             </span>
                           </Link>
                         </li>
