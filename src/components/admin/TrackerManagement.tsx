@@ -46,6 +46,8 @@ interface Device {
   cycle?: string
   renewsAt?: string
   lastSeenAt?: string
+  // how the tracker's ignition wire behaves (learnt on the server from its heartbeats)
+  accWire?: 'ok' | 'always_on' | 'never_on' | 'unknown'
   telemetry?: { lat?: number; lng?: number; battery?: number; status?: string; updatedAt?: string }
   odometer?: number
   warranty?: { months?: number; startAt?: string }
@@ -474,6 +476,20 @@ export function TrackerManagement() {
                       </span>
                     ) : (
                       <span className="text-slate-400">No signal yet</span>
+                    )}
+                    {/* Ignition (ACC) wire: only a wire on the key switch can tell "engine started"
+                        from "pushed away with the engine off" — a wrong install shows up here. */}
+                    {d.accWire === 'ok' && (
+                      <div className="mt-1 text-[11px] font-semibold text-emerald-600">Ignition wire OK</div>
+                    )}
+                    {d.accWire === 'always_on' && (
+                      <div className="mt-1 text-[11px] font-semibold text-amber-600" title="ACC shows ON even while parked: it is joined to permanent +12 V. Move it to the key-switch (ignition) line. Until then the customer only gets 'is moving' notifications, no theft ring.">Ignition wire always ON — rewire to key switch</div>
+                    )}
+                    {d.accWire === 'never_on' && (
+                      <div className="mt-1 text-[11px] font-semibold text-amber-600" title="ACC never came ON although the vehicle has travelled: the wire is not connected. Join it to the key-switch (ignition) line.">Ignition wire not connected</div>
+                    )}
+                    {d.accWire === 'unknown' && d.lastSeenAt && (
+                      <div className="mt-1 text-[11px] text-slate-400">Ignition wire: checking…</div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{fmt(d.renewsAt)}</td>
